@@ -1,4 +1,72 @@
 # egovframe-scaffold-mcp
 
-초기 커밋 — 전체 코드는 곧 업로드됩니다.
+전자정부 표준프레임워크(eGovFrame) 프로젝트 스캐폴딩 **MCP(Model Context Protocol) 서버** — PoC
 
+> [eGovFramework/egovframe-common-components#1120](https://github.com/eGovFramework/egovframe-common-components/issues/1120) 제안의 개념 증명(Proof of Concept) 구현입니다.
+> [#628](https://github.com/eGovFramework/egovframe-common-components/issues/628)(eGovFrame MCP Server 제안)을 "프로젝트 생성" 단일 기능으로 구체화했습니다.
+
+Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
+프로젝트 골격을 생성할 수 있습니다. eGovFrame IDE 설치 없이 공식 템플릿 기반으로 시작합니다.
+
+## 제공 도구
+
+| 도구 | 설명 |
+|---|---|
+| `create_egovframe_project` | 공식 템플릿을 내려받아 projectName(artifactId)·groupId·DB 타입을 적용한 새 프로젝트 생성 |
+| `list_egovframe_templates` | 사용 가능한 공식 템플릿 목록 |
+
+### create_egovframe_project 파라미터
+
+- `projectName` — 프로젝트명(artifactId). 소문자·숫자·하이픈 (예: `my-egov-app`)
+- `groupId` — 자바 groupId (예: `egovframework.example`)
+- `database` — `hsql`(기본) | `mysql` | `oracle` | `altibase` | `tibero` (템플릿 `Globals.DbType` 지원 값)
+- `template` — `simple-backend`(기본, Spring Boot REST) | `simple-react`
+- `outputDir` — 생성 위치 상위 디렉터리
+
+동작: 공식 템플릿 zip 다운로드 → 압축 해제(zip-slip 방지) → `pom.xml`의 groupId/artifactId/name 적용(부모 POM 좌표는 유지) → `application.properties`의 `Globals.DbType` 설정. 기존 디렉터리가 있으면 거부합니다.
+
+## 설치·사용
+
+```bash
+npm install
+npm run build
+```
+
+Claude Desktop / Claude Code 설정 예 (`mcpServers`):
+
+```json
+{
+  "mcpServers": {
+    "egovframe-scaffold": {
+      "command": "node",
+      "args": ["/절대경로/egovframe-scaffold-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+사용 예 (AI 도구에서):
+
+> "표준프레임워크로 `my-egov-app` 프로젝트를 `~/work`에 만들어줘. groupId는 `egovframework.example`, DB는 mysql."
+
+## 검증
+
+- 함수 레벨: 실제 템플릿(289파일) 생성, pom 좌표·DbType 적용, 중복 생성 거부 확인 (`npm run smoke`)
+- 프로토콜 레벨: MCP initialize / tools/list 핸드셰이크 확인
+
+## PoC 범위와 한계 (알려진 제약)
+
+- 자바 패키지 구조 변경(groupId에 맞춘 소스 디렉터리 이동)은 미지원 — IDE rename refactoring 권장
+- 공통컴포넌트 선택 조립(253종 중 선택 설치)은 로드맵 항목 — 현재는 공식 템플릿 단위 생성
+- 네트워크로 GitHub(codeload.github.com) 접근 필요
+
+## 로드맵 (제안)
+
+1. 공통컴포넌트 선택 설치(`components` 파라미터) — eGovFrame IDE 생성 마법사 로직 참고
+2. 실행환경 보일러플레이트(egovframe-msa 등) 템플릿 추가
+3. 검증 도구(`validate_egovframe_config`) 등 후속 도구
+4. 검증 후 eGovFramework 조직 공식 저장소 편입 제안
+
+## 라이선스
+
+Apache License 2.0
