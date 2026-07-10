@@ -1,5 +1,7 @@
 # egovframe-scaffold-mcp
 
+[![CI](https://github.com/EricSeokgon/egovframe-scaffold-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/EricSeokgon/egovframe-scaffold-mcp/actions/workflows/ci.yml)
+
 전자정부 표준프레임워크(eGovFrame) 프로젝트 스캐폴딩 **MCP(Model Context Protocol) 서버** — PoC
 
 > [eGovFramework/egovframe-common-components#1120](https://github.com/eGovFramework/egovframe-common-components/issues/1120) 제안의 개념 증명(Proof of Concept) 구현입니다.
