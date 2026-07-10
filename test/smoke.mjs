@@ -17,3 +17,14 @@ console.log("dbtype ok:", /^Globals\.DbType=mysql$/m.test(props));
 // 중복 생성 방지 확인
 try { await createProject({projectName:"my-egov-app",groupId:"egovframework.example",database:"mysql",template:"simple-backend",outputDir:out}); console.log("dup-guard: FAIL"); }
 catch { console.log("dup-guard: OK"); }
+
+// 2) dryRun 미리보기: 디스크에 쓰지 않고 카운트만
+const out2 = "/tmp/scaffold-dry";
+fs.rmSync(out2, { recursive: true, force: true });
+const dry = await createProject({
+  projectName: "dry-app", groupId: "egovframework.example",
+  database: "oracle", template: "simple-backend", outputDir: out2, dryRun: true,
+});
+console.log("dryRun no-write:", !fs.existsSync(dry.projectPath));
+console.log("dryRun counted files:", dry.filesExtracted > 100);
+console.log("dryRun flag:", dry.dryRun === true, "| ref:", dry.ref);
