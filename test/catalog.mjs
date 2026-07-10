@@ -23,8 +23,8 @@ catch { console.log("unknown-id guard: OK"); }
 
 // dryRun 미리보기
 const p = await addComponents({ projectDir: "/tmp/x", components: ["bbs", "login"], dryRun: true });
-console.log("preview total>0:", p.totalApproxFiles > 0, "| order:", p.installOrder.map((c) => c.id).join(","));
+console.log("preview total>0:", p.totalFiles > 0, "| order:", p.installOrder.map((c) => c.id).join(","));
 
-// M1: 실제 조립은 거부
-try { await addComponents({ projectDir: "/tmp/x", components: ["bbs"], dryRun: false }); console.log("m1 guard: FAIL"); }
-catch { console.log("m1 guard: OK"); }
+// 실제 조립은 존재하는 프로젝트 디렉터리가 필요
+try { await addComponents({ projectDir: "/tmp/no-such-dir-abc", components: ["bbs"], dryRun: false }); console.log("dir guard: FAIL"); }
+catch { console.log("dir guard: OK"); }
