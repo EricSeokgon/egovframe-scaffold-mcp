@@ -116,8 +116,10 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     const fileCount = entries.filter((e) => !e.isDirectory && rel(e.entryName)).length;
     const hasPom = entries.some((e) => rel(e.entryName) === "pom.xml");
     const hasProps = entries.some((e) => rel(e.entryName) === "src/main/resources/application.properties");
+    const hasPkg = entries.some((e) => rel(e.entryName) === "package.json");
     if (hasPom) customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName}) — 적용 예정`);
     if (hasProps) customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database}) — 적용 예정`);
+    if (hasPkg) customized.push(`package.json (name=${opts.projectName}) — 적용 예정`);
     return {
       projectPath,
       filesExtracted: fileCount,
@@ -166,6 +168,21 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     }
   }
 
+  // 6) package.json: 프론트엔드 템플릿의 프로젝트명 적용
+  const pkgPath = path.join(projectPath, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      if (typeof pkg.name === "string") {
+        pkg.name = opts.projectName;
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+        customized.push(`package.json (name=${opts.projectName})`);
+      }
+    } catch {
+      // package.json 파싱 실패 시 건너뜀 (원본 유지)
+    }
+  }
+
   const nextSteps = [
     `cd ${projectPath}`,
     opts.template === "simple-backend"
@@ -181,7 +198,7 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.2.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.2.1" });
 
   server.tool(
     "list_egovframe_templates",
