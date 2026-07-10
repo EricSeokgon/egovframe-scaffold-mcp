@@ -1,6 +1,6 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "전자정부 표준프레임워크 프로젝트 스캐폴딩 MCP 서버 (PoC) — eGovFramework/egovframe-common-components#1120",
   "license": "Apache-2.0",
   "type": "module",
@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "smoke": "node test/smoke.mjs"
+    "smoke": "node test/smoke.mjs",
+    "test:catalog": "node test/catalog.mjs"
   },
   "engines": { "node": ">=18" },
   "dependencies": {
