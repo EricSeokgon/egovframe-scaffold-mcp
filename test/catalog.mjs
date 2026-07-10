@@ -4,6 +4,10 @@ import { loadCatalog, resolveComponents, addComponents } from "../dist/index.js"
 const catalog = loadCatalog();
 console.log("catalog loaded:", catalog.components.length >= 3);
 console.log("schema version:", catalog.schemaVersion === 1);
+console.log("coverage >= 60:", catalog.components.length >= 60);
+// 자동 생성 항목도 해석 가능해야 함 (예: sym.mnu 메뉴 관리)
+const auto = resolveComponents(catalog, ["sym.mnu"]).map((c) => c.id);
+console.log("auto entry ok:", JSON.stringify(auto) === '["cmm","sym.mnu"]');
 
 // 의존성 해석: bbs 요청 → cmm이 먼저
 const order = resolveComponents(catalog, ["bbs"]).map((c) => c.id);
