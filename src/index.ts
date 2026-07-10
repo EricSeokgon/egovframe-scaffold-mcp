@@ -264,38 +264,154 @@ export interface AddComponentsOptions {
   projectDir: string;
   components: string[];
   includeDependencies?: boolean;
+  /** DB 스크립트를 함께 복사할 DB 종류 (공통컴포넌트 저장소 script/ 기준) */
+  database?: (typeof ECC_DB_TYPES)[number];
   dryRun?: boolean;
 }
 
-export interface AddComponentsPreview {
+/** 공통컴포넌트 저장소 script/ 디렉터리가 제공하는 DB 종류 */
+export const ECC_DB_TYPES = [
+  "altibase", "cubrid", "goldilocks", "maria", "mysql", "oracle", "postgres", "tibero",
+] as const;
+
+/** 공통컴포넌트 저장소 zip 다운로드 제한 시간(ms) — 템플릿보다 커서 별도 값 사용 */
+export const COMPONENTS_DOWNLOAD_TIMEOUT_MS = 120_000;
+
+export interface AddComponentsResult {
   projectDir: string;
   requested: string[];
-  installOrder: { id: string; name: string; approxFiles: number }[];
-  totalApproxFiles: number;
+  installOrder: { id: string; name: string; files: number }[];
+  totalFiles: number;
+  sqlScripts: string[];
   sqlNote: string;
-  dryRun: true;
+  nextSteps: string[];
+  dryRun: boolean;
+}
+
+/** 프로세스 수명 동안 공통컴포넌트 zip을 1회만 내려받기 위한 캐시 */
+let eccZipCache: { key: string; zip: AdmZip } | null = null;
+
+async function downloadComponentsZip(repo: string, branch: string): Promise<AdmZip> {
+  const key = `${repo}@${branch}`;
+  if (eccZipCache && eccZipCache.key === key) return eccZipCache.zip;
+  const zipUrl = `https://codeload.github.com/${repo}/zip/${branch}`;
+  const res = await fetchWithTimeout(zipUrl, COMPONENTS_DOWNLOAD_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`공통컴포넌트 저장소 다운로드 실패 (${res.status}): ${zipUrl}`);
+  const zip = new AdmZip(Buffer.from(await res.arrayBuffer()));
+  eccZipCache = { key, zip };
+  return zip;
 }
 
 /**
- * 공통컴포넌트 선택 조립(M1: dryRun 미리보기만).
- * 네트워크 없이 카탈로그 메타데이터로 설치 순서·규모를 계산한다.
- * 실제 파일 복사·DB 스크립트 안내는 M2(v0.3)에서 구현 예정.
+ * 공통컴포넌트 선택 조립 (M2).
+ * - dryRun=true : 네트워크 없이 카탈로그 메타데이터로 설치 순서·규모 미리보기
+ * - dryRun=false: 공통컴포넌트 저장소를 내려받아 선택 컴포넌트 파일을 대상 프로젝트에 복사.
+ *   기존 파일과 충돌하면 아무것도 쓰지 않고 거부한다(전체 사전 검사).
+ *   database 지정 시 script/ddl·dml/<db>/ 스크립트를 scripts/egovframe-components/<db>/로 복사한다.
  */
-export async function addComponents(opts: AddComponentsOptions): Promise<AddComponentsPreview> {
-  if (opts.dryRun !== true)
-    throw new Error(
-      "실제 조립은 M2(v0.3)에서 지원 예정입니다. 현재는 dryRun=true 미리보기만 지원합니다 " +
-        "(설계: docs/design-components-parameter.md).",
-    );
+export async function addComponents(opts: AddComponentsOptions): Promise<AddComponentsResult> {
   const catalog = loadCatalog();
   const order = resolveComponents(catalog, opts.components, opts.includeDependencies !== false);
+  const projectDir = path.resolve(opts.projectDir);
+
+  if (opts.database && !ECC_DB_TYPES.includes(opts.database))
+    throw new Error(`database는 ${ECC_DB_TYPES.join("|")} 중 하나여야 합니다: ${opts.database}`);
+
+  // ---- 미리보기 모드: 네트워크 없이 카탈로그 근사치 사용 ----
+  if (opts.dryRun === true) {
+    return {
+      projectDir,
+      requested: opts.components,
+      installOrder: order.map((c) => ({ id: c.id, name: c.name, files: c.approxFiles })),
+      totalFiles: order.reduce((n, c) => n + c.approxFiles, 0),
+      sqlScripts: opts.database ? [`script/ddl|dml/${opts.database}/ → scripts/egovframe-components/${opts.database}/ (복사 예정)`] : [],
+      sqlNote: catalog.sqlNote,
+      nextSteps: ["미리보기 모드입니다. 실제 조립하려면 dryRun 없이 다시 호출하세요."],
+      dryRun: true,
+    };
+  }
+
+  // ---- 실제 조립 ----
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
+    throw new Error(`대상 프로젝트 디렉터리가 없습니다: ${projectDir} — 먼저 create_egovframe_project로 생성하세요`);
+
+  const zip = await downloadComponentsZip(catalog.source.repo, catalog.source.branch);
+  const entries = zip.getEntries().filter((e) => !e.isDirectory);
+  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
+
+  // 컴포넌트별 대상 파일 수집
+  const plan: { entry: AdmZip.IZipEntry; relPath: string; componentId: string }[] = [];
+  for (const c of order)
+    for (const e of entries) {
+      const r = rel(e.entryName);
+      if (r && c.pathPrefixes.some((p) => r.startsWith(p))) plan.push({ entry: e, relPath: r, componentId: c.id });
+    }
+  if (plan.length === 0) throw new Error("복사할 파일이 없습니다 — 카탈로그 pathPrefixes를 확인하세요");
+
+  // DB 스크립트 수집
+  const sqlPlan: { entry: AdmZip.IZipEntry; relPath: string }[] = [];
+  if (opts.database) {
+    for (const e of entries) {
+      const r = rel(e.entryName);
+      for (const kind of ["ddl", "dml"]) {
+        const prefix = `script/${kind}/${opts.database}/`;
+        if (r.startsWith(prefix))
+          sqlPlan.push({ entry: e, relPath: `scripts/egovframe-components/${opts.database}/${kind}/` + r.slice(prefix.length) });
+      }
+    }
+  }
+
+  // 전체 사전 충돌 검사 — 하나라도 충돌하면 아무것도 쓰지 않음
+  const conflicts: string[] = [];
+  for (const { relPath } of [...plan, ...sqlPlan]) {
+    const dest = path.join(projectDir, relPath);
+    if (!dest.startsWith(projectDir + path.sep)) continue; // zip slip 방지
+    if (fs.existsSync(dest)) conflicts.push(relPath);
+  }
+  if (conflicts.length > 0)
+    throw new Error(
+      `기존 파일과 충돌하여 중단합니다(총 ${conflicts.length}건, 아무것도 쓰지 않았습니다):\n` +
+        conflicts.slice(0, 10).map((c) => `  - ${c}`).join("\n") +
+        (conflicts.length > 10 ? `\n  … 외 ${conflicts.length - 10}건` : ""),
+    );
+
+  // 복사 실행
+  const countBy = new Map<string, number>();
+  for (const { entry, relPath, componentId } of plan) {
+    const dest = path.join(projectDir, relPath);
+    if (!dest.startsWith(projectDir + path.sep)) continue;
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, entry.getData());
+    countBy.set(componentId, (countBy.get(componentId) ?? 0) + 1);
+  }
+  const sqlScripts: string[] = [];
+  for (const { entry, relPath } of sqlPlan) {
+    const dest = path.join(projectDir, relPath);
+    if (!dest.startsWith(projectDir + path.sep)) continue;
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, entry.getData());
+    sqlScripts.push(relPath);
+  }
+
+  const nextSteps = [
+    opts.database
+      ? `scripts/egovframe-components/${opts.database}/ 의 DDL·DML에서 설치한 컴포넌트 관련 테이블을 선별해 DB에 적용하세요 (통합 스크립트입니다).`
+      : "database 파라미터를 지정하면 DB DDL·DML 스크립트도 함께 복사됩니다.",
+    "복사된 소스는 egovframework.com.* 원본 패키지를 유지합니다 (eGovFrame IDE 마법사와 동일).",
+    "빈 스캐너/설정에 egovframework.com 패키지 스캔이 포함되어 있는지 확인 후 mvn compile로 빌드를 검증하세요.",
+    "일부 컴포넌트는 web.xml·필터·스케줄러 등 수동 설정이 필요할 수 있습니다 (공통컴포넌트 가이드 참조).",
+  ];
+
   return {
-    projectDir: path.resolve(opts.projectDir),
+    projectDir,
     requested: opts.components,
-    installOrder: order.map((c) => ({ id: c.id, name: c.name, approxFiles: c.approxFiles })),
-    totalApproxFiles: order.reduce((n, c) => n + c.approxFiles, 0),
+    installOrder: order.map((c) => ({ id: c.id, name: c.name, files: countBy.get(c.id) ?? 0 })),
+    totalFiles: plan.length,
+    sqlScripts,
     sqlNote: catalog.sqlNote,
-    dryRun: true,
+    nextSteps,
+    dryRun: false,
   };
 }
 
@@ -303,7 +419,7 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.2.2" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.3.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -383,25 +499,32 @@ export function buildServer(): McpServer {
 
   server.tool(
     "add_egovframe_components",
-    "공통컴포넌트를 골라 기존 프로젝트에 조립합니다. M1에서는 dryRun=true 미리보기만 지원하며, " +
-      "의존 컴포넌트를 포함한 설치 순서와 규모를 반환합니다. 실제 복사는 M2(v0.3) 예정입니다.",
+    "공통컴포넌트를 골라 기존 프로젝트에 조립합니다. 의존 컴포넌트를 포함해 소스·매퍼·JSP를 복사하고, " +
+      "database 지정 시 DB DDL·DML 스크립트도 복사합니다. 기존 파일과 충돌하면 아무것도 쓰지 않고 거부합니다. " +
+      "dryRun=true로 먼저 미리볼 수 있습니다.",
     {
-      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
+      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장). 먼저 create_egovframe_project로 생성"),
       components: z.array(z.string()).min(1).describe("컴포넌트 id 목록. 예: [\"bbs\", \"login\"]"),
       includeDependencies: z.boolean().default(true).describe("의존 컴포넌트 자동 포함 여부"),
-      dryRun: z.boolean().default(true).describe("M1에서는 true만 지원(미리보기)"),
+      database: z.enum(ECC_DB_TYPES).optional().describe("DB 스크립트 복사 대상 DB (altibase|cubrid|goldilocks|maria|mysql|oracle|postgres|tibero)"),
+      dryRun: z.boolean().default(false).describe("true면 복사 없이 설치 순서·규모만 미리보기(네트워크 불필요)"),
     },
     async (args) => {
       const r = await addComponents(args as AddComponentsOptions);
+      const head = r.dryRun
+        ? `🔍 컴포넌트 조립 미리보기(dryRun): ${r.projectDir}`
+        : `✅ 컴포넌트 조립 완료: ${r.projectDir}`;
       const text = [
-        `🔍 컴포넌트 조립 미리보기(dryRun): ${r.projectDir}`,
+        head,
         `- 요청: ${r.requested.join(", ")}`,
         `- 설치 순서(의존성 포함):`,
-        ...r.installOrder.map((c, i) => `  ${i + 1}. ${c.id} — ${c.name} (약 ${c.approxFiles}개 파일)`),
-        `- 총 규모: 약 ${r.totalApproxFiles}개 파일`,
-        `- DB 스크립트: ${r.sqlNote}`,
+        ...r.installOrder.map((c, i) => `  ${i + 1}. ${c.id} — ${c.name} (${r.dryRun ? "약 " : ""}${c.files}개 파일)`),
+        `- 총 ${r.dryRun ? "예상 " : ""}복사 파일: ${r.totalFiles}개`,
+        ...(r.sqlScripts.length ? [`- DB 스크립트: ${r.sqlScripts.length}개 복사`] : []),
+        `- 참고: ${r.sqlNote}`,
         ``,
-        `실제 조립(파일 복사·DB 안내)은 M2(v0.3)에서 지원 예정입니다.`,
+        `다음 단계:`,
+        ...r.nextSteps.map((s, i) => `  ${i + 1}. ${s}`),
       ].join("\n");
       return { content: [{ type: "text", text }] };
     },
