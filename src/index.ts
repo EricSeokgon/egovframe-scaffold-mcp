@@ -419,7 +419,7 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.3.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.4.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -471,7 +471,7 @@ export function buildServer(): McpServer {
 
   server.tool(
     "list_egovframe_components",
-    "선택 설치를 지원하는 공통컴포넌트 카탈로그를 반환합니다. (M1: 대표 3종 — 이후 단계적 확대)",
+    "선택 설치를 지원하는 공통컴포넌트 카탈로그를 반환합니다 (저장소 스캔으로 자동 생성, scripts/generate-catalog.mjs).",
     {},
     async () => {
       const catalog = loadCatalog();
