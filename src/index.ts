@@ -194,11 +194,116 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
   return { projectPath, filesExtracted: count, customized, nextSteps, ref, dryRun: false };
 }
 
+
+/* ------------------------------------------------------------------ */
+/* 컴포넌트 카탈로그 (M1) — 로드맵 '공통컴포넌트 선택 설치'의 1단계       */
+/* 설계: docs/design-components-parameter.md                            */
+/* ------------------------------------------------------------------ */
+
+export interface CatalogComponent {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  /** 공통컴포넌트 저장소 루트 기준 경로 프리픽스(startsWith 매칭) */
+  pathPrefixes: string[];
+  dependsOn: string[];
+  /** surveyedAt 시점의 파일 수(안내용 근사치) */
+  approxFiles: number;
+}
+
+export interface Catalog {
+  schemaVersion: number;
+  source: { repo: string; branch: string; surveyedAt: string };
+  sqlNote: string;
+  components: CatalogComponent[];
+}
+
+const CATALOG_URL = new URL("../catalog/components.json", import.meta.url);
+
+/** 카탈로그 로드 + 무결성 검증(id 중복, 의존 대상 존재) */
+export function loadCatalog(): Catalog {
+  const catalog = JSON.parse(fs.readFileSync(CATALOG_URL, "utf-8")) as Catalog;
+  const ids = new Set<string>();
+  for (const c of catalog.components) {
+    if (ids.has(c.id)) throw new Error(`카탈로그 오류: 중복 id '${c.id}'`);
+    ids.add(c.id);
+  }
+  for (const c of catalog.components)
+    for (const d of c.dependsOn)
+      if (!ids.has(d)) throw new Error(`카탈로그 오류: '${c.id}'가 의존하는 '${d}'가 카탈로그에 없습니다`);
+  return catalog;
+}
+
+/** 요청 컴포넌트 → 의존성 포함 설치 순서(위상 정렬). 순환 의존 시 오류 */
+export function resolveComponents(
+  catalog: Catalog,
+  ids: string[],
+  includeDependencies = true,
+): CatalogComponent[] {
+  const byId = new Map(catalog.components.map((c) => [c.id, c]));
+  for (const id of ids)
+    if (!byId.has(id))
+      throw new Error(`알 수 없는 컴포넌트 id: '${id}' — list_egovframe_components로 목록을 확인하세요`);
+  const order: CatalogComponent[] = [];
+  const state = new Map<string, 1 | 2>(); // 1=방문 중, 2=완료
+  const visit = (id: string, stack: string[]) => {
+    const s = state.get(id);
+    if (s === 2) return;
+    if (s === 1) throw new Error(`카탈로그 오류: 순환 의존 감지 ${[...stack, id].join(" → ")}`);
+    state.set(id, 1);
+    if (includeDependencies) for (const d of byId.get(id)!.dependsOn) visit(d, [...stack, id]);
+    state.set(id, 2);
+    order.push(byId.get(id)!);
+  };
+  for (const id of ids) visit(id, []);
+  return order;
+}
+
+export interface AddComponentsOptions {
+  projectDir: string;
+  components: string[];
+  includeDependencies?: boolean;
+  dryRun?: boolean;
+}
+
+export interface AddComponentsPreview {
+  projectDir: string;
+  requested: string[];
+  installOrder: { id: string; name: string; approxFiles: number }[];
+  totalApproxFiles: number;
+  sqlNote: string;
+  dryRun: true;
+}
+
+/**
+ * 공통컴포넌트 선택 조립(M1: dryRun 미리보기만).
+ * 네트워크 없이 카탈로그 메타데이터로 설치 순서·규모를 계산한다.
+ * 실제 파일 복사·DB 스크립트 안내는 M2(v0.3)에서 구현 예정.
+ */
+export async function addComponents(opts: AddComponentsOptions): Promise<AddComponentsPreview> {
+  if (opts.dryRun !== true)
+    throw new Error(
+      "실제 조립은 M2(v0.3)에서 지원 예정입니다. 현재는 dryRun=true 미리보기만 지원합니다 " +
+        "(설계: docs/design-components-parameter.md).",
+    );
+  const catalog = loadCatalog();
+  const order = resolveComponents(catalog, opts.components, opts.includeDependencies !== false);
+  return {
+    projectDir: path.resolve(opts.projectDir),
+    requested: opts.components,
+    installOrder: order.map((c) => ({ id: c.id, name: c.name, approxFiles: c.approxFiles })),
+    totalApproxFiles: order.reduce((n, c) => n + c.approxFiles, 0),
+    sqlNote: catalog.sqlNote,
+    dryRun: true,
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.2.1" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.2.2" });
 
   server.tool(
     "list_egovframe_templates",
@@ -242,6 +347,61 @@ export function buildServer(): McpServer {
         ``,
         `다음 단계:`,
         ...result.nextSteps.map((s, i) => `  ${i + 1}. ${s}`),
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+
+  server.tool(
+    "list_egovframe_components",
+    "선택 설치를 지원하는 공통컴포넌트 카탈로그를 반환합니다. (M1: 대표 3종 — 이후 단계적 확대)",
+    {},
+    async () => {
+      const catalog = loadCatalog();
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                source: catalog.source,
+                sqlNote: catalog.sqlNote,
+                components: catalog.components.map((c) => ({
+                  id: c.id, name: c.name, category: c.category,
+                  description: c.description, dependsOn: c.dependsOn, approxFiles: c.approxFiles,
+                })),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "add_egovframe_components",
+    "공통컴포넌트를 골라 기존 프로젝트에 조립합니다. M1에서는 dryRun=true 미리보기만 지원하며, " +
+      "의존 컴포넌트를 포함한 설치 순서와 규모를 반환합니다. 실제 복사는 M2(v0.3) 예정입니다.",
+    {
+      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
+      components: z.array(z.string()).min(1).describe("컴포넌트 id 목록. 예: [\"bbs\", \"login\"]"),
+      includeDependencies: z.boolean().default(true).describe("의존 컴포넌트 자동 포함 여부"),
+      dryRun: z.boolean().default(true).describe("M1에서는 true만 지원(미리보기)"),
+    },
+    async (args) => {
+      const r = await addComponents(args as AddComponentsOptions);
+      const text = [
+        `🔍 컴포넌트 조립 미리보기(dryRun): ${r.projectDir}`,
+        `- 요청: ${r.requested.join(", ")}`,
+        `- 설치 순서(의존성 포함):`,
+        ...r.installOrder.map((c, i) => `  ${i + 1}. ${c.id} — ${c.name} (약 ${c.approxFiles}개 파일)`),
+        `- 총 규모: 약 ${r.totalApproxFiles}개 파일`,
+        `- DB 스크립트: ${r.sqlNote}`,
+        ``,
+        `실제 조립(파일 복사·DB 안내)은 M2(v0.3)에서 지원 예정입니다.`,
       ].join("\n");
       return { content: [{ type: "text", text }] };
     },
