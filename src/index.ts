@@ -4,7 +4,11 @@
  *
  * eGovFramework/egovframe-common-components#1120 제안의 개념 증명 구현입니다.
  * 공식 템플릿 저장소를 내려받아 프로젝트명·groupId·DB 타입을 적용한
- * 새 프로젝트 골격을 생성하는 단일 도구(create_egovframe_project)를 제공합니다.
+ * 새 프로젝트 골격을 생성합니다.
+ *
+ * 제공 도구:
+ *  - list_egovframe_templates : 사용 가능한 공식 템플릿 목록
+ *  - create_egovframe_project : 템플릿으로 새 프로젝트 생성 (dryRun 미리보기 지원)
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -12,6 +16,9 @@ import { z } from "zod";
 import AdmZip from "adm-zip";
 import * as fs from "node:fs";
 import * as path from "node:path";
+
+/** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
+export const DOWNLOAD_TIMEOUT_MS = 30_000;
 
 /** 지원 템플릿 목록 (공식 eGovFramework 조직 저장소) */
 export const TEMPLATES: Record<string, { repo: string; branch: string; description: string }> = {
@@ -32,6 +39,8 @@ export const DB_TYPES = ["hsql", "mysql", "oracle", "altibase", "tibero"] as con
 
 const NAME_RE = /^[a-z][a-z0-9-]{1,63}$/;
 const GROUP_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
+// 브랜치/태그 이름에 허용할 안전 문자 (경로 주입·URL 오염 방지)
+const REF_RE = /^[A-Za-z0-9._\/-]{1,128}$/;
 
 export interface CreateOptions {
   projectName: string;
@@ -39,6 +48,10 @@ export interface CreateOptions {
   database: (typeof DB_TYPES)[number];
   template: keyof typeof TEMPLATES;
   outputDir: string;
+  /** 내려받을 브랜치 또는 태그(미지정 시 템플릿 기본 브랜치). 예: "main", "v4.3.0" */
+  ref?: string;
+  /** true면 디스크에 쓰지 않고 수행 예정 내용만 미리보기로 반환한다. */
+  dryRun?: boolean;
 }
 
 export interface CreateResult {
@@ -46,9 +59,26 @@ export interface CreateResult {
   filesExtracted: number;
   customized: string[];
   nextSteps: string[];
+  ref: string;
+  dryRun: boolean;
 }
 
-/** 템플릿 zip 다운로드 → 압축 해제 → 사용자 값 적용 */
+/** 제한 시간이 적용된 fetch. AbortError를 사람이 읽을 수 있는 메시지로 바꾼다. */
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError")
+      throw new Error(`템플릿 다운로드 시간 초과(${timeoutMs}ms): ${url}`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 템플릿 zip 다운로드 → 압축 해제 → 사용자 값 적용 (dryRun이면 미리보기만) */
 export async function createProject(opts: CreateOptions): Promise<CreateResult> {
   const tpl = TEMPLATES[opts.template];
   if (!tpl) throw new Error(`알 수 없는 템플릿: ${opts.template}`);
@@ -59,28 +89,52 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
   if (!DB_TYPES.includes(opts.database))
     throw new Error(`database는 ${DB_TYPES.join("|")} 중 하나여야 합니다: ${opts.database}`);
 
+  const ref = (opts.ref ?? tpl.branch).trim();
+  if (!REF_RE.test(ref))
+    throw new Error(`ref(브랜치/태그)에 허용되지 않는 문자가 있습니다: ${ref}`);
+  const dryRun = opts.dryRun === true;
+
   const projectPath = path.resolve(opts.outputDir, opts.projectName);
-  if (fs.existsSync(projectPath))
+  if (!dryRun && fs.existsSync(projectPath))
     throw new Error(`대상 디렉터리가 이미 존재합니다: ${projectPath}`);
 
-  // 1) 공식 템플릿 다운로드
-  const zipUrl = `https://codeload.github.com/${tpl.repo}/zip/refs/heads/${tpl.branch}`;
-  const res = await fetch(zipUrl);
-  if (!res.ok) throw new Error(`템플릿 다운로드 실패 (${res.status}): ${zipUrl}`);
+  // 1) 공식 템플릿 다운로드 (branch/tag/SHA 모두 허용)
+  const zipUrl = `https://codeload.github.com/${tpl.repo}/zip/${ref}`;
+  const res = await fetchWithTimeout(zipUrl, DOWNLOAD_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`템플릿 다운로드 실패 (${res.status}) — ref='${ref}'가 존재하는지 확인하세요: ${zipUrl}`);
   const buf = Buffer.from(await res.arrayBuffer());
 
-  // 2) 최상위 폴더를 제거하며 압축 해제
   const zip = new AdmZip(buf);
   const entries = zip.getEntries();
   const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
+
+  const customized: string[] = [];
+
+  // 2) 미리보기(dryRun): 쓰지 않고 수행 예정 내용만 계산
+  if (dryRun) {
+    const fileCount = entries.filter((e) => !e.isDirectory && rel(e.entryName)).length;
+    const hasPom = entries.some((e) => rel(e.entryName) === "pom.xml");
+    const hasProps = entries.some((e) => rel(e.entryName) === "src/main/resources/application.properties");
+    if (hasPom) customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName}) — 적용 예정`);
+    if (hasProps) customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database}) — 적용 예정`);
+    return {
+      projectPath,
+      filesExtracted: fileCount,
+      customized,
+      ref,
+      dryRun: true,
+      nextSteps: [`미리보기 모드입니다. 실제 생성하려면 dryRun 없이 다시 호출하세요.`],
+    };
+  }
+
+  // 3) 최상위 폴더를 제거하며 압축 해제
   let count = 0;
   for (const e of entries) {
     if (e.isDirectory) continue;
-    const rel = e.entryName.startsWith(rootPrefix)
-      ? e.entryName.slice(rootPrefix.length)
-      : e.entryName;
-    if (!rel) continue;
-    const dest = path.join(projectPath, rel);
+    const r = rel(e.entryName);
+    if (!r) continue;
+    const dest = path.join(projectPath, r);
     // zip slip 방지
     if (!dest.startsWith(projectPath + path.sep)) continue;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -88,9 +142,7 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     count++;
   }
 
-  const customized: string[] = [];
-
-  // 3) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지)
+  // 4) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지)
   const pomPath = path.join(projectPath, "pom.xml");
   if (fs.existsSync(pomPath)) {
     let pom = fs.readFileSync(pomPath, "utf-8");
@@ -103,7 +155,7 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
   }
 
-  // 4) application.properties: DB 타입 적용
+  // 5) application.properties: DB 타입 적용
   const appProps = path.join(projectPath, "src/main/resources/application.properties");
   if (fs.existsSync(appProps)) {
     let props = fs.readFileSync(appProps, "utf-8");
@@ -122,41 +174,53 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     "자바 패키지 구조 변경(groupId에 맞춘 소스 이동)은 PoC 범위 밖입니다 — IDE의 rename refactoring 사용을 권장합니다.",
   ];
 
-  return { projectPath, filesExtracted: count, customized, nextSteps };
+  return { projectPath, filesExtracted: count, customized, nextSteps, ref, dryRun: false };
 }
 
 /* ------------------------------------------------------------------ */
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.1.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.2.0" });
 
   server.tool(
     "list_egovframe_templates",
     "사용 가능한 전자정부 표준프레임워크 프로젝트 템플릿 목록을 반환합니다.",
     {},
     async () => ({
-      content: [{ type: "text", text: JSON.stringify(TEMPLATES, null, 2) }],
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({ templates: TEMPLATES, databases: DB_TYPES }, null, 2),
+        },
+      ],
     }),
   );
 
   server.tool(
     "create_egovframe_project",
     "전자정부 표준프레임워크 공식 템플릿으로 새 프로젝트 골격을 생성합니다. " +
-      "공식 GitHub 템플릿을 내려받아 projectName/groupId/DB 타입을 적용합니다.",
+      "공식 GitHub 템플릿을 내려받아 projectName/groupId/DB 타입을 적용합니다. " +
+      "dryRun=true로 먼저 미리보기할 수 있습니다.",
     {
       projectName: z.string().describe("프로젝트명(artifactId). 소문자·숫자·하이픈, 예: my-egov-app"),
       groupId: z.string().describe("자바 groupId. 예: egovframework.example"),
       database: z.enum(DB_TYPES).default("hsql").describe("DB 타입 (템플릿 지원: hsql|mysql|oracle|altibase|tibero)"),
       template: z.enum(Object.keys(TEMPLATES) as [string, ...string[]]).default("simple-backend").describe("템플릿 종류"),
       outputDir: z.string().describe("프로젝트를 생성할 상위 디렉터리(절대경로 권장)"),
+      ref: z.string().optional().describe("내려받을 브랜치/태그(미지정 시 템플릿 기본 브랜치). 예: main, v4.3.0"),
+      dryRun: z.boolean().default(false).describe("true면 디스크에 쓰지 않고 생성 예정 내용만 미리보기"),
     },
     async (args) => {
       const result = await createProject(args as CreateOptions);
+      const head = result.dryRun
+        ? `🔍 미리보기(dryRun): ${result.projectPath}`
+        : `✅ 프로젝트 생성 완료: ${result.projectPath}`;
       const text = [
-        `✅ 프로젝트 생성 완료: ${result.projectPath}`,
-        `- 추출 파일: ${result.filesExtracted}개`,
-        `- 적용된 설정:`,
+        head,
+        `- 템플릿 ref: ${result.ref}`,
+        `- ${result.dryRun ? "생성 예정" : "추출"} 파일: ${result.filesExtracted}개`,
+        `- ${result.dryRun ? "적용 예정 설정" : "적용된 설정"}:`,
         ...result.customized.map((c) => `  · ${c}`),
         ``,
         `다음 단계:`,
