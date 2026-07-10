@@ -3,9 +3,10 @@
   "source": {
     "repo": "eGovFramework/egovframe-common-components",
     "branch": "main",
-    "surveyedAt": "2026-07-11"
+    "surveyedAt": "2026-07-10"
   },
-  "sqlNote": "DB 스크립트는 script/ddl|dml/<db>/ 의 통합본(com_DDL_<db>.sql 등)으로 제공됩니다. 컴포넌트별 테이블 선별 적용은 M2 로드맵 항목입니다.",
+  "sqlNote": "DB 스크립트는 script/ddl|dml/<db>/ 의 통합본(com_DDL_<db>.sql 등)으로 제공됩니다. 컴포넌트별 테이블 선별 적용은 로드맵 항목입니다.",
+  "generatedBy": "scripts/generate-catalog.mjs",
   "components": [
     {
       "id": "cmm",
@@ -21,6 +22,21 @@
       "approxFiles": 108
     },
     {
+      "id": "cop.adb",
+      "name": "cop.adb",
+      "category": "cop",
+      "description": "egovframework/com/cop/adb 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/adb/",
+        "src/main/resources/egovframework/mapper/com/cop/adb/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/adb/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 22
+    },
+    {
       "id": "bbs",
       "name": "게시판 (BBS)",
       "category": "cop",
@@ -30,8 +46,700 @@
         "src/main/resources/egovframework/mapper/com/cop/bbs/",
         "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/bbs/"
       ],
-      "dependsOn": ["cmm"],
+      "dependsOn": [
+        "cmm"
+      ],
       "approxFiles": 63
+    },
+    {
+      "id": "cop.cmt",
+      "name": "cop.cmt",
+      "category": "cop",
+      "description": "egovframework/com/cop/cmt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/cmt/",
+        "src/main/resources/egovframework/mapper/com/cop/cmt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/cmt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15
+    },
+    {
+      "id": "cop.cmy",
+      "name": "cop.cmy",
+      "category": "cop",
+      "description": "egovframework/com/cop/cmy 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/cmy/",
+        "src/main/resources/egovframework/mapper/com/cop/cmy/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/cmy/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 47
+    },
+    {
+      "id": "cop.com",
+      "name": "cop.com",
+      "category": "cop",
+      "description": "egovframework/com/cop/com 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/com/",
+        "src/main/resources/egovframework/mapper/com/cop/com/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/com/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 26
+    },
+    {
+      "id": "cop.ems",
+      "name": "cop.ems",
+      "category": "cop",
+      "description": "egovframework/com/cop/ems 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/ems/",
+        "src/main/resources/egovframework/mapper/com/cop/ems/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/ems/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 45
+    },
+    {
+      "id": "cop.ncm",
+      "name": "cop.ncm",
+      "category": "cop",
+      "description": "egovframework/com/cop/ncm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/ncm/",
+        "src/main/resources/egovframework/mapper/com/cop/ncm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/ncm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 20
+    },
+    {
+      "id": "cop.scp",
+      "name": "cop.scp",
+      "category": "cop",
+      "description": "egovframework/com/cop/scp 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/scp/",
+        "src/main/resources/egovframework/mapper/com/cop/scp/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/scp/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18
+    },
+    {
+      "id": "cop.sms",
+      "name": "cop.sms",
+      "category": "cop",
+      "description": "egovframework/com/cop/sms 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/sms/",
+        "src/main/resources/egovframework/mapper/com/cop/sms/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/sms/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 25
+    },
+    {
+      "id": "cop.smt",
+      "name": "일정 관리",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 202
+    },
+    {
+      "id": "cop.stf",
+      "name": "cop.stf",
+      "category": "cop",
+      "description": "egovframework/com/cop/stf 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/stf/",
+        "src/main/resources/egovframework/mapper/com/cop/stf/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/stf/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 12
+    },
+    {
+      "id": "cop.tpl",
+      "name": "cop.tpl",
+      "category": "cop",
+      "description": "egovframework/com/cop/tpl 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/tpl/",
+        "src/main/resources/egovframework/mapper/com/cop/tpl/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/tpl/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 22
+    },
+    {
+      "id": "dam.app",
+      "name": "dam.app",
+      "category": "dam",
+      "description": "egovframework/com/dam/app 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/dam/app/",
+        "src/main/resources/egovframework/mapper/com/dam/app/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/app/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17
+    },
+    {
+      "id": "dam.map",
+      "name": "dam.map",
+      "category": "dam",
+      "description": "egovframework/com/dam/map 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/dam/map/",
+        "src/main/resources/egovframework/mapper/com/dam/map/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/map/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 36
+    },
+    {
+      "id": "dam.mgm",
+      "name": "dam.mgm",
+      "category": "dam",
+      "description": "egovframework/com/dam/mgm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/dam/mgm/",
+        "src/main/resources/egovframework/mapper/com/dam/mgm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/mgm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17
+    },
+    {
+      "id": "dam.per",
+      "name": "dam.per",
+      "category": "dam",
+      "description": "egovframework/com/dam/per 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/dam/per/",
+        "src/main/resources/egovframework/mapper/com/dam/per/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/per/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18
+    },
+    {
+      "id": "dam.spe",
+      "name": "dam.spe",
+      "category": "dam",
+      "description": "egovframework/com/dam/spe 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/dam/spe/",
+        "src/main/resources/egovframework/mapper/com/dam/spe/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/spe/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 36
+    },
+    {
+      "id": "ext.captcha",
+      "name": "ext.captcha",
+      "category": "ext",
+      "description": "egovframework/com/ext/captcha 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/captcha/",
+        "src/main/resources/egovframework/mapper/com/ext/captcha/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/captcha/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 3
+    },
+    {
+      "id": "ext.easybatch",
+      "name": "ext.easybatch",
+      "category": "ext",
+      "description": "egovframework/com/ext/easybatch 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/easybatch/",
+        "src/main/resources/egovframework/mapper/com/ext/easybatch/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/easybatch/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2
+    },
+    {
+      "id": "ext.ldapumt",
+      "name": "ext.ldapumt",
+      "category": "ext",
+      "description": "egovframework/com/ext/ldapumt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/ldapumt/",
+        "src/main/resources/egovframework/mapper/com/ext/ldapumt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/ldapumt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 14
+    },
+    {
+      "id": "ext.msg",
+      "name": "ext.msg",
+      "category": "ext",
+      "description": "egovframework/com/ext/msg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/msg/",
+        "src/main/resources/egovframework/mapper/com/ext/msg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/msg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15
+    },
+    {
+      "id": "ext.oauth",
+      "name": "ext.oauth",
+      "category": "ext",
+      "description": "egovframework/com/ext/oauth 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/oauth/",
+        "src/main/resources/egovframework/mapper/com/ext/oauth/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/oauth/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 6
+    },
+    {
+      "id": "sec.drm",
+      "name": "sec.drm",
+      "category": "sec",
+      "description": "egovframework/com/sec/drm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sec/drm/",
+        "src/main/resources/egovframework/mapper/com/sec/drm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/drm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 16
+    },
+    {
+      "id": "sec.gmt",
+      "name": "sec.gmt",
+      "category": "sec",
+      "description": "egovframework/com/sec/gmt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sec/gmt/",
+        "src/main/resources/egovframework/mapper/com/sec/gmt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/gmt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18
+    },
+    {
+      "id": "sec.pki",
+      "name": "sec.pki",
+      "category": "sec",
+      "description": "egovframework/com/sec/pki 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sec/pki/",
+        "src/main/resources/egovframework/mapper/com/sec/pki/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/pki/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2
+    },
+    {
+      "id": "sec.ram",
+      "name": "권한 관리",
+      "category": "sec",
+      "description": "egovframework/com/sec/ram 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sec/ram/",
+        "src/main/resources/egovframework/mapper/com/sec/ram/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/ram/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 33
+    },
+    {
+      "id": "sec.rgm",
+      "name": "sec.rgm",
+      "category": "sec",
+      "description": "egovframework/com/sec/rgm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sec/rgm/",
+        "src/main/resources/egovframework/mapper/com/sec/rgm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/rgm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15
+    },
+    {
+      "id": "sec.rmt",
+      "name": "sec.rmt",
+      "category": "sec",
+      "description": "egovframework/com/sec/rmt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sec/rmt/",
+        "src/main/resources/egovframework/mapper/com/sec/rmt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/rmt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17
+    },
+    {
+      "id": "sec.security",
+      "name": "sec.security",
+      "category": "sec",
+      "description": "egovframework/com/sec/security 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sec/security/",
+        "src/main/resources/egovframework/mapper/com/sec/security/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/security/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1
+    },
+    {
+      "id": "ssi.syi",
+      "name": "ssi.syi",
+      "category": "ssi",
+      "description": "egovframework/com/ssi/syi 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ssi/syi/",
+        "src/main/resources/egovframework/mapper/com/ssi/syi/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ssi/syi/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 82
+    },
+    {
+      "id": "sts.bst",
+      "name": "sts.bst",
+      "category": "sts",
+      "description": "egovframework/com/sts/bst 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sts/bst/",
+        "src/main/resources/egovframework/mapper/com/sts/bst/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sts/bst/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15
+    },
+    {
+      "id": "sts.com",
+      "name": "sts.com",
+      "category": "sts",
+      "description": "egovframework/com/sts/com 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sts/com/",
+        "src/main/resources/egovframework/mapper/com/sts/com/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sts/com/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1
+    },
+    {
+      "id": "sts.cst",
+      "name": "sts.cst",
+      "category": "sts",
+      "description": "egovframework/com/sts/cst 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sts/cst/",
+        "src/main/resources/egovframework/mapper/com/sts/cst/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sts/cst/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 14
+    },
+    {
+      "id": "sts.dst",
+      "name": "sts.dst",
+      "category": "sts",
+      "description": "egovframework/com/sts/dst 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sts/dst/",
+        "src/main/resources/egovframework/mapper/com/sts/dst/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sts/dst/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 16
+    },
+    {
+      "id": "sts.rst",
+      "name": "sts.rst",
+      "category": "sts",
+      "description": "egovframework/com/sts/rst 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sts/rst/",
+        "src/main/resources/egovframework/mapper/com/sts/rst/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sts/rst/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17
+    },
+    {
+      "id": "sts.sst",
+      "name": "sts.sst",
+      "category": "sts",
+      "description": "egovframework/com/sts/sst 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sts/sst/",
+        "src/main/resources/egovframework/mapper/com/sts/sst/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sts/sst/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 14
+    },
+    {
+      "id": "sts.ust",
+      "name": "sts.ust",
+      "category": "sts",
+      "description": "egovframework/com/sts/ust 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sts/ust/",
+        "src/main/resources/egovframework/mapper/com/sts/ust/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sts/ust/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15
+    },
+    {
+      "id": "sym.adr",
+      "name": "sym.adr",
+      "category": "sym",
+      "description": "egovframework/com/sym/adr 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/adr/",
+        "src/main/resources/egovframework/mapper/com/sym/adr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/adr/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2
+    },
+    {
+      "id": "sym.bat",
+      "name": "배치 관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/bat 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/bat/",
+        "src/main/resources/egovframework/mapper/com/sym/bat/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/bat/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 56
+    },
+    {
+      "id": "sym.cal",
+      "name": "sym.cal",
+      "category": "sym",
+      "description": "egovframework/com/sym/cal 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/cal/",
+        "src/main/resources/egovframework/mapper/com/sym/cal/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/cal/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 32
+    },
+    {
+      "id": "sym.ccm",
+      "name": "공통코드 관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/ccm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/ccm/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 143
+    },
+    {
+      "id": "sym.log",
+      "name": "시스템 로그 관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/log 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/log/",
+        "src/main/resources/egovframework/mapper/com/sym/log/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 118
+    },
+    {
+      "id": "sym.mnu",
+      "name": "메뉴 관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/mnu 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/mnu/",
+        "src/main/resources/egovframework/mapper/com/sym/mnu/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/mnu/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 91
+    },
+    {
+      "id": "sym.prm",
+      "name": "sym.prm",
+      "category": "sym",
+      "description": "egovframework/com/sym/prm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/prm/",
+        "src/main/resources/egovframework/mapper/com/sym/prm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/prm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 36
+    },
+    {
+      "id": "sym.sym",
+      "name": "sym.sym",
+      "category": "sym",
+      "description": "egovframework/com/sym/sym 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/sym/",
+        "src/main/resources/egovframework/mapper/com/sym/sym/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/sym/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 82
+    },
+    {
+      "id": "sym.tbm",
+      "name": "sym.tbm",
+      "category": "sym",
+      "description": "egovframework/com/sym/tbm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/tbm/",
+        "src/main/resources/egovframework/mapper/com/sym/tbm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/tbm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 34
+    },
+    {
+      "id": "uat.sso",
+      "name": "SSO 연계",
+      "category": "uat",
+      "description": "egovframework/com/uat/sso 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uat/sso/",
+        "src/main/resources/egovframework/mapper/com/uat/sso/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/sso/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 3
+    },
+    {
+      "id": "uat.uap",
+      "name": "로그인 정책관리",
+      "category": "uat",
+      "description": "egovframework/com/uat/uap 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uat/uap/",
+        "src/main/resources/egovframework/mapper/com/uat/uap/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/uap/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18
     },
     {
       "id": "login",
@@ -43,8 +751,280 @@
         "src/main/resources/egovframework/mapper/com/uat/uia/",
         "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/uia/"
       ],
-      "dependsOn": ["cmm"],
+      "dependsOn": [
+        "cmm"
+      ],
       "approxFiles": 31
+    },
+    {
+      "id": "uss.cmt",
+      "name": "uss.cmt",
+      "category": "uss",
+      "description": "egovframework/com/uss/cmt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/cmt/",
+        "src/main/resources/egovframework/mapper/com/uss/cmt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/cmt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15
+    },
+    {
+      "id": "uss.ion",
+      "name": "uss.ion",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 567
+    },
+    {
+      "id": "uss.mpe",
+      "name": "uss.mpe",
+      "category": "uss",
+      "description": "egovframework/com/uss/mpe 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/mpe/",
+        "src/main/resources/egovframework/mapper/com/uss/mpe/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/mpe/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17
+    },
+    {
+      "id": "uss.olh",
+      "name": "uss.olh",
+      "category": "uss",
+      "description": "egovframework/com/uss/olh 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olh/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 116
+    },
+    {
+      "id": "uss.olp",
+      "name": "uss.olp",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 206
+    },
+    {
+      "id": "uss.sam",
+      "name": "uss.sam",
+      "category": "uss",
+      "description": "egovframework/com/uss/sam 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/sam/",
+        "src/main/resources/egovframework/mapper/com/uss/sam/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/sam/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 55
+    },
+    {
+      "id": "uss.umt",
+      "name": "일반회원 관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/umt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/umt/",
+        "src/main/resources/egovframework/mapper/com/uss/umt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/umt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 82
+    },
+    {
+      "id": "utl.cal",
+      "name": "utl.cal",
+      "category": "utl",
+      "description": "egovframework/com/utl/cal 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/cal/",
+        "src/main/resources/egovframework/mapper/com/utl/cal/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/cal/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1
+    },
+    {
+      "id": "utl.cas",
+      "name": "utl.cas",
+      "category": "utl",
+      "description": "egovframework/com/utl/cas 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/cas/",
+        "src/main/resources/egovframework/mapper/com/utl/cas/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/cas/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2
+    },
+    {
+      "id": "utl.fcc",
+      "name": "utl.fcc",
+      "category": "utl",
+      "description": "egovframework/com/utl/fcc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/fcc/",
+        "src/main/resources/egovframework/mapper/com/utl/fcc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/fcc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 13
+    },
+    {
+      "id": "utl.fda",
+      "name": "utl.fda",
+      "category": "utl",
+      "description": "egovframework/com/utl/fda 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/fda/",
+        "src/main/resources/egovframework/mapper/com/utl/fda/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/fda/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1
+    },
+    {
+      "id": "utl.jso",
+      "name": "utl.jso",
+      "category": "utl",
+      "description": "egovframework/com/utl/jso 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/jso/",
+        "src/main/resources/egovframework/mapper/com/utl/jso/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/jso/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 3
+    },
+    {
+      "id": "utl.mdl",
+      "name": "utl.mdl",
+      "category": "utl",
+      "description": "egovframework/com/utl/mdl 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/mdl/",
+        "src/main/resources/egovframework/mapper/com/utl/mdl/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/mdl/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1
+    },
+    {
+      "id": "utl.pao",
+      "name": "utl.pao",
+      "category": "utl",
+      "description": "egovframework/com/utl/pao 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/pao/",
+        "src/main/resources/egovframework/mapper/com/utl/pao/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/pao/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15
+    },
+    {
+      "id": "utl.sim",
+      "name": "utl.sim",
+      "category": "utl",
+      "description": "egovframework/com/utl/sim 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sim/",
+        "src/main/resources/egovframework/mapper/com/utl/sim/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sim/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 11
+    },
+    {
+      "id": "utl.slm",
+      "name": "utl.slm",
+      "category": "utl",
+      "description": "egovframework/com/utl/slm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/slm/",
+        "src/main/resources/egovframework/mapper/com/utl/slm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/slm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2
+    },
+    {
+      "id": "utl.sys",
+      "name": "utl.sys",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 217
+    },
+    {
+      "id": "utl.wed",
+      "name": "utl.wed",
+      "category": "utl",
+      "description": "egovframework/com/utl/wed 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/wed/",
+        "src/main/resources/egovframework/mapper/com/utl/wed/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/wed/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 8
     }
   ]
 }
