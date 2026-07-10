@@ -31,7 +31,14 @@ jobs:
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
           | node dist/index.js 2>/dev/null | grep -q '"create_egovframe_project"' \
+          && printf '%s\n%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+          | node dist/index.js 2>/dev/null | grep -q '"add_egovframe_components"' \
           && echo "handshake OK" || (echo "handshake FAILED" && exit 1)
+
+      - name: Catalog test (offline)
+        run: npm run test:catalog
 
       - name: Smoke test (downloads official templates)
         run: npm run smoke
