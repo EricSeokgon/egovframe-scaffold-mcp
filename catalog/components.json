@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repo": "eGovFramework/egovframe-common-components",
+    "branch": "main",
+    "surveyedAt": "2026-07-11"
+  },
+  "sqlNote": "DB 스크립트는 script/ddl|dml/<db>/ 의 통합본(com_DDL_<db>.sql 등)으로 제공됩니다. 컴포넌트별 테이블 선별 적용은 M2 로드맵 항목입니다.",
+  "components": [
+    {
+      "id": "cmm",
+      "name": "공통기반 (Common)",
+      "category": "cmm",
+      "description": "공통 유틸리티·서비스·필터·공용 JSP 등 대부분의 컴포넌트가 의존하는 공통기반 모듈",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cmm/",
+        "src/main/resources/egovframework/mapper/com/cmm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cmm/"
+      ],
+      "dependsOn": [],
+      "approxFiles": 108
+    },
+    {
+      "id": "bbs",
+      "name": "게시판 (BBS)",
+      "category": "cop",
+      "description": "게시판 생성·게시글 관리(블로그형 포함) 협업 컴포넌트",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/bbs/",
+        "src/main/resources/egovframework/mapper/com/cop/bbs/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/bbs/"
+      ],
+      "dependsOn": ["cmm"],
+      "approxFiles": 63
+    },
+    {
+      "id": "login",
+      "name": "로그인/인증 (uat.uia)",
+      "category": "uat",
+      "description": "일반·Spring Security 로그인 처리 사용자인증 컴포넌트",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uat/uia/",
+        "src/main/resources/egovframework/mapper/com/uat/uia/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/uia/"
+      ],
+      "dependsOn": ["cmm"],
+      "approxFiles": 31
+    }
+  ]
+}
