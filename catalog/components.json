@@ -3,7 +3,7 @@
   "source": {
     "repo": "eGovFramework/egovframe-common-components",
     "branch": "main",
-    "surveyedAt": "2026-07-10"
+    "surveyedAt": "2026-07-11"
   },
   "sqlNote": "DB 스크립트는 script/ddl|dml/<db>/ 의 통합본(com_DDL_<db>.sql 등)으로 제공됩니다. 컴포넌트별 테이블 선별 적용은 로드맵 항목입니다.",
   "generatedBy": "scripts/generate-catalog.mjs",
@@ -19,7 +19,14 @@
         "src/main/webapp/WEB-INF/jsp/egovframework/com/cmm/"
       ],
       "dependsOn": [],
-      "approxFiles": 108
+      "approxFiles": 108,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNAUTHORGROUPINFO",
+        "COMTNFILE",
+        "COMTNFILEDETAIL",
+        "COMTNORGNZTINFO"
+      ]
     },
     {
       "id": "cop.adb",
@@ -34,7 +41,15 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 22
+      "approxFiles": 22,
+      "tables": [
+        "COMTNADBK",
+        "COMTNADBKMANAGE",
+        "COMTNEMPLYRINFO",
+        "COMTNENTRPRSMBER",
+        "COMTNGNRLMBER",
+        "COMTNNCRD"
+      ]
     },
     {
       "id": "bbs",
@@ -49,7 +64,19 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 63
+      "approxFiles": 63,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNBBS",
+        "COMTNBBSMASTER",
+        "COMTNBBSMASTEROPTN",
+        "COMTNBBSUSE",
+        "COMTNBLOG",
+        "COMTNBLOGUSER",
+        "COMTNCOMMENT",
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNTMPLATINFO"
+      ]
     },
     {
       "id": "cop.cmt",
@@ -64,7 +91,10 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15
+      "approxFiles": 15,
+      "tables": [
+        "COMTNCOMMENT"
+      ]
     },
     {
       "id": "cop.cmy",
@@ -79,7 +109,14 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 47
+      "approxFiles": 47,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNBBSMASTER",
+        "COMTNCMMNTY",
+        "COMTNCMMNTYUSER",
+        "COMTNTMPLATINFO"
+      ]
     },
     {
       "id": "cop.com",
@@ -94,7 +131,13 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 26
+      "approxFiles": 26,
+      "tables": [
+        "COMTNCLUB",
+        "COMTNCLUBUSER",
+        "COMTNCMMNTY",
+        "COMTNCMMNTYUSER"
+      ]
     },
     {
       "id": "cop.ems",
@@ -109,7 +152,12 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 45
+      "approxFiles": 45,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTHEMAILDSPTCHMANAGE",
+        "COMTNFILEDETAIL"
+      ]
     },
     {
       "id": "cop.ncm",
@@ -124,7 +172,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 20
+      "approxFiles": 20,
+      "tables": [
+        "COMTNNCRD",
+        "COMTNNCRDUSER"
+      ]
     },
     {
       "id": "cop.scp",
@@ -139,7 +191,10 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 18
+      "approxFiles": 18,
+      "tables": [
+        "COMTNSCRAP"
+      ]
     },
     {
       "id": "cop.sms",
@@ -154,7 +209,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 25
+      "approxFiles": 25,
+      "tables": [
+        "COMTNSMS",
+        "COMTNSMSRECPTN"
+      ]
     },
     {
       "id": "cop.smt",
@@ -169,7 +228,23 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 202
+      "approxFiles": 202,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNDEPTJOB",
+        "COMTNDEPTJOBBX",
+        "COMTNDIARYINFO",
+        "COMTNEMPLYRINFO",
+        "COMTNGNRLMBER",
+        "COMTNLEADERSCHDUL",
+        "COMTNLEADERSCHDULDE",
+        "COMTNLEADERSTTUS",
+        "COMTNMEMOREPRT",
+        "COMTNMEMOTODO",
+        "COMTNORGNZTINFO",
+        "COMTNSCHDULINFO",
+        "COMTNWIKMNTHNGREPRT"
+      ]
     },
     {
       "id": "cop.stf",
@@ -184,7 +259,10 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 12
+      "approxFiles": 12,
+      "tables": [
+        "COMTNSTSFDG"
+      ]
     },
     {
       "id": "cop.tpl",
@@ -199,7 +277,13 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 22
+      "approxFiles": 22,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNBBSMASTER",
+        "COMTNEMPLYRINFO",
+        "COMTNTMPLATINFO"
+      ]
     },
     {
       "id": "dam.app",
@@ -214,7 +298,13 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 17
+      "approxFiles": 17,
+      "tables": [
+        "COMTNDAMKNOIFM",
+        "COMTNDAMMAPKNO",
+        "COMTNDAMMAPTEAM",
+        "COMTNDAMPRO"
+      ]
     },
     {
       "id": "dam.map",
@@ -229,7 +319,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 36
+      "approxFiles": 36,
+      "tables": [
+        "COMTNDAMMAPKNO",
+        "COMTNDAMMAPTEAM"
+      ]
     },
     {
       "id": "dam.mgm",
@@ -244,7 +338,13 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 17
+      "approxFiles": 17,
+      "tables": [
+        "COMTNDAMKNOIFM",
+        "COMTNDAMMAPKNO",
+        "COMTNDAMMAPTEAM",
+        "COMTNEMPLYRSCRTYESTBS"
+      ]
     },
     {
       "id": "dam.per",
@@ -259,7 +359,12 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 18
+      "approxFiles": 18,
+      "tables": [
+        "COMTNDAMKNOIFM",
+        "COMTNDAMMAPKNO",
+        "COMTNDAMMAPTEAM"
+      ]
     },
     {
       "id": "dam.spe",
@@ -274,7 +379,14 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 36
+      "approxFiles": 36,
+      "tables": [
+        "COMTNDAMCALRES",
+        "COMTNDAMMAPKNO",
+        "COMTNDAMMAPTEAM",
+        "COMTNDAMPRO",
+        "COMTNEMPLYRINFO"
+      ]
     },
     {
       "id": "ext.captcha",
@@ -289,7 +401,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 3
+      "approxFiles": 3,
+      "tables": []
     },
     {
       "id": "ext.easybatch",
@@ -304,7 +417,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 2
+      "approxFiles": 2,
+      "tables": []
     },
     {
       "id": "ext.ldapumt",
@@ -319,7 +433,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 14
+      "approxFiles": 14,
+      "tables": []
     },
     {
       "id": "ext.msg",
@@ -334,7 +449,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15
+      "approxFiles": 15,
+      "tables": []
     },
     {
       "id": "ext.oauth",
@@ -349,7 +465,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 6
+      "approxFiles": 6,
+      "tables": []
     },
     {
       "id": "sec.drm",
@@ -364,7 +481,12 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 16
+      "approxFiles": 16,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNORGNZTINFO"
+      ]
     },
     {
       "id": "sec.gmt",
@@ -379,7 +501,10 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 18
+      "approxFiles": 18,
+      "tables": [
+        "COMTNAUTHORGROUPINFO"
+      ]
     },
     {
       "id": "sec.pki",
@@ -394,7 +519,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 2
+      "approxFiles": 2,
+      "tables": []
     },
     {
       "id": "sec.ram",
@@ -409,7 +535,12 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 33
+      "approxFiles": 33,
+      "tables": [
+        "COMTNAUTHORINFO",
+        "COMTNAUTHORROLERELATE",
+        "COMTNROLEINFO"
+      ]
     },
     {
       "id": "sec.rgm",
@@ -424,7 +555,14 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15
+      "approxFiles": 15,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEMPLYRINFO",
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNENTRPRSMBER",
+        "COMTNGNRLMBER"
+      ]
     },
     {
       "id": "sec.rmt",
@@ -439,7 +577,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 17
+      "approxFiles": 17,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNROLEINFO"
+      ]
     },
     {
       "id": "sec.security",
@@ -454,7 +596,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 1
+      "approxFiles": 1,
+      "tables": []
     },
     {
       "id": "ssi.syi",
@@ -469,7 +612,16 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 82
+      "approxFiles": 82,
+      "tables": [
+        "COMTNCNTCINSTT",
+        "COMTNCNTCMESSAGE",
+        "COMTNCNTCMESSAGEITEM",
+        "COMTNCNTCSERVICE",
+        "COMTNCNTCSYSTEM",
+        "COMTNSYSTEMCNTC",
+        "COMTNTRSMRCVLOG"
+      ]
     },
     {
       "id": "sts.bst",
@@ -484,7 +636,13 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15
+      "approxFiles": 15,
+      "tables": [
+        "COMTNBBS",
+        "COMTNBBSMASTER",
+        "COMTNTMPLATINFO",
+        "COMTSBBSSUMMARY"
+      ]
     },
     {
       "id": "sts.com",
@@ -499,7 +657,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 1
+      "approxFiles": 1,
+      "tables": []
     },
     {
       "id": "sts.cst",
@@ -514,7 +673,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 14
+      "approxFiles": 14,
+      "tables": [
+        "COMTNLOGINLOG",
+        "COMTSSYSLOGSUMMARY"
+      ]
     },
     {
       "id": "sts.dst",
@@ -529,7 +692,14 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 16
+      "approxFiles": 16,
+      "tables": [
+        "COMTNBBS",
+        "COMTNBBSMASTER",
+        "COMTNDTAUSESTATS",
+        "COMTNFILE",
+        "COMTNFILEDETAIL"
+      ]
     },
     {
       "id": "sts.rst",
@@ -544,7 +714,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 17
+      "approxFiles": 17,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNREPRTSTATS"
+      ]
     },
     {
       "id": "sts.sst",
@@ -559,7 +733,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 14
+      "approxFiles": 14,
+      "tables": [
+        "COMTNPROGRMLIST",
+        "COMTSWEBLOGSUMMARY"
+      ]
     },
     {
       "id": "sts.ust",
@@ -574,7 +752,13 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15
+      "approxFiles": 15,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNENTRPRSMBER",
+        "COMTNGNRLMBER",
+        "COMTSUSERSUMMARY"
+      ]
     },
     {
       "id": "sym.adr",
@@ -589,7 +773,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 2
+      "approxFiles": 2,
+      "tables": []
     },
     {
       "id": "sym.bat",
@@ -604,7 +789,14 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 56
+      "approxFiles": 56,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNBATCHOPERT",
+        "COMTNBATCHRESULT",
+        "COMTNBATCHSCHDUL",
+        "COMTNBATCHSCHDULDFK"
+      ]
     },
     {
       "id": "sym.cal",
@@ -619,7 +811,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 32
+      "approxFiles": 32,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNRESTDE"
+      ]
     },
     {
       "id": "sym.ccm",
@@ -634,7 +830,18 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 143
+      "approxFiles": 143,
+      "tables": [
+        "COMTCADMINISTCODE",
+        "COMTCADMINISTCODERECPTNLOG",
+        "COMTCCMMNCLCODE",
+        "COMTCCMMNCODE",
+        "COMTCCMMNDETAILCODE",
+        "COMTCZIP",
+        "COMTNINSTTCODE",
+        "COMTNINSTTCODERECPTNLOG",
+        "COMTRDNMADRZIP"
+      ]
     },
     {
       "id": "sym.log",
@@ -649,7 +856,20 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 118
+      "approxFiles": 118,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTHSYSHIST",
+        "COMTNLOGINLOG",
+        "COMTNPRIVACYLOG",
+        "COMTNSYSLOG",
+        "COMTNTRSMRCVLOG",
+        "COMTNUSERLOG",
+        "COMTNWEBLOG",
+        "COMTSSYSLOGSUMMARY",
+        "COMTSTRSMRCVLOGSUMMARY",
+        "COMTSWEBLOGSUMMARY"
+      ]
     },
     {
       "id": "sym.mnu",
@@ -664,7 +884,16 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 91
+      "approxFiles": 91,
+      "tables": [
+        "COMTNAUTHORINFO",
+        "COMTNBKMKMENUMANAGERESULT",
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNMENUCREATDTLS",
+        "COMTNMENUINFO",
+        "COMTNPROGRMLIST",
+        "COMTNSITEMAP"
+      ]
     },
     {
       "id": "sym.prm",
@@ -679,7 +908,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 36
+      "approxFiles": 36,
+      "tables": [
+        "COMTHPROGRMCHANGEDTLS",
+        "COMTNPROGRMLIST"
+      ]
     },
     {
       "id": "sym.sym",
@@ -694,7 +927,17 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 82
+      "approxFiles": 82,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNBACKUPOPERT",
+        "COMTNBACKUPRESULT",
+        "COMTNBACKUPSCHDULDFK",
+        "COMTNNTWRKINFO",
+        "COMTNSERVEREQPMNINFO",
+        "COMTNSERVEREQPMNRELATE",
+        "COMTNSERVERINFO"
+      ]
     },
     {
       "id": "sym.tbm",
@@ -709,7 +952,11 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 34
+      "approxFiles": 34,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNTROBLINFO"
+      ]
     },
     {
       "id": "uat.sso",
@@ -724,7 +971,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 3
+      "approxFiles": 3,
+      "tables": []
     },
     {
       "id": "uat.uap",
@@ -739,7 +987,10 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 18
+      "approxFiles": 18,
+      "tables": [
+        "COMTNLOGINPOLICY"
+      ]
     },
     {
       "id": "login",
@@ -754,7 +1005,12 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 31
+      "approxFiles": 31,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNENTRPRSMBER",
+        "COMTNGNRLMBER"
+      ]
     },
     {
       "id": "uss.cmt",
@@ -769,7 +1025,10 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15
+      "approxFiles": 15,
+      "tables": [
+        "COMTNCOMMUTE"
+      ]
     },
     {
       "id": "uss.ion",
@@ -784,7 +1043,49 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 567
+      "approxFiles": 567,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNANNVRSRYMANAGE",
+        "COMTNBANNER",
+        "COMTNBNDTCECKMANAGE",
+        "COMTNBNDTDIARY",
+        "COMTNBNDTMANAGE",
+        "COMTNCTSNNMANAGE",
+        "COMTNEMPLYRINFO",
+        "COMTNEVENTATDRN",
+        "COMTNEVENTINFO",
+        "COMTNEVENTMANAGE",
+        "COMTNEXTRLHRINFO",
+        "COMTNFILEDETAIL",
+        "COMTNGNRLMBER",
+        "COMTNINDVDLYRYCMANAGE",
+        "COMTNINFRMLSANCTN",
+        "COMTNINTNETSVC",
+        "COMTNLOGINSCRINIMAGE",
+        "COMTNMAINIMAGE",
+        "COMTNMTGPLACEMANAGE",
+        "COMTNMTGPLACERESVE",
+        "COMTNNEWSINFO",
+        "COMTNNOTE",
+        "COMTNNOTERECPTN",
+        "COMTNNOTETRNSMIT",
+        "COMTNNTFCINFO",
+        "COMTNORGNZTINFO",
+        "COMTNPOPUPMANAGE",
+        "COMTNRECENTSRCHWRD",
+        "COMTNRECENTSRCHWRDMANAGE",
+        "COMTNRECOMENDSITEINFO",
+        "COMTNROUGHMAP",
+        "COMTNRSS",
+        "COMTNRWARDMANAGE",
+        "COMTNSITELIST",
+        "COMTNTWITTER",
+        "COMTNUNITYLINK",
+        "COMTNUSERABSNCE",
+        "COMTNVCATNMANAGE",
+        "COMTNWIKIBKMK"
+      ]
     },
     {
       "id": "uss.mpe",
@@ -799,7 +1100,10 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 17
+      "approxFiles": 17,
+      "tables": [
+        "COMTNINDVDLPGECNTNTS"
+      ]
     },
     {
       "id": "uss.olh",
@@ -814,7 +1118,18 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 116
+      "approxFiles": 116,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNADMINISTRATIONWORD",
+        "COMTNEMPLYRINFO",
+        "COMTNFAQINFO",
+        "COMTNHPCMINFO",
+        "COMTNONLINEMANUAL",
+        "COMTNORGNZTINFO",
+        "COMTNQAINFO",
+        "COMTNWORDDICARYINFO"
+      ]
     },
     {
       "id": "uss.olp",
@@ -829,7 +1144,24 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 206
+      "approxFiles": 206,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNCNSLTLIST",
+        "COMTNEMPLYRINFO",
+        "COMTNMTGINFO",
+        "COMTNONLINEPOLLIEM",
+        "COMTNONLINEPOLLMANAGE",
+        "COMTNONLINEPOLLRESULT",
+        "COMTNORGNZTINFO",
+        "COMTNQAINFO",
+        "COMTNQESTNRINFO",
+        "COMTNQUSTNRIEM",
+        "COMTNQUSTNRQESITM",
+        "COMTNQUSTNRRESPONDINFO",
+        "COMTNQUSTNRRSPNSRESULT",
+        "COMTNQUSTNRTMPLAT"
+      ]
     },
     {
       "id": "uss.sam",
@@ -844,7 +1176,12 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 55
+      "approxFiles": 55,
+      "tables": [
+        "COMTNCPYRHTINFO",
+        "COMTNINDVDLINFOPOLICY",
+        "COMTNSTPLATINFO"
+      ]
     },
     {
       "id": "uss.umt",
@@ -859,7 +1196,15 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 82
+      "approxFiles": 82,
+      "tables": [
+        "COMTHEMPLYRINFOCHANGEDTLS",
+        "COMTNEMPLYRINFO",
+        "COMTNENTRPRSMBER",
+        "COMTNGNRLMBER",
+        "COMTNORGNZTINFO",
+        "COMTNSTPLATINFO"
+      ]
     },
     {
       "id": "utl.cal",
@@ -874,7 +1219,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 1
+      "approxFiles": 1,
+      "tables": []
     },
     {
       "id": "utl.cas",
@@ -889,7 +1235,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 2
+      "approxFiles": 2,
+      "tables": []
     },
     {
       "id": "utl.fcc",
@@ -904,7 +1251,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 13
+      "approxFiles": 13,
+      "tables": []
     },
     {
       "id": "utl.fda",
@@ -919,7 +1267,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 1
+      "approxFiles": 1,
+      "tables": []
     },
     {
       "id": "utl.jso",
@@ -934,7 +1283,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 3
+      "approxFiles": 3,
+      "tables": []
     },
     {
       "id": "utl.mdl",
@@ -949,7 +1299,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 1
+      "approxFiles": 1,
+      "tables": []
     },
     {
       "id": "utl.pao",
@@ -964,7 +1315,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15
+      "approxFiles": 15,
+      "tables": []
     },
     {
       "id": "utl.sim",
@@ -979,7 +1331,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 11
+      "approxFiles": 11,
+      "tables": []
     },
     {
       "id": "utl.slm",
@@ -994,7 +1347,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 2
+      "approxFiles": 2,
+      "tables": []
     },
     {
       "id": "utl.sys",
@@ -1009,7 +1363,33 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 217
+      "approxFiles": 217,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTHDBMNTRNGLOGINFO",
+        "COMTHHTTPMONLOGINFO",
+        "COMTHTRSMRCVMNTRNGLOGINFO",
+        "COMTNCNTCINSTT",
+        "COMTNCNTCSERVICE",
+        "COMTNCNTCSYSTEM",
+        "COMTNDBMNTRNG",
+        "COMTNFILESYSMNTRNG",
+        "COMTNFILESYSMNTRNGLOGINFO",
+        "COMTNHTTPMON",
+        "COMTNNTWRKSVCMNTRNG",
+        "COMTNNTWRKSVCMNTRNGLOGINFO",
+        "COMTNPROCESSMON",
+        "COMTNPROCESSMONLOGINFO",
+        "COMTNPROXYINFO",
+        "COMTNPROXYLOGINFO",
+        "COMTNSERVEREQPMNINFO",
+        "COMTNSERVEREQPMNRELATE",
+        "COMTNSERVERINFO",
+        "COMTNSERVERRESRCELOGINFO",
+        "COMTNSYNCHRNSERVERINFO",
+        "COMTNSYSTEMCNTC",
+        "COMTNTRSMRCVMNTRNG"
+      ]
     },
     {
       "id": "utl.wed",
@@ -1024,7 +1404,8 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 8
+      "approxFiles": 8,
+      "tables": []
     }
   ]
 }
