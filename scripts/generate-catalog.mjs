@@ -72,8 +72,51 @@ function componentKey(rel, base) {
   return `${segs[0]}.${segs[1]}`;
 }
 
+
+/** --docs <egovframe-docs 클론 경로>: 컴포넌트↔가이드 문서 매핑을 계산한다. */
+function computeDocsMap() {
+  const i = process.argv.indexOf("--docs");
+  if (i < 0) return null;
+  const docsRoot = process.argv[i + 1];
+  const ccRoot = path.join(docsRoot, "common-component");
+  const map = new Map(); // key → [{count, path, title}]
+  const walk = (dir) => {
+    for (const name of fs.readdirSync(dir)) {
+      const p = path.join(dir, name);
+      const st = fs.statSync(p);
+      if (st.isDirectory()) { if (!p.includes("/intro")) walk(p); continue; }
+      if (!name.endsWith(".md") || name === "_index.md") continue;
+      const txt = fs.readFileSync(p, "utf8");
+      const tm = txt.match(/^title:\s*"?([^"\n]+)"?/m);
+      const title = tm ? tm[1].trim() : name;
+      if (title.includes("배포")) continue;
+      const cnt = new Map();
+      for (const m of txt.matchAll(/egovframework[./]com[./]([a-z]{2,4})[./]([a-z]{2,4})\b/g)) {
+        const key = `${m[1]}.${m[2]}`;
+        cnt.set(key, (cnt.get(key) ?? 0) + 1);
+      }
+      const cmm = (txt.match(/egovframework[./]com[./]cmm\b/g) ?? []).length;
+      if (cmm) cnt.set("cmm", (cnt.get("cmm") ?? 0) + cmm);
+      if (cnt.size === 0) continue;
+      const [topKey, topCount] = [...cnt.entries()].sort((a, b) => b[1] - a[1])[0];
+      if (topCount < 3) continue; // 지배적 참조만 채택
+      if (!map.has(topKey)) map.set(topKey, []);
+      map.get(topKey).push({ count: topCount, path: path.relative(docsRoot, p), title });
+    }
+  };
+  walk(ccRoot);
+  for (const v of map.values()) v.sort((a, b) => b.count - a.count);
+  return map;
+}
+
+const docsMap = computeDocsMap();
 const files = await loadEntries();
 const overrides = JSON.parse(fs.readFileSync(path.join(ROOT, "catalog/overrides.json"), "utf-8"));
+let prevDocs = new Map();
+try {
+  const prev = JSON.parse(fs.readFileSync(path.join(ROOT, "catalog/components.json"), "utf-8"));
+  prevDocs = new Map(prev.components.filter((c) => c.docs).map((c) => [c.id, c.docs]));
+} catch { /* 최초 생성 시 무시 */ }
 const byKey = new Map();
 for (const f of files)
   for (const base of [JAVA, MAPPER, JSP]) {
@@ -97,6 +140,9 @@ for (const key of [...byKey.keys()].sort()) {
     dependsOn: o.dependsOn ?? (key === "cmm" ? [] : ["cmm"]),
     approxFiles: byKey.get(key),
     tables: await extractTables(MAPPER + pkg),
+    docs: docsMap
+      ? (docsMap.get(key) ?? []).slice(0, 5).map(({ path: p, title }) => ({ path: p.split(path.sep).join("/"), title }))
+      : (prevDocs.get(o.id ?? key) ?? undefined),
   });
 }
 
