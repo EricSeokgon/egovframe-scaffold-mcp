@@ -212,6 +212,8 @@ export interface CatalogComponent {
   approxFiles: number;
   /** 컴포넌트 매퍼가 참조하는 DB 테이블 (선별 DDL 추출용) */
   tables?: string[];
+  /** 관련 공식 가이드 문서 (egovframe-docs 저장소 상대 경로) */
+  docs?: { path: string; title: string }[];
 }
 
 export interface Catalog {
@@ -688,11 +690,48 @@ export async function validateProject(opts: { projectDir: string }): Promise<Val
   return { projectDir, ok: warnings.length === 0, manifestFound: manifest !== null, components, dbType, dbScriptDirs, warnings };
 }
 
+
+/* ------------------------------------------------------------------ */
+/* 가이드 문서 조회 (v0.7.0)                                            */
+/* ------------------------------------------------------------------ */
+
+export const DOCS_REPO = "eGovFramework/egovframe-docs";
+export const GUIDE_MAX_CHARS = 15_000;
+
+export interface GuideResult {
+  componentId: string;
+  docs: { path: string; title: string }[];
+  selected: { path: string; title: string } | null;
+  content: string | null;
+  truncated: boolean;
+}
+
+/** 컴포넌트의 공식 가이드 문서를 egovframe-docs에서 가져온다. */
+export async function getGuide(componentId: string, docIndex = 0): Promise<GuideResult> {
+  const catalog = loadCatalog();
+  const comp = catalog.components.find((c) => c.id === componentId);
+  if (!comp)
+    throw new Error(`알 수 없는 컴포넌트 id: '${componentId}' — search_egovframe_components로 검색해 보세요`);
+  const docs = comp.docs ?? [];
+  if (docs.length === 0)
+    return { componentId, docs: [], selected: null, content: null, truncated: false };
+  if (docIndex < 0 || docIndex >= docs.length)
+    throw new Error(`docIndex는 0~${docs.length - 1} 범위여야 합니다 (문서 ${docs.length}건)`);
+  const sel = docs[docIndex];
+  const url = `https://raw.githubusercontent.com/${DOCS_REPO}/main/${sel.path}`;
+  const res = await fetchWithTimeout(url, DOWNLOAD_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`가이드 문서 다운로드 실패 (${res.status}): ${url}`);
+  let content = await res.text();
+  const truncated = content.length > GUIDE_MAX_CHARS;
+  if (truncated) content = content.slice(0, GUIDE_MAX_CHARS);
+  return { componentId, docs, selected: sel, content, truncated };
+}
+
 /* ------------------------------------------------------------------ */
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.6.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.7.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -859,6 +898,29 @@ export function buildServer(): McpServer {
         ...(r.warnings.length ? ["", "경고:", ...r.warnings.map((w) => `  ! ${w}`)] : []),
       ].join("\n");
       return { content: [{ type: "text", text }] };
+    },
+  );
+
+  server.tool(
+    "get_egovframe_guide",
+    "컴포넌트의 공식 가이드 문서(표준프레임워크 포털 egovframe-docs)를 가져옵니다. " +
+      "문서가 여러 건이면 목록을 함께 반환하며 docIndex로 선택할 수 있습니다.",
+    {
+      component: z.string().describe("컴포넌트 id. 예: bbs, login, cop.cmy"),
+      docIndex: z.number().int().min(0).default(0).describe("문서가 여러 건일 때 선택 (0부터, 기본 0)"),
+    },
+    async (args) => {
+      const r = await getGuide(args.component as string, args.docIndex as number);
+      if (!r.selected)
+        return { content: [{ type: "text", text: `'${r.componentId}'에 매핑된 가이드 문서가 없습니다. list_egovframe_components로 다른 컴포넌트를 확인하세요.` }] };
+      const head = [
+        `📘 ${r.selected.title} — ${r.componentId}`,
+        `문서: https://github.com/${DOCS_REPO}/blob/main/${r.selected.path}`,
+        r.docs.length > 1 ? `관련 문서 ${r.docs.length}건: ` + r.docs.map((d, i) => `[${i}] ${d.title}`).join(", ") : "",
+        r.truncated ? `(본문이 길어 ${GUIDE_MAX_CHARS}자로 잘렸습니다 — 전문은 링크 참조)` : "",
+        "", "---", "",
+      ].filter((l, i) => l !== "" || i >= 4).join("\n");
+      return { content: [{ type: "text", text: head + r.content }] };
     },
   );
 
