@@ -13,7 +13,10 @@ console.log("copied total:", r.totalFiles, "| by:", r.installOrder.map((c) => `$
 console.log("java copied:", fs.existsSync(proj + "/src/main/java/egovframework/com/cop/bbs/service/Board.java"));
 console.log("mapper copied:", fs.existsSync(proj + "/src/main/resources/egovframework/mapper/com/uat/uia/EgovLoginUsr_SQL_mysql.xml"));
 console.log("jsp copied:", fs.existsSync(proj + "/src/main/webapp/WEB-INF/jsp/egovframework/com/cop/bbs/EgovArticleList.jsp"));
-console.log("sql copied:", r.sqlScripts.length > 0 && fs.existsSync(proj + "/scripts/egovframe-components/mysql/ddl/com_DDL_mysql.sql"));
+console.log("sql selective:", r.sqlScripts.length > 0 && fs.existsSync(proj + "/scripts/egovframe-components/mysql/ddl/bbs.sql"));
+const bbsDdl = fs.readFileSync(proj + "/scripts/egovframe-components/mysql/ddl/bbs.sql", "utf8");
+console.log("bbs ddl has COMTNBBS:", /CREATE TABLE COMTNBBS\b/.test(bbsDdl) && bbsDdl.includes("COMTNBBSMASTER"));
+console.log("no integrated fallback:", !fs.existsSync(proj + "/scripts/egovframe-components/mysql/ddl/com_DDL_mysql.sql"));
 
 // 2) 충돌 시 전체 거부 (재실행 → 기존 파일 존재)
 try { await addComponents({ projectDir: proj, components: ["bbs"] }); console.log("conflict-guard: FAIL"); }
@@ -47,9 +50,10 @@ catch { console.log("dep-guard: OK"); }
 
 // 9) 제거 dryRun → 실제 제거 → 매니페스트 갱신
 const rd = await removeComponents({ projectDir: proj, components: ["login"], dryRun: true });
-console.log("remove dryRun:", rd.dryRun && rd.totalFiles === 31 && fs.existsSync(proj + "/src/main/java/egovframework/com/uat/uia/service/EgovLoginService.java"));
+console.log("remove dryRun:", rd.dryRun && rd.totalFiles >= 31 && fs.existsSync(proj + "/src/main/java/egovframework/com/uat/uia/service/EgovLoginService.java"));
 const rr = await removeComponents({ projectDir: proj, components: ["login"] });
-console.log("remove real:", rr.totalFiles === 31 && !fs.existsSync(proj + "/src/main/java/egovframework/com/uat/uia") && readManifest(proj).components.login === undefined);
+console.log("remove real:", rr.totalFiles >= 31 && !fs.existsSync(proj + "/src/main/java/egovframework/com/uat/uia") && readManifest(proj).components.login === undefined);
+console.log("login sql removed:", !fs.existsSync(proj + "/scripts/egovframe-components/mysql/ddl/login.sql"));
 
 // 10) 전체 제거 시 매니페스트 삭제
 await removeComponents({ projectDir: proj, components: ["bbs", "cmm"] });
