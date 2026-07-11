@@ -30,7 +30,7 @@
     },
     {
       "id": "cop.adb",
-      "name": "cop.adb",
+      "name": "주소록 관리",
       "category": "cop",
       "description": "egovframework/com/cop/adb 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -80,7 +80,7 @@
     },
     {
       "id": "cop.cmt",
-      "name": "cop.cmt",
+      "name": "댓글 관리",
       "category": "cop",
       "description": "egovframework/com/cop/cmt 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -98,7 +98,7 @@
     },
     {
       "id": "cop.cmy",
-      "name": "cop.cmy",
+      "name": "커뮤니티 관리",
       "category": "cop",
       "description": "egovframework/com/cop/cmy 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -141,7 +141,7 @@
     },
     {
       "id": "cop.ems",
-      "name": "cop.ems",
+      "name": "전자우편(발송메일)",
       "category": "cop",
       "description": "egovframework/com/cop/ems 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -180,7 +180,7 @@
     },
     {
       "id": "cop.scp",
-      "name": "cop.scp",
+      "name": "스크랩 관리",
       "category": "cop",
       "description": "egovframework/com/cop/scp 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -198,7 +198,7 @@
     },
     {
       "id": "cop.sms",
-      "name": "cop.sms",
+      "name": "문자메시지 서비스",
       "category": "cop",
       "description": "egovframework/com/cop/sms 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -248,7 +248,7 @@
     },
     {
       "id": "cop.stf",
-      "name": "cop.stf",
+      "name": "만족도 조사",
       "category": "cop",
       "description": "egovframework/com/cop/stf 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -266,7 +266,7 @@
     },
     {
       "id": "cop.tpl",
-      "name": "cop.tpl",
+      "name": "템플릿 관리",
       "category": "cop",
       "description": "egovframework/com/cop/tpl 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -287,7 +287,7 @@
     },
     {
       "id": "dam.app",
-      "name": "dam.app",
+      "name": "지식평가 관리",
       "category": "dam",
       "description": "egovframework/com/dam/app 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -308,7 +308,7 @@
     },
     {
       "id": "dam.map",
-      "name": "dam.map",
+      "name": "지식맵 관리",
       "category": "dam",
       "description": "egovframework/com/dam/map 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -327,7 +327,7 @@
     },
     {
       "id": "dam.mgm",
-      "name": "dam.mgm",
+      "name": "지식정보 관리",
       "category": "dam",
       "description": "egovframework/com/dam/mgm 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -348,7 +348,7 @@
     },
     {
       "id": "dam.per",
-      "name": "dam.per",
+      "name": "개인지식 관리",
       "category": "dam",
       "description": "egovframework/com/dam/per 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -368,7 +368,7 @@
     },
     {
       "id": "dam.spe",
-      "name": "dam.spe",
+      "name": "지식전문가 관리",
       "category": "dam",
       "description": "egovframework/com/dam/spe 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -800,7 +800,7 @@
     },
     {
       "id": "sym.cal",
-      "name": "sym.cal",
+      "name": "달력(휴일) 관리",
       "category": "sym",
       "description": "egovframework/com/sym/cal 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -1304,7 +1304,7 @@
     },
     {
       "id": "utl.pao",
-      "name": "utl.pao",
+      "name": "인쇄/출력",
       "category": "utl",
       "description": "egovframework/com/utl/pao 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [

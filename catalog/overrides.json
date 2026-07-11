@@ -1,15 +1,89 @@
 {
   "_comment": "generate-catalog.mjs가 사용하는 수동 큐레이션 오버레이. key는 패키지 경로 기준 기본 id.",
-  "cmm": { "name": "공통기반 (Common)", "description": "공통 유틸리티·서비스·필터·공용 JSP 등 대부분의 컴포넌트가 의존하는 공통기반 모듈" },
-  "cop.bbs": { "id": "bbs", "name": "게시판 (BBS)", "description": "게시판 생성·게시글 관리(블로그형 포함) 협업 컴포넌트" },
-  "uat.uia": { "id": "login", "name": "로그인/인증 (uat.uia)", "description": "일반·Spring Security 로그인 처리 사용자인증 컴포넌트" },
-  "uat.uap": { "name": "로그인 정책관리" },
-  "uat.sso": { "name": "SSO 연계" },
-  "uss.umt": { "name": "일반회원 관리" },
-  "sym.mnu": { "name": "메뉴 관리" },
-  "sym.ccm": { "name": "공통코드 관리" },
-  "sym.log": { "name": "시스템 로그 관리" },
-  "sym.bat": { "name": "배치 관리" },
-  "sec.ram": { "name": "권한 관리" },
-  "cop.smt": { "name": "일정 관리" }
+  "cmm": {
+    "name": "공통기반 (Common)",
+    "description": "공통 유틸리티·서비스·필터·공용 JSP 등 대부분의 컴포넌트가 의존하는 공통기반 모듈"
+  },
+  "cop.bbs": {
+    "id": "bbs",
+    "name": "게시판 (BBS)",
+    "description": "게시판 생성·게시글 관리(블로그형 포함) 협업 컴포넌트"
+  },
+  "uat.uia": {
+    "id": "login",
+    "name": "로그인/인증 (uat.uia)",
+    "description": "일반·Spring Security 로그인 처리 사용자인증 컴포넌트"
+  },
+  "uat.uap": {
+    "name": "로그인 정책관리"
+  },
+  "uat.sso": {
+    "name": "SSO 연계"
+  },
+  "uss.umt": {
+    "name": "일반회원 관리"
+  },
+  "sym.mnu": {
+    "name": "메뉴 관리"
+  },
+  "sym.ccm": {
+    "name": "공통코드 관리"
+  },
+  "sym.log": {
+    "name": "시스템 로그 관리"
+  },
+  "sym.bat": {
+    "name": "배치 관리"
+  },
+  "sec.ram": {
+    "name": "권한 관리"
+  },
+  "cop.smt": {
+    "name": "일정 관리"
+  },
+  "cop.adb": {
+    "name": "주소록 관리"
+  },
+  "cop.cmt": {
+    "name": "댓글 관리"
+  },
+  "cop.cmy": {
+    "name": "커뮤니티 관리"
+  },
+  "cop.ems": {
+    "name": "전자우편(발송메일)"
+  },
+  "cop.scp": {
+    "name": "스크랩 관리"
+  },
+  "cop.sms": {
+    "name": "문자메시지 서비스"
+  },
+  "cop.stf": {
+    "name": "만족도 조사"
+  },
+  "cop.tpl": {
+    "name": "템플릿 관리"
+  },
+  "dam.app": {
+    "name": "지식평가 관리"
+  },
+  "dam.map": {
+    "name": "지식맵 관리"
+  },
+  "dam.mgm": {
+    "name": "지식정보 관리"
+  },
+  "dam.per": {
+    "name": "개인지식 관리"
+  },
+  "dam.spe": {
+    "name": "지식전문가 관리"
+  },
+  "sym.cal": {
+    "name": "달력(휴일) 관리"
+  },
+  "utl.pao": {
+    "name": "인쇄/출력"
+  }
 }
