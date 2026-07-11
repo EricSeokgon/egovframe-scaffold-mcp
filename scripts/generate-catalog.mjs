@@ -22,7 +22,9 @@ const JAVA = "src/main/java/egovframework/com/";
 const MAPPER = "src/main/resources/egovframework/mapper/com/";
 const JSP = "src/main/webapp/WEB-INF/jsp/egovframework/com/";
 
-async function loadEntries() {
+let zipEntriesCache = null;
+async function loadZipEntries() {
+  if (zipEntriesCache) return zipEntriesCache;
   const zipArg = process.argv.indexOf("--zip");
   let buf;
   if (zipArg > -1) {
@@ -35,9 +37,29 @@ async function loadEntries() {
     buf = Buffer.from(await res.arrayBuffer());
   }
   const zip = new AdmZip(buf);
-  const entries = zip.getEntries().filter((e) => !e.isDirectory).map((e) => e.entryName);
+  zipEntriesCache = zip.getEntries().filter((e) => !e.isDirectory);
+  return zipEntriesCache;
+}
+
+async function loadEntries() {
+  const entries = (await loadZipEntries()).map((e) => e.entryName);
   const rootPrefix = entries[0].split("/")[0] + "/";
   return entries.map((n) => (n.startsWith(rootPrefix) ? n.slice(rootPrefix.length) : n));
+}
+
+/** 컴포넌트 매퍼(*_SQL_mysql.xml)에서 참조 테이블(COMT*)을 추출한다. */
+async function extractTables(mapperPrefix) {
+  const entries = await loadZipEntries();
+  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const tables = new Set();
+  for (const e of entries) {
+    const rel = e.entryName.startsWith(rootPrefix) ? e.entryName.slice(rootPrefix.length) : e.entryName;
+    if (rel.startsWith(mapperPrefix) && rel.endsWith("_SQL_mysql.xml")) {
+      const txt = e.getData().toString("utf8");
+      for (const t of txt.match(/\bCOMT[A-Z0-9_]{2,}\b/g) ?? []) tables.add(t);
+    }
+  }
+  return [...tables].sort();
 }
 
 /** 파일 경로 → 컴포넌트 키 (예: cop.bbs, cmm). 해당 없으면 null */
@@ -62,10 +84,11 @@ for (const f of files)
     }
   }
 
-const components = [...byKey.keys()].sort().map((key) => {
+const components = [];
+for (const key of [...byKey.keys()].sort()) {
   const pkg = key === "cmm" ? "cmm/" : key.replace(".", "/") + "/";
   const o = overrides[key] ?? {};
-  return {
+  components.push({
     id: o.id ?? key,
     name: o.name ?? key,
     category: key.split(".")[0],
@@ -73,8 +96,9 @@ const components = [...byKey.keys()].sort().map((key) => {
     pathPrefixes: [JAVA + pkg, MAPPER + pkg, JSP + pkg],
     dependsOn: o.dependsOn ?? (key === "cmm" ? [] : ["cmm"]),
     approxFiles: byKey.get(key),
-  };
-});
+    tables: await extractTables(MAPPER + pkg),
+  });
+}
 
 const catalog = {
   schemaVersion: 1,
