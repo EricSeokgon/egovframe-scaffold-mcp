@@ -335,6 +335,16 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
     throw new Error(`대상 프로젝트 디렉터리가 없습니다: ${projectDir} — 먼저 create_egovframe_project로 생성하세요`);
 
+  // 이미 설치된 컴포넌트는 제외 (매니페스트 기준)
+  const existing = readManifest(projectDir);
+  if (existing) {
+    const dup = order.filter((c) => existing.components[c.id]).map((c) => c.id);
+    if (dup.length === order.length)
+      throw new Error(`요청한 컴포넌트가 모두 이미 설치되어 있습니다: ${dup.join(", ")}`);
+    if (dup.length > 0)
+      throw new Error(`이미 설치된 컴포넌트가 포함되어 있습니다: ${dup.join(", ")} — 해당 id를 빼고 다시 호출하세요`);
+  }
+
   const zip = await downloadComponentsZip(catalog.source.repo, catalog.source.branch);
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
   const rootPrefix = entries[0].entryName.split("/")[0] + "/";
@@ -403,6 +413,26 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     "일부 컴포넌트는 web.xml·필터·스케줄러 등 수동 설정이 필요할 수 있습니다 (공통컴포넌트 가이드 참조).",
   ];
 
+  // 설치 매니페스트 기록 (제거·검증 지원)
+  const manifest: Manifest = readManifest(projectDir) ?? {
+    schemaVersion: 1,
+    source: { repo: catalog.source.repo, branch: catalog.source.branch },
+    components: {},
+  };
+  const now = new Date().toISOString();
+  const filesBy = new Map<string, string[]>();
+  for (const { relPath, componentId } of plan) {
+    if (!filesBy.has(componentId)) filesBy.set(componentId, []);
+    filesBy.get(componentId)!.push(relPath);
+  }
+  for (const c of order)
+    manifest.components[c.id] = {
+      installedAt: now,
+      files: filesBy.get(c.id) ?? [],
+      sqlScripts: c === order[0] ? sqlScripts : [],
+    };
+  writeManifest(projectDir, manifest);
+
   return {
     projectDir,
     requested: opts.components,
@@ -415,11 +445,210 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
   };
 }
 
+
+/* ------------------------------------------------------------------ */
+/* 컴포넌트 검색 (v0.5.0)                                               */
+/* ------------------------------------------------------------------ */
+
+export interface SearchResult {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  dependsOn: string[];
+  approxFiles: number;
+  score: number;
+}
+
+/** 카탈로그에서 키워드로 컴포넌트를 검색한다 (id·이름·설명·카테고리 부분 일치, 점수순). */
+export function searchComponents(catalog: Catalog, query: string, category?: string): SearchResult[] {
+  const q = query.trim().toLowerCase();
+  if (!q) throw new Error("query가 비어 있습니다");
+  const results: SearchResult[] = [];
+  for (const c of catalog.components) {
+    if (category && c.category !== category) continue;
+    let score = 0;
+    const id = c.id.toLowerCase();
+    const name = c.name.toLowerCase();
+    const desc = c.description.toLowerCase();
+    if (id === q) score += 100;
+    else if (id.includes(q)) score += 50;
+    if (name.includes(q)) score += 40;
+    if (desc.includes(q)) score += 20;
+    if (c.category.toLowerCase() === q) score += 10;
+    if (score > 0)
+      results.push({ id: c.id, name: c.name, category: c.category, description: c.description,
+        dependsOn: c.dependsOn, approxFiles: c.approxFiles, score });
+  }
+  return results.sort((a, b) => b.score - a.score).slice(0, 10);
+}
+
+/* ------------------------------------------------------------------ */
+/* 설치 매니페스트 (v0.5.0) — 조립 내역 기록으로 제거·검증을 가능하게 함   */
+/* ------------------------------------------------------------------ */
+
+export const MANIFEST_FILE = ".egovframe-components.json";
+
+export interface ManifestEntry {
+  installedAt: string;
+  files: string[];
+  sqlScripts: string[];
+}
+
+export interface Manifest {
+  schemaVersion: number;
+  source: { repo: string; branch: string };
+  components: Record<string, ManifestEntry>;
+}
+
+export function readManifest(projectDir: string): Manifest | null {
+  const p = path.join(projectDir, MANIFEST_FILE);
+  if (!fs.existsSync(p)) return null;
+  return JSON.parse(fs.readFileSync(p, "utf-8")) as Manifest;
+}
+
+function writeManifest(projectDir: string, manifest: Manifest): void {
+  fs.writeFileSync(path.join(projectDir, MANIFEST_FILE), JSON.stringify(manifest, null, 2) + "\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* 컴포넌트 제거 (v0.5.0)                                               */
+/* ------------------------------------------------------------------ */
+
+export interface RemoveOptions {
+  projectDir: string;
+  components: string[];
+  dryRun?: boolean;
+}
+
+export interface RemoveResult {
+  projectDir: string;
+  removed: { id: string; files: number; sqlScripts: number }[];
+  totalFiles: number;
+  dryRun: boolean;
+}
+
+/** 빈 상위 디렉터리를 projectDir까지 거슬러 올라가며 정리한다. */
+function pruneEmptyDirs(startDir: string, rootDir: string): void {
+  let dir = startDir;
+  while (dir.startsWith(rootDir + path.sep) && dir !== rootDir) {
+    if (!fs.existsSync(dir)) { dir = path.dirname(dir); continue; }
+    if (fs.readdirSync(dir).length > 0) break;
+    fs.rmdirSync(dir);
+    dir = path.dirname(dir);
+  }
+}
+
+/**
+ * 매니페스트에 기록된 파일만 삭제하여 컴포넌트를 제거한다.
+ * 다른 설치 컴포넌트가 의존하는 컴포넌트는 제거를 거부한다.
+ */
+export async function removeComponents(opts: RemoveOptions): Promise<RemoveResult> {
+  const projectDir = path.resolve(opts.projectDir);
+  const manifest = readManifest(projectDir);
+  if (!manifest)
+    throw new Error(`설치 매니페스트(${MANIFEST_FILE})가 없습니다 — add_egovframe_components(v0.5.0 이상)로 조립한 프로젝트만 제거를 지원합니다`);
+
+  const catalog = loadCatalog();
+  const byId = new Map(catalog.components.map((c) => [c.id, c]));
+  for (const id of opts.components) {
+    if (!manifest.components[id])
+      throw new Error(`'${id}'는 매니페스트에 설치 기록이 없습니다. 설치됨: ${Object.keys(manifest.components).join(", ") || "(없음)"}`);
+  }
+  // 의존성 보호: 남게 될 컴포넌트가 제거 대상에 의존하면 거부
+  const removing = new Set(opts.components);
+  for (const installedId of Object.keys(manifest.components)) {
+    if (removing.has(installedId)) continue;
+    const deps = byId.get(installedId)?.dependsOn ?? [];
+    for (const d of deps)
+      if (removing.has(d))
+        throw new Error(`'${d}'는 설치된 '${installedId}'가 의존하므로 제거할 수 없습니다 — '${installedId}'를 먼저(또는 함께) 제거하세요`);
+  }
+
+  const dryRun = opts.dryRun === true;
+  const removed: RemoveResult["removed"] = [];
+  let totalFiles = 0;
+  for (const id of opts.components) {
+    const entry = manifest.components[id];
+    const all = [...entry.files, ...entry.sqlScripts];
+    if (!dryRun) {
+      for (const rel of all) {
+        const target = path.join(projectDir, rel);
+        if (!target.startsWith(projectDir + path.sep)) continue;
+        if (fs.existsSync(target)) fs.unlinkSync(target);
+        pruneEmptyDirs(path.dirname(target), projectDir);
+      }
+      delete manifest.components[id];
+    }
+    removed.push({ id, files: entry.files.length, sqlScripts: entry.sqlScripts.length });
+    totalFiles += all.length;
+  }
+  if (!dryRun) {
+    if (Object.keys(manifest.components).length === 0)
+      fs.unlinkSync(path.join(projectDir, MANIFEST_FILE));
+    else writeManifest(projectDir, manifest);
+  }
+  return { projectDir, removed, totalFiles, dryRun };
+}
+
+/* ------------------------------------------------------------------ */
+/* 프로젝트 검증 (v0.5.0)                                               */
+/* ------------------------------------------------------------------ */
+
+export interface ValidateResult {
+  projectDir: string;
+  ok: boolean;
+  manifestFound: boolean;
+  components: { id: string; files: number; missing: number; missingSamples: string[] }[];
+  dbType: string | null;
+  dbScriptDirs: string[];
+  warnings: string[];
+}
+
+/** 조립된 프로젝트의 무결성을 진단한다 (파일 존재·DbType↔DDL 일치). */
+export async function validateProject(opts: { projectDir: string }): Promise<ValidateResult> {
+  const projectDir = path.resolve(opts.projectDir);
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
+    throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
+  const warnings: string[] = [];
+  const manifest = readManifest(projectDir);
+
+  const components: ValidateResult["components"] = [];
+  if (manifest) {
+    for (const [id, entry] of Object.entries(manifest.components)) {
+      const missing = entry.files.filter((rel) => !fs.existsSync(path.join(projectDir, rel)));
+      if (missing.length > 0)
+        warnings.push(`컴포넌트 '${id}'의 파일 ${missing.length}개가 없습니다 (수동 삭제 또는 이동 가능성)`);
+      components.push({ id, files: entry.files.length, missing: missing.length, missingSamples: missing.slice(0, 5) });
+    }
+  } else {
+    warnings.push(`설치 매니페스트(${MANIFEST_FILE})가 없습니다 — v0.5.0 이전 조립이거나 컴포넌트 미설치 프로젝트입니다`);
+  }
+
+  // Globals.DbType ↔ 복사된 DB 스크립트 일치 확인
+  let dbType: string | null = null;
+  const propsPath = path.join(projectDir, "src/main/resources/application.properties");
+  if (fs.existsSync(propsPath)) {
+    const m = fs.readFileSync(propsPath, "utf-8").match(/^Globals\.DbType=(.*)$/m);
+    if (m) dbType = m[1].trim();
+  }
+  const scriptsRoot = path.join(projectDir, "scripts/egovframe-components");
+  const dbScriptDirs = fs.existsSync(scriptsRoot) ? fs.readdirSync(scriptsRoot) : [];
+  if (dbType && dbScriptDirs.length > 0) {
+    // 템플릿 DbType(예: mysql)과 스크립트 DB(예: mysql|maria)가 다르면 경고
+    const matched = dbScriptDirs.some((d) => d === dbType || (dbType === "mysql" && d === "maria"));
+    if (!matched)
+      warnings.push(`Globals.DbType='${dbType}'인데 복사된 DB 스크립트(${dbScriptDirs.join(", ")})와 일치하지 않습니다`);
+  }
+
+  return { projectDir, ok: warnings.length === 0, manifestFound: manifest !== null, components, dbType, dbScriptDirs, warnings };
+}
+
 /* ------------------------------------------------------------------ */
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.4.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.5.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -525,6 +754,65 @@ export function buildServer(): McpServer {
         ``,
         `다음 단계:`,
         ...r.nextSteps.map((s, i) => `  ${i + 1}. ${s}`),
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+  server.tool(
+    "search_egovframe_components",
+    "키워드로 공통컴포넌트를 검색합니다 (id·이름·설명·카테고리 부분 일치, 점수순 상위 10건).",
+    {
+      query: z.string().describe("검색어. 예: 게시판, bbs, 로그인"),
+      category: z.string().optional().describe("카테고리 필터 (cmm|cop|uss|sym|sec|utl|dam|ext|ssi|sts|uat)"),
+    },
+    async (args) => {
+      const results = searchComponents(loadCatalog(), args.query as string, args.category as string | undefined);
+      const text = results.length === 0
+        ? `'${args.query}'에 해당하는 컴포넌트가 없습니다 — list_egovframe_components로 전체 목록을 확인하세요`
+        : [`🔎 '${args.query}' 검색 결과 (${results.length}건):`,
+           ...results.map((r, i) => `  ${i + 1}. ${r.id} — ${r.name} [${r.category}] (${r.approxFiles}개 파일${r.dependsOn.length ? ", 의존: " + r.dependsOn.join(",") : ""})`)].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+  server.tool(
+    "remove_egovframe_components",
+    "add_egovframe_components로 조립한 컴포넌트를 제거합니다. 설치 매니페스트에 기록된 파일만 삭제하며, " +
+      "다른 설치 컴포넌트가 의존하는 컴포넌트는 거부합니다. dryRun 미리보기를 지원합니다.",
+    {
+      projectDir: z.string().describe("대상 프로젝트 디렉터리"),
+      components: z.array(z.string()).min(1).describe("제거할 컴포넌트 id 목록"),
+      dryRun: z.boolean().default(false).describe("true면 삭제 없이 대상만 미리보기"),
+    },
+    async (args) => {
+      const r = await removeComponents(args as RemoveOptions);
+      const head = r.dryRun ? `🔍 제거 미리보기(dryRun): ${r.projectDir}` : `🗑️ 컴포넌트 제거 완료: ${r.projectDir}`;
+      const text = [head,
+        ...r.removed.map((c) => `  - ${c.id}: 파일 ${c.files}개${c.sqlScripts ? `, DB 스크립트 ${c.sqlScripts}개` : ""}`),
+        `- 총 ${r.dryRun ? "삭제 예정" : "삭제"} 파일: ${r.totalFiles}개`,
+        ...(r.dryRun ? ["", "실제 제거하려면 dryRun 없이 다시 호출하세요."] : []),
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+  server.tool(
+    "validate_egovframe_project",
+    "조립된 프로젝트의 무결성을 진단합니다: 설치 매니페스트 기준 파일 존재 확인, Globals.DbType과 복사된 DB 스크립트 일치 확인.",
+    {
+      projectDir: z.string().describe("검증할 프로젝트 디렉터리"),
+    },
+    async (args) => {
+      const r = await validateProject(args as { projectDir: string });
+      const text = [
+        r.ok ? `✅ 검증 통과: ${r.projectDir}` : `⚠️ 경고 ${r.warnings.length}건: ${r.projectDir}`,
+        `- 매니페스트: ${r.manifestFound ? "있음" : "없음"}`,
+        ...(r.components.length
+          ? [`- 설치 컴포넌트:`, ...r.components.map((c) => `  · ${c.id}: ${c.files}개 파일${c.missing ? ` (누락 ${c.missing}개: ${c.missingSamples.join(", ")})` : " (정상)"}`)]
+          : []),
+        `- Globals.DbType: ${r.dbType ?? "(미검출)"}` + (r.dbScriptDirs.length ? ` / DB 스크립트: ${r.dbScriptDirs.join(", ")}` : ""),
+        ...(r.warnings.length ? ["", "경고:", ...r.warnings.map((w) => `  ! ${w}`)] : []),
       ].join("\n");
       return { content: [{ type: "text", text }] };
     },
