@@ -210,6 +210,8 @@ export interface CatalogComponent {
   dependsOn: string[];
   /** surveyedAt 시점의 파일 수(안내용 근사치) */
   approxFiles: number;
+  /** 컴포넌트 매퍼가 참조하는 DB 테이블 (선별 DDL 추출용) */
+  tables?: string[];
 }
 
 export interface Catalog {
@@ -359,15 +361,54 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     }
   if (plan.length === 0) throw new Error("복사할 파일이 없습니다 — 카탈로그 pathPrefixes를 확인하세요");
 
-  // DB 스크립트 수집
-  const sqlPlan: { entry: AdmZip.IZipEntry; relPath: string }[] = [];
+  // DB 스크립트 수집 — 컴포넌트별 테이블 선별 추출 (M4)
+  const sqlPlan: { relPath: string; content: Buffer; componentId: string }[] = [];
   if (opts.database) {
+    const db = opts.database;
+    // 통합 스크립트 본문 로드 (ddl·dml)
+    const scriptText = new Map<string, string>();
     for (const e of entries) {
       const r = rel(e.entryName);
       for (const kind of ["ddl", "dml"]) {
-        const prefix = `script/${kind}/${opts.database}/`;
-        if (r.startsWith(prefix))
-          sqlPlan.push({ entry: e, relPath: `scripts/egovframe-components/${opts.database}/${kind}/` + r.slice(prefix.length) });
+        if (r.startsWith(`script/${kind}/${db}/`))
+          scriptText.set(kind + ":" + r, e.getData().toString("utf8"));
+      }
+    }
+    /** 통합 스크립트에서 특정 테이블 관련 구문만 추출 */
+    const extractFor = (tables: string[], kind: string): string => {
+      const re = new RegExp("\\b(" + tables.join("|") + ")\\b");
+      const parts: string[] = [];
+      for (const [key, text] of scriptText) {
+        if (!key.startsWith(kind + ":")) continue;
+        for (const stmt of text.split(/;\s*(?:\r?\n|$)/)) {
+          const t = stmt.trim();
+          if (t && re.test(t)) parts.push(t + ";");
+        }
+      }
+      return parts.join("\n\n");
+    };
+    const noTables: CatalogComponent[] = [];
+    for (const c of order) {
+      if (!c.tables || c.tables.length === 0) { noTables.push(c); continue; }
+      for (const kind of ["ddl", "dml"]) {
+        const sql = extractFor(c.tables, kind);
+        if (sql)
+          sqlPlan.push({
+            relPath: `scripts/egovframe-components/${db}/${kind}/${c.id}.sql`,
+            content: Buffer.from(`-- ${c.id} (${c.name}) — ${kind.toUpperCase()} 선별 추출: ${c.tables.join(", ")}\n\n` + sql + "\n", "utf8"),
+            componentId: c.id,
+          });
+      }
+    }
+    // 테이블 정보가 없는 컴포넌트가 있으면 통합본을 함께 복사 (폴백)
+    if (noTables.length > 0) {
+      for (const [key, text] of scriptText) {
+        const [kind, r] = [key.slice(0, 3), key.slice(4)];
+        sqlPlan.push({
+          relPath: `scripts/egovframe-components/${db}/${kind}/` + r.split("/").pop()!,
+          content: Buffer.from(text, "utf8"),
+          componentId: noTables[0].id,
+        });
       }
     }
   }
@@ -396,18 +437,21 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     countBy.set(componentId, (countBy.get(componentId) ?? 0) + 1);
   }
   const sqlScripts: string[] = [];
-  for (const { entry, relPath } of sqlPlan) {
+  const sqlBy = new Map<string, string[]>();
+  for (const { relPath, content, componentId } of sqlPlan) {
     const dest = path.join(projectDir, relPath);
     if (!dest.startsWith(projectDir + path.sep)) continue;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.writeFileSync(dest, entry.getData());
+    fs.writeFileSync(dest, content);
     sqlScripts.push(relPath);
+    if (!sqlBy.has(componentId)) sqlBy.set(componentId, []);
+    sqlBy.get(componentId)!.push(relPath);
   }
 
   const nextSteps = [
     opts.database
-      ? `scripts/egovframe-components/${opts.database}/ 의 DDL·DML에서 설치한 컴포넌트 관련 테이블을 선별해 DB에 적용하세요 (통합 스크립트입니다).`
-      : "database 파라미터를 지정하면 DB DDL·DML 스크립트도 함께 복사됩니다.",
+      ? `scripts/egovframe-components/${opts.database}/ddl|dml/<컴포넌트id>.sql — 컴포넌트별로 선별 추출된 스크립트를 순서대로 DB에 적용하세요.`
+      : "database 파라미터를 지정하면 컴포넌트별로 선별 추출된 DDL·DML 스크립트도 함께 생성됩니다.",
     "복사된 소스는 egovframework.com.* 원본 패키지를 유지합니다 (eGovFrame IDE 마법사와 동일).",
     "빈 스캐너/설정에 egovframework.com 패키지 스캔이 포함되어 있는지 확인 후 mvn compile로 빌드를 검증하세요.",
     "일부 컴포넌트는 web.xml·필터·스케줄러 등 수동 설정이 필요할 수 있습니다 (공통컴포넌트 가이드 참조).",
@@ -429,7 +473,7 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     manifest.components[c.id] = {
       installedAt: now,
       files: filesBy.get(c.id) ?? [],
-      sqlScripts: c === order[0] ? sqlScripts : [],
+      sqlScripts: sqlBy.get(c.id) ?? [],
     };
   writeManifest(projectDir, manifest);
 
@@ -648,7 +692,7 @@ export async function validateProject(opts: { projectDir: string }): Promise<Val
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.5.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.6.0" });
 
   server.tool(
     "list_egovframe_templates",
