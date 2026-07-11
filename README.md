@@ -1,6 +1,7 @@
 # egovframe-scaffold-mcp
 
 [![CI](https://github.com/EricSeokgon/egovframe-scaffold-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/EricSeokgon/egovframe-scaffold-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/egovframe-scaffold-mcp)](https://www.npmjs.com/package/egovframe-scaffold-mcp)
 
 전자정부 표준프레임워크(eGovFrame) 프로젝트 스캐폴딩 **MCP(Model Context Protocol) 서버** — PoC
 
@@ -36,7 +37,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 
 ## 설치·사용
 
-npm 배포 후에는 설치 없이 바로 실행할 수 있습니다:
+[npm에 배포되어](https://www.npmjs.com/package/egovframe-scaffold-mcp) 설치 없이 바로 실행할 수 있습니다:
 
 ```json
 {
