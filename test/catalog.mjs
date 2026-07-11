@@ -42,3 +42,7 @@ const s3 = searchComponents(catalog, "로그인");
 console.log("search login:", s3.some((r) => r.id === "login"));
 const s4 = searchComponents(catalog, "없는키워드xyz");
 console.log("search empty:", s4.length === 0);
+
+// 가이드 문서 매핑 (v0.7.0)
+const bbsComp = catalog.components.find((c) => c.id === "bbs");
+console.log("bbs docs mapped:", Array.isArray(bbsComp.docs) && bbsComp.docs.length >= 3 && bbsComp.docs[0].path.startsWith("common-component/"));
