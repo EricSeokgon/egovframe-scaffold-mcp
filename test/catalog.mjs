@@ -1,5 +1,5 @@
 // 카탈로그(M1) 검증 — 네트워크 불필요
-import { loadCatalog, resolveComponents, addComponents } from "../dist/index.js";
+import { loadCatalog, resolveComponents, addComponents, searchComponents } from "../dist/index.js";
 
 const catalog = loadCatalog();
 console.log("catalog loaded:", catalog.components.length >= 3);
@@ -32,3 +32,13 @@ console.log("preview total>0:", p.totalFiles > 0, "| order:", p.installOrder.map
 // 실제 조립은 존재하는 프로젝트 디렉터리가 필요
 try { await addComponents({ projectDir: "/tmp/no-such-dir-abc", components: ["bbs"], dryRun: false }); console.log("dir guard: FAIL"); }
 catch { console.log("dir guard: OK"); }
+
+// 검색 (v0.5.0)
+const s1 = searchComponents(catalog, "게시판");
+console.log("search korean:", s1.length > 0 && s1[0].id === "bbs");
+const s2 = searchComponents(catalog, "bbs");
+console.log("search id:", s2[0].id === "bbs" && s2[0].score >= 100);
+const s3 = searchComponents(catalog, "로그인");
+console.log("search login:", s3.some((r) => r.id === "login"));
+const s4 = searchComponents(catalog, "없는키워드xyz");
+console.log("search empty:", s4.length === 0);
