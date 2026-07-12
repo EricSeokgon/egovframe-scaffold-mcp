@@ -107,10 +107,12 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 1. 공통컴포넌트 선택 설치 — **M3 완료(v0.4.0)**: 저장소 스캔 기반 카탈로그 자동 생성(`npm run generate:catalog`, 68종) + 조립 파이프라인. 남은 항목: 컴포넌트별 테이블 선별 DDL, 이름·의존성 큐레이션 확대(`catalog/overrides.json` 기여 환영) (설계: [docs/design-components-parameter.md](docs/design-components-parameter.md))
 2. 실행환경 보일러플레이트(egovframe-msa 등) 템플릿 추가
-3. AI 컴포넌트 조립(`add_ai_components`) — **M2 완료(v0.9.0)**: 실조립(복사+pom 마커 병합+설정 프로필화+remove/validate 연동). M3: langchain4j 실검증 확대, 진단 확장(ONNX 모델 경로·docker 서비스 감지), 패키지 재배치 옵션 검토 (설계: [docs/design-ai-components.md](docs/design-ai-components.md))
+3. AI 컴포넌트 조립(`add_ai_components`) — **M3 완료(v0.10.0)**: 두 스택(spring-ai·langchain4j) 실조립 검증 + AI 실행 전제 진단. 남은 검토: 패키지 재배치 옵션([egovframe-ai-rag#65](https://github.com/eGovFramework/egovframe-ai-rag/issues/65) 피드백 대기) (설계: [docs/design-ai-components.md](docs/design-ai-components.md))
 4. 검증 후 eGovFramework 조직 공식 저장소 편입 제안
 
 ## 변경 이력
+
+- **0.10.0** — AI 컴포넌트 조립 M3: langchain4j 스택 실조립·제거 사이클 통합 검증(init-scripts/ai/·JPA 의존성·pom 원복), `validate_egovframe_project`에 **AI 실행 전제 진단(aiChecks)** 추가 — `application-ai.yml`의 ONNX 모델/토크나이저·임베딩 설정 경로를 `${user.home}`·환경변수 플레이스홀더까지 해석해 존재 확인, docker compose 기동 안내 (경고와 분리되어 ok 판정에 영향 없음).
 
 - **0.9.0** — AI 컴포넌트 조립 M2(실조립): `add_ai_components`가 실제로 조립합니다 — 소스(`com.example.chat`)·설정(`application-ai.yml` 프로필, 기존 설정 불변)·UI·인프라(`docker-compose.ai.yml`·`Dockerfile.ai`·`k8s/ai/`) 복사(전체 사전 충돌 검사·원자적 거부), pom에 누락 좌표만 마커 주석 구간으로 삽입(exclusions 보존, `pom.xml.bak-ai` 백업), 매니페스트 기록으로 `remove_egovframe_components`가 파일·pom 삽입분을 함께 원복(바이트 단위 복원 검증), `validate_egovframe_project`에 pom 마커 진단 추가, 통합 테스트(`npm run test:ai-assembly`) 추가.
 
