@@ -46,6 +46,9 @@ jobs:
       - name: Smoke test (downloads official templates)
         run: npm run smoke
 
+      - name: Extended templates test (downloads official templates)
+        run: npm run test:templates
+
       - name: Components assembly test (downloads egovframe-common-components)
         run: npm run test:components
 
