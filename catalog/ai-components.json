@@ -1,0 +1,369 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repo": "eGovFramework/egovframe-ai-rag",
+    "branch": "main",
+    "surveyedAt": "2026-07-12"
+  },
+  "note": "add_ai_components용 카탈로그 — 조립 대상은 egovframe-boot-starter-parent 기반 Boot 프로젝트. 두 스택은 같은 패키지(com.example.chat)·UI 경로를 사용하므로 상호 배타(conflictsWith).",
+  "components": [
+    {
+      "id": "ai-rag-spring-ai",
+      "stack": "spring-ai",
+      "kind": "ai",
+      "name": "AI RAG 챗봇 (Spring AI + Redis Stack)",
+      "description": "Spring AI 기반 RAG 질의응답 — 문서 업로드(PDF·DOCX·HWP·HWPX·MD)→임베딩→Redis Stack 하이브리드 검색→Ollama LLM 응답, 채팅 UI 포함",
+      "modulePath": "spring-ai-rag-redis-stack",
+      "vectorStore": "Redis Stack",
+      "conflictsWith": [
+        "ai-rag-langchain4j"
+      ],
+      "requires": {
+        "java": "17",
+        "parent": "egovframe-boot-starter-parent:5.0.0"
+      },
+      "copyGroups": {
+        "source": {
+          "paths": [
+            "src/main/java/com/example/chat/"
+          ],
+          "files": 45
+        },
+        "config": {
+          "paths": [
+            "src/main/resources/application.yml -> src/main/resources/application-ai.yml",
+            "src/main/resources/log4j2-spring.xml -> src/main/resources/log4j2-ai.xml"
+          ],
+          "files": 2
+        },
+        "ui": {
+          "paths": [
+            "src/main/resources/templates/",
+            "src/main/resources/static/"
+          ],
+          "files": 3
+        },
+        "infra": {
+          "paths": [
+            "docker-compose.yml -> docker-compose.ai.yml",
+            "Dockerfile -> Dockerfile.ai",
+            "k8s/ -> k8s/ai/"
+          ],
+          "files": 6
+        },
+        "tests": {
+          "paths": [
+            "src/test/"
+          ],
+          "files": 15
+        }
+      },
+      "approxFiles": 56,
+      "mavenDependencies": [
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-actuator",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-client-chat"
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-rag"
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-starter-vector-store-redis"
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-starter-model-ollama"
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-advisors-vector-store"
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-starter-model-transformers"
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-pdf-document-reader"
+        },
+        {
+          "groupId": "org.springframework.ai",
+          "artifactId": "spring-ai-markdown-document-reader"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "egovframe-rte-fdl-excel"
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-thymeleaf",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-web",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "egovframe-rte-ptl-mvc",
+          "exclusions": [
+            {
+              "groupId": "org.apache.commons",
+              "artifactId": "commons-lang3"
+            }
+          ]
+        },
+        {
+          "groupId": "kr.dogfoot",
+          "artifactId": "hwplib",
+          "version": "1.1.9"
+        },
+        {
+          "groupId": "org.projectlombok",
+          "artifactId": "lombok",
+          "optional": true
+        },
+        {
+          "groupId": "kr.dogfoot",
+          "artifactId": "hwpxlib",
+          "version": "1.0.8"
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-test",
+          "scope": "test"
+        }
+      ],
+      "mavenProperties": {},
+      "prerequisites": [
+        "ollama>=0.17.1",
+        "onnx-embedding-model",
+        "docker"
+      ]
+    },
+    {
+      "id": "ai-rag-langchain4j",
+      "stack": "langchain4j",
+      "kind": "ai",
+      "name": "AI RAG 챗봇 (LangChain4j + PGVector)",
+      "description": "LangChain4j 기반 RAG 질의응답 — 문서 업로드(PDF·DOCX·HWP·HWPX·MD)→임베딩→PostgreSQL(PGVector) 하이브리드 검색→Ollama LLM 응답, 채팅 UI 포함",
+      "modulePath": "langchain4j-ai-rag-postgre",
+      "vectorStore": "PostgreSQL (PGVector)",
+      "conflictsWith": [
+        "ai-rag-spring-ai"
+      ],
+      "requires": {
+        "java": "17",
+        "parent": "egovframe-boot-starter-parent:5.0.0"
+      },
+      "copyGroups": {
+        "source": {
+          "paths": [
+            "src/main/java/com/example/chat/"
+          ],
+          "files": 49
+        },
+        "config": {
+          "paths": [
+            "src/main/resources/application.yml -> src/main/resources/application-ai.yml",
+            "src/main/resources/log4j2-spring.xml -> src/main/resources/log4j2-ai.xml"
+          ],
+          "files": 2
+        },
+        "ui": {
+          "paths": [
+            "src/main/resources/templates/",
+            "src/main/resources/static/"
+          ],
+          "files": 3
+        },
+        "infra": {
+          "paths": [
+            "docker-compose.yml -> docker-compose.ai.yml",
+            "Dockerfile -> Dockerfile.ai",
+            "k8s/ -> k8s/ai/",
+            "init-scripts/ -> init-scripts/ai/"
+          ],
+          "files": 9
+        },
+        "tests": {
+          "paths": [
+            "src/test/"
+          ],
+          "files": 14
+        }
+      },
+      "approxFiles": 63,
+      "mavenDependencies": [
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-actuator",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "dev.langchain4j",
+          "artifactId": "langchain4j"
+        },
+        {
+          "groupId": "dev.langchain4j",
+          "artifactId": "langchain4j-ollama"
+        },
+        {
+          "groupId": "dev.langchain4j",
+          "artifactId": "langchain4j-pgvector"
+        },
+        {
+          "groupId": "dev.langchain4j",
+          "artifactId": "langchain4j-embeddings"
+        },
+        {
+          "groupId": "dev.langchain4j",
+          "artifactId": "langchain4j-document-parser-apache-pdfbox"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "egovframe-rte-fdl-excel",
+          "exclusions": [
+            {
+              "groupId": "org.apache.commons",
+              "artifactId": "commons-lang3"
+            }
+          ]
+        },
+        {
+          "groupId": "dev.langchain4j",
+          "artifactId": "langchain4j-reactor"
+        },
+        {
+          "groupId": "com.h2database",
+          "artifactId": "h2",
+          "version": "2.2.224",
+          "scope": "test"
+        },
+        {
+          "groupId": "org.postgresql",
+          "artifactId": "postgresql",
+          "scope": "runtime"
+        },
+        {
+          "groupId": "org.testcontainers",
+          "artifactId": "postgresql",
+          "scope": "test"
+        },
+        {
+          "groupId": "org.testcontainers",
+          "artifactId": "junit-jupiter",
+          "scope": "test"
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-thymeleaf",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-web",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-webflux",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-data-jpa",
+          "exclusions": [
+            {
+              "groupId": "org.springframework.boot",
+              "artifactId": "spring-boot-starter-logging"
+            }
+          ]
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "egovframe-rte-ptl-mvc",
+          "exclusions": [
+            {
+              "groupId": "org.apache.commons",
+              "artifactId": "commons-lang3"
+            }
+          ]
+        },
+        {
+          "groupId": "commons-codec",
+          "artifactId": "commons-codec"
+        },
+        {
+          "groupId": "kr.dogfoot",
+          "artifactId": "hwplib",
+          "version": "1.1.9"
+        },
+        {
+          "groupId": "kr.dogfoot",
+          "artifactId": "hwpxlib",
+          "version": "1.0.5"
+        },
+        {
+          "groupId": "org.projectlombok",
+          "artifactId": "lombok",
+          "optional": true
+        },
+        {
+          "groupId": "org.springframework.boot",
+          "artifactId": "spring-boot-starter-test",
+          "scope": "test"
+        }
+      ],
+      "mavenProperties": {},
+      "prerequisites": [
+        "ollama>=0.17.1",
+        "onnx-embedding-model",
+        "docker"
+      ]
+    }
+  ]
+}
