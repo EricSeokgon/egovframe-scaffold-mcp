@@ -22,7 +22,10 @@ import * as os from "node:os";
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
 
 /** 지원 템플릿 목록 (공식 eGovFramework 조직 저장소) */
-export const TEMPLATES: Record<string, { repo: string; branch: string; description: string }> = {
+export const TEMPLATES: Record<
+  string,
+  { repo: string; branch: string; description: string; multiProject?: boolean }
+> = {
   "simple-backend": {
     repo: "eGovFramework/egovframe-template-simple-backend",
     branch: "main",
@@ -33,7 +36,36 @@ export const TEMPLATES: Record<string, { repo: string; branch: string; descripti
     branch: "main",
     description: "심플홈페이지 프론트엔드 (React)",
   },
+  "simple-homepage": {
+    repo: "eGovFramework/egovframe-simple-homepage-template",
+    branch: "main",
+    description: "심플홈페이지 템플릿 (Spring MVC + JSP 올인원, DATABASE/ 초기화 스크립트 포함)",
+  },
+  "portal-site": {
+    repo: "eGovFramework/egovframe-portal-site-template",
+    branch: "main",
+    description: "포털사이트 템플릿 (Spring MVC + JSP, 포털 구성 기능, DATABASE/ 스크립트 포함)",
+  },
+  "enterprise-business": {
+    repo: "eGovFramework/egovframe-enterprise-business-template",
+    branch: "main",
+    description: "엔터프라이즈 비즈니스 템플릿 (Spring MVC + JSP, Docker/컨테이너 지원 포함)",
+  },
+  "web-sample": {
+    repo: "eGovFramework/egovframe-web-sample",
+    branch: "main",
+    description: "웹 기반 심플 게시판 샘플 (XML 설정, Docker/k8s 예시 포함)",
+  },
+  "msa-edu": {
+    repo: "eGovFramework/egovframe-msa-edu",
+    branch: "main",
+    description: "MSA 템플릿 (클라우드 네이티브 — backend/frontend/k8s/docker-compose 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
+    multiProject: true,
+  },
 };
+
+/** 레거시 템플릿의 DB 설정 파일 경로 */
+export const GLOBALS_PROPS_REL = "src/main/resources/egovframework/egovProps/globals.properties";
 
 /** 템플릿의 application.properties가 지원하는 DB 타입 */
 export const DB_TYPES = ["hsql", "mysql", "oracle", "altibase", "tibero"] as const;
@@ -118,9 +150,15 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     const hasPom = entries.some((e) => rel(e.entryName) === "pom.xml");
     const hasProps = entries.some((e) => rel(e.entryName) === "src/main/resources/application.properties");
     const hasPkg = entries.some((e) => rel(e.entryName) === "package.json");
-    if (hasPom) customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName}) — 적용 예정`);
-    if (hasProps) customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database}) — 적용 예정`);
-    if (hasPkg) customized.push(`package.json (name=${opts.projectName}) — 적용 예정`);
+    const hasGlobals = entries.some((e) => rel(e.entryName) === GLOBALS_PROPS_REL);
+    if (tpl.multiProject) {
+      customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
+    } else {
+      if (hasPom) customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName}) — 적용 예정`);
+      if (hasProps) customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database}) — 적용 예정`);
+      if (hasGlobals) customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database}) — 적용 예정`);
+      if (hasPkg) customized.push(`package.json (name=${opts.projectName}) — 적용 예정`);
+    }
     return {
       projectPath,
       filesExtracted: fileCount,
@@ -145,9 +183,9 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     count++;
   }
 
-  // 4) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지)
+  // 4) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지) — 멀티 프로젝트 템플릿은 건너뜀
   const pomPath = path.join(projectPath, "pom.xml");
-  if (fs.existsSync(pomPath)) {
+  if (!tpl.multiProject && fs.existsSync(pomPath)) {
     let pom = fs.readFileSync(pomPath, "utf-8");
     const artifactMatch = pom.match(/<artifactId>([^<]+)<\/artifactId>/);
     const oldArtifact = artifactMatch ? artifactMatch[1] : null;
@@ -160,7 +198,7 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
 
   // 5) application.properties: DB 타입 적용
   const appProps = path.join(projectPath, "src/main/resources/application.properties");
-  if (fs.existsSync(appProps)) {
+  if (!tpl.multiProject && fs.existsSync(appProps)) {
     let props = fs.readFileSync(appProps, "utf-8");
     if (/^Globals\.DbType=.*$/m.test(props)) {
       props = props.replace(/^Globals\.DbType=.*$/m, `Globals.DbType=${opts.database}`);
@@ -169,9 +207,20 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     }
   }
 
+  // 5b) 레거시 템플릿(egovProps/globals.properties): DB 타입 적용
+  const globalsProps = path.join(projectPath, GLOBALS_PROPS_REL);
+  if (!tpl.multiProject && fs.existsSync(globalsProps)) {
+    let props = fs.readFileSync(globalsProps, "utf-8");
+    if (/^Globals\.DbType\s*=.*$/m.test(props)) {
+      props = props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`);
+      fs.writeFileSync(globalsProps, props);
+      customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database})`);
+    }
+  }
+
   // 6) package.json: 프론트엔드 템플릿의 프로젝트명 적용
   const pkgPath = path.join(projectPath, "package.json");
-  if (fs.existsSync(pkgPath)) {
+  if (!tpl.multiProject && fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
       if (typeof pkg.name === "string") {
@@ -184,11 +233,19 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     }
   }
 
+  if (tpl.multiProject)
+    customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
+
+  const buildStep = tpl.multiProject
+    ? "README.md 참조 — backend/frontend/k8s/docker-compose 하위 프로젝트별 기동 안내"
+    : opts.template === "simple-react"
+      ? "npm install && npm start"
+      : opts.template === "simple-backend"
+        ? "mvn -B verify   # 빌드/테스트 (JDK 17, hsql 외 DB는 접속정보를 application-*.properties에 설정)"
+        : "mvn -B package   # WAR 빌드 (DB 초기화는 DATABASE/ 또는 README의 스크립트 참조)";
   const nextSteps = [
     `cd ${projectPath}`,
-    opts.template === "simple-backend"
-      ? "mvn -B verify   # 빌드/테스트 (JDK 17, hsql 외 DB는 접속정보를 application-*.properties에 설정)"
-      : "npm install && npm start",
+    buildStep,
     "자바 패키지 구조 변경(groupId에 맞춘 소스 이동)은 PoC 범위 밖입니다 — IDE의 rename refactoring 사용을 권장합니다.",
   ];
 
@@ -1217,7 +1274,7 @@ export function stripAiPomAdditions(projectDir: string, componentId: string): bo
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.10.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.11.0" });
 
   server.tool(
     "list_egovframe_templates",
