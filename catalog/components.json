@@ -3,11 +3,56 @@
   "source": {
     "repo": "eGovFramework/egovframe-common-components",
     "branch": "main",
-    "surveyedAt": "2026-07-11"
+    "surveyedAt": "2026-07-12"
   },
   "sqlNote": "DB 스크립트는 script/ddl|dml/<db>/ 의 통합본(com_DDL_<db>.sql 등)으로 제공됩니다. 컴포넌트별 테이블 선별 적용은 로드맵 항목입니다.",
   "generatedBy": "scripts/generate-catalog.mjs",
   "components": [
+    {
+      "id": "bbs",
+      "name": "게시판 (BBS)",
+      "category": "cop",
+      "description": "게시판 생성·게시글 관리(블로그형 포함) 협업 컴포넌트",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/bbs/",
+        "src/main/resources/egovframework/mapper/com/cop/bbs/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/bbs/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 63,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNBBS",
+        "COMTNBBSMASTER",
+        "COMTNBBSMASTEROPTN",
+        "COMTNBBSUSE",
+        "COMTNBLOG",
+        "COMTNBLOGUSER",
+        "COMTNCOMMENT",
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNTMPLATINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/blog-management.md",
+          "title": "블로그관리"
+        },
+        {
+          "path": "common-component/collaboration/board-integrated.md",
+          "title": "게시판(통합게시판)"
+        },
+        {
+          "path": "common-component/collaboration/board-management.md",
+          "title": "게시판관리"
+        },
+        {
+          "path": "common-component/collaboration/board-guestbook.md",
+          "title": "게시판(방명록)"
+        }
+      ]
+    },
     {
       "id": "cmm",
       "name": "공통기반 (Common)",
@@ -76,51 +121,6 @@
       ]
     },
     {
-      "id": "bbs",
-      "name": "게시판 (BBS)",
-      "category": "cop",
-      "description": "게시판 생성·게시글 관리(블로그형 포함) 협업 컴포넌트",
-      "pathPrefixes": [
-        "src/main/java/egovframework/com/cop/bbs/",
-        "src/main/resources/egovframework/mapper/com/cop/bbs/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/bbs/"
-      ],
-      "dependsOn": [
-        "cmm"
-      ],
-      "approxFiles": 63,
-      "tables": [
-        "COMTCCMMNDETAILCODE",
-        "COMTNBBS",
-        "COMTNBBSMASTER",
-        "COMTNBBSMASTEROPTN",
-        "COMTNBBSUSE",
-        "COMTNBLOG",
-        "COMTNBLOGUSER",
-        "COMTNCOMMENT",
-        "COMTNEMPLYRSCRTYESTBS",
-        "COMTNTMPLATINFO"
-      ],
-      "docs": [
-        {
-          "path": "common-component/collaboration/blog-management.md",
-          "title": "블로그관리"
-        },
-        {
-          "path": "common-component/collaboration/board-integrated.md",
-          "title": "게시판(통합게시판)"
-        },
-        {
-          "path": "common-component/collaboration/board-management.md",
-          "title": "게시판관리"
-        },
-        {
-          "path": "common-component/collaboration/board-guestbook.md",
-          "title": "게시판(방명록)"
-        }
-      ]
-    },
-    {
       "id": "cop.cmt",
       "name": "댓글 관리",
       "category": "cop",
@@ -182,7 +182,7 @@
     },
     {
       "id": "cop.com",
-      "name": "cop.com",
+      "name": "정보",
       "category": "cop",
       "description": "egovframework/com/cop/com 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -223,6 +223,10 @@
       ],
       "docs": [
         {
+          "path": "common-component/collaboration/mail-solution-interface.md",
+          "title": "메일솔루션 연동 인터페이스"
+        },
+        {
           "path": "common-component/collaboration/email.md",
           "title": "전자우편"
         }
@@ -230,7 +234,7 @@
     },
     {
       "id": "cop.ncm",
-      "name": "cop.ncm",
+      "name": "명함정보",
       "category": "cop",
       "description": "egovframework/com/cop/ncm 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -299,54 +303,268 @@
     },
     {
       "id": "cop.smt",
-      "name": "일정 관리",
+      "name": "일정 관리 (그룹)",
       "category": "cop",
-      "description": "egovframework/com/cop/smt 하위 소스·매퍼·JSP (자동 생성 항목)",
-      "pathPrefixes": [
-        "src/main/java/egovframework/com/cop/smt/",
-        "src/main/resources/egovframework/mapper/com/cop/smt/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/"
-      ],
-      "dependsOn": [
-        "cmm"
-      ],
+      "description": "egovframework/com/cop/smt 하위 컴포넌트 9종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
       "approxFiles": 202,
-      "tables": [
-        "COMTCCMMNDETAILCODE",
-        "COMTNDEPTJOB",
-        "COMTNDEPTJOBBX",
-        "COMTNDIARYINFO",
-        "COMTNEMPLYRINFO",
-        "COMTNGNRLMBER",
-        "COMTNLEADERSCHDUL",
-        "COMTNLEADERSCHDULDE",
-        "COMTNLEADERSTTUS",
-        "COMTNMEMOREPRT",
-        "COMTNMEMOTODO",
-        "COMTNORGNZTINFO",
-        "COMTNSCHDULINFO",
-        "COMTNWIKMNTHNGREPRT"
+      "children": [
+        "cop.smt.djm",
+        "cop.smt.dsm",
+        "cop.smt.lsm",
+        "cop.smt.mrm",
+        "cop.smt.mtm",
+        "cop.smt.sam",
+        "cop.smt.sdm",
+        "cop.smt.sim",
+        "cop.smt.wmr"
       ],
       "docs": [
         {
           "path": "common-component/collaboration/executive-schedule.md",
           "title": "간부일정관리"
-        },
-        {
-          "path": "common-component/collaboration/department-schedule.md",
-          "title": "부서일정관리"
-        },
-        {
-          "path": "common-component/collaboration/schedule-management.md",
-          "title": "일정관리"
-        },
-        {
-          "path": "common-component/collaboration/journal-management.md",
-          "title": "일지관리"
-        },
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.djm",
+      "name": "부서업무",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/djm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/djm/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/djm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/djm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 33,
+      "tables": [
+        "COMTNDEPTJOB",
+        "COMTNDEPTJOBBX",
+        "COMTNEMPLYRINFO",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
         {
           "path": "common-component/collaboration/department-task-box.md",
           "title": "부서업무함관리"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.dsm",
+      "name": "일지관리",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/dsm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/dsm/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/dsm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/dsm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNDIARYINFO",
+        "COMTNEMPLYRINFO",
+        "COMTNSCHDULINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/journal-management.md",
+          "title": "일지관리"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.lsm",
+      "name": "간부일정",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/lsm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/lsm/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/lsm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/lsm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 31,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEMPLYRINFO",
+        "COMTNLEADERSCHDUL",
+        "COMTNLEADERSCHDULDE",
+        "COMTNLEADERSTTUS",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/executive-schedule.md",
+          "title": "간부일정관리"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.mrm",
+      "name": "메모보고",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/mrm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/mrm/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/mrm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/mrm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 22,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNGNRLMBER",
+        "COMTNMEMOREPRT",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/memo-report.md",
+          "title": "메모보고"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.mtm",
+      "name": "메모할일",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/mtm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/mtm/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/mtm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/mtm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNGNRLMBER",
+        "COMTNMEMOTODO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/memo-todo.md",
+          "title": "메모할일관리"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.sam",
+      "name": "전체일정",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/sam 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/sam/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/sam/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/sam/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 13,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNSCHDULINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/all-schedule.md",
+          "title": "전체일정"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.sdm",
+      "name": "부서일정관리",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/sdm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/sdm/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/sdm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/sdm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 24,
+      "tables": [
+        "COMTNDIARYINFO",
+        "COMTNEMPLYRINFO",
+        "COMTNORGNZTINFO",
+        "COMTNSCHDULINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/department-schedule.md",
+          "title": "부서일정관리"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.sim",
+      "name": "일정관리",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/sim 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/sim/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/sim/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/sim/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 21,
+      "tables": [
+        "COMTNDIARYINFO",
+        "COMTNEMPLYRINFO",
+        "COMTNORGNZTINFO",
+        "COMTNSCHDULINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/schedule-management.md",
+          "title": "일정관리"
+        }
+      ]
+    },
+    {
+      "id": "cop.smt.wmr",
+      "name": "주간월간보고",
+      "category": "cop",
+      "description": "egovframework/com/cop/smt/wmr 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/cop/smt/wmr/",
+        "src/main/resources/egovframework/mapper/com/cop/smt/wmr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/cop/smt/wmr/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 22,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEMPLYRINFO",
+        "COMTNORGNZTINFO",
+        "COMTNWIKMNTHNGREPRT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/collaboration/weekly-monthly-report.md",
+          "title": "주간/월간보고관리"
         }
       ]
     },
@@ -430,30 +648,64 @@
     },
     {
       "id": "dam.map",
-      "name": "지식맵 관리",
+      "name": "지식맵 관리 (그룹)",
       "category": "dam",
-      "description": "egovframework/com/dam/map 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/dam/map 하위 컴포넌트 2종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 36,
+      "children": [
+        "dam.map.mat",
+        "dam.map.tea"
+      ],
+      "docs": []
+    },
+    {
+      "id": "dam.map.mat",
+      "name": "지식맵(지식유형)",
+      "category": "dam",
+      "description": "egovframework/com/dam/map/mat 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/dam/map/",
-        "src/main/resources/egovframework/mapper/com/dam/map/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/map/"
+        "src/main/java/egovframework/com/dam/map/mat/",
+        "src/main/resources/egovframework/mapper/com/dam/map/mat/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/map/mat/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 36,
+      "approxFiles": 18,
       "tables": [
         "COMTNDAMMAPKNO",
         "COMTNDAMMAPTEAM"
       ],
       "docs": [
         {
-          "path": "common-component/digital-asset-management/org-knowledge-map-management.md",
-          "title": "지식맵관리(조직)"
-        },
-        {
           "path": "common-component/digital-asset-management/type-knowledge-map-management.md",
           "title": "지식맵관리(유형)"
+        }
+      ]
+    },
+    {
+      "id": "dam.map.tea",
+      "name": "지식맵(조직별)",
+      "category": "dam",
+      "description": "egovframework/com/dam/map/tea 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/dam/map/tea/",
+        "src/main/resources/egovframework/mapper/com/dam/map/tea/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/map/tea/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNDAMMAPTEAM"
+      ],
+      "docs": [
+        {
+          "path": "common-component/digital-asset-management/org-knowledge-map-management.md",
+          "title": "지식맵관리(조직)"
         }
       ]
     },
@@ -512,24 +764,59 @@
     },
     {
       "id": "dam.spe",
-      "name": "지식전문가 관리",
+      "name": "지식전문가 관리 (그룹)",
       "category": "dam",
-      "description": "egovframework/com/dam/spe 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/dam/spe 하위 컴포넌트 2종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 36,
+      "children": [
+        "dam.spe.req",
+        "dam.spe.spe"
+      ],
+      "docs": []
+    },
+    {
+      "id": "dam.spe.req",
+      "name": "지식정보제공/지식정보요청",
+      "category": "dam",
+      "description": "egovframework/com/dam/spe/req 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/dam/spe/",
-        "src/main/resources/egovframework/mapper/com/dam/spe/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/spe/"
+        "src/main/java/egovframework/com/dam/spe/req/",
+        "src/main/resources/egovframework/mapper/com/dam/spe/req/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/spe/req/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 36,
+      "approxFiles": 18,
       "tables": [
         "COMTNDAMCALRES",
         "COMTNDAMMAPKNO",
         "COMTNDAMMAPTEAM",
         "COMTNDAMPRO",
         "COMTNEMPLYRINFO"
+      ],
+      "docs": []
+    },
+    {
+      "id": "dam.spe.spe",
+      "name": "지식전문가",
+      "category": "dam",
+      "description": "egovframework/com/dam/spe/spe 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/dam/spe/spe/",
+        "src/main/resources/egovframework/mapper/com/dam/spe/spe/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/dam/spe/spe/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNDAMMAPKNO",
+        "COMTNDAMMAPTEAM",
+        "COMTNDAMPRO"
       ],
       "docs": [
         {
@@ -556,14 +843,14 @@
       "docs": []
     },
     {
-      "id": "ext.easybatch",
-      "name": "ext.easybatch",
+      "id": "ext.easybatch.item",
+      "name": "ext.easybatch.item",
       "category": "ext",
-      "description": "egovframework/com/ext/easybatch 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/ext/easybatch/item 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/ext/easybatch/",
-        "src/main/resources/egovframework/mapper/com/ext/easybatch/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/easybatch/"
+        "src/main/java/egovframework/com/ext/easybatch/item/",
+        "src/main/resources/egovframework/mapper/com/ext/easybatch/item/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/easybatch/item/"
       ],
       "dependsOn": [
         "cmm"
@@ -602,7 +889,101 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 15,
+      "approxFiles": 3,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/websocket_messenger.md",
+          "title": "websocket_messenger.md"
+        }
+      ],
+      "children": [
+        "ext.msg.popup",
+        "ext.msg.server",
+        "ext.msg.server.config",
+        "ext.msg.server.model"
+      ]
+    },
+    {
+      "id": "ext.msg.popup",
+      "name": "ext.msg.popup",
+      "category": "ext",
+      "description": "egovframework/com/ext/msg/popup 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/msg/popup/",
+        "src/main/resources/egovframework/mapper/com/ext/msg/popup/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/msg/popup/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/websocket_messenger.md",
+          "title": "websocket_messenger.md"
+        }
+      ]
+    },
+    {
+      "id": "ext.msg.server",
+      "name": "ext.msg.server",
+      "category": "ext",
+      "description": "egovframework/com/ext/msg/server 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/msg/server/",
+        "src/main/resources/egovframework/mapper/com/ext/msg/server/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/msg/server/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/websocket_messenger.md",
+          "title": "websocket_messenger.md"
+        }
+      ]
+    },
+    {
+      "id": "ext.msg.server.config",
+      "name": "ext.msg.server.config",
+      "category": "ext",
+      "description": "egovframework/com/ext/msg/server/config 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/msg/server/config/",
+        "src/main/resources/egovframework/mapper/com/ext/msg/server/config/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/msg/server/config/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 4,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/websocket_messenger.md",
+          "title": "websocket_messenger.md"
+        }
+      ]
+    },
+    {
+      "id": "ext.msg.server.model",
+      "name": "ext.msg.server.model",
+      "category": "ext",
+      "description": "egovframework/com/ext/msg/server/model 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ext/msg/server/model/",
+        "src/main/resources/egovframework/mapper/com/ext/msg/server/model/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ext/msg/server/model/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 5,
       "tables": [],
       "docs": [
         {
@@ -627,6 +1008,40 @@
       "approxFiles": 6,
       "tables": [],
       "docs": []
+    },
+    {
+      "id": "login",
+      "name": "로그인/인증 (uat.uia)",
+      "category": "uat",
+      "description": "일반·Spring Security 로그인 처리 사용자인증 컴포넌트",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uat/uia/",
+        "src/main/resources/egovframework/mapper/com/uat/uia/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/uia/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 29,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNENTRPRSMBER",
+        "COMTNGNRLMBER"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-authentication/certificate-login.md",
+          "title": "인증서로그인"
+        },
+        {
+          "path": "common-component/elementary-technology/social_login_naver_google_kakao.md",
+          "title": "social_login_naver_google_kakao.md"
+        },
+        {
+          "path": "common-component/security/pw_expiration_management.md",
+          "title": "pw_expiration_management.md"
+        }
+      ]
     },
     {
       "id": "sec.drm",
@@ -784,14 +1199,14 @@
       ]
     },
     {
-      "id": "sec.security",
-      "name": "sec.security",
+      "id": "sec.security.common",
+      "name": "sec.security.common",
       "category": "sec",
-      "description": "egovframework/com/sec/security 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/sec/security/common 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/sec/security/",
-        "src/main/resources/egovframework/mapper/com/sec/security/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/security/"
+        "src/main/java/egovframework/com/sec/security/common/",
+        "src/main/resources/egovframework/mapper/com/sec/security/common/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sec/security/common/"
       ],
       "dependsOn": [
         "cmm"
@@ -802,22 +1217,87 @@
     },
     {
       "id": "ssi.syi",
-      "name": "ssi.syi",
+      "name": "ssi.syi (그룹)",
       "category": "ssi",
-      "description": "egovframework/com/ssi/syi 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/ssi/syi 하위 컴포넌트 4종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 82,
+      "children": [
+        "ssi.syi.iis",
+        "ssi.syi.ims",
+        "ssi.syi.ist",
+        "ssi.syi.sim"
+      ],
+      "docs": []
+    },
+    {
+      "id": "ssi.syi.iis",
+      "name": "ssi.syi.iis",
+      "category": "ssi",
+      "description": "egovframework/com/ssi/syi/iis 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/ssi/syi/",
-        "src/main/resources/egovframework/mapper/com/ssi/syi/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/ssi/syi/"
+        "src/main/java/egovframework/com/ssi/syi/iis/",
+        "src/main/resources/egovframework/mapper/com/ssi/syi/iis/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ssi/syi/iis/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 82,
+      "approxFiles": 26,
       "tables": [
         "COMTNCNTCINSTT",
+        "COMTNCNTCSERVICE",
+        "COMTNCNTCSYSTEM"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-service-linkage/linkage-org-manage.md",
+          "title": "연계기관관리"
+        }
+      ]
+    },
+    {
+      "id": "ssi.syi.ims",
+      "name": "ssi.syi.ims",
+      "category": "ssi",
+      "description": "egovframework/com/ssi/syi/ims 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ssi/syi/ims/",
+        "src/main/resources/egovframework/mapper/com/ssi/syi/ims/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ssi/syi/ims/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 22,
+      "tables": [
         "COMTNCNTCMESSAGE",
-        "COMTNCNTCMESSAGEITEM",
+        "COMTNCNTCMESSAGEITEM"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-service-linkage/linkage-message-manage.md",
+          "title": "연계메시지관리"
+        }
+      ]
+    },
+    {
+      "id": "ssi.syi.ist",
+      "name": "ssi.syi.ist",
+      "category": "ssi",
+      "description": "egovframework/com/ssi/syi/ist 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ssi/syi/ist/",
+        "src/main/resources/egovframework/mapper/com/ssi/syi/ist/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ssi/syi/ist/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 16,
+      "tables": [
+        "COMTNCNTCINSTT",
         "COMTNCNTCSERVICE",
         "COMTNCNTCSYSTEM",
         "COMTNSYSTEMCNTC",
@@ -825,20 +1305,32 @@
       ],
       "docs": [
         {
-          "path": "common-component/system-service-linkage/linkage-org-manage.md",
-          "title": "연계기관관리"
-        },
-        {
-          "path": "common-component/system-service-linkage/linkage-message-manage.md",
-          "title": "연계메시지관리"
-        },
+          "path": "common-component/system-service-linkage/linkage-status-manage.md",
+          "title": "연계현황관리"
+        }
+      ]
+    },
+    {
+      "id": "ssi.syi.sim",
+      "name": "ssi.syi.sim",
+      "category": "ssi",
+      "description": "egovframework/com/ssi/syi/sim 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/ssi/syi/sim/",
+        "src/main/resources/egovframework/mapper/com/ssi/syi/sim/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/ssi/syi/sim/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNSYSTEMCNTC"
+      ],
+      "docs": [
         {
           "path": "common-component/system-service-linkage/system-linkage-manage.md",
           "title": "시스템연계관리"
-        },
-        {
-          "path": "common-component/system-service-linkage/linkage-status-manage.md",
-          "title": "연계현황관리"
         }
       ]
     },
@@ -913,7 +1405,7 @@
     },
     {
       "id": "sts.dst",
-      "name": "sts.dst",
+      "name": "자료이용현황 통계",
       "category": "sts",
       "description": "egovframework/com/sts/dst 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -941,7 +1433,7 @@
     },
     {
       "id": "sts.rst",
-      "name": "sts.rst",
+      "name": "보고서통계",
       "category": "sts",
       "description": "egovframework/com/sts/rst 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
@@ -1046,7 +1538,7 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 56,
+      "approxFiles": 55,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTNBATCHOPERT",
@@ -1058,6 +1550,43 @@
         {
           "path": "common-component/system-management/batch-job-management.md",
           "title": "배치작업관리"
+        },
+        {
+          "path": "common-component/system-management/schedule-processing.md",
+          "title": "스케줄처리"
+        },
+        {
+          "path": "common-component/system-management/batch-result-management.md",
+          "title": "배치결과관리"
+        }
+      ],
+      "children": [
+        "sym.bat.validation"
+      ]
+    },
+    {
+      "id": "sym.bat.validation",
+      "name": "sym.bat.validation",
+      "category": "sym",
+      "description": "egovframework/com/sym/bat/validation 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/bat/validation/",
+        "src/main/resources/egovframework/mapper/com/sym/bat/validation/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/bat/validation/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/system-management/batch-job-management.md",
+          "title": "배치작업관리"
+        },
+        {
+          "path": "common-component/system-management/schedule-processing.md",
+          "title": "스케줄처리"
         },
         {
           "path": "common-component/system-management/batch-result-management.md",
@@ -1087,39 +1616,169 @@
         {
           "path": "common-component/elementary-technology/calendar.md",
           "title": "달력"
+        },
+        {
+          "path": "common-component/elementary-technology/holiday-management.md",
+          "title": "공휴일관리(달력)"
         }
       ]
     },
     {
       "id": "sym.ccm",
-      "name": "공통코드 관리",
+      "name": "공통코드 관리 (그룹)",
       "category": "sym",
-      "description": "egovframework/com/sym/ccm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/sym/ccm 하위 컴포넌트 7종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 143,
+      "children": [
+        "sym.ccm.acr",
+        "sym.ccm.adc",
+        "sym.ccm.cca",
+        "sym.ccm.ccc",
+        "sym.ccm.cde",
+        "sym.ccm.icr",
+        "sym.ccm.zip"
+      ],
+      "docs": []
+    },
+    {
+      "id": "sym.ccm.acr",
+      "name": "sym.ccm.acr",
+      "category": "sym",
+      "description": "egovframework/com/sym/ccm/acr 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/sym/ccm/",
-        "src/main/resources/egovframework/mapper/com/sym/ccm/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/"
+        "src/main/java/egovframework/com/sym/ccm/acr/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/acr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/acr/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 143,
+      "approxFiles": 17,
       "tables": [
         "COMTCADMINISTCODE",
-        "COMTCADMINISTCODERECPTNLOG",
-        "COMTCCMMNCLCODE",
-        "COMTCCMMNCODE",
-        "COMTCCMMNDETAILCODE",
-        "COMTCZIP",
-        "COMTNINSTTCODE",
-        "COMTNINSTTCODERECPTNLOG",
-        "COMTRDNMADRZIP"
+        "COMTCADMINISTCODERECPTNLOG"
       ],
       "docs": [
         {
           "path": "common-component/system-management/legal-dong-code.md",
           "title": "법정동코드"
-        },
+        }
+      ]
+    },
+    {
+      "id": "sym.ccm.adc",
+      "name": "sym.ccm.adc",
+      "category": "sym",
+      "description": "egovframework/com/sym/ccm/adc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/ccm/adc/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/adc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/adc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 20,
+      "tables": [
+        "COMTCADMINISTCODE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/admin-code-management.md",
+          "title": "행정코드관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.ccm.cca",
+      "name": "sym.ccm.cca",
+      "category": "sym",
+      "description": "egovframework/com/sym/ccm/cca 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/ccm/cca/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/cca/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/cca/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTCCMMNCLCODE",
+        "COMTCCMMNCODE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/common-code.md",
+          "title": "공통코드"
+        }
+      ]
+    },
+    {
+      "id": "sym.ccm.ccc",
+      "name": "sym.ccm.ccc",
+      "category": "sym",
+      "description": "egovframework/com/sym/ccm/ccc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/ccm/ccc/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/ccc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/ccc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTCCMMNCLCODE"
+      ],
+      "docs": []
+    },
+    {
+      "id": "sym.ccm.cde",
+      "name": "sym.ccm.cde",
+      "category": "sym",
+      "description": "egovframework/com/sym/ccm/cde 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/ccm/cde/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/cde/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/cde/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTCCMMNCODE",
+        "COMTCCMMNDETAILCODE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/common-detail-code.md",
+          "title": "공통상세코드"
+        }
+      ]
+    },
+    {
+      "id": "sym.ccm.icr",
+      "name": "sym.ccm.icr",
+      "category": "sym",
+      "description": "egovframework/com/sym/ccm/icr 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/ccm/icr/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/icr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/icr/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNINSTTCODE",
+        "COMTNINSTTCODERECPTNLOG"
+      ],
+      "docs": [
         {
           "path": "common-component/system-management/org-code.md",
           "title": "기관코드"
@@ -1127,49 +1786,173 @@
       ]
     },
     {
-      "id": "sym.log",
-      "name": "시스템 로그 관리",
+      "id": "sym.ccm.zip",
+      "name": "sym.ccm.zip",
       "category": "sym",
-      "description": "egovframework/com/sym/log 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/sym/ccm/zip 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/sym/log/",
-        "src/main/resources/egovframework/mapper/com/sym/log/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/"
+        "src/main/java/egovframework/com/sym/ccm/zip/",
+        "src/main/resources/egovframework/mapper/com/sym/ccm/zip/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/ccm/zip/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 118,
+      "approxFiles": 35,
       "tables": [
-        "COMTCCMMNDETAILCODE",
-        "COMTHSYSHIST",
-        "COMTNLOGINLOG",
-        "COMTNPRIVACYLOG",
-        "COMTNSYSLOG",
-        "COMTNTRSMRCVLOG",
-        "COMTNUSERLOG",
-        "COMTNWEBLOG",
-        "COMTSSYSLOGSUMMARY",
-        "COMTSTRSMRCVLOGSUMMARY",
-        "COMTSWEBLOGSUMMARY"
+        "COMTCZIP",
+        "COMTRDNMADRZIP"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/zipcode-management.md",
+          "title": "우편번호관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.log",
+      "name": "시스템 로그 관리 (그룹)",
+      "category": "sym",
+      "description": "egovframework/com/sym/log 하위 컴포넌트 7종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 118,
+      "children": [
+        "sym.log.clg",
+        "sym.log.lgm",
+        "sym.log.plg",
+        "sym.log.slg",
+        "sym.log.tlg",
+        "sym.log.ulg",
+        "sym.log.wlg"
       ],
       "docs": [
         {
           "path": "common-component/system-management/privacy-log-management.md",
           "title": "개인정보조회로그관리"
-        },
-        {
-          "path": "common-component/system-management/web-log-management.md",
-          "title": "웹로그관리"
-        },
-        {
-          "path": "common-component/system-management/log-management.md",
-          "title": "로그관리"
-        },
+        }
+      ]
+    },
+    {
+      "id": "sym.log.clg",
+      "name": "관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/log/clg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/log/clg/",
+        "src/main/resources/egovframework/mapper/com/sym/log/clg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/clg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 16,
+      "tables": [
+        "COMTNLOGINLOG"
+      ],
+      "docs": [
         {
           "path": "common-component/system-management/access-log-management.md",
           "title": "접속로그관리"
-        },
+        }
+      ]
+    },
+    {
+      "id": "sym.log.lgm",
+      "name": "로그관리(시스템)",
+      "category": "sym",
+      "description": "egovframework/com/sym/log/lgm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/log/lgm/",
+        "src/main/resources/egovframework/mapper/com/sym/log/lgm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/lgm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNSYSLOG",
+        "COMTSSYSLOGSUMMARY"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/log-management.md",
+          "title": "로그관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.log.plg",
+      "name": "관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/log/plg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/log/plg/",
+        "src/main/resources/egovframework/mapper/com/sym/log/plg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/plg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNPRIVACYLOG"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/privacy-log-management.md",
+          "title": "개인정보조회로그관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.log.slg",
+      "name": "이력관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/log/slg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/log/slg/",
+        "src/main/resources/egovframework/mapper/com/sym/log/slg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/slg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTHSYSHIST"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/system-history-management.md",
+          "title": "시스템 이력관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.log.tlg",
+      "name": "관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/log/tlg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/log/tlg/",
+        "src/main/resources/egovframework/mapper/com/sym/log/tlg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/tlg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNTRSMRCVLOG",
+        "COMTSTRSMRCVLOGSUMMARY"
+      ],
+      "docs": [
         {
           "path": "common-component/system-management/send-receive-log-management.md",
           "title": "송/수신 로그관리"
@@ -1177,29 +1960,180 @@
       ]
     },
     {
-      "id": "sym.mnu",
-      "name": "메뉴 관리",
+      "id": "sym.log.ulg",
+      "name": "관리",
       "category": "sym",
-      "description": "egovframework/com/sym/mnu 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/sym/log/ulg 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/sym/mnu/",
-        "src/main/resources/egovframework/mapper/com/sym/mnu/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/mnu/"
+        "src/main/java/egovframework/com/sym/log/ulg/",
+        "src/main/resources/egovframework/mapper/com/sym/log/ulg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/ulg/"
       ],
       "dependsOn": [
         "cmm"
       ],
+      "approxFiles": 16,
+      "tables": [
+        "COMTNSYSLOG",
+        "COMTNUSERLOG"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/use-log-management.md",
+          "title": "사용로그관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.log.wlg",
+      "name": "관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/log/wlg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/log/wlg/",
+        "src/main/resources/egovframework/mapper/com/sym/log/wlg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/log/wlg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNWEBLOG",
+        "COMTSWEBLOGSUMMARY"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/web-log-management.md",
+          "title": "웹로그관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.mnu",
+      "name": "메뉴 관리 (그룹)",
+      "category": "sym",
+      "description": "egovframework/com/sym/mnu 하위 컴포넌트 4종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
       "approxFiles": 91,
+      "children": [
+        "sym.mnu.bmm",
+        "sym.mnu.mcm",
+        "sym.mnu.mpm",
+        "sym.mnu.stm"
+      ],
+      "docs": []
+    },
+    {
+      "id": "sym.mnu.bmm",
+      "name": "정보",
+      "category": "sym",
+      "description": "egovframework/com/sym/mnu/bmm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/mnu/bmm/",
+        "src/main/resources/egovframework/mapper/com/sym/mnu/bmm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/mnu/bmm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTNBKMKMENUMANAGERESULT",
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNMENUCREATDTLS",
+        "COMTNMENUINFO",
+        "COMTNPROGRMLIST"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/shortcut-menu.md",
+          "title": "바로가기메뉴관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.mnu.mcm",
+      "name": "sym.mnu.mcm",
+      "category": "sym",
+      "description": "egovframework/com/sym/mnu/mcm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/mnu/mcm/",
+        "src/main/resources/egovframework/mapper/com/sym/mnu/mcm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/mnu/mcm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 27,
       "tables": [
         "COMTNAUTHORINFO",
-        "COMTNBKMKMENUMANAGERESULT",
         "COMTNEMPLYRSCRTYESTBS",
         "COMTNMENUCREATDTLS",
         "COMTNMENUINFO",
         "COMTNPROGRMLIST",
         "COMTNSITEMAP"
       ],
-      "docs": []
+      "docs": [
+        {
+          "path": "common-component/system-management/menu-creation.md",
+          "title": "메뉴생성관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.mnu.mpm",
+      "name": "sym.mnu.mpm",
+      "category": "sym",
+      "description": "egovframework/com/sym/mnu/mpm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/mnu/mpm/",
+        "src/main/resources/egovframework/mapper/com/sym/mnu/mpm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/mnu/mpm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 30,
+      "tables": [
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNMENUCREATDTLS",
+        "COMTNMENUINFO",
+        "COMTNPROGRMLIST"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/menu-management.md",
+          "title": "메뉴관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.mnu.stm",
+      "name": "sym.mnu.stm",
+      "category": "sym",
+      "description": "egovframework/com/sym/mnu/stm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/mnu/stm/",
+        "src/main/resources/egovframework/mapper/com/sym/mnu/stm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/mnu/stm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15,
+      "tables": [
+        "COMTNEMPLYRSCRTYESTBS",
+        "COMTNMENUCREATDTLS",
+        "COMTNSITEMAP"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/sitemap.md",
+          "title": "사이트맵"
+        }
+      ]
     },
     {
       "id": "sym.prm",
@@ -1219,53 +2153,188 @@
         "COMTHPROGRMCHANGEDTLS",
         "COMTNPROGRMLIST"
       ],
-      "docs": []
+      "docs": [
+        {
+          "path": "common-component/system-management/program-management.md",
+          "title": "프로그램관리"
+        }
+      ]
     },
     {
       "id": "sym.sym",
-      "name": "sym.sym",
+      "name": "sym.sym (그룹)",
       "category": "sym",
-      "description": "egovframework/com/sym/sym 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/sym/sym 하위 컴포넌트 4종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 82,
+      "children": [
+        "sym.sym.bak",
+        "sym.sym.bak.validation",
+        "sym.sym.nwk",
+        "sym.sym.srv"
+      ],
+      "docs": []
+    },
+    {
+      "id": "sym.sym.bak",
+      "name": "백업작업관리",
+      "category": "sym",
+      "description": "egovframework/com/sym/sym/bak 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/sym/sym/",
-        "src/main/resources/egovframework/mapper/com/sym/sym/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/sym/"
+        "src/main/java/egovframework/com/sym/sym/bak/",
+        "src/main/resources/egovframework/mapper/com/sym/sym/bak/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/sym/bak/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 82,
+      "approxFiles": 36,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTNBACKUPOPERT",
         "COMTNBACKUPRESULT",
-        "COMTNBACKUPSCHDULDFK",
-        "COMTNNTWRKINFO",
-        "COMTNSERVEREQPMNINFO",
-        "COMTNSERVEREQPMNRELATE",
-        "COMTNSERVERINFO"
+        "COMTNBACKUPSCHDULDFK"
       ],
-      "docs": []
+      "docs": [
+        {
+          "path": "common-component/system-management/backup-management.md",
+          "title": "백업관리"
+        }
+      ]
     },
     {
-      "id": "sym.tbm",
-      "name": "sym.tbm",
+      "id": "sym.sym.bak.validation",
+      "name": "sym.sym.bak.validation",
       "category": "sym",
-      "description": "egovframework/com/sym/tbm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/sym/sym/bak/validation 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/sym/tbm/",
-        "src/main/resources/egovframework/mapper/com/sym/tbm/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/tbm/"
+        "src/main/java/egovframework/com/sym/sym/bak/validation/",
+        "src/main/resources/egovframework/mapper/com/sym/sym/bak/validation/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/sym/bak/validation/"
       ],
       "dependsOn": [
         "cmm"
       ],
+      "approxFiles": 1,
+      "tables": [],
+      "docs": []
+    },
+    {
+      "id": "sym.sym.nwk",
+      "name": "네트워크",
+      "category": "sym",
+      "description": "egovframework/com/sym/sym/nwk 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/sym/nwk/",
+        "src/main/resources/egovframework/mapper/com/sym/sym/nwk/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/sym/nwk/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNNTWRKINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/network-management.md",
+          "title": "네트워크관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.sym.srv",
+      "name": "서버정보",
+      "category": "sym",
+      "description": "egovframework/com/sym/sym/srv 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/sym/srv/",
+        "src/main/resources/egovframework/mapper/com/sym/sym/srv/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/sym/srv/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 27,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNSERVEREQPMNINFO",
+        "COMTNSERVEREQPMNRELATE",
+        "COMTNSERVERINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/server-info-management.md",
+          "title": "서버정보관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.tbm",
+      "name": "sym.tbm (그룹)",
+      "category": "sym",
+      "description": "egovframework/com/sym/tbm 하위 컴포넌트 2종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
       "approxFiles": 34,
+      "children": [
+        "sym.tbm.tbp",
+        "sym.tbm.tbr"
+      ],
+      "docs": []
+    },
+    {
+      "id": "sym.tbm.tbp",
+      "name": "장애처리결과정보",
+      "category": "sym",
+      "description": "egovframework/com/sym/tbm/tbp 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/tbm/tbp/",
+        "src/main/resources/egovframework/mapper/com/sym/tbm/tbp/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/tbm/tbp/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 16,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTNTROBLINFO"
       ],
-      "docs": []
+      "docs": [
+        {
+          "path": "common-component/system-management/error-result.md",
+          "title": "장애처리결과관리"
+        }
+      ]
+    },
+    {
+      "id": "sym.tbm.tbr",
+      "name": "장애신청정보",
+      "category": "sym",
+      "description": "egovframework/com/sym/tbm/tbr 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/sym/tbm/tbr/",
+        "src/main/resources/egovframework/mapper/com/sym/tbm/tbr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/sym/tbm/tbr/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNTROBLINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/system-management/error-application.md",
+          "title": "장애신청관리"
+        }
+      ]
     },
     {
       "id": "uat.sso",
@@ -1280,7 +2349,27 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 3,
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [],
+      "children": [
+        "uat.sso.filter"
+      ]
+    },
+    {
+      "id": "uat.sso.filter",
+      "name": "uat.sso.filter",
+      "category": "uat",
+      "description": "egovframework/com/uat/sso/filter 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uat/sso/filter/",
+        "src/main/resources/egovframework/mapper/com/uat/sso/filter/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/sso/filter/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2,
       "tables": [],
       "docs": []
     },
@@ -1297,7 +2386,7 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 18,
+      "approxFiles": 17,
       "tables": [
         "COMTNLOGINPOLICY"
       ],
@@ -1306,27 +2395,48 @@
           "path": "common-component/user-authentication/login-policy-management.md",
           "title": "로그인정책관리"
         }
+      ],
+      "children": [
+        "uat.uap.filter"
       ]
     },
     {
-      "id": "login",
-      "name": "로그인/인증 (uat.uia)",
+      "id": "uat.uap.filter",
+      "name": "uat.uap.filter",
       "category": "uat",
-      "description": "일반·Spring Security 로그인 처리 사용자인증 컴포넌트",
+      "description": "egovframework/com/uat/uap/filter 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/uat/uia/",
-        "src/main/resources/egovframework/mapper/com/uat/uia/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/uia/"
+        "src/main/java/egovframework/com/uat/uap/filter/",
+        "src/main/resources/egovframework/mapper/com/uat/uap/filter/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/uap/filter/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 31,
-      "tables": [
-        "COMTNEMPLYRINFO",
-        "COMTNENTRPRSMBER",
-        "COMTNGNRLMBER"
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-authentication/login-policy-management.md",
+          "title": "로그인정책관리"
+        }
+      ]
+    },
+    {
+      "id": "uat.uia.filter",
+      "name": "uat.uia.filter",
+      "category": "uat",
+      "description": "egovframework/com/uat/uia/filter 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uat/uia/filter/",
+        "src/main/resources/egovframework/mapper/com/uat/uia/filter/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uat/uia/filter/"
       ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2,
+      "tables": [],
       "docs": [
         {
           "path": "common-component/user-authentication/certificate-login.md",
@@ -1339,10 +2449,6 @@
         {
           "path": "common-component/security/pw_expiration_management.md",
           "title": "pw_expiration_management.md"
-        },
-        {
-          "path": "common-component/user-authentication/sso_service.md",
-          "title": "sso_service.md"
         }
       ]
     },
@@ -1372,69 +2478,264 @@
     },
     {
       "id": "uss.ion",
-      "name": "uss.ion",
+      "name": "uss.ion (그룹)",
       "category": "uss",
-      "description": "egovframework/com/uss/ion 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/uss/ion 하위 컴포넌트 34종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 567,
+      "children": [
+        "uss.ion.ans",
+        "uss.ion.ans.example",
+        "uss.ion.bnr",
+        "uss.ion.bnt",
+        "uss.ion.bnt.example",
+        "uss.ion.ctn",
+        "uss.ion.ecc",
+        "uss.ion.evt",
+        "uss.ion.fbk",
+        "uss.ion.isg",
+        "uss.ion.ism",
+        "uss.ion.lsi",
+        "uss.ion.msi",
+        "uss.ion.mtg",
+        "uss.ion.noi",
+        "uss.ion.ntm",
+        "uss.ion.ntr",
+        "uss.ion.nts",
+        "uss.ion.nws",
+        "uss.ion.pwm",
+        "uss.ion.pwm.sample",
+        "uss.ion.rec",
+        "uss.ion.rmm",
+        "uss.ion.rsm",
+        "uss.ion.rsn",
+        "uss.ion.rss",
+        "uss.ion.rwd",
+        "uss.ion.sit",
+        "uss.ion.tir",
+        "uss.ion.uas",
+        "uss.ion.ulm",
+        "uss.ion.vct",
+        "uss.ion.wik.bmk",
+        "uss.ion.yrc"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
+        },
+        {
+          "path": "common-component/user-support/vacation-management.md",
+          "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ans",
+      "name": "기념일관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ans 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/uss/ion/",
-        "src/main/resources/egovframework/mapper/com/uss/ion/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/"
+        "src/main/java/egovframework/com/uss/ion/ans/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ans/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ans/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 567,
+      "approxFiles": 21,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTNANNVRSRYMANAGE",
-        "COMTNBANNER",
-        "COMTNBNDTCECKMANAGE",
-        "COMTNBNDTDIARY",
-        "COMTNBNDTMANAGE",
-        "COMTNCTSNNMANAGE",
-        "COMTNEMPLYRINFO",
-        "COMTNEVENTATDRN",
-        "COMTNEVENTINFO",
-        "COMTNEVENTMANAGE",
-        "COMTNEXTRLHRINFO",
-        "COMTNFILEDETAIL",
-        "COMTNGNRLMBER",
-        "COMTNINDVDLYRYCMANAGE",
-        "COMTNINFRMLSANCTN",
-        "COMTNINTNETSVC",
-        "COMTNLOGINSCRINIMAGE",
-        "COMTNMAINIMAGE",
-        "COMTNMTGPLACEMANAGE",
-        "COMTNMTGPLACERESVE",
-        "COMTNNEWSINFO",
-        "COMTNNOTE",
-        "COMTNNOTERECPTN",
-        "COMTNNOTETRNSMIT",
-        "COMTNNTFCINFO",
-        "COMTNORGNZTINFO",
-        "COMTNPOPUPMANAGE",
-        "COMTNRECENTSRCHWRD",
-        "COMTNRECENTSRCHWRDMANAGE",
-        "COMTNRECOMENDSITEINFO",
-        "COMTNROUGHMAP",
-        "COMTNRSS",
-        "COMTNRWARDMANAGE",
-        "COMTNSITELIST",
-        "COMTNTWITTER",
-        "COMTNUNITYLINK",
-        "COMTNUSERABSNCE",
-        "COMTNVCATNMANAGE",
-        "COMTNWIKIBKMK"
+        "COMTNORGNZTINFO"
       ],
       "docs": [
         {
           "path": "common-component/user-support/anniversary.md",
           "title": "기념일관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ans.example",
+      "name": "uss.ion.ans.example",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ans/example 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/ans/example/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ans/example/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ans/example/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
         },
         {
           "path": "common-component/user-support/vacation-management.md",
           "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.bnr",
+      "name": "배너",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/bnr 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/bnr/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/bnr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/bnr/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNBANNER",
+        "COMTNFILEDETAIL"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/banner-management.md",
+          "title": "배너관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.bnt",
+      "name": "당직관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/bnt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/bnt/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/bnt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/bnt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 27,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNBNDTCECKMANAGE",
+        "COMTNBNDTDIARY",
+        "COMTNBNDTMANAGE",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/duty-management.md",
+          "title": "당직관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.bnt.example",
+      "name": "uss.ion.bnt.example",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/bnt/example 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/bnt/example/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/bnt/example/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/bnt/example/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 2,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
         },
+        {
+          "path": "common-component/user-support/vacation-management.md",
+          "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ctn",
+      "name": "경조관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ctn 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/ctn/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ctn/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ctn/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNCTSNNMANAGE",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/staff-event.md",
+          "title": "직원경조사관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ecc",
+      "name": "uss.ion.ecc",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ecc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/ecc/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ecc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ecc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 23,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEMPLYRINFO",
+        "COMTNEVENTINFO",
+        "COMTNEXTRLHRINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/event-campaign.md",
+          "title": "행사/이벤트/캠페인"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.evt",
+      "name": "행사관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/evt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/evt/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/evt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/evt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 25,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEVENTATDRN",
+        "COMTNEVENTMANAGE",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
         {
           "path": "common-component/user-support/event-application.md",
           "title": "행사신청관리"
@@ -1442,10 +2743,677 @@
         {
           "path": "common-component/user-support/event-reception.md",
           "title": "행사접수관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.fbk",
+      "name": "uss.ion.fbk",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/fbk 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/fbk/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/fbk/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/fbk/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 6,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-support/facebook-integration.md",
+          "title": "Facebook 연동"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.isg",
+      "name": "인터넷",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/isg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/isg/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/isg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/isg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNINTNETSVC"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/internet-service-guide.md",
+          "title": "인터넷서비스안내및관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ism",
+      "name": "약식결재관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ism 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/ism/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ism/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ism/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 24,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEMPLYRINFO",
+        "COMTNINFRMLSANCTN",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
         },
+        {
+          "path": "common-component/user-support/vacation-management.md",
+          "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.lsi",
+      "name": "로그인화면이미지",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/lsi 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/lsi/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/lsi/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/lsi/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 16,
+      "tables": [
+        "COMTNFILEDETAIL",
+        "COMTNLOGINSCRINIMAGE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/login-image.md",
+          "title": "로그인화면이미지관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.msi",
+      "name": "메인화면이미지",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/msi 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/msi/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/msi/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/msi/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNFILEDETAIL",
+        "COMTNMAINIMAGE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/main-image.md",
+          "title": "메인이미지관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.mtg",
+      "name": "회의실관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/mtg 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/mtg/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/mtg/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/mtg/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 24,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNMTGPLACEMANAGE",
+        "COMTNMTGPLACERESVE",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/meeting-room-reservation.md",
+          "title": "회의실예약관리"
+        },
+        {
+          "path": "common-component/user-support/meeting-room.md",
+          "title": "회의실관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.noi",
+      "name": "정보알림이",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/noi 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/noi/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/noi/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/noi/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNNTFCINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/info-notifier.md",
+          "title": "정보알림이"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ntm",
+      "name": "관리(보내기)",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ntm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/ntm/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ntm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ntm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNNOTE",
+        "COMTNNOTERECPTN",
+        "COMTNNOTETRNSMIT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/message-management.md",
+          "title": "쪽지관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ntr",
+      "name": "받은쪽지함관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ntr 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/ntr/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ntr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ntr/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNNOTE",
+        "COMTNNOTERECPTN",
+        "COMTNNOTETRNSMIT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/received-message.md",
+          "title": "받은쪽지함관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.nts",
+      "name": "보낸쪽지함관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/nts 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/nts/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/nts/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/nts/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 16,
+      "tables": [
+        "COMTNNOTE",
+        "COMTNNOTERECPTN",
+        "COMTNNOTETRNSMIT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/sent-message.md",
+          "title": "보낸쪽지함관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.nws",
+      "name": "uss.ion.nws",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/nws 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/nws/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/nws/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/nws/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNNEWSINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/news-management.md",
+          "title": "뉴스관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.pwm",
+      "name": "팝업창",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/pwm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/pwm/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/pwm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/pwm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNPOPUPMANAGE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/popup-management.md",
+          "title": "팝업창관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.pwm.sample",
+      "name": "uss.ion.pwm.sample",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/pwm/sample 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/pwm/sample/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/pwm/sample/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/pwm/sample/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
+        },
+        {
+          "path": "common-component/user-support/vacation-management.md",
+          "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.rec",
+      "name": "uss.ion.rec",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/rec 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/rec/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/rec/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/rec/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNRECOMENDSITEINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/recommended-site.md",
+          "title": "추천사이트관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.rmm",
+      "name": "위치정보연계",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/rmm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/rmm/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/rmm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/rmm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNROUGHMAP"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/map-management.md",
+          "title": "약도관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.rsm",
+      "name": "최근검색어",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/rsm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/rsm/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/rsm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/rsm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTNRECENTSRCHWRD",
+        "COMTNRECENTSRCHWRDMANAGE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/recent-keyword.md",
+          "title": "최근검색어조회"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.rsn",
+      "name": "서비스",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/rsn 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/rsn/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/rsn/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/rsn/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15,
+      "tables": [
+        "COMTNRSS"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
+        },
+        {
+          "path": "common-component/user-support/vacation-management.md",
+          "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.rss",
+      "name": "태그관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/rss 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/rss/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/rss/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/rss/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNRSS"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
+        },
+        {
+          "path": "common-component/user-support/vacation-management.md",
+          "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.rwd",
+      "name": "포상관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/rwd 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/rwd/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/rwd/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/rwd/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 20,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNORGNZTINFO",
+        "COMTNRWARDMANAGE",
+        "COMTNVCATNMANAGE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/award-management.md",
+          "title": "포상관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.sit",
+      "name": "uss.ion.sit",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/sit 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/sit/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/sit/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/sit/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNSITELIST"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/site-management.md",
+          "title": "사이트관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.tir",
+      "name": "발급",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/tir 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/tir/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/tir/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/tir/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 20,
+      "tables": [
+        "COMTNTWITTER"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/twitter-integration.md",
+          "title": "Twitter연동"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.uas",
+      "name": "사용자부재",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/uas 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/uas/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/uas/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/uas/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNUSERABSNCE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/user-absence.md",
+          "title": "사용자부재관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.ulm",
+      "name": "통합링크관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/ulm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/ulm/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/ulm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/ulm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNUNITYLINK"
+      ],
+      "docs": [
         {
           "path": "common-component/user-support/integrated-link.md",
           "title": "통합링크관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.vct",
+      "name": "휴가관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/vct 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/vct/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/vct/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/vct/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNINDVDLYRYCMANAGE",
+        "COMTNORGNZTINFO",
+        "COMTNVCATNMANAGE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/rss-tag.md",
+          "title": "RSS태그관리"
+        },
+        {
+          "path": "common-component/user-support/vacation-management.md",
+          "title": "휴가관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.wik.bmk",
+      "name": "위키북마크",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/wik/bmk 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/wik/bmk/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/wik/bmk/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/wik/bmk/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNWIKIBKMK"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/wiki.md",
+          "title": "Wiki기능"
+        }
+      ]
+    },
+    {
+      "id": "uss.ion.yrc",
+      "name": "개인연차관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/ion/yrc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/ion/yrc/",
+        "src/main/resources/egovframework/mapper/com/uss/ion/yrc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/ion/yrc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 15,
+      "tables": [
+        "COMTNGNRLMBER",
+        "COMTNINDVDLYRYCMANAGE"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/personal-annual-leave.md",
+          "title": "개인연차관리"
         }
       ]
     },
@@ -1466,50 +3434,101 @@
       "tables": [
         "COMTNINDVDLPGECNTNTS"
       ],
-      "docs": []
+      "docs": [
+        {
+          "path": "common-component/user-support/mypage.md",
+          "title": "마이페이지"
+        }
+      ]
     },
     {
       "id": "uss.olh",
-      "name": "uss.olh",
+      "name": "uss.olh (그룹)",
       "category": "uss",
-      "description": "egovframework/com/uss/olh 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/uss/olh 하위 컴포넌트 7종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 116,
+      "children": [
+        "uss.olh.awm",
+        "uss.olh.faq",
+        "uss.olh.hpc",
+        "uss.olh.omm",
+        "uss.olh.omn",
+        "uss.olh.qna",
+        "uss.olh.wor"
+      ],
+      "docs": []
+    },
+    {
+      "id": "uss.olh.awm",
+      "name": "uss.olh.awm",
+      "category": "uss",
+      "description": "egovframework/com/uss/olh/awm 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/uss/olh/",
-        "src/main/resources/egovframework/mapper/com/uss/olh/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/"
+        "src/main/java/egovframework/com/uss/olh/awm/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/awm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/awm/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 116,
+      "approxFiles": 19,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTNADMINISTRATIONWORD",
-        "COMTNEMPLYRINFO",
-        "COMTNFAQINFO",
-        "COMTNHPCMINFO",
-        "COMTNONLINEMANUAL",
-        "COMTNORGNZTINFO",
-        "COMTNQAINFO",
-        "COMTNWORDDICARYINFO"
+        "COMTNEMPLYRINFO"
       ],
       "docs": [
         {
           "path": "common-component/user-support/admin-terminology.md",
           "title": "행정전문용어사전관리"
-        },
-        {
-          "path": "common-component/user-support/online-manual.md",
-          "title": "온라인매뉴얼"
-        },
+        }
+      ]
+    },
+    {
+      "id": "uss.olh.faq",
+      "name": "uss.olh.faq",
+      "category": "uss",
+      "description": "egovframework/com/uss/olh/faq 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olh/faq/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/faq/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/faq/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNFAQINFO"
+      ],
+      "docs": [
         {
           "path": "common-component/user-support/faq-management.md",
           "title": "FAQ관리"
-        },
-        {
-          "path": "common-component/user-support/glossary.md",
-          "title": "용어사전"
-        },
+        }
+      ]
+    },
+    {
+      "id": "uss.olh.hpc",
+      "name": "uss.olh.hpc",
+      "category": "uss",
+      "description": "egovframework/com/uss/olh/hpc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olh/hpc/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/hpc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/hpc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNHPCMINFO"
+      ],
+      "docs": [
         {
           "path": "common-component/user-support/help.md",
           "title": "도움말"
@@ -1517,29 +3536,324 @@
       ]
     },
     {
-      "id": "uss.olp",
-      "name": "uss.olp",
+      "id": "uss.olh.omm",
+      "name": "uss.olh.omm",
       "category": "uss",
-      "description": "egovframework/com/uss/olp 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/uss/olh/omm 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/uss/olp/",
-        "src/main/resources/egovframework/mapper/com/uss/olp/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/"
+        "src/main/java/egovframework/com/uss/olh/omm/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/omm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/omm/"
       ],
       "dependsOn": [
         "cmm"
       ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEMPLYRINFO",
+        "COMTNONLINEMANUAL"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-manual.md",
+          "title": "온라인매뉴얼"
+        }
+      ]
+    },
+    {
+      "id": "uss.olh.omn",
+      "name": "uss.olh.omn",
+      "category": "uss",
+      "description": "egovframework/com/uss/olh/omn 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olh/omn/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/omn/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/omn/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 3,
+      "tables": [],
+      "docs": []
+    },
+    {
+      "id": "uss.olh.qna",
+      "name": "uss.olh.qna",
+      "category": "uss",
+      "description": "egovframework/com/uss/olh/qna 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olh/qna/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/qna/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/qna/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 21,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNEMPLYRINFO",
+        "COMTNORGNZTINFO",
+        "COMTNQAINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/qna-management.md",
+          "title": "Q&A관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olh.wor",
+      "name": "uss.olh.wor",
+      "category": "uss",
+      "description": "egovframework/com/uss/olh/wor 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olh/wor/",
+        "src/main/resources/egovframework/mapper/com/uss/olh/wor/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olh/wor/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNWORDDICARYINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/glossary.md",
+          "title": "용어사전"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp",
+      "name": "uss.olp (그룹)",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp 하위 컴포넌트 13종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
       "approxFiles": 206,
+      "children": [
+        "uss.olp.cns",
+        "uss.olp.mgt",
+        "uss.olp.opm",
+        "uss.olp.opp",
+        "uss.olp.opr",
+        "uss.olp.qim",
+        "uss.olp.qmc",
+        "uss.olp.qnn",
+        "uss.olp.qqm",
+        "uss.olp.qri",
+        "uss.olp.qri.template",
+        "uss.olp.qrm",
+        "uss.olp.qtm"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-poll.md",
+          "title": "온라인POLL관리"
+        },
+        {
+          "path": "common-component/user-support/survey-template.md",
+          "title": "설문템플릿관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.cns",
+      "name": "상담내용",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/cns 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/cns/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/cns/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/cns/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 24,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTNCNSLTLIST",
         "COMTNEMPLYRINFO",
+        "COMTNORGNZTINFO",
+        "COMTNQAINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/counseling-management.md",
+          "title": "상담관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.mgt",
+      "name": "회의관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/mgt 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/mgt/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/mgt/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/mgt/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 22,
+      "tables": [
+        "COMTNEMPLYRINFO",
         "COMTNMTGINFO",
+        "COMTNORGNZTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/meeting-management.md",
+          "title": "회의관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.opm",
+      "name": "온라인POLL관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/opm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/opm/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/opm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/opm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTNEMPLYRINFO",
         "COMTNONLINEPOLLIEM",
         "COMTNONLINEPOLLMANAGE",
-        "COMTNONLINEPOLLRESULT",
-        "COMTNORGNZTINFO",
-        "COMTNQAINFO",
+        "COMTNONLINEPOLLRESULT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-poll.md",
+          "title": "온라인POLL관리"
+        },
+        {
+          "path": "common-component/user-support/survey-template.md",
+          "title": "설문템플릿관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.opp",
+      "name": "온라인POLL참여",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/opp 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/opp/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/opp/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/opp/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNONLINEPOLLIEM",
+        "COMTNONLINEPOLLMANAGE",
+        "COMTNONLINEPOLLRESULT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-poll.md",
+          "title": "온라인POLL관리"
+        },
+        {
+          "path": "common-component/user-support/survey-template.md",
+          "title": "설문템플릿관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.opr",
+      "name": "온라인POLL결과",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/opr 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/opr/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/opr/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/opr/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 14,
+      "tables": [
+        "COMTNEMPLYRINFO",
+        "COMTNONLINEPOLLIEM",
+        "COMTNONLINEPOLLMANAGE",
+        "COMTNONLINEPOLLRESULT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-poll.md",
+          "title": "온라인POLL관리"
+        },
+        {
+          "path": "common-component/user-support/survey-template.md",
+          "title": "설문템플릿관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qim",
+      "name": "설문항목관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qim 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qim/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qim/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qim/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTNQESTNRINFO",
+        "COMTNQUSTNRIEM",
+        "COMTNQUSTNRQESITM",
+        "COMTNQUSTNRRSPNSRESULT",
+        "COMTNQUSTNRTMPLAT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/survey-item.md",
+          "title": "설문항목관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qmc",
+      "name": "설문관리",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qmc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qmc/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qmc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qmc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
         "COMTNQESTNRINFO",
         "COMTNQUSTNRIEM",
         "COMTNQUSTNRQESITM",
@@ -1549,20 +3863,169 @@
       ],
       "docs": [
         {
-          "path": "common-component/user-support/counseling-management.md",
-          "title": "상담관리"
-        },
-        {
-          "path": "common-component/user-support/meeting-management.md",
-          "title": "회의관리"
-        },
-        {
-          "path": "common-component/user-support/survey-item.md",
-          "title": "설문항목관리"
-        },
-        {
           "path": "common-component/user-support/survey-management.md",
           "title": "설문관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qnn",
+      "name": "uss.olp.qnn",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qnn 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qnn/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qnn/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qnn/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 3,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-poll.md",
+          "title": "온라인POLL관리"
+        },
+        {
+          "path": "common-component/user-support/survey-template.md",
+          "title": "설문템플릿관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qqm",
+      "name": "설문문항",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qqm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qqm/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qqm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qqm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 19,
+      "tables": [
+        "COMTNQESTNRINFO",
+        "COMTNQUSTNRIEM",
+        "COMTNQUSTNRQESITM",
+        "COMTNQUSTNRRSPNSRESULT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/survey-question.md",
+          "title": "설문질문관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qri",
+      "name": "uss.olp.qri",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qri 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qri/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qri/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qri/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNQESTNRINFO",
+        "COMTNQUSTNRIEM",
+        "COMTNQUSTNRQESITM",
+        "COMTNQUSTNRRSPNSRESULT",
+        "COMTNQUSTNRTMPLAT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/survey.md",
+          "title": "설문조사"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qri.template",
+      "name": "uss.olp.qri.template",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qri/template 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qri/template/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qri/template/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qri/template/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-poll.md",
+          "title": "온라인POLL관리"
+        },
+        {
+          "path": "common-component/user-support/survey-template.md",
+          "title": "설문템플릿관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qrm",
+      "name": "uss.olp.qrm",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qrm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qrm/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qrm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qrm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNQESTNRINFO",
+        "COMTNQUSTNRRESPONDINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/survey-respondent.md",
+          "title": "설문응답자관리"
+        }
+      ]
+    },
+    {
+      "id": "uss.olp.qtm",
+      "name": "uss.olp.qtm",
+      "category": "uss",
+      "description": "egovframework/com/uss/olp/qtm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/olp/qtm/",
+        "src/main/resources/egovframework/mapper/com/uss/olp/qtm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/olp/qtm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNQESTNRINFO",
+        "COMTNQUSTNRIEM",
+        "COMTNQUSTNRQESITM",
+        "COMTNQUSTNRRESPONDINFO",
+        "COMTNQUSTNRRSPNSRESULT",
+        "COMTNQUSTNRTMPLAT"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/online-poll.md",
+          "title": "온라인POLL관리"
         },
         {
           "path": "common-component/user-support/survey-template.md",
@@ -1572,24 +4035,90 @@
     },
     {
       "id": "uss.sam",
-      "name": "uss.sam",
+      "name": "uss.sam (그룹)",
       "category": "uss",
-      "description": "egovframework/com/uss/sam 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/uss/sam 하위 컴포넌트 3종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 55,
+      "children": [
+        "uss.sam.cpy",
+        "uss.sam.ipm",
+        "uss.sam.stp"
+      ],
+      "docs": []
+    },
+    {
+      "id": "uss.sam.cpy",
+      "name": "uss.sam.cpy",
+      "category": "uss",
+      "description": "egovframework/com/uss/sam/cpy 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/uss/sam/",
-        "src/main/resources/egovframework/mapper/com/uss/sam/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/sam/"
+        "src/main/java/egovframework/com/uss/sam/cpy/",
+        "src/main/resources/egovframework/mapper/com/uss/sam/cpy/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/sam/cpy/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 55,
+      "approxFiles": 20,
       "tables": [
-        "COMTNCPYRHTINFO",
-        "COMTNINDVDLINFOPOLICY",
+        "COMTNCPYRHTINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/copyright-policy.md",
+          "title": "저작권보호정책"
+        }
+      ]
+    },
+    {
+      "id": "uss.sam.ipm",
+      "name": "개인정보보호정책",
+      "category": "uss",
+      "description": "egovframework/com/uss/sam/ipm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/sam/ipm/",
+        "src/main/resources/egovframework/mapper/com/uss/sam/ipm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/sam/ipm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNINDVDLINFOPOLICY"
+      ],
+      "docs": [
+        {
+          "path": "common-component/user-support/privacy-policy.md",
+          "title": "개인정보보호정책확인"
+        }
+      ]
+    },
+    {
+      "id": "uss.sam.stp",
+      "name": "약관내용",
+      "category": "uss",
+      "description": "egovframework/com/uss/sam/stp 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/sam/stp/",
+        "src/main/resources/egovframework/mapper/com/uss/sam/stp/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/sam/stp/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
         "COMTNSTPLATINFO"
       ],
-      "docs": []
+      "docs": [
+        {
+          "path": "common-component/user-support/terms-management.md",
+          "title": "약관관리"
+        }
+      ]
     },
     {
       "id": "uss.umt",
@@ -1604,7 +4133,7 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 82,
+      "approxFiles": 81,
       "tables": [
         "COMTHEMPLYRINFOCHANGEDTLS",
         "COMTNEMPLYRINFO",
@@ -1615,8 +4144,57 @@
       ],
       "docs": [
         {
+          "path": "common-component/user-support/member-management.md",
+          "title": "회원 관리"
+        },
+        {
+          "path": "common-component/user-support/user-management.md",
+          "title": "사용자 관리"
+        },
+        {
           "path": "common-component/user-support/company-member-management.md",
           "title": "기업 회원 관리"
+        },
+        {
+          "path": "common-component/user-support/user-manage.md",
+          "title": "사용자관리"
+        }
+      ],
+      "children": [
+        "uss.umt.validation"
+      ]
+    },
+    {
+      "id": "uss.umt.validation",
+      "name": "uss.umt.validation",
+      "category": "uss",
+      "description": "egovframework/com/uss/umt/validation 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/uss/umt/validation/",
+        "src/main/resources/egovframework/mapper/com/uss/umt/validation/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/uss/umt/validation/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 1,
+      "tables": [],
+      "docs": [
+        {
+          "path": "common-component/user-support/member-management.md",
+          "title": "회원 관리"
+        },
+        {
+          "path": "common-component/user-support/user-management.md",
+          "title": "사용자 관리"
+        },
+        {
+          "path": "common-component/user-support/company-member-management.md",
+          "title": "기업 회원 관리"
+        },
+        {
+          "path": "common-component/user-support/user-manage.md",
+          "title": "사용자관리"
         }
       ]
     },
@@ -1687,20 +4265,20 @@
           "title": "날짜/시간/요일 유효성체크"
         },
         {
-          "path": "common-component/elementary-technology/id-number-validation.md",
-          "title": "번호유효성체크"
+          "path": "common-component/elementary-technology/format-validation.md",
+          "title": "포맷유효성체크"
         }
       ]
     },
     {
-      "id": "utl.fda",
-      "name": "utl.fda",
+      "id": "utl.fda.ucc",
+      "name": "utl.fda.ucc",
       "category": "utl",
-      "description": "egovframework/com/utl/fda 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/utl/fda/ucc 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/utl/fda/",
-        "src/main/resources/egovframework/mapper/com/utl/fda/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/fda/"
+        "src/main/java/egovframework/com/utl/fda/ucc/",
+        "src/main/resources/egovframework/mapper/com/utl/fda/ucc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/fda/ucc/"
       ],
       "dependsOn": [
         "cmm"
@@ -1814,62 +4392,311 @@
     },
     {
       "id": "utl.sys",
-      "name": "utl.sys",
+      "name": "utl.sys (그룹)",
       "category": "utl",
-      "description": "egovframework/com/utl/sys 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "description": "egovframework/com/utl/sys 하위 컴포넌트 12종 일괄 설치 그룹",
+      "pathPrefixes": [],
+      "dependsOn": [],
+      "approxFiles": 217,
+      "children": [
+        "utl.sys.dbm",
+        "utl.sys.fsm",
+        "utl.sys.htm",
+        "utl.sys.nsm",
+        "utl.sys.prm",
+        "utl.sys.pxy",
+        "utl.sys.rsc",
+        "utl.sys.srm",
+        "utl.sys.srm.example",
+        "utl.sys.ssy",
+        "utl.sys.trm",
+        "utl.sys.wsi"
+      ],
+      "docs": []
+    },
+    {
+      "id": "utl.sys.dbm",
+      "name": "서비스모니터링관리",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/dbm 하위 소스·매퍼·JSP (자동 생성 항목)",
       "pathPrefixes": [
-        "src/main/java/egovframework/com/utl/sys/",
-        "src/main/resources/egovframework/mapper/com/utl/sys/",
-        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/"
+        "src/main/java/egovframework/com/utl/sys/dbm/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/dbm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/dbm/"
       ],
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 217,
+      "approxFiles": 23,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTHDBMNTRNGLOGINFO",
-        "COMTHHTTPMONLOGINFO",
-        "COMTHTRSMRCVMNTRNGLOGINFO",
-        "COMTNCNTCINSTT",
-        "COMTNCNTCSERVICE",
-        "COMTNCNTCSYSTEM",
-        "COMTNDBMNTRNG",
+        "COMTNDBMNTRNG"
+      ],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/db-service-monitoring.md",
+          "title": "DB서비스모니터링"
+        }
+      ]
+    },
+    {
+      "id": "utl.sys.fsm",
+      "name": "파일시스템 모니터링대상",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/fsm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/fsm/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/fsm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/fsm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 24,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
         "COMTNFILESYSMNTRNG",
-        "COMTNFILESYSMNTRNGLOGINFO",
-        "COMTNHTTPMON",
+        "COMTNFILESYSMNTRNGLOGINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/file-system-monitoring.md",
+          "title": "파일시스템모니터링"
+        }
+      ]
+    },
+    {
+      "id": "utl.sys.htm",
+      "name": "HTTP",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/htm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/htm/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/htm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/htm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 25,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTHHTTPMONLOGINFO",
+        "COMTNHTTPMON"
+      ],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/http-service-monitoring.md",
+          "title": "HTTP서비스모니터링"
+        }
+      ]
+    },
+    {
+      "id": "utl.sys.nsm",
+      "name": "네트워크",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/nsm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/nsm/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/nsm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/nsm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 25,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
         "COMTNNTWRKSVCMNTRNG",
-        "COMTNNTWRKSVCMNTRNGLOGINFO",
+        "COMTNNTWRKSVCMNTRNGLOGINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/network-service-monitoring.md",
+          "title": "네트워크서비스모니터링"
+        }
+      ]
+    },
+    {
+      "id": "utl.sys.prm",
+      "name": "PROCESS모니터링",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/prm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/prm/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/prm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/prm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 25,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
         "COMTNPROCESSMON",
-        "COMTNPROCESSMONLOGINFO",
+        "COMTNPROCESSMONLOGINFO"
+      ],
+      "docs": [
+        {
+          "path": "common-component/elementary-technology/process-monitoring.md",
+          "title": "프로세스모니터링"
+        }
+      ]
+    },
+    {
+      "id": "utl.sys.pxy",
+      "name": "프록시",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/pxy 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/pxy/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/pxy/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/pxy/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 22,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
         "COMTNPROXYINFO",
-        "COMTNPROXYLOGINFO",
-        "COMTNSERVEREQPMNINFO",
-        "COMTNSERVEREQPMNRELATE",
-        "COMTNSERVERINFO",
-        "COMTNSERVERRESRCELOGINFO",
-        "COMTNSYNCHRNSERVERINFO",
-        "COMTNSYSTEMCNTC",
-        "COMTNTRSMRCVMNTRNG"
+        "COMTNPROXYLOGINFO"
       ],
       "docs": [
         {
           "path": "common-component/elementary-technology/proxy-service.md",
           "title": "프록시서비스"
-        },
+        }
+      ]
+    },
+    {
+      "id": "utl.sys.rsc",
+      "name": "utl.sys.rsc",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/rsc 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/rsc/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/rsc/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/rsc/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 3,
+      "tables": [],
+      "docs": []
+    },
+    {
+      "id": "utl.sys.srm",
+      "name": "서버자원모니터링",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/srm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/srm/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/srm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/srm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 18,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTNSERVEREQPMNINFO",
+        "COMTNSERVEREQPMNRELATE",
+        "COMTNSERVERINFO",
+        "COMTNSERVERRESRCELOGINFO"
+      ],
+      "docs": []
+    },
+    {
+      "id": "utl.sys.srm.example",
+      "name": "utl.sys.srm.example",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/srm/example 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/srm/example/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/srm/example/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/srm/example/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 3,
+      "tables": [],
+      "docs": []
+    },
+    {
+      "id": "utl.sys.ssy",
+      "name": "동기화대상 서버",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/ssy 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/ssy/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/ssy/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/ssy/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 17,
+      "tables": [
+        "COMTNSYNCHRNSERVERINFO"
+      ],
+      "docs": [
         {
-          "path": "common-component/elementary-technology/network-service-monitoring.md",
-          "title": "네트워크서비스모니터링"
-        },
-        {
-          "path": "common-component/elementary-technology/db-service-monitoring.md",
-          "title": "DB서비스모니터링"
-        },
+          "path": "common-component/elementary-technology/file-sync.md",
+          "title": "파일동기화"
+        }
+      ]
+    },
+    {
+      "id": "utl.sys.trm",
+      "name": "송수신모니터링관리",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/trm 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/trm/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/trm/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/trm/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 27,
+      "tables": [
+        "COMTCCMMNDETAILCODE",
+        "COMTHTRSMRCVMNTRNGLOGINFO",
+        "COMTNCNTCINSTT",
+        "COMTNCNTCSERVICE",
+        "COMTNCNTCSYSTEM",
+        "COMTNSYSTEMCNTC",
+        "COMTNTRSMRCVMNTRNG"
+      ],
+      "docs": [
         {
           "path": "common-component/elementary-technology/send-receive-monitoring.md",
           "title": "송수신모니터링"
         }
       ]
+    },
+    {
+      "id": "utl.sys.wsi",
+      "name": "utl.sys.wsi",
+      "category": "utl",
+      "description": "egovframework/com/utl/sys/wsi 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/sys/wsi/",
+        "src/main/resources/egovframework/mapper/com/utl/sys/wsi/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/sys/wsi/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 5,
+      "tables": [],
+      "docs": []
     },
     {
       "id": "utl.wed",
@@ -1884,7 +4711,27 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 8,
+      "approxFiles": 3,
+      "tables": [],
+      "docs": [],
+      "children": [
+        "utl.wed.filter"
+      ]
+    },
+    {
+      "id": "utl.wed.filter",
+      "name": "utl.wed.filter",
+      "category": "utl",
+      "description": "egovframework/com/utl/wed/filter 하위 소스·매퍼·JSP (자동 생성 항목)",
+      "pathPrefixes": [
+        "src/main/java/egovframework/com/utl/wed/filter/",
+        "src/main/resources/egovframework/mapper/com/utl/wed/filter/",
+        "src/main/webapp/WEB-INF/jsp/egovframework/com/utl/wed/filter/"
+      ],
+      "dependsOn": [
+        "cmm"
+      ],
+      "approxFiles": 5,
       "tables": [],
       "docs": []
     }
