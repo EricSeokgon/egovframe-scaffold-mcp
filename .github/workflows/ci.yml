@@ -48,3 +48,6 @@ jobs:
 
       - name: Components assembly test (downloads egovframe-common-components)
         run: npm run test:components
+
+      - name: AI assembly test (downloads egovframe-ai-rag)
+        run: npm run test:ai-assembly
