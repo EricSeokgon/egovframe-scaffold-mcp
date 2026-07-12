@@ -82,12 +82,31 @@ try {
   console.log("conflict guard: OK");
 }
 
-// M1: dryRun=false는 명확한 오류
-try {
-  await planAiComponents({ projectDir: fixture, stack: "spring-ai", dryRun: false });
-  console.log("m1 dryRun-only guard: FAIL");
-} catch (e) {
-  console.log("m1 dryRun-only guard:", /M2/.test(e.message) ? "OK" : "FAIL");
+// M2 오프라인: pom 마커 삽입 위치·원복 유틸
+{
+  const { findProjectDependenciesClose, stripAiPomAdditions } = await import("../dist/index.js");
+  const pomWithDm = `<project><dependencyManagement><dependencies><dependency><groupId>a</groupId><artifactId>b</artifactId></dependency></dependencies></dependencyManagement><dependencies><dependency><groupId>c</groupId><artifactId>d</artifactId></dependency></dependencies></project>`;
+  const close = findProjectDependenciesClose(pomWithDm);
+  console.log("deps close skips dependencyManagement:", close > pomWithDm.indexOf("</dependencyManagement>"));
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ai-strip-"));
+  const marked = `<project>
+    <dependencies>
+        <!-- egovframe-scaffold-mcp:ai:x:deps:start -->
+        <dependency><groupId>g</groupId><artifactId>a</artifactId></dependency>
+        <!-- egovframe-scaffold-mcp:ai:x:deps:end -->
+    </dependencies>
+</project>
+`;
+  const clean = `<project>
+    <dependencies>
+    </dependencies>
+</project>
+`;
+  fs.writeFileSync(path.join(dir, "pom.xml"), marked);
+  const changed = stripAiPomAdditions(dir, "x");
+  console.log("strip markers:", changed === true && fs.readFileSync(path.join(dir, "pom.xml"), "utf-8") === clean);
+  fs.rmSync(dir, { recursive: true, force: true });
 }
 
 // 알 수 없는 스택
