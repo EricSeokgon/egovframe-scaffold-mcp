@@ -539,6 +539,8 @@ export interface ManifestEntry {
   installedAt: string;
   files: string[];
   sqlScripts: string[];
+  /** AI 컴포넌트가 pom에 삽입한 내역 (제거 시 마커 구간 정리용) */
+  pom?: { backup: string; addedDeps: string[]; addedProps: string[] };
 }
 
 export interface Manifest {
@@ -624,6 +626,7 @@ export async function removeComponents(opts: RemoveOptions): Promise<RemoveResul
         if (fs.existsSync(target)) fs.unlinkSync(target);
         pruneEmptyDirs(path.dirname(target), projectDir);
       }
+      if (entry.pom) stripAiPomAdditions(projectDir, id);
       delete manifest.components[id];
     }
     removed.push({ id, files: entry.files.length, sqlScripts: entry.sqlScripts.length });
@@ -666,6 +669,12 @@ export async function validateProject(opts: { projectDir: string }): Promise<Val
       if (missing.length > 0)
         warnings.push(`컴포넌트 '${id}'의 파일 ${missing.length}개가 없습니다 (수동 삭제 또는 이동 가능성)`);
       components.push({ id, files: entry.files.length, missing: missing.length, missingSamples: missing.slice(0, 5) });
+      if (entry.pom) {
+        const pomPath = path.join(projectDir, "pom.xml");
+        const pomText = fs.existsSync(pomPath) ? fs.readFileSync(pomPath, "utf-8") : "";
+        if (!pomText.includes(`egovframe-scaffold-mcp:ai:${id}:deps:start`) && entry.pom.addedDeps.length > 0)
+          warnings.push(`컴포넌트 '${id}'의 pom 삽입 마커가 없습니다 (수동 편집 가능성) — 의존성 ${entry.pom.addedDeps.length}건 확인 필요`);
+      }
     }
   } else {
     warnings.push(`설치 매니페스트(${MANIFEST_FILE})가 없습니다 — v0.5.0 이전 조립이거나 컴포넌트 미설치 프로젝트입니다`);
@@ -728,7 +737,7 @@ export async function getGuide(componentId: string, docIndex = 0): Promise<Guide
 }
 
 /* ------------------------------------------------------------------ */
-/* AI 컴포넌트 조립 (M1: dryRun 미리보기) — 설계: docs/design-ai-components.md */
+/* AI 컴포넌트 조립 (M1 미리보기 + M2 실조립) — 설계: docs/design-ai-components.md */
 /* 소스: eGovFramework/egovframe-ai-rag (Spring AI·LangChain4j RAG 샘플)   */
 /* ------------------------------------------------------------------ */
 
@@ -798,6 +807,7 @@ export interface AddAiComponentsOptions {
   includeInfra?: boolean;
   includeUi?: boolean;
   includeTests?: boolean;
+  ref?: string;
   dryRun?: boolean;
 }
 
@@ -816,19 +826,28 @@ export interface AiPlanResult {
   totalFiles: number;
   prerequisites: string[];
   nextSteps: string[];
-  dryRun: true;
+  dryRun: boolean;
 }
 
-/**
- * AI 컴포넌트 조립 계획 (M1) — dryRun 미리보기 전용.
- * 파일 복사 계획·pom 의존성 diff·호환성 게이트 결과를 네트워크 없이 반환한다.
- * 실제 조립(파일 복사 + pom 병합 + 설정 프로필화)은 M2(v0.9.0)에서 제공한다.
- */
-export async function planAiComponents(opts: AddAiComponentsOptions): Promise<AiPlanResult> {
-  if (opts.dryRun === false)
-    throw new Error(
-      "add_ai_components는 현재 dryRun 미리보기만 지원합니다 — 실제 조립은 M2(v0.9.0)에서 제공됩니다 (설계: docs/design-ai-components.md)",
-    );
+/** pom 마커 주석 — 제거 시 이 구간만 걷어내 원복한다 */
+const AI_POM_MARKER = (id: string, kind: "deps" | "props", pos: "start" | "end") =>
+  `<!-- egovframe-scaffold-mcp:ai:${id}:${kind}:${pos} -->`;
+
+interface AiPlanInternal {
+  comp: AiComponent;
+  projectDir: string;
+  compatibility: AiPlanResult["compatibility"];
+  toAddDeps: AiMavenDependency[];
+  alreadyPresent: string[];
+  toAddProps: Record<string, string>;
+  groups: (keyof AiComponent["copyGroups"])[];
+}
+
+const depCoord = (d: AiMavenDependency) =>
+  `${d.groupId}:${d.artifactId}${d.version ? ":" + d.version : ""}${d.scope ? " (" + d.scope + ")" : ""}`;
+
+/** 공통 게이트·의존성 diff·복사 그룹 계산 (dryRun/실조립 공용) */
+function computeAiPlan(opts: AddAiComponentsOptions): AiPlanInternal {
   if (!AI_STACKS.includes(opts.stack))
     throw new Error(`stack은 ${AI_STACKS.join("|")} 중 하나여야 합니다: ${String(opts.stack)}`);
 
@@ -848,14 +867,15 @@ export async function planAiComponents(opts: AddAiComponentsOptions): Promise<Ai
         );
   }
 
-  // 호환성 게이트: 부모 POM 좌표 확인 + 의존성 diff
+  // 호환성 게이트: 부모 POM 좌표 확인 + 의존성/프로퍼티 diff
   const warnings: string[] = [];
   const pomPath = path.join(projectDir, "pom.xml");
   const pomFound = fs.existsSync(pomPath);
   let parentFound: string | null = null;
   let parentOk: boolean | null = null;
-  const toAdd: string[] = [];
+  const toAddDeps: AiMavenDependency[] = [];
   const alreadyPresent: string[] = [];
+  const toAddProps: Record<string, string> = {};
   if (pomFound) {
     const pom = fs.readFileSync(pomPath, "utf-8");
     const pm = pom.match(/<parent>[\s\S]*?<\/parent>/);
@@ -873,46 +893,292 @@ export async function planAiComponents(opts: AddAiComponentsOptions): Promise<Ai
     else if (parentFound !== comp.requires.parent)
       warnings.push(`부모 POM 버전이 다릅니다(요구 ${reqV}, 발견 ${parentFound}) — BOM 관리 버전 차이를 확인하세요`);
     for (const d of comp.mavenDependencies) {
-      const coord = `${d.groupId}:${d.artifactId}${d.version ? ":" + d.version : ""}${d.scope ? " (" + d.scope + ")" : ""}`;
-      if (pom.includes(`<artifactId>${d.artifactId}</artifactId>`)) alreadyPresent.push(coord);
-      else toAdd.push(coord);
+      if (pom.includes(`<artifactId>${d.artifactId}</artifactId>`)) alreadyPresent.push(depCoord(d));
+      else toAddDeps.push(d);
     }
+    for (const [k, v] of Object.entries(comp.mavenProperties))
+      if (!pom.includes(`<${k}>`)) toAddProps[k] = v;
   } else {
     warnings.push("pom.xml이 없습니다 — Boot 백엔드 프로젝트 루트 경로인지 확인하세요");
   }
 
-  // 복사 계획: source·config 필수, ui/infra/tests는 옵션
+  // 복사 그룹: source·config 필수, ui/infra/tests는 옵션
   const groups: (keyof AiComponent["copyGroups"])[] = ["source", "config"];
   if (opts.includeUi !== false) groups.push("ui");
   if (opts.includeInfra !== false) groups.push("infra");
   if (opts.includeTests === true) groups.push("tests");
-  const copyPlan = groups.map((g) => ({ group: g, files: comp.copyGroups[g].files, paths: comp.copyGroups[g].paths }));
-  const totalFiles = copyPlan.reduce((n, g) => n + g.files, 0);
 
   return {
+    comp,
     projectDir,
-    component: { id: comp.id, name: comp.name, vectorStore: comp.vectorStore },
     compatibility: { pomFound, required: comp.requires.parent, parentFound, parentOk, warnings },
-    dependencyChanges: { toAdd, alreadyPresent },
+    toAddDeps,
+    alreadyPresent,
+    toAddProps,
+    groups,
+  };
+}
+
+/** AI 컴포넌트 조립 계획 — dryRun 미리보기 (네트워크 불필요) */
+export async function planAiComponents(opts: AddAiComponentsOptions): Promise<AiPlanResult> {
+  const p = computeAiPlan(opts);
+  const copyPlan = p.groups.map((g) => ({
+    group: g,
+    files: p.comp.copyGroups[g].files,
+    paths: p.comp.copyGroups[g].paths,
+  }));
+  return {
+    projectDir: p.projectDir,
+    component: { id: p.comp.id, name: p.comp.name, vectorStore: p.comp.vectorStore },
+    compatibility: p.compatibility,
+    dependencyChanges: { toAdd: p.toAddDeps.map(depCoord), alreadyPresent: p.alreadyPresent },
     copyPlan,
-    totalFiles,
-    prerequisites: comp.prerequisites,
-    nextSteps: [
-      "M1은 미리보기 전용입니다 — 실제 조립은 M2(v0.9.0)에서 제공됩니다",
-      "Ollama(>=0.17.1) 설치 및 LLM 모델 준비 (폐쇄망 절차는 egovframe-ai-rag README 참조)",
-      "ONNX 임베딩 모델 익스포트·배치",
-      "docker compose로 벡터 저장소(Redis Stack 또는 PGVector) 기동",
-    ],
+    totalFiles: copyPlan.reduce((n, g) => n + g.files, 0),
+    prerequisites: p.comp.prerequisites,
+    nextSteps: ["미리보기 모드입니다. 실제 조립하려면 dryRun 없이 다시 호출하세요."],
     dryRun: true,
   };
 }
 
+/** 프로세스 수명 동안 AI 샘플 zip을 1회만 내려받기 위한 캐시 */
+let aiZipCache: { key: string; zip: AdmZip } | null = null;
+
+async function downloadAiZip(repo: string, branch: string): Promise<AdmZip> {
+  const key = `${repo}@${branch}`;
+  if (aiZipCache && aiZipCache.key === key) return aiZipCache.zip;
+  const zipUrl = `https://codeload.github.com/${repo}/zip/${branch}`;
+  const res = await fetchWithTimeout(zipUrl, COMPONENTS_DOWNLOAD_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`AI 샘플 저장소 다운로드 실패 (${res.status}): ${zipUrl}`);
+  const zip = new AdmZip(Buffer.from(await res.arrayBuffer()));
+  aiZipCache = { key, zip };
+  return zip;
+}
+
+/** copyGroups 경로("src" 또는 "src -> dest")를 zip 상대경로 → 대상 상대경로 매핑으로 해석 */
+function mapAiEntry(relInModule: string, groupPaths: string[]): string | null {
+  for (const spec of groupPaths) {
+    const [src, dest] = spec.split("->").map((s) => s.trim());
+    const target = dest ?? src;
+    if (src.endsWith("/")) {
+      if (relInModule.startsWith(src)) return target + relInModule.slice(src.length);
+    } else if (relInModule === src) {
+      return target;
+    }
+  }
+  return null;
+}
+
+/** XML 의존성 블록 직렬화 (exclusions·scope·optional 보존) */
+function depToXml(d: AiMavenDependency, indent = "        "): string {
+  const i2 = indent + "    ";
+  const lines = [`${indent}<dependency>`, `${i2}<groupId>${d.groupId}</groupId>`, `${i2}<artifactId>${d.artifactId}</artifactId>`];
+  if (d.version) lines.push(`${i2}<version>${d.version}</version>`);
+  if (d.scope) lines.push(`${i2}<scope>${d.scope}</scope>`);
+  if (d.optional) lines.push(`${i2}<optional>true</optional>`);
+  if (d.exclusions?.length) {
+    lines.push(`${i2}<exclusions>`);
+    for (const e of d.exclusions)
+      lines.push(`${i2}    <exclusion>`, `${i2}        <groupId>${e.groupId}</groupId>`, `${i2}        <artifactId>${e.artifactId}</artifactId>`, `${i2}    </exclusion>`);
+    lines.push(`${i2}</exclusions>`);
+  }
+  lines.push(`${indent}</dependency>`);
+  return lines.join("\n");
+}
+
+/** dependencyManagement 밖의 프로젝트 직속 </dependencies> 위치를 찾는다 */
+export function findProjectDependenciesClose(pom: string): number {
+  const dmStart = pom.indexOf("<dependencyManagement>");
+  const dmEnd = pom.indexOf("</dependencyManagement>");
+  let idx = -1;
+  const re = /<\/dependencies>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(pom)) !== null) {
+    if (dmStart >= 0 && m.index > dmStart && m.index < dmEnd + 24) continue; // dependencyManagement 내부
+    idx = m.index;
+    break;
+  }
+  return idx;
+}
+
+export interface AddAiResult extends AiPlanResult {
+  copiedFiles: number;
+  pomChanged: boolean;
+  pomBackup: string | null;
+}
+
+export const AI_POM_BACKUP = "pom.xml.bak-ai";
+
+/**
+ * AI 컴포넌트 실조립 (M2).
+ * - 파일 복사: 전체 사전 충돌 검사 후 하나라도 충돌하면 아무것도 쓰지 않고 거부 (원자적)
+ * - pom 병합: 누락 좌표만 마커 주석 구간으로 삽입(기존 항목 불변), 병합 전 pom.xml.bak-ai 백업
+ * - 설정 프로필화: application.yml → application-ai.yml 복사 (기존 설정 파일은 수정하지 않음)
+ * - 매니페스트 기록: remove_egovframe_components가 파일과 pom 삽입분을 함께 정리
+ */
+export async function addAiComponents(opts: AddAiComponentsOptions): Promise<AddAiResult> {
+  if (opts.dryRun === true) {
+    const plan = await planAiComponents(opts);
+    return { ...plan, copiedFiles: 0, pomChanged: false, pomBackup: null };
+  }
+
+  const p = computeAiPlan(opts);
+  const { comp, projectDir } = p;
+
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
+    throw new Error(`대상 프로젝트 디렉터리가 없습니다: ${projectDir} — 먼저 create_egovframe_project로 생성하세요`);
+  if (!p.compatibility.pomFound)
+    throw new Error(`pom.xml이 없습니다: ${projectDir} — Boot 백엔드 프로젝트 루트에서 실행하세요`);
+  if (p.compatibility.parentOk === false)
+    throw new Error(
+      `부모 POM 불일치: 요구 '${comp.requires.parent}', 발견 '${p.compatibility.parentFound ?? "없음"}' — egovframe-boot-starter-parent 기반 Boot 프로젝트만 지원합니다 (dryRun으로 진단 가능)`,
+    );
+
+  // ---- 다운로드 & 파일 계획 ----
+  const catalog = loadAiCatalog();
+  const zip = await downloadAiZip(catalog.source.repo, opts.ref ?? catalog.source.branch);
+  const entries = zip.getEntries().filter((e) => !e.isDirectory);
+  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const modPrefix = rootPrefix + comp.modulePath + "/";
+
+  const plan: { entry: AdmZip.IZipEntry; destRel: string; group: string }[] = [];
+  for (const e of entries) {
+    if (!e.entryName.startsWith(modPrefix)) continue;
+    const relInModule = e.entryName.slice(modPrefix.length);
+    for (const g of p.groups) {
+      const destRel = mapAiEntry(relInModule, comp.copyGroups[g].paths);
+      if (destRel !== null) {
+        plan.push({ entry: e, destRel, group: g });
+        break;
+      }
+    }
+  }
+  if (plan.length === 0)
+    throw new Error(`조립할 파일을 찾지 못했습니다 — 카탈로그(${catalog.source.surveyedAt})와 저장소 구조가 달라졌을 수 있습니다. npm run generate:ai-catalog로 재생성하세요`);
+
+  // ---- 전체 사전 충돌 검사 (원자적 거부) ----
+  const conflicts = plan.filter((f) => fs.existsSync(path.join(projectDir, f.destRel))).map((f) => f.destRel);
+  if (conflicts.length > 0)
+    throw new Error(
+      `기존 파일과 충돌하여 조립을 거부합니다 (${conflicts.length}개): ${conflicts.slice(0, 10).join(", ")}${conflicts.length > 10 ? " 외" : ""} — 아무 파일도 쓰지 않았습니다`,
+    );
+  const pomPath = path.join(projectDir, "pom.xml");
+  const backupPath = path.join(projectDir, AI_POM_BACKUP);
+  if ((p.toAddDeps.length > 0 || Object.keys(p.toAddProps).length > 0) && fs.existsSync(backupPath))
+    throw new Error(`pom 백업(${AI_POM_BACKUP})이 이미 있습니다 — 이전 조립 잔여물을 정리한 뒤 다시 시도하세요`);
+
+  // ---- 파일 복사 ----
+  for (const f of plan) {
+    const target = path.join(projectDir, f.destRel);
+    if (!target.startsWith(projectDir + path.sep)) throw new Error(`경로 이탈 감지: ${f.destRel}`);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, f.entry.getData());
+  }
+
+  // ---- pom 병합 (마커 구간 삽입) ----
+  let pomChanged = false;
+  if (p.toAddDeps.length > 0 || Object.keys(p.toAddProps).length > 0) {
+    let pom = fs.readFileSync(pomPath, "utf-8");
+    fs.writeFileSync(backupPath, pom);
+    if (p.toAddDeps.length > 0) {
+      const close = findProjectDependenciesClose(pom);
+      if (close < 0) throw new Error("pom.xml에서 <dependencies> 블록을 찾지 못했습니다");
+      const block = [
+        `        ${AI_POM_MARKER(comp.id, "deps", "start")}`,
+        ...p.toAddDeps.map((d) => depToXml(d)),
+        `        ${AI_POM_MARKER(comp.id, "deps", "end")}`,
+        "    ",
+      ].join("\n");
+      pom = pom.slice(0, close) + block + pom.slice(close);
+    }
+    if (Object.keys(p.toAddProps).length > 0) {
+      const pClose = pom.indexOf("</properties>");
+      if (pClose < 0) throw new Error("pom.xml에서 <properties> 블록을 찾지 못했습니다");
+      const block = [
+        `        ${AI_POM_MARKER(comp.id, "props", "start")}`,
+        ...Object.entries(p.toAddProps).map(([k, v]) => `        <${k}>${v}</${k}>`),
+        `        ${AI_POM_MARKER(comp.id, "props", "end")}`,
+        "    ",
+      ].join("\n");
+      pom = pom.slice(0, pClose) + block + pom.slice(pClose);
+    }
+    fs.writeFileSync(pomPath, pom);
+    pomChanged = true;
+  }
+
+  // ---- 매니페스트 기록 ----
+  const manifest: Manifest = readManifest(projectDir) ?? {
+    schemaVersion: 1,
+    source: { repo: catalog.source.repo, branch: catalog.source.branch },
+    components: {},
+  };
+  manifest.components[comp.id] = {
+    installedAt: new Date().toISOString(),
+    files: plan.map((f) => f.destRel),
+    sqlScripts: [],
+    pom: pomChanged
+      ? { backup: AI_POM_BACKUP, addedDeps: p.toAddDeps.map((d) => d.artifactId), addedProps: Object.keys(p.toAddProps) }
+      : undefined,
+  };
+  writeManifest(projectDir, manifest);
+
+  const copyPlan = p.groups.map((g) => ({
+    group: g as string,
+    files: plan.filter((f) => f.group === g).length,
+    paths: comp.copyGroups[g].paths,
+  }));
+  return {
+    projectDir,
+    component: { id: comp.id, name: comp.name, vectorStore: comp.vectorStore },
+    compatibility: p.compatibility,
+    dependencyChanges: { toAdd: p.toAddDeps.map(depCoord), alreadyPresent: p.alreadyPresent },
+    copyPlan,
+    totalFiles: plan.length,
+    copiedFiles: plan.length,
+    pomChanged,
+    pomBackup: pomChanged ? AI_POM_BACKUP : null,
+    prerequisites: comp.prerequisites,
+    nextSteps: [
+      "Ollama(>=0.17.1) 설치 및 LLM 모델 준비 (폐쇄망 절차는 egovframe-ai-rag README 참조)",
+      "ONNX 임베딩 모델 익스포트·배치",
+      `docker compose -f docker-compose.ai.yml up -d 로 벡터 저장소(${comp.vectorStore}) 기동`,
+      "spring.profiles.active=ai 로 애플리케이션 실행 (application-ai.yml 사용)",
+      "브라우저에서 채팅 UI 접속 (경로·포트는 application-ai.yml 참조)",
+    ],
+    dryRun: false,
+  };
+}
+
+/** AI 컴포넌트의 pom 삽입분(마커 구간)을 걷어낸다 — remove 시 호출 */
+export function stripAiPomAdditions(projectDir: string, componentId: string): boolean {
+  const pomPath = path.join(projectDir, "pom.xml");
+  if (!fs.existsSync(pomPath)) return false;
+  let pom = fs.readFileSync(pomPath, "utf-8");
+  let changed = false;
+  for (const kind of ["deps", "props"] as const) {
+    const start = pom.indexOf(AI_POM_MARKER(componentId, kind, "start"));
+    const endMark = AI_POM_MARKER(componentId, kind, "end");
+    const end = pom.indexOf(endMark);
+    if (start >= 0 && end > start) {
+      // 마커 라인 앞 들여쓰기부터 end 마커 라인 끝(개행 포함)까지 제거
+      const lineStart = pom.lastIndexOf("\n", start) + 1;
+      let lineEnd = end + endMark.length;
+      while (lineEnd < pom.length && pom[lineEnd] !== "\n") lineEnd++;
+      lineEnd++; // 개행 포함
+      pom = pom.slice(0, lineStart) + pom.slice(lineEnd);
+      changed = true;
+    }
+  }
+  if (changed) fs.writeFileSync(pomPath, pom);
+  const backup = path.join(projectDir, AI_POM_BACKUP);
+  if (fs.existsSync(backup)) fs.unlinkSync(backup);
+  return changed;
+}
 
 /* ------------------------------------------------------------------ */
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.8.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.9.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -1120,30 +1386,36 @@ export function buildServer(): McpServer {
   server.tool(
     "add_ai_components",
     "공식 egovframe-ai-rag 샘플 기반 AI RAG 챗봇(문서 업로드→임베딩→하이브리드 검색→LLM 응답)을 기존 Boot 프로젝트에 조립합니다. " +
-      "현재 M1은 dryRun 미리보기 전용 — 파일 복사 계획·pom 의존성 diff·호환성 진단을 반환합니다 (설계: docs/design-ai-components.md).",
+      "소스·설정(application-ai.yml 프로필)·UI·인프라를 복사하고 pom에 누락 의존성만 마커 구간으로 삽입합니다(백업 생성, 제거 시 원복). " +
+      "기존 파일과 충돌하면 아무것도 쓰지 않고 거부합니다. dryRun=true로 먼저 미리볼 수 있습니다.",
     {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장). egovframe-boot-starter-parent 기반 Boot 프로젝트"),
       stack: z.enum(AI_STACKS).describe("AI 스택: spring-ai(Redis Stack) | langchain4j(PGVector). 상호 배타"),
-      includeInfra: z.boolean().default(true).describe("docker-compose·Dockerfile·k8s 복사 계획 포함"),
-      includeUi: z.boolean().default(true).describe("채팅 UI(chat.html·static) 복사 계획 포함"),
-      includeTests: z.boolean().default(false).describe("샘플 테스트 복사 계획 포함"),
-      dryRun: z.boolean().default(true).describe("M1에서는 true만 지원 (실조립은 M2/v0.9.0)"),
+      includeInfra: z.boolean().default(true).describe("docker-compose.ai.yml·Dockerfile.ai·k8s/ai 복사"),
+      includeUi: z.boolean().default(true).describe("채팅 UI(chat.html·static) 복사"),
+      includeTests: z.boolean().default(false).describe("샘플 테스트 복사"),
+      ref: z.string().optional().describe("egovframe-ai-rag 브랜치/태그 (기본: 카탈로그 기준 브랜치)"),
+      dryRun: z.boolean().default(false).describe("true면 복사·병합 없이 계획만 미리보기(네트워크 불필요)"),
     },
     async (args) => {
-      const r = await planAiComponents(args as AddAiComponentsOptions);
+      const r = await addAiComponents(args as AddAiComponentsOptions);
       const c = r.compatibility;
+      const head = r.dryRun
+        ? `🔍 AI 컴포넌트 조립 미리보기(dryRun): ${r.projectDir}`
+        : `✅ AI 컴포넌트 조립 완료: ${r.projectDir}`;
       const text = [
-        `🔍 AI 컴포넌트 조립 미리보기(dryRun): ${r.projectDir}`,
+        head,
         `- 컴포넌트: ${r.component.id} — ${r.component.name}`,
         `- 호환성: 부모 POM ${c.parentOk === true ? "일치" : c.parentOk === false ? "불일치" : "미확인"}` +
           ` (요구 ${c.required}${c.parentFound ? ", 발견 " + c.parentFound : ""})`,
         ...(c.warnings.length ? c.warnings.map((w) => `  ! ${w}`) : []),
-        `- pom 의존성: 추가 예정 ${r.dependencyChanges.toAdd.length}건` +
-          (r.dependencyChanges.alreadyPresent.length ? `, 이미 존재 ${r.dependencyChanges.alreadyPresent.length}건` : ""),
+        `- pom 의존성: ${r.dryRun ? "추가 예정" : "추가됨"} ${r.dependencyChanges.toAdd.length}건` +
+          (r.dependencyChanges.alreadyPresent.length ? `, 이미 존재 ${r.dependencyChanges.alreadyPresent.length}건` : "") +
+          (r.pomBackup ? ` (백업: ${r.pomBackup})` : ""),
         ...r.dependencyChanges.toAdd.slice(0, 8).map((d) => `  + ${d}`),
         ...(r.dependencyChanges.toAdd.length > 8 ? [`  + … 외 ${r.dependencyChanges.toAdd.length - 8}건`] : []),
-        `- 복사 계획 (총 ${r.totalFiles}개 파일):`,
-        ...r.copyPlan.map((g) => `  · ${g.group}: ${g.files}개 — ${g.paths.join(", ")}`),
+        `- ${r.dryRun ? "복사 계획" : "복사 완료"} (총 ${r.totalFiles}개 파일):`,
+        ...r.copyPlan.map((g) => `  · ${g.group}: ${g.files}개`),
         `- 실행 전제: ${r.prerequisites.join(", ")}`,
         ``,
         `다음 단계:`,
