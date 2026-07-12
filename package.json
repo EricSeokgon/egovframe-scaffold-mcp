@@ -1,6 +1,6 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트 스캐폴딩·공통컴포넌트 조립 MCP 서버 — create/search/add/validate/remove",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,7 +15,9 @@
     "test:catalog": "node test/catalog.mjs",
     "test:components": "node test/components.mjs",
     "generate:catalog": "node scripts/generate-catalog.mjs",
-    "prepublishOnly": "npm run build && npm run test:catalog"
+    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:ai",
+    "test:ai": "node test/ai.mjs",
+    "generate:ai-catalog": "node scripts/generate-ai-catalog.mjs"
   },
   "engines": {
     "node": ">=18"
