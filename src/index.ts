@@ -272,6 +272,8 @@ export interface CatalogComponent {
   tables?: string[];
   /** 관련 공식 가이드 문서 (egovframe-docs 저장소 상대 경로) */
   docs?: { path: string; title: string }[];
+  /** 그룹 항목: 설치 시 이 리프 컴포넌트들로 확장된다 (자체 파일 없음) */
+  children?: string[];
 }
 
 export interface Catalog {
@@ -291,9 +293,12 @@ export function loadCatalog(): Catalog {
     if (ids.has(c.id)) throw new Error(`카탈로그 오류: 중복 id '${c.id}'`);
     ids.add(c.id);
   }
-  for (const c of catalog.components)
+  for (const c of catalog.components) {
     for (const d of c.dependsOn)
       if (!ids.has(d)) throw new Error(`카탈로그 오류: '${c.id}'가 의존하는 '${d}'가 카탈로그에 없습니다`);
+    for (const ch of c.children ?? [])
+      if (!ids.has(ch)) throw new Error(`카탈로그 오류: '${c.id}'의 children '${ch}'가 카탈로그에 없습니다`);
+  }
   return catalog;
 }
 
@@ -307,6 +312,16 @@ export function resolveComponents(
   for (const id of ids)
     if (!byId.has(id))
       throw new Error(`알 수 없는 컴포넌트 id: '${id}' — list_egovframe_components로 목록을 확인하세요`);
+  // 그룹(children 보유·자체 파일 없음) → 리프로 확장
+  const expanded: string[] = [];
+  const expand = (id: string, depth: number) => {
+    if (depth > 3) throw new Error(`카탈로그 오류: 그룹 중첩이 너무 깊습니다: '${id}'`);
+    const c = byId.get(id)!;
+    if (c.children?.length && c.pathPrefixes.length === 0) for (const ch of c.children) expand(ch, depth + 1);
+    else expanded.push(id);
+  };
+  for (const id of ids) expand(id, 0);
+  ids = [...new Set(expanded)];
   const order: CatalogComponent[] = [];
   const state = new Map<string, 1 | 2>(); // 1=방문 중, 2=완료
   const visit = (id: string, stack: string[]) => {
@@ -1274,7 +1289,7 @@ export function stripAiPomAdditions(projectDir: string, componentId: string): bo
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.11.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.12.0" });
 
   server.tool(
     "list_egovframe_templates",
