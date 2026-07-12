@@ -4,10 +4,17 @@ import { loadCatalog, resolveComponents, addComponents, searchComponents } from 
 const catalog = loadCatalog();
 console.log("catalog loaded:", catalog.components.length >= 3);
 console.log("schema version:", catalog.schemaVersion === 1);
-console.log("coverage >= 60:", catalog.components.length >= 60);
-// 자동 생성 항목도 해석 가능해야 함 (예: sym.mnu 메뉴 관리)
+console.log("coverage >= 150 (leaf expansion):", catalog.components.length >= 150);
+const leaves = catalog.components.filter((c) => c.pathPrefixes.length > 0);
+const groups = catalog.components.filter((c) => (c.children ?? []).length > 0 && c.pathPrefixes.length === 0);
+console.log("leaves >= 150 / groups >= 10:", leaves.length >= 150 && groups.length >= 10);
+console.log("auto names extracted:", leaves.filter((c) => c.name !== c.id).length >= 80);
+// 그룹 확장: sym.mnu → cmm + 하위 리프 전체
 const auto = resolveComponents(catalog, ["sym.mnu"]).map((c) => c.id);
-console.log("auto entry ok:", JSON.stringify(auto) === '["cmm","sym.mnu"]');
+console.log("group expansion ok:", auto[0] === "cmm" && auto.length >= 4 && auto.slice(1).every((x) => x.startsWith("sym.mnu.")));
+// 그룹+하위 동시 요청 시 중복 제거
+const g2 = resolveComponents(catalog, ["cop.smt", "cop.smt.mrm"]).map((c) => c.id);
+console.log("group+leaf dedupe:", g2.filter((x) => x === "cop.smt.mrm").length === 1);
 
 // 의존성 해석: bbs 요청 → cmm이 먼저
 const order = resolveComponents(catalog, ["bbs"]).map((c) => c.id);
