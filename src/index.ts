@@ -728,10 +728,191 @@ export async function getGuide(componentId: string, docIndex = 0): Promise<Guide
 }
 
 /* ------------------------------------------------------------------ */
+/* AI 컴포넌트 조립 (M1: dryRun 미리보기) — 설계: docs/design-ai-components.md */
+/* 소스: eGovFramework/egovframe-ai-rag (Spring AI·LangChain4j RAG 샘플)   */
+/* ------------------------------------------------------------------ */
+
+export const AI_STACKS = ["spring-ai", "langchain4j"] as const;
+
+export interface AiMavenDependency {
+  groupId: string;
+  artifactId: string;
+  version?: string;
+  scope?: string;
+  optional?: boolean;
+  exclusions?: { groupId: string; artifactId: string }[];
+}
+
+export interface AiCopyGroup {
+  /** 모듈 상대 경로. "a -> b"는 조립 시 이름 변경 복사 */
+  paths: string[];
+  files: number;
+}
+
+export interface AiComponent {
+  id: string;
+  stack: (typeof AI_STACKS)[number];
+  kind: "ai";
+  name: string;
+  description: string;
+  modulePath: string;
+  vectorStore: string;
+  conflictsWith: string[];
+  requires: { java: string; parent: string };
+  copyGroups: Record<"source" | "config" | "ui" | "infra" | "tests", AiCopyGroup>;
+  approxFiles: number;
+  mavenDependencies: AiMavenDependency[];
+  mavenProperties: Record<string, string>;
+  prerequisites: string[];
+}
+
+export interface AiCatalog {
+  schemaVersion: number;
+  source: { repo: string; branch: string; surveyedAt: string };
+  note: string;
+  components: AiComponent[];
+}
+
+const AI_CATALOG_URL = new URL("../catalog/ai-components.json", import.meta.url);
+
+/** AI 카탈로그 로드 + 무결성 검증 (id 중복, conflictsWith 대상 존재, stack 유일) */
+export function loadAiCatalog(): AiCatalog {
+  const catalog = JSON.parse(fs.readFileSync(AI_CATALOG_URL, "utf-8")) as AiCatalog;
+  const ids = new Set<string>();
+  const stacks = new Set<string>();
+  for (const c of catalog.components) {
+    if (ids.has(c.id)) throw new Error(`AI 카탈로그 오류: 중복 id '${c.id}'`);
+    ids.add(c.id);
+    if (stacks.has(c.stack)) throw new Error(`AI 카탈로그 오류: 중복 stack '${c.stack}'`);
+    stacks.add(c.stack);
+  }
+  for (const c of catalog.components)
+    for (const x of c.conflictsWith)
+      if (!ids.has(x)) throw new Error(`AI 카탈로그 오류: '${c.id}'의 conflictsWith '${x}'가 카탈로그에 없습니다`);
+  return catalog;
+}
+
+export interface AddAiComponentsOptions {
+  projectDir: string;
+  stack: (typeof AI_STACKS)[number];
+  includeInfra?: boolean;
+  includeUi?: boolean;
+  includeTests?: boolean;
+  dryRun?: boolean;
+}
+
+export interface AiPlanResult {
+  projectDir: string;
+  component: { id: string; name: string; vectorStore: string };
+  compatibility: {
+    pomFound: boolean;
+    required: string;
+    parentFound: string | null;
+    parentOk: boolean | null;
+    warnings: string[];
+  };
+  dependencyChanges: { toAdd: string[]; alreadyPresent: string[] };
+  copyPlan: { group: string; files: number; paths: string[] }[];
+  totalFiles: number;
+  prerequisites: string[];
+  nextSteps: string[];
+  dryRun: true;
+}
+
+/**
+ * AI 컴포넌트 조립 계획 (M1) — dryRun 미리보기 전용.
+ * 파일 복사 계획·pom 의존성 diff·호환성 게이트 결과를 네트워크 없이 반환한다.
+ * 실제 조립(파일 복사 + pom 병합 + 설정 프로필화)은 M2(v0.9.0)에서 제공한다.
+ */
+export async function planAiComponents(opts: AddAiComponentsOptions): Promise<AiPlanResult> {
+  if (opts.dryRun === false)
+    throw new Error(
+      "add_ai_components는 현재 dryRun 미리보기만 지원합니다 — 실제 조립은 M2(v0.9.0)에서 제공됩니다 (설계: docs/design-ai-components.md)",
+    );
+  if (!AI_STACKS.includes(opts.stack))
+    throw new Error(`stack은 ${AI_STACKS.join("|")} 중 하나여야 합니다: ${String(opts.stack)}`);
+
+  const catalog = loadAiCatalog();
+  const comp = catalog.components.find((c) => c.stack === opts.stack)!;
+  const projectDir = path.resolve(opts.projectDir);
+
+  // 매니페스트 게이트: 동일/배타 스택 설치 여부
+  const manifest = readManifest(projectDir);
+  if (manifest) {
+    if (manifest.components[comp.id])
+      throw new Error(`'${comp.id}'가 이미 설치되어 있습니다 (매니페스트 기준)`);
+    for (const x of comp.conflictsWith)
+      if (manifest.components[x])
+        throw new Error(
+          `상호 배타 컴포넌트 '${x}'가 이미 설치되어 있습니다 — 두 AI 스택은 같은 패키지(com.example.chat)·UI 경로를 사용합니다. 먼저 remove_egovframe_components로 제거하세요`,
+        );
+  }
+
+  // 호환성 게이트: 부모 POM 좌표 확인 + 의존성 diff
+  const warnings: string[] = [];
+  const pomPath = path.join(projectDir, "pom.xml");
+  const pomFound = fs.existsSync(pomPath);
+  let parentFound: string | null = null;
+  let parentOk: boolean | null = null;
+  const toAdd: string[] = [];
+  const alreadyPresent: string[] = [];
+  if (pomFound) {
+    const pom = fs.readFileSync(pomPath, "utf-8");
+    const pm = pom.match(/<parent>[\s\S]*?<\/parent>/);
+    if (pm) {
+      const a = pm[0].match(/<artifactId>([^<]*)<\/artifactId>/)?.[1]?.trim();
+      const v = pm[0].match(/<version>([^<]*)<\/version>/)?.[1]?.trim();
+      parentFound = a ? `${a}:${v ?? "?"}` : null;
+    }
+    const [reqA, reqV] = comp.requires.parent.split(":");
+    parentOk = parentFound !== null && parentFound.startsWith(`${reqA}:`);
+    if (!parentOk)
+      warnings.push(
+        `부모 POM이 '${comp.requires.parent}'가 아닙니다(발견: ${parentFound ?? "없음"}) — Boot 기반 템플릿(simple-backend)에서 지원합니다`,
+      );
+    else if (parentFound !== comp.requires.parent)
+      warnings.push(`부모 POM 버전이 다릅니다(요구 ${reqV}, 발견 ${parentFound}) — BOM 관리 버전 차이를 확인하세요`);
+    for (const d of comp.mavenDependencies) {
+      const coord = `${d.groupId}:${d.artifactId}${d.version ? ":" + d.version : ""}${d.scope ? " (" + d.scope + ")" : ""}`;
+      if (pom.includes(`<artifactId>${d.artifactId}</artifactId>`)) alreadyPresent.push(coord);
+      else toAdd.push(coord);
+    }
+  } else {
+    warnings.push("pom.xml이 없습니다 — Boot 백엔드 프로젝트 루트 경로인지 확인하세요");
+  }
+
+  // 복사 계획: source·config 필수, ui/infra/tests는 옵션
+  const groups: (keyof AiComponent["copyGroups"])[] = ["source", "config"];
+  if (opts.includeUi !== false) groups.push("ui");
+  if (opts.includeInfra !== false) groups.push("infra");
+  if (opts.includeTests === true) groups.push("tests");
+  const copyPlan = groups.map((g) => ({ group: g, files: comp.copyGroups[g].files, paths: comp.copyGroups[g].paths }));
+  const totalFiles = copyPlan.reduce((n, g) => n + g.files, 0);
+
+  return {
+    projectDir,
+    component: { id: comp.id, name: comp.name, vectorStore: comp.vectorStore },
+    compatibility: { pomFound, required: comp.requires.parent, parentFound, parentOk, warnings },
+    dependencyChanges: { toAdd, alreadyPresent },
+    copyPlan,
+    totalFiles,
+    prerequisites: comp.prerequisites,
+    nextSteps: [
+      "M1은 미리보기 전용입니다 — 실제 조립은 M2(v0.9.0)에서 제공됩니다",
+      "Ollama(>=0.17.1) 설치 및 LLM 모델 준비 (폐쇄망 절차는 egovframe-ai-rag README 참조)",
+      "ONNX 임베딩 모델 익스포트·배치",
+      "docker compose로 벡터 저장소(Redis Stack 또는 PGVector) 기동",
+    ],
+    dryRun: true,
+  };
+}
+
+
+/* ------------------------------------------------------------------ */
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.7.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.8.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -787,6 +968,16 @@ export function buildServer(): McpServer {
     {},
     async () => {
       const catalog = loadCatalog();
+      let ai: { source: AiCatalog["source"]; components: { id: string; stack: string; name: string; description: string; approxFiles: number }[] } | undefined;
+      try {
+        const aiCat = loadAiCatalog();
+        ai = {
+          source: aiCat.source,
+          components: aiCat.components.map((c) => ({
+            id: c.id, stack: c.stack, name: c.name, description: c.description, approxFiles: c.approxFiles,
+          })),
+        };
+      } catch { /* AI 카탈로그가 없어도 기본 목록은 동작 */ }
       return {
         content: [
           {
@@ -795,6 +986,7 @@ export function buildServer(): McpServer {
               {
                 source: catalog.source,
                 sqlNote: catalog.sqlNote,
+                aiComponents: ai,
                 components: catalog.components.map((c) => ({
                   id: c.id, name: c.name, category: c.category,
                   description: c.description, dependsOn: c.dependsOn, approxFiles: c.approxFiles,
@@ -921,6 +1113,43 @@ export function buildServer(): McpServer {
         "", "---", "",
       ].filter((l, i) => l !== "" || i >= 4).join("\n");
       return { content: [{ type: "text", text: head + r.content }] };
+    },
+  );
+
+
+  server.tool(
+    "add_ai_components",
+    "공식 egovframe-ai-rag 샘플 기반 AI RAG 챗봇(문서 업로드→임베딩→하이브리드 검색→LLM 응답)을 기존 Boot 프로젝트에 조립합니다. " +
+      "현재 M1은 dryRun 미리보기 전용 — 파일 복사 계획·pom 의존성 diff·호환성 진단을 반환합니다 (설계: docs/design-ai-components.md).",
+    {
+      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장). egovframe-boot-starter-parent 기반 Boot 프로젝트"),
+      stack: z.enum(AI_STACKS).describe("AI 스택: spring-ai(Redis Stack) | langchain4j(PGVector). 상호 배타"),
+      includeInfra: z.boolean().default(true).describe("docker-compose·Dockerfile·k8s 복사 계획 포함"),
+      includeUi: z.boolean().default(true).describe("채팅 UI(chat.html·static) 복사 계획 포함"),
+      includeTests: z.boolean().default(false).describe("샘플 테스트 복사 계획 포함"),
+      dryRun: z.boolean().default(true).describe("M1에서는 true만 지원 (실조립은 M2/v0.9.0)"),
+    },
+    async (args) => {
+      const r = await planAiComponents(args as AddAiComponentsOptions);
+      const c = r.compatibility;
+      const text = [
+        `🔍 AI 컴포넌트 조립 미리보기(dryRun): ${r.projectDir}`,
+        `- 컴포넌트: ${r.component.id} — ${r.component.name}`,
+        `- 호환성: 부모 POM ${c.parentOk === true ? "일치" : c.parentOk === false ? "불일치" : "미확인"}` +
+          ` (요구 ${c.required}${c.parentFound ? ", 발견 " + c.parentFound : ""})`,
+        ...(c.warnings.length ? c.warnings.map((w) => `  ! ${w}`) : []),
+        `- pom 의존성: 추가 예정 ${r.dependencyChanges.toAdd.length}건` +
+          (r.dependencyChanges.alreadyPresent.length ? `, 이미 존재 ${r.dependencyChanges.alreadyPresent.length}건` : ""),
+        ...r.dependencyChanges.toAdd.slice(0, 8).map((d) => `  + ${d}`),
+        ...(r.dependencyChanges.toAdd.length > 8 ? [`  + … 외 ${r.dependencyChanges.toAdd.length - 8}건`] : []),
+        `- 복사 계획 (총 ${r.totalFiles}개 파일):`,
+        ...r.copyPlan.map((g) => `  · ${g.group}: ${g.files}개 — ${g.paths.join(", ")}`),
+        `- 실행 전제: ${r.prerequisites.join(", ")}`,
+        ``,
+        `다음 단계:`,
+        ...r.nextSteps.map((s, i) => `  ${i + 1}. ${s}`),
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
     },
   );
 
