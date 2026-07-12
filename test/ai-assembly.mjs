@@ -76,4 +76,29 @@ console.log("backup cleaned:", !fs.existsSync(path.join(proj, AI_POM_BACKUP)));
 console.log("manifest cleaned:", readManifest(proj) === null);
 console.log("source dir pruned:", !fs.existsSync(path.join(proj, "src/main/java/com")));
 
+// ================= langchain4j 스택 사이클 =================
+const proj2 = path.join(tmp, "proj2");
+fs.mkdirSync(path.join(proj2, "src/main/resources"), { recursive: true });
+fs.writeFileSync(path.join(proj2, "pom.xml"), ORIGINAL_POM.replace("ai-asm-fixture", "ai-asm-fixture-lc4j"));
+
+const r2 = await addAiComponents({ projectDir: proj2, stack: "langchain4j" });
+console.log("[lc4j] assembled:", r2.dryRun === false && r2.copiedFiles > 40);
+const pom2 = fs.readFileSync(path.join(proj2, "pom.xml"), "utf-8");
+console.log("[lc4j] markers:", pom2.includes("egovframe-scaffold-mcp:ai:ai-rag-langchain4j:deps:start"));
+console.log("[lc4j] deps inserted:", pom2.includes("langchain4j-pgvector") && pom2.includes("spring-boot-starter-data-jpa"));
+console.log("[lc4j] init-scripts under ai/:", fs.existsSync(path.join(proj2, "init-scripts/ai")));
+console.log("[lc4j] entity copied:", fs.existsSync(path.join(proj2, "src/main/java/com/example/chat/entity/ChatMemoryEntity.java")));
+console.log("[lc4j] config profiled:", fs.existsSync(path.join(proj2, "src/main/resources/application-ai.yml")));
+
+// AI 실행 전제 진단 (aiChecks): 임베딩 설정 경로 검출 + compose 안내
+const v2 = await validateProject({ projectDir: proj2 });
+console.log("[lc4j] validate ok (aiChecks not warnings):", v2.ok === true);
+console.log("[lc4j] aiChecks detect embedding config:", v2.aiChecks.some((c) => c.note.includes("임베딩 설정")));
+console.log("[lc4j] aiChecks detect compose:", v2.aiChecks.some((c) => c.file.endsWith("docker-compose.ai.yml") && c.exists));
+
+const rm2 = await removeComponents({ projectDir: proj2, components: ["ai-rag-langchain4j"] });
+console.log("[lc4j] removed:", rm2.totalFiles === r2.copiedFiles);
+console.log("[lc4j] pom restored:", fs.readFileSync(path.join(proj2, "pom.xml"), "utf-8") === ORIGINAL_POM.replace("ai-asm-fixture", "ai-asm-fixture-lc4j"));
+console.log("[lc4j] init-scripts pruned:", !fs.existsSync(path.join(proj2, "init-scripts")));
+
 fs.rmSync(tmp, { recursive: true, force: true });
