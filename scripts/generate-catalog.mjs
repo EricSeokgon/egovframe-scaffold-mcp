@@ -7,7 +7,9 @@
  *   node scripts/generate-catalog.mjs --zip a.zip # 로컬 zip 사용(오프라인)
  *
  * 규칙:
- *  - 컴포넌트 단위: egovframework/com/<cat>/<comp> 2단계 패키지 (cmm은 하위 포함 단일 컴포넌트)
+ *  - 컴포넌트 단위(v0.12.0): 리프 패키지(service/web 이전까지의 패키지 경로, 최대 4단계).
+ *    하위 리프가 여러 개인 2단계 패키지는 children을 가진 그룹으로 함께 등록한다(기존 id 하위 호환).
+ *    cmm은 하위 포함 단일 컴포넌트.
  *  - 각 컴포넌트의 pathPrefixes: java/mapper/jsp 3종
  *  - catalog/overrides.json으로 id·이름·설명·의존성을 큐레이션 (기본 dependsOn: ["cmm"])
  */
@@ -62,14 +64,21 @@ async function extractTables(mapperPrefix) {
   return [...tables].sort();
 }
 
-/** 파일 경로 → 컴포넌트 키 (예: cop.bbs, cmm). 해당 없으면 null */
+const STRUCT_SEGS = new Set(["service", "web", "impl"]);
+
+/** 파일 경로 → 리프 컴포넌트 키 (예: cop.bbs, cop.smt.mrm, uss.ion.wik.bmk, cmm). 해당 없으면 null */
 function componentKey(rel, base) {
   if (!rel.startsWith(base)) return null;
   const segs = rel.slice(base.length).split("/");
-  if (segs.length < 2) return null; // 최소 <cat>/<파일>
+  if (segs.length < 2) return null;
   if (segs[0] === "cmm") return "cmm"; // cmm은 하위 포함 단일 컴포넌트
-  if (segs.length < 3) return null; // <cat>/<comp>/<파일> 필요
-  return `${segs[0]}.${segs[1]}`;
+  if (segs.length < 3) return null;
+  const pkg = [segs[0], segs[1]];
+  for (let i = 2; i < Math.min(segs.length - 1, 4); i++) {
+    if (STRUCT_SEGS.has(segs[i])) break;
+    pkg.push(segs[i]);
+  }
+  return pkg.join(".");
 }
 
 
@@ -91,14 +100,17 @@ function computeDocsMap() {
       const title = tm ? tm[1].trim() : name;
       if (title.includes("배포")) continue;
       const cnt = new Map();
-      for (const m of txt.matchAll(/egovframework[./]com[./]([a-z]{2,4})[./]([a-z]{2,4})\b/g)) {
-        const key = `${m[1]}.${m[2]}`;
-        cnt.set(key, (cnt.get(key) ?? 0) + 1);
+      for (const m of txt.matchAll(/egovframework[./]com[./]([a-z]{2,4})[./]([a-z]{2,4})(?:[./]([a-z]{2,4}))?(?:[./]([a-z]{2,4}))?\b/g)) {
+        const segs = [m[1], m[2], m[3], m[4]].filter((x) => x && !["service", "web", "impl"].includes(x));
+        for (let n = 2; n <= segs.length; n++) {
+          const key = segs.slice(0, n).join(".");
+          cnt.set(key, (cnt.get(key) ?? 0) + 1);
+        }
       }
       const cmm = (txt.match(/egovframework[./]com[./]cmm\b/g) ?? []).length;
       if (cmm) cnt.set("cmm", (cnt.get("cmm") ?? 0) + cmm);
       if (cnt.size === 0) continue;
-      const [topKey, topCount] = [...cnt.entries()].sort((a, b) => b[1] - a[1])[0];
+      const [topKey, topCount] = [...cnt.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0];
       if (topCount < 3) continue; // 지배적 참조만 채택
       if (!map.has(topKey)) map.set(topKey, []);
       map.get(topKey).push({ count: topCount, path: path.relative(docsRoot, p), title });
@@ -107,6 +119,27 @@ function computeDocsMap() {
   walk(ccRoot);
   for (const v of map.values()) v.sort((a, b) => b.count - a.count);
   return map;
+}
+
+/** 리프 패키지의 Service 인터페이스 Javadoc에서 한글 명칭을 추출한다 */
+async function extractName(javaPrefix) {
+  const entries = await loadZipEntries();
+  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  for (const e of entries) {
+    const rel = e.entryName.startsWith(rootPrefix) ? e.entryName.slice(rootPrefix.length) : e.entryName;
+    if (!rel.startsWith(javaPrefix) || !/Egov\w*Service\.java$/.test(rel) || rel.includes("/impl/")) continue;
+    const txt = e.getData().toString("utf8");
+    const jd = txt.match(/\/\*\*([\s\S]*?)\*\//);
+    if (!jd) continue;
+    const doc = jd[1].replace(/[*\r]/g, " ").replace(/\s+/g, " ");
+    let m = doc.match(/개요\s*[-:]?\s*([가-힣A-Za-z0-9()\/·\s]{2,30}?)(?:에 대한|을 위한|를 위한|의 |를 |을 |서비스|기능)/);
+    if (!m) m = doc.match(/([가-힣][가-힣A-Za-z0-9()\/·]{1,24}?)(?:에 대한|을 위한|를 위한|를 처리|을 처리|을 관리|를 관리)/);
+    if (m) {
+      const name = m[1].trim();
+      if (name.length >= 2 && !/Copyright|저작권/.test(name)) return name;
+    }
+  }
+  return null;
 }
 
 const docsMap = computeDocsMap();
@@ -128,12 +161,15 @@ for (const f of files)
   }
 
 const components = [];
-for (const key of [...byKey.keys()].sort()) {
-  const pkg = key === "cmm" ? "cmm/" : key.replace(".", "/") + "/";
+const leafKeys = [...byKey.keys()].sort();
+for (const key of leafKeys) {
+  const pkg = key === "cmm" ? "cmm/" : key.replaceAll(".", "/") + "/";
   const o = overrides[key] ?? {};
+  const parent2 = key.split(".").slice(0, 2).join(".");
+  const autoName = o.name ?? (await extractName(JAVA + pkg));
   components.push({
     id: o.id ?? key,
-    name: o.name ?? key,
+    name: autoName ?? key,
     category: key.split(".")[0],
     description: o.description ?? `egovframework/com/${pkg.slice(0, -1)} 하위 소스·매퍼·JSP (자동 생성 항목)`,
     pathPrefixes: [JAVA + pkg, MAPPER + pkg, JSP + pkg],
@@ -141,10 +177,39 @@ for (const key of [...byKey.keys()].sort()) {
     approxFiles: byKey.get(key),
     tables: await extractTables(MAPPER + pkg),
     docs: docsMap
-      ? (docsMap.get(key) ?? []).slice(0, 5).map(({ path: p, title }) => ({ path: p.split(path.sep).join("/"), title }))
+      ? (docsMap.get(key) ?? docsMap.get(parent2) ?? []).slice(0, 5).map(({ path: p, title }) => ({ path: p.split(path.sep).join("/"), title }))
       : (prevDocs.get(o.id ?? key) ?? undefined),
   });
 }
+
+// 2단계 그룹: 하위 리프가 2개 이상이면 children 그룹으로 등록 (기존 id 하위 호환)
+const byId = new Map(components.map((c) => [c.id, c]));
+const groups = new Map();
+for (const key of leafKeys) {
+  const segs = key.split(".");
+  if (segs.length <= 2) continue;
+  const g = segs.slice(0, 2).join(".");
+  if (!groups.has(g)) groups.set(g, []);
+  groups.get(g).push((overrides[key]?.id) ?? key);
+}
+for (const [g, children] of [...groups.entries()].sort()) {
+  if (byId.has(g)) { byId.get(g).children = children; continue; } // 직속 파일 리프가 있으면 그 항목에 children 부여
+  if (children.length < 2) continue;
+  const o = overrides[g] ?? {};
+  const pkg = g.replaceAll(".", "/") + "/";
+  components.push({
+    id: o.id ?? g,
+    name: (o.name ?? g) + " (그룹)",
+    category: g.split(".")[0],
+    description: o.description ?? `egovframework/com/${g.replaceAll(".", "/")} 하위 컴포넌트 ${children.length}종 일괄 설치 그룹`,
+    pathPrefixes: [],
+    dependsOn: [],
+    approxFiles: children.reduce((n, c) => n + (byId.get(c)?.approxFiles ?? 0), 0),
+    children,
+    docs: docsMap ? (docsMap.get(g) ?? []).slice(0, 5).map(({ path: p, title }) => ({ path: p.split(path.sep).join("/"), title })) : (prevDocs.get(o.id ?? g) ?? undefined),
+  });
+}
+components.sort((a, b) => a.id.localeCompare(b.id));
 
 const catalog = {
   schemaVersion: 1,
@@ -154,4 +219,4 @@ const catalog = {
   components,
 };
 fs.writeFileSync(path.join(ROOT, "catalog/components.json"), JSON.stringify(catalog, null, 2) + "\n");
-console.error(`생성 완료: ${components.length}개 컴포넌트 (총 ${components.reduce((n, c) => n + c.approxFiles, 0)}개 파일 매핑)`);
+console.error(`생성 완료: ${components.length}개 항목 (리프 ${components.filter((c) => !c.children || c.pathPrefixes.length).length}, 그룹 ${components.filter((c) => c.children && !c.pathPrefixes.length).length}) — 리프 파일 ${components.filter((c) => c.pathPrefixes.length).reduce((n, c) => n + c.approxFiles, 0)}개 매핑`);
