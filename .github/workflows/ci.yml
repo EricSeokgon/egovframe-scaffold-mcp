@@ -40,6 +40,9 @@ jobs:
       - name: Catalog test (offline)
         run: npm run test:catalog
 
+      - name: AI catalog test (offline)
+        run: npm run test:ai
+
       - name: Smoke test (downloads official templates)
         run: npm run smoke
 
