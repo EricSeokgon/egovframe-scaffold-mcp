@@ -1408,8 +1408,49 @@ export function diagnoseProject(opts: { projectDir: string }): DiagnoseResult {
   };
 }
 
+// ── 가이드 문서 검색 (v0.15.0) ──────────────────────────
+export interface DocHit {
+  title: string;
+  path: string;
+  url: string;
+  componentId: string;
+  componentName: string;
+  category: string;
+  score: number;
+}
+
+/** 카탈로그 가이드 매핑(제목·경로·연계 컴포넌트)을 키워드로 검색한다. 오프라인. */
+export function searchDocs(opts: { query: string; limit?: number }): DocHit[] {
+  const terms = opts.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  const catalog = loadCatalog();
+  const best = new Map<string, DocHit>(); // path 기준 중복 제거(최고 점수 유지)
+  for (const c of catalog.components) {
+    for (const d of c.docs ?? []) {
+      const title = d.title.toLowerCase();
+      const name = c.name.toLowerCase();
+      const hay = [d.title, d.path, c.name, c.description, c.category, c.id].join(" ").toLowerCase();
+      let score = 0;
+      for (const t of terms) {
+        if (title.includes(t)) score += 3;
+        if (name.includes(t)) score += 2;
+        if (hay.includes(t)) score += 1;
+      }
+      if (score <= 0) continue;
+      const hit: DocHit = {
+        title: d.title, path: d.path,
+        url: `https://github.com/${DOCS_REPO}/blob/main/${d.path}`,
+        componentId: c.id, componentName: c.name, category: c.category, score,
+      };
+      const prev = best.get(d.path);
+      if (!prev || score > prev.score) best.set(d.path, hit);
+    }
+  }
+  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, opts.limit ?? 10);
+}
+
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.14.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.15.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -1853,6 +1894,25 @@ export function buildServer(): McpServer {
       ];
       if (r.issues.length) lines.push(``, `⚠️ 이슈:`, ...r.issues.map((i) => ` · ${i}`));
       if (r.suggestions.length) lines.push(``, `💡 제안:`, ...r.suggestions.map((s) => ` · ${s}`));
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    },
+  );
+  // ── 문서 검색 도구 (v0.15.0) ───────────────────────────
+  server.tool(
+    "search_egovframe_docs",
+    "공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색합니다. 컴포넌트 가이드 매핑(제목·경로·연계 컴포넌트·카테고리)을 기준으로 점수순 상위 결과를 반환하며, 각 결과에 문서 URL과 조립용 컴포넌트 id를 함께 제공합니다. (오프라인)",
+    {
+      query: z.string().describe("검색어. 예: \"로그인\", \"게시판 권한\""),
+      limit: z.number().int().min(1).max(30).default(10).describe("최대 결과 수 (기본 10)"),
+    },
+    async (args) => {
+      const hits = searchDocs({ query: args.query, limit: args.limit });
+      if (hits.length === 0)
+        return { content: [{ type: "text", text: `🔎 "${args.query}" — 검색 결과 없음` }] };
+      const lines = [
+        `🔎 "${args.query}" — ${hits.length}건`,
+        ...hits.map((h, i) => `${i + 1}. ${h.title} [${h.category}] · 컴포넌트 ${h.componentId}\n   ${h.url}`),
+      ];
       return { content: [{ type: "text", text: lines.join("\n") }] };
     },
   );
