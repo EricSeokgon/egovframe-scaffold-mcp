@@ -1449,8 +1449,52 @@ export function searchDocs(opts: { query: string; limit?: number }): DocHit[] {
   return [...best.values()].sort((a, b) => b.score - a.score).slice(0, opts.limit ?? 10);
 }
 
+// ── 프로젝트 리포트 (v0.16.0) ───────────────────────────
+/** 프로젝트를 스캔해 설치 컴포넌트·테이블·가이드·이슈를 Markdown 리포트로 생성한다. (읽기 전용) */
+export function generateReport(opts: { projectDir: string }): string {
+  const d = diagnoseProject({ projectDir: opts.projectDir });
+  const catalog = loadCatalog();
+  const byId = new Map(catalog.components.map((c) => [c.id, c]));
+  const L: string[] = [];
+  L.push(`# eGovFrame 프로젝트 리포트`);
+  L.push(``);
+  L.push(`- 경로: ${d.projectDir}`);
+  L.push(`- 빌드: ${d.buildSystem}${d.isEgovProject ? " (egovframe)" : ""} · RTE ${d.egovVersion ?? "미검출"} · DbType ${d.database ?? "미설정"}`);
+  L.push(`- AI 계층: ${d.aiLayer ? "있음" : "없음"} · 매니페스트: ${d.hasManifest ? "있음" : "없음"}`);
+  L.push(``);
+  L.push(`## 설치 공통컴포넌트 (${d.detectedComponents.length})`);
+  L.push(``);
+  if (d.detectedComponents.length) {
+    L.push(`| id | 이름 | 카테고리 | 테이블 | 가이드 |`);
+    L.push(`|---|---|---|---|---|`);
+    for (const dc of d.detectedComponents) {
+      const c = byId.get(dc.id);
+      const tables = c?.tables?.length ?? 0;
+      const guide = c?.docs?.length ? `${c.docs.length}건` : "-";
+      L.push(`| ${dc.id} | ${dc.name} | ${c?.category ?? "-"} | ${tables} | ${guide} |`);
+    }
+  } else {
+    L.push(`(감지된 컴포넌트 없음)`);
+  }
+  const tableSet = new Set<string>();
+  for (const dc of d.detectedComponents) for (const t of byId.get(dc.id)?.tables ?? []) tableSet.add(t);
+  if (tableSet.size) {
+    L.push(``, `## 참조 테이블 (${tableSet.size})`, ``, [...tableSet].sort().join(", "));
+  }
+  const docLines: string[] = [];
+  for (const dc of d.detectedComponents) {
+    const c = byId.get(dc.id);
+    for (const doc of c?.docs ?? [])
+      docLines.push(`- [${doc.title}](https://github.com/${DOCS_REPO}/blob/main/${doc.path}) — ${dc.id}`);
+  }
+  if (docLines.length) L.push(``, `## 가이드 문서`, ``, ...docLines);
+  if (d.issues.length) L.push(``, `## 이슈`, ``, ...d.issues.map((i) => `- ${i}`));
+  if (d.suggestions.length) L.push(``, `## 제안`, ``, ...d.suggestions.map((s) => `- ${s}`));
+  return L.join("\n");
+}
+
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.15.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.16.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -1915,6 +1959,17 @@ export function buildServer(): McpServer {
       ];
       return { content: [{ type: "text", text: lines.join("\n") }] };
     },
+  );
+  // ── 리포트 도구 (v0.16.0) ──────────────────────────────
+  server.tool(
+    "generate_egovframe_report",
+    "프로젝트를 스캔해 설치 공통컴포넌트·참조 테이블·가이드 문서 링크·이슈를 Markdown 리포트로 생성합니다. (읽기 전용) 조립 결과 문서화나 README 첨부에 적합합니다.",
+    {
+      projectDir: z.string().describe("리포트를 만들 프로젝트 디렉터리(절대경로 권장)"),
+    },
+    async (args) => ({
+      content: [{ type: "text", text: generateReport({ projectDir: args.projectDir }) }],
+    }),
   );
   return server;
 }
