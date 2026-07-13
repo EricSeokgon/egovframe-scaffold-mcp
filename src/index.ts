@@ -1310,8 +1310,191 @@ export function loadRecipes(): Recipe[] {
   return _recipes;
 }
 
+// ── 프로젝트 진단 (v0.14.0) ─────────────────────────────
+export interface DiagnoseResult {
+  projectDir: string;
+  isEgovProject: boolean;
+  buildSystem: "maven" | "gradle" | "unknown";
+  egovVersion: string | null;
+  database: string | null;
+  detectedComponents: { id: string; name: string; matchedPrefix: string }[];
+  aiLayer: boolean;
+  hasManifest: boolean;
+  issues: string[];
+  suggestions: string[];
+}
+
+/** 기존 프로젝트를 읽기 전용으로 스캔해 구성·설치 컴포넌트·설정 문제를 진단한다. (디스크 변경 없음) */
+export function diagnoseProject(opts: { projectDir: string }): DiagnoseResult {
+  const dir = opts.projectDir;
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory())
+    throw new Error(`프로젝트 디렉터리가 없습니다: ${dir}`);
+
+  const readIf = (p: string): string | null => {
+    try { return fs.readFileSync(path.join(dir, p), "utf-8"); } catch { return null; }
+  };
+  const existsRel = (p: string): boolean => fs.existsSync(path.join(dir, p));
+
+  const pom = readIf("pom.xml");
+  const gradle = readIf("build.gradle") ?? readIf("build.gradle.kts");
+  const buildSystem: DiagnoseResult["buildSystem"] = pom ? "maven" : gradle ? "gradle" : "unknown";
+  const buildText = pom ?? gradle ?? "";
+  const isEgovProject = /egovframe/i.test(buildText);
+
+  // eGovFrame RTE 버전 추정 (best-effort)
+  let egovVersion: string | null = null;
+  const vpats: RegExp[] = [
+    /<(?:org\.egovframe\.rte\.version|egovframe[.\w]*version|version\.egovframe[.\w]*)>\s*([0-9]+\.[0-9]+(?:\.[0-9]+)?)/i,
+    /org\.egovframe\.rte[^\n]*?([0-9]+\.[0-9]+\.[0-9]+)/i,
+    /egovframe[^\n]*?rte[^\n]*?([0-9]+\.[0-9]+\.[0-9]+)/i,
+  ];
+  for (const re of vpats) { const m = buildText.match(re); if (m) { egovVersion = m[1]; break; } }
+
+  // Globals.DbType 탐지
+  let database: string | null = null;
+  const dbFiles = [
+    "src/main/resources/application.properties",
+    "src/main/resources/globals.properties",
+    "src/main/resources/egovframework/egovProps/globals.properties",
+    "src/main/resources/application.yml",
+    "src/main/resources/application.yaml",
+  ];
+  for (const f of dbFiles) {
+    const t = readIf(f);
+    if (t) { const m = t.match(/Globals\.DbType\s*[:=]\s*["']?([A-Za-z]+)/); if (m) { database = m[1]; break; } }
+  }
+
+  // 카탈로그 pathPrefixes 지문으로 설치 컴포넌트 감지
+  const catalog = loadCatalog();
+  const detectedComponents: DiagnoseResult["detectedComponents"] = [];
+  const detectedIds = new Set<string>();
+  for (const c of catalog.components) {
+    const prefix = c.pathPrefixes.find((p) => p.includes("/java/")) ?? c.pathPrefixes[0];
+    if (!prefix || !existsRel(prefix)) continue;
+    try {
+      if (fs.readdirSync(path.join(dir, prefix)).length > 0) {
+        detectedComponents.push({ id: c.id, name: c.name, matchedPrefix: prefix });
+        detectedIds.add(c.id);
+      }
+    } catch { /* skip unreadable */ }
+  }
+
+  const aiLayer = existsRel("src/main/resources/application-ai.yml") || existsRel("src/main/resources/egovframework/ai");
+  const hasManifest = existsRel(".egovframe-components.json");
+
+  const issues: string[] = [];
+  const suggestions: string[] = [];
+  if (buildSystem === "unknown") issues.push("빌드 파일(pom.xml·build.gradle)을 찾지 못했습니다 — eGovFrame 프로젝트가 아닐 수 있습니다.");
+  else if (!isEgovProject) issues.push("빌드 파일에서 egovframe 좌표를 찾지 못했습니다.");
+  if (isEgovProject && !egovVersion) issues.push("eGovFrame(RTE) 버전을 자동 검출하지 못했습니다 — pom/gradle 수동 확인 권장.");
+  if (detectedComponents.length > 0 && !database) issues.push("공통컴포넌트가 감지됐으나 Globals.DbType이 설정되어 있지 않습니다.");
+  for (const c of catalog.components) {
+    if (!detectedIds.has(c.id)) continue;
+    for (const dep of c.dependsOn) {
+      if (!detectedIds.has(dep)) issues.push(`컴포넌트 '${c.id}'가 의존하는 '${dep}'가 감지되지 않았습니다.`);
+    }
+  }
+  const uniqIssues = [...new Set(issues)];
+
+  if (!hasManifest && detectedComponents.length > 0)
+    suggestions.push("스캐폴딩 매니페스트(.egovframe-components.json)가 없어 remove/validate 수명주기 도구는 쓸 수 없습니다. 신규 조립은 add_egovframe_components를 사용하세요.");
+  if (detectedComponents.length === 0 && buildSystem !== "unknown")
+    suggestions.push("감지된 공통컴포넌트가 없습니다. list_egovframe_components로 목록 확인 후 add_egovframe_components로 조립할 수 있습니다.");
+  if (uniqIssues.length === 0) suggestions.push("특이사항 없음 — 구성 정상.");
+
+  return {
+    projectDir: dir, isEgovProject, buildSystem, egovVersion, database,
+    detectedComponents, aiLayer, hasManifest, issues: uniqIssues, suggestions,
+  };
+}
+
+// ── 가이드 문서 검색 (v0.15.0) ──────────────────────────
+export interface DocHit {
+  title: string;
+  path: string;
+  url: string;
+  componentId: string;
+  componentName: string;
+  category: string;
+  score: number;
+}
+
+/** 카탈로그 가이드 매핑(제목·경로·연계 컴포넌트)을 키워드로 검색한다. 오프라인. */
+export function searchDocs(opts: { query: string; limit?: number }): DocHit[] {
+  const terms = opts.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  const catalog = loadCatalog();
+  const best = new Map<string, DocHit>(); // path 기준 중복 제거(최고 점수 유지)
+  for (const c of catalog.components) {
+    for (const d of c.docs ?? []) {
+      const title = d.title.toLowerCase();
+      const name = c.name.toLowerCase();
+      const hay = [d.title, d.path, c.name, c.description, c.category, c.id].join(" ").toLowerCase();
+      let score = 0;
+      for (const t of terms) {
+        if (title.includes(t)) score += 3;
+        if (name.includes(t)) score += 2;
+        if (hay.includes(t)) score += 1;
+      }
+      if (score <= 0) continue;
+      const hit: DocHit = {
+        title: d.title, path: d.path,
+        url: `https://github.com/${DOCS_REPO}/blob/main/${d.path}`,
+        componentId: c.id, componentName: c.name, category: c.category, score,
+      };
+      const prev = best.get(d.path);
+      if (!prev || score > prev.score) best.set(d.path, hit);
+    }
+  }
+  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, opts.limit ?? 10);
+}
+
+// ── 프로젝트 리포트 (v0.16.0) ───────────────────────────
+/** 프로젝트를 스캔해 설치 컴포넌트·테이블·가이드·이슈를 Markdown 리포트로 생성한다. (읽기 전용) */
+export function generateReport(opts: { projectDir: string }): string {
+  const d = diagnoseProject({ projectDir: opts.projectDir });
+  const catalog = loadCatalog();
+  const byId = new Map(catalog.components.map((c) => [c.id, c]));
+  const L: string[] = [];
+  L.push(`# eGovFrame 프로젝트 리포트`);
+  L.push(``);
+  L.push(`- 경로: ${d.projectDir}`);
+  L.push(`- 빌드: ${d.buildSystem}${d.isEgovProject ? " (egovframe)" : ""} · RTE ${d.egovVersion ?? "미검출"} · DbType ${d.database ?? "미설정"}`);
+  L.push(`- AI 계층: ${d.aiLayer ? "있음" : "없음"} · 매니페스트: ${d.hasManifest ? "있음" : "없음"}`);
+  L.push(``);
+  L.push(`## 설치 공통컴포넌트 (${d.detectedComponents.length})`);
+  L.push(``);
+  if (d.detectedComponents.length) {
+    L.push(`| id | 이름 | 카테고리 | 테이블 | 가이드 |`);
+    L.push(`|---|---|---|---|---|`);
+    for (const dc of d.detectedComponents) {
+      const c = byId.get(dc.id);
+      const tables = c?.tables?.length ?? 0;
+      const guide = c?.docs?.length ? `${c.docs.length}건` : "-";
+      L.push(`| ${dc.id} | ${dc.name} | ${c?.category ?? "-"} | ${tables} | ${guide} |`);
+    }
+  } else {
+    L.push(`(감지된 컴포넌트 없음)`);
+  }
+  const tableSet = new Set<string>();
+  for (const dc of d.detectedComponents) for (const t of byId.get(dc.id)?.tables ?? []) tableSet.add(t);
+  if (tableSet.size) {
+    L.push(``, `## 참조 테이블 (${tableSet.size})`, ``, [...tableSet].sort().join(", "));
+  }
+  const docLines: string[] = [];
+  for (const dc of d.detectedComponents) {
+    const c = byId.get(dc.id);
+    for (const doc of c?.docs ?? [])
+      docLines.push(`- [${doc.title}](https://github.com/${DOCS_REPO}/blob/main/${doc.path}) — ${dc.id}`);
+  }
+  if (docLines.length) L.push(``, `## 가이드 문서`, ``, ...docLines);
+  if (d.issues.length) L.push(``, `## 이슈`, ``, ...d.issues.map((i) => `- ${i}`));
+  if (d.suggestions.length) L.push(``, `## 제안`, ``, ...d.suggestions.map((s) => `- ${s}`));
+  return L.join("\n");
+}
+
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.13.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.16.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -1734,6 +1917,58 @@ export function buildServer(): McpServer {
           },
         },
       ],
+    }),
+  );
+  // ── 진단 도구 (v0.14.0) ────────────────────────────────
+  server.tool(
+    "diagnose_egovframe_project",
+    "기존(스캐폴딩 도구로 만들지 않은 것 포함) 전자정부 표준프레임워크 프로젝트를 스캔해 빌드시스템·RTE 버전·DbType·설치된 공통컴포넌트(카탈로그 pathPrefixes 지문)·설정 문제를 진단합니다. 디스크를 변경하지 않는 읽기 전용입니다.",
+    {
+      projectDir: z.string().describe("진단할 프로젝트 디렉터리(절대경로 권장)"),
+    },
+    async (args) => {
+      const r = diagnoseProject({ projectDir: args.projectDir });
+      const lines = [
+        `📋 진단: ${r.projectDir}`,
+        `- 빌드: ${r.buildSystem}${r.isEgovProject ? " · egovframe 좌표 감지" : ""}`,
+        `- RTE 버전: ${r.egovVersion ?? "미검출"}`,
+        `- DbType: ${r.database ?? "미설정"}`,
+        `- 감지 컴포넌트(${r.detectedComponents.length}): ${r.detectedComponents.map((c) => c.id).join(", ") || "없음"}`,
+        `- AI 계층: ${r.aiLayer ? "있음" : "없음"} / 매니페스트: ${r.hasManifest ? "있음" : "없음"}`,
+      ];
+      if (r.issues.length) lines.push(``, `⚠️ 이슈:`, ...r.issues.map((i) => ` · ${i}`));
+      if (r.suggestions.length) lines.push(``, `💡 제안:`, ...r.suggestions.map((s) => ` · ${s}`));
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    },
+  );
+  // ── 문서 검색 도구 (v0.15.0) ───────────────────────────
+  server.tool(
+    "search_egovframe_docs",
+    "공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색합니다. 컴포넌트 가이드 매핑(제목·경로·연계 컴포넌트·카테고리)을 기준으로 점수순 상위 결과를 반환하며, 각 결과에 문서 URL과 조립용 컴포넌트 id를 함께 제공합니다. (오프라인)",
+    {
+      query: z.string().describe("검색어. 예: \"로그인\", \"게시판 권한\""),
+      limit: z.number().int().min(1).max(30).default(10).describe("최대 결과 수 (기본 10)"),
+    },
+    async (args) => {
+      const hits = searchDocs({ query: args.query, limit: args.limit });
+      if (hits.length === 0)
+        return { content: [{ type: "text", text: `🔎 "${args.query}" — 검색 결과 없음` }] };
+      const lines = [
+        `🔎 "${args.query}" — ${hits.length}건`,
+        ...hits.map((h, i) => `${i + 1}. ${h.title} [${h.category}] · 컴포넌트 ${h.componentId}\n   ${h.url}`),
+      ];
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    },
+  );
+  // ── 리포트 도구 (v0.16.0) ──────────────────────────────
+  server.tool(
+    "generate_egovframe_report",
+    "프로젝트를 스캔해 설치 공통컴포넌트·참조 테이블·가이드 문서 링크·이슈를 Markdown 리포트로 생성합니다. (읽기 전용) 조립 결과 문서화나 README 첨부에 적합합니다.",
+    {
+      projectDir: z.string().describe("리포트를 만들 프로젝트 디렉터리(절대경로 권장)"),
+    },
+    async (args) => ({
+      content: [{ type: "text", text: generateReport({ projectDir: args.projectDir }) }],
     }),
   );
   return server;
