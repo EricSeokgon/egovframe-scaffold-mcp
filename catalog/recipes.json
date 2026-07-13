@@ -1,0 +1,29 @@
+{
+  "source": "curated (catalog/recipes.json)",
+  "note": "components의 id는 catalog/components.json에 존재해야 하며 test:recipes로 검증됩니다.",
+  "recipes": [
+    {
+      "id": "board-login",
+      "name": "게시판+로그인",
+      "description": "가장 흔한 최소 조합 — 공통(cmm)·게시판(bbs)·로그인(login).",
+      "template": "simple-backend",
+      "components": ["cmm", "bbs", "login"]
+    },
+    {
+      "id": "standard-portal",
+      "name": "표준 포털 최소셋",
+      "description": "포털사이트 템플릿 기반 백엔드에 공통·게시판·로그인을 조립.",
+      "template": "portal-site",
+      "components": ["cmm", "bbs", "login"],
+      "database": "mysql"
+    },
+    {
+      "id": "ai-chatbot-backend",
+      "name": "AI 챗봇 백엔드",
+      "description": "심플 백엔드에 공통(cmm)을 조립하고 Spring AI RAG 챗봇 계층을 붙임.",
+      "template": "simple-backend",
+      "components": ["cmm"],
+      "ai": { "stack": "spring-ai" }
+    }
+  ]
+}
