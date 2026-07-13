@@ -10,7 +10,7 @@
  *  - list_egovframe_templates : 사용 가능한 공식 템플릿 목록
  *  - create_egovframe_project : 템플릿으로 새 프로젝트 생성 (dryRun 미리보기 지원)
  */
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import AdmZip from "adm-zip";
@@ -1288,8 +1288,30 @@ export function stripAiPomAdditions(projectDir: string, componentId: string): bo
 /* ------------------------------------------------------------------ */
 /* MCP 서버                                                             */
 /* ------------------------------------------------------------------ */
+// ── 레시피 (v0.13.0) ─────────────────────────────────────
+export interface Recipe {
+  id: string;
+  name: string;
+  description: string;
+  template: keyof typeof TEMPLATES;
+  components: string[];
+  database?: (typeof ECC_DB_TYPES)[number];
+  ai?: { stack: (typeof AI_STACKS)[number] };
+}
+
+const RECIPES_URL = new URL("../catalog/recipes.json", import.meta.url);
+let _recipes: Recipe[] | null = null;
+
+/** catalog/recipes.json 로드 (오프라인, 1회 캐시). */
+export function loadRecipes(): Recipe[] {
+  if (_recipes) return _recipes;
+  const raw = JSON.parse(fs.readFileSync(RECIPES_URL, "utf-8")) as { recipes: Recipe[] };
+  _recipes = raw.recipes;
+  return _recipes;
+}
+
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.12.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.13.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -1539,6 +1561,181 @@ export function buildServer(): McpServer {
     },
   );
 
+  // ── 레시피 도구 (v0.13.0) ──────────────────────────────
+  server.tool(
+    "list_egovframe_recipes",
+    "큐레이션된 레시피(템플릿+컴포넌트 번들) 목록을 반환합니다. apply_egovframe_recipe로 한 번에 조립할 수 있습니다.",
+    {},
+    async () => ({
+      content: [{ type: "text", text: JSON.stringify({ recipes: loadRecipes() }, null, 2) }],
+    }),
+  );
+
+  server.tool(
+    "apply_egovframe_recipe",
+    "레시피 하나를 골라 프로젝트 생성 → 공통컴포넌트(필요 시 AI 계층) 조립까지 순차 실행합니다. dryRun=true로 전체 계획을 먼저 미리볼 수 있습니다.",
+    {
+      recipeId: z.string().describe("list_egovframe_recipes의 id. 예: board-login"),
+      projectName: z.string().describe("프로젝트명(artifactId). 소문자·숫자·하이픈"),
+      groupId: z.string().default("egovframework.example").describe("자바 groupId"),
+      outputDir: z.string().describe("생성할 상위 디렉터리(절대경로 권장)"),
+      database: z.enum(ECC_DB_TYPES).optional().describe("DB 스크립트 대상(미지정 시 레시피 기본값)"),
+      dryRun: z.boolean().default(false).describe("true면 디스크 변경 없이 전체 계획만 미리보기"),
+    },
+    async (args) => {
+      const recipe = loadRecipes().find((r) => r.id === args.recipeId);
+      if (!recipe) {
+        return { content: [{ type: "text", text: `❌ 알 수 없는 recipeId: ${args.recipeId}` }] };
+      }
+      const steps: string[] = [];
+      const eccDb = args.database ?? recipe.database;
+      const createDb = (DB_TYPES as readonly string[]).includes(eccDb ?? "")
+        ? (eccDb as (typeof DB_TYPES)[number])
+        : "hsql";
+
+      const proj = await createProject({
+        projectName: args.projectName,
+        groupId: args.groupId,
+        database: createDb,
+        template: recipe.template,
+        outputDir: args.outputDir,
+        dryRun: args.dryRun,
+      });
+      steps.push(`① 생성: ${proj.projectPath} (${proj.dryRun ? "예정" : "추출"} ${proj.filesExtracted}파일, ref ${proj.ref})`);
+
+      if (recipe.components.length) {
+        const add = await addComponents({
+          projectDir: proj.projectPath,
+          components: recipe.components,
+          includeDependencies: true,
+          database: eccDb,
+          dryRun: args.dryRun,
+        });
+        steps.push(
+          `② 컴포넌트(${add.requested.join(", ")}) — ${add.dryRun ? "예정 " : ""}${add.totalFiles}파일` +
+            (add.sqlScripts.length ? `, SQL ${add.sqlScripts.length}건` : ""),
+        );
+      }
+
+      if (recipe.ai) {
+        const ai = await addAiComponents({
+          projectDir: proj.projectPath,
+          stack: recipe.ai.stack,
+          dryRun: args.dryRun,
+        });
+        steps.push(
+          `③ AI(${recipe.ai.stack}) — ${args.dryRun ? "예정 " : ""}${ai.copiedFiles}파일` +
+            (ai.pomChanged ? ", pom 병합" : ""),
+        );
+      }
+
+      const head = args.dryRun
+        ? `🔍 레시피 미리보기(dryRun): ${recipe.name}`
+        : `✅ 레시피 적용 완료: ${recipe.name}`;
+      const text = [
+        head,
+        `- recipe: ${recipe.id}`,
+        ...steps,
+        ``,
+        `다음 단계: validate_egovframe_project(projectDir="${proj.projectPath}")로 무결성 확인`,
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+  // ── 리소스 (v0.13.0) ───────────────────────────────────
+  server.resource(
+    "components-catalog",
+    "egovframe://catalog/components",
+    { mimeType: "application/json", description: "공통컴포넌트 카탈로그(요약)" },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(
+            loadCatalog().components.map((c) => ({
+              id: c.id, name: c.name, category: c.category, dependsOn: c.dependsOn,
+            })),
+            null,
+            2,
+          ),
+        },
+      ],
+    }),
+  );
+
+  server.resource(
+    "templates-catalog",
+    "egovframe://catalog/templates",
+    { mimeType: "application/json", description: "프로젝트 템플릿·지원 DB" },
+    async (uri) => ({
+      contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ templates: TEMPLATES, databases: DB_TYPES }, null, 2) }],
+    }),
+  );
+
+  server.resource(
+    "recipes-catalog",
+    "egovframe://catalog/recipes",
+    { mimeType: "application/json", description: "레시피 목록" },
+    async (uri) => ({
+      contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ recipes: loadRecipes() }, null, 2) }],
+    }),
+  );
+
+  server.resource(
+    "component-detail",
+    new ResourceTemplate("egovframe://catalog/components/{id}", { list: undefined }),
+    { mimeType: "application/json", description: "단일 공통컴포넌트 상세" },
+    async (uri, variables) => {
+      const id = Array.isArray(variables.id) ? variables.id[0] : (variables.id as string);
+      const c = loadCatalog().components.find((x) => x.id === id);
+      return {
+        contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(c ?? { error: `unknown id: ${id}` }, null, 2) }],
+      };
+    },
+  );
+
+  // ── 프롬프트 (v0.13.0) ─────────────────────────────────
+  server.prompt(
+    "scaffold_board_login",
+    "게시판+로그인 최소 구성을 만드는 절차를 안내합니다.",
+    { projectName: z.string(), database: z.string().optional() },
+    ({ projectName, database }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `표준프레임워크로 '${projectName}' 프로젝트를 만들고 게시판+로그인을 붙여줘. ` +
+              `apply_egovframe_recipe(recipeId="board-login", projectName="${projectName}"` +
+              `${database ? `, database="${database}"` : ""}) 실행 후 validate_egovframe_project로 확인.`,
+          },
+        },
+      ],
+    }),
+  );
+
+  server.prompt(
+    "scaffold_ai_chatbot",
+    "백엔드에 RAG 챗봇(AI 계층)을 붙이는 절차를 안내합니다.",
+    { projectName: z.string(), stack: z.enum(AI_STACKS).default("spring-ai") },
+    ({ projectName, stack }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `'${projectName}' 백엔드를 만들고 ${stack} 기반 AI 챗봇을 붙여줘. ` +
+              `apply_egovframe_recipe(recipeId="ai-chatbot-backend", projectName="${projectName}") 실행 후 ` +
+              `validate_egovframe_project의 aiChecks로 실행 전제를 확인.`,
+          },
+        },
+      ],
+    }),
+  );
   return server;
 }
 
