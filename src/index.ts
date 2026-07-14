@@ -1663,8 +1663,69 @@ export function explainComponent(id: string): ComponentExplain {
   };
 }
 
+// ── CI 설정 생성 + 문서 스니펫 (v0.19.0) ────────────────
+function detectBuildTool(projectDir: string): "maven" | "gradle" {
+  if (fs.existsSync(path.join(projectDir, "pom.xml"))) return "maven";
+  if (fs.existsSync(path.join(projectDir, "build.gradle")) || fs.existsSync(path.join(projectDir, "build.gradle.kts"))) return "gradle";
+  throw new Error(`빌드 파일(pom.xml·build.gradle)을 찾지 못했습니다: ${projectDir}`);
+}
+
+export function generateCiYaml(buildTool: "maven" | "gradle", jdk: string): string {
+  const buildStep = buildTool === "maven"
+    ? "      - run: mvn -B verify"
+    : "      - run: chmod +x ./gradlew\n      - run: ./gradlew build --no-daemon";
+  return [
+    "name: CI",
+    "on:",
+    "  push:",
+    "  pull_request:",
+    "jobs:",
+    "  build:",
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    "      - uses: actions/checkout@v4",
+    "      - uses: actions/setup-java@v4",
+    "        with:",
+    "          distribution: temurin",
+    `          java-version: '${jdk}'`,
+    `          cache: ${buildTool}`,
+    buildStep,
+    "",
+  ].join("\n");
+}
+
+export interface CiResult { projectDir: string; buildTool: "maven" | "gradle"; path: string; dryRun: boolean; content: string; }
+
+export function generateCiConfig(opts: { projectDir: string; jdk?: string; dryRun?: boolean }): CiResult {
+  const projectDir = path.resolve(opts.projectDir);
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
+    throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
+  const buildTool = detectBuildTool(projectDir);
+  const content = generateCiYaml(buildTool, opts.jdk ?? "17");
+  const rel = ".github/workflows/egovframe-ci.yml";
+  const dryRun = opts.dryRun === true;
+  if (!dryRun) {
+    const dest = path.join(projectDir, rel);
+    if (fs.existsSync(dest)) throw new Error(`이미 존재합니다: ${rel} — 덮어쓰지 않습니다(수동 확인).`);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, content);
+  }
+  return { projectDir, buildTool, path: rel, dryRun, content };
+}
+
+/** deep 검색용: 본문에서 질의어 주변 스니펫 추출 */
+function extractDocSnippet(body: string, terms: string[]): string {
+  const text = body.replace(/\s+/g, " ").trim();
+  const low = text.toLowerCase();
+  let idx = -1;
+  for (const t of terms) { const i = low.indexOf(t); if (i >= 0 && (idx < 0 || i < idx)) idx = i; }
+  if (idx < 0) return text.slice(0, 160);
+  const start = Math.max(0, idx - 60);
+  return (start > 0 ? "…" : "") + text.slice(start, start + 200) + (start + 200 < text.length ? "…" : "");
+}
+
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.18.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.19.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -2114,18 +2175,33 @@ export function buildServer(): McpServer {
   // ── 문서 검색 도구 (v0.15.0) ───────────────────────────
   server.tool(
     "search_egovframe_docs",
-    "공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색합니다. 컴포넌트 가이드 매핑(제목·경로·연계 컴포넌트·카테고리)을 기준으로 점수순 상위 결과를 반환하며, 각 결과에 문서 URL과 조립용 컴포넌트 id를 함께 제공합니다. (오프라인)",
+    "공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색합니다. 기본은 오프라인 인덱스 검색(제목·경로·연계 컴포넌트·카테고리 점수순)이며, fetchTop>0이면 상위 결과의 문서 본문을 내려받아 스니펫도 함께 제공합니다.",
     {
       query: z.string().describe("검색어. 예: \"로그인\", \"게시판 권한\""),
       limit: z.number().int().min(1).max(30).default(10).describe("최대 결과 수 (기본 10)"),
+      fetchTop: z.number().int().min(0).max(5).default(0).describe("본문을 내려받아 스니펫을 붙일 상위 결과 수 (0=오프라인, 최대 5)"),
     },
     async (args) => {
       const hits = searchDocs({ query: args.query, limit: args.limit });
       if (hits.length === 0)
         return { content: [{ type: "text", text: `🔎 "${args.query}" — 검색 결과 없음` }] };
+      const terms = args.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const snippets = new Map<string, string>();
+      const n = Math.min(args.fetchTop ?? 0, hits.length);
+      for (let i = 0; i < n; i++) {
+        const h = hits[i];
+        try {
+          const res = await fetchWithTimeout(`https://raw.githubusercontent.com/${DOCS_REPO}/main/${h.path}`, DOWNLOAD_TIMEOUT_MS);
+          if (res.ok) snippets.set(h.path, extractDocSnippet(await res.text(), terms));
+        } catch { /* 네트워크 실패 시 스니펫 생략 */ }
+      }
       const lines = [
-        `🔎 "${args.query}" — ${hits.length}건`,
-        ...hits.map((h, i) => `${i + 1}. ${h.title} [${h.category}] · 컴포넌트 ${h.componentId}\n   ${h.url}`),
+        `🔎 "${args.query}" — ${hits.length}건${n ? ` (상위 ${n}건 본문 스니펫)` : ""}`,
+        ...hits.map((h, i) => {
+          const base = `${i + 1}. ${h.title} [${h.category}] · 컴포넌트 ${h.componentId}\n   ${h.url}`;
+          const s = snippets.get(h.path);
+          return s ? `${base}\n   ▷ ${s}` : base;
+        }),
       ];
       return { content: [{ type: "text", text: lines.join("\n") }] };
     },
@@ -2247,6 +2323,23 @@ export function buildServer(): McpServer {
         },
       ],
     }),
+  );
+  // ── CI 설정 생성 도구 (v0.19.0) ────────────────────────
+  server.tool(
+    "generate_egovframe_ci",
+    "프로젝트에 GitHub Actions CI 워크플로(빌드·테스트)를 생성합니다. 빌드도구(maven/gradle) 자동 감지, JDK 지정. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다.",
+    {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      jdk: z.string().default("17").describe("JDK 버전 (기본 17)"),
+      dryRun: z.boolean().default(false).describe("true면 파일 생성 없이 내용만 반환"),
+    },
+    async (args) => {
+      const r = generateCiConfig(args);
+      const head = r.dryRun
+        ? `🔍 CI 설정 미리보기(dryRun): ${r.path} (${r.buildTool})`
+        : `✅ CI 설정 생성: ${r.path} (${r.buildTool})`;
+      return { content: [{ type: "text", text: `${head}\n\n\`\`\`yaml\n${r.content}\`\`\`` }] };
+    },
   );
   return server;
 }
