@@ -17,6 +17,7 @@ import AdmZip from "adm-zip";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { createHash } from "node:crypto";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -504,12 +505,17 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
 
   // 복사 실행
   const countBy = new Map<string, number>();
+  const hashesBy = new Map<string, Record<string, { hash: string; srcHash: string }>>();
   for (const { entry, relPath, componentId } of plan) {
     const dest = path.join(projectDir, relPath);
     if (!dest.startsWith(projectDir + path.sep)) continue;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.writeFileSync(dest, entry.getData());
+    const data = entry.getData();
+    fs.writeFileSync(dest, data);
     countBy.set(componentId, (countBy.get(componentId) ?? 0) + 1);
+    const h = "sha256:" + createHash("sha256").update(data).digest("hex");
+    if (!hashesBy.has(componentId)) hashesBy.set(componentId, {});
+    hashesBy.get(componentId)![relPath] = { hash: h, srcHash: h };
   }
   const sqlScripts: string[] = [];
   const sqlBy = new Map<string, string[]>();
@@ -548,8 +554,10 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     manifest.components[c.id] = {
       installedAt: now,
       files: filesBy.get(c.id) ?? [],
+      hashes: hashesBy.get(c.id) ?? {},
       sqlScripts: sqlBy.get(c.id) ?? [],
     };
+  manifest.schemaVersion = 2;
   writeManifest(projectDir, manifest);
 
   return {
@@ -611,6 +619,8 @@ export const MANIFEST_FILE = ".egovframe-components.json";
 export interface ManifestEntry {
   installedAt: string;
   files: string[];
+  /** 파일별 기준선 해시(설치·갱신 시점) — upgrade의 3-way 판정용 (스키마 v2) */
+  hashes?: Record<string, { hash: string; srcHash: string }>;
   sqlScripts: string[];
   /** AI 컴포넌트가 pom에 삽입한 내역 (제거 시 마커 구간 정리용) */
   pom?: { backup: string; addedDeps: string[]; addedProps: string[] };
@@ -1493,8 +1503,135 @@ export function generateReport(opts: { projectDir: string }): string {
   return L.join("\n");
 }
 
+// ── 업그레이드 (v0.17.0) ────────────────────────────────
+function sha256(buf: Buffer | string): string {
+  return "sha256:" + createHash("sha256").update(buf).digest("hex");
+}
+
+export type UpgradeClass = "unchanged" | "update" | "conflict" | "user-modified" | "added" | "removed";
+
+/** 순수 판정: 기준선(설치시 hash/srcHash)·현재 디스크·upstream 신규 해시로 분류. (오프라인 테스트 대상) */
+export function classifyUpgrade(x: {
+  baselineHash?: string; baselineSrcHash?: string; currentHash?: string; upstreamHash?: string;
+}): UpgradeClass {
+  const { baselineHash, baselineSrcHash, currentHash, upstreamHash } = x;
+  if (upstreamHash === undefined) return "removed";
+  if (currentHash === undefined) return "added";
+  if (baselineHash === undefined) return currentHash === upstreamHash ? "unchanged" : "conflict";
+  const userModified = currentHash !== baselineHash;
+  const upstreamChanged = upstreamHash !== baselineSrcHash;
+  if (!userModified && !upstreamChanged) return "unchanged";
+  if (!userModified && upstreamChanged) return "update";
+  if (userModified && !upstreamChanged) return "user-modified";
+  return "conflict";
+}
+
+export interface UpgradeItem { componentId: string; relPath: string; cls: UpgradeClass; }
+export interface UpgradeResult {
+  projectDir: string; dryRun: boolean; force: boolean;
+  summary: Record<UpgradeClass, number>;
+  items: UpgradeItem[];
+  backupDir?: string;
+  applied?: { updated: number; added: number; forced: number };
+}
+
+export async function upgradeProject(opts: {
+  projectDir: string; components?: string[]; dryRun?: boolean; force?: boolean;
+}): Promise<UpgradeResult> {
+  const projectDir = path.resolve(opts.projectDir);
+  const dryRun = opts.dryRun !== false;
+  const force = opts.force === true;
+  const manifest = readManifest(projectDir);
+  if (!manifest)
+    throw new Error(`매니페스트(.egovframe-components.json)가 없습니다: ${projectDir} — 이 도구로 설치된 프로젝트만 업그레이드할 수 있습니다.`);
+
+  const targetIds = opts.components && opts.components.length ? opts.components : Object.keys(manifest.components);
+  const unknown = targetIds.filter((id) => !manifest.components[id]);
+  if (unknown.length)
+    throw new Error(`매니페스트에 없는 컴포넌트: ${unknown.join(", ")} — 설치됨: ${Object.keys(manifest.components).join(", ") || "(없음)"}`);
+
+  const catalog = loadCatalog();
+  const byId = new Map(catalog.components.map((c) => [c.id, c]));
+  const zip = await downloadComponentsZip(manifest.source.repo, manifest.source.branch);
+  const entries = zip.getEntries().filter((e) => !e.isDirectory);
+  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
+
+  const items: UpgradeItem[] = [];
+  const dataFor = new Map<string, Buffer>();
+  for (const id of targetIds) {
+    const c = byId.get(id);
+    const entry = manifest.components[id];
+    const upstream = new Map<string, Buffer>();
+    if (c)
+      for (const e of entries) {
+        const r = rel(e.entryName);
+        if (r && c.pathPrefixes.some((p) => r.startsWith(p))) upstream.set(r, e.getData());
+      }
+    const relPaths = new Set<string>([...upstream.keys(), ...entry.files]);
+    for (const r of relPaths) {
+      const upData = upstream.get(r);
+      const upstreamHash = upData ? sha256(upData) : undefined;
+      const abs = path.join(projectDir, r);
+      const currentHash = fs.existsSync(abs) ? sha256(fs.readFileSync(abs)) : undefined;
+      const base = entry.hashes?.[r];
+      const cls = classifyUpgrade({ baselineHash: base?.hash, baselineSrcHash: base?.srcHash, currentHash, upstreamHash });
+      items.push({ componentId: id, relPath: r, cls });
+      if (upData && (cls === "update" || cls === "added" || cls === "conflict")) dataFor.set(r, upData);
+    }
+  }
+
+  const summary: Record<UpgradeClass, number> = { unchanged: 0, update: 0, conflict: 0, "user-modified": 0, added: 0, removed: 0 };
+  for (const it of items) summary[it.cls]++;
+
+  if (dryRun) return { projectDir, dryRun: true, force, summary, items };
+
+  const hardConflicts = items.filter((i) => i.cls === "conflict");
+  if (hardConflicts.length && !force)
+    throw new Error(`충돌 ${hardConflicts.length}건(사용자 수정 + upstream 변경)으로 중단합니다. dryRun으로 확인 후 force=true로 강제하거나 해당 파일을 정리하세요. 아무것도 쓰지 않았습니다.`);
+
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupDir = path.join(projectDir, "upgrade-backup", ts);
+  let updated = 0, added = 0, forced = 0;
+  const writeFile = (relPath: string, data: Buffer, backup: boolean) => {
+    const abs = path.join(projectDir, relPath);
+    if (!abs.startsWith(projectDir + path.sep)) return;
+    if (backup && fs.existsSync(abs)) {
+      const b = path.join(backupDir, relPath);
+      fs.mkdirSync(path.dirname(b), { recursive: true });
+      fs.copyFileSync(abs, b);
+    }
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, data);
+  };
+  for (const it of items) {
+    const upData = dataFor.get(it.relPath);
+    if (it.cls === "update" && upData) { writeFile(it.relPath, upData, true); updated++; }
+    else if (it.cls === "added" && upData) { writeFile(it.relPath, upData, false); added++; }
+    else if (it.cls === "conflict" && force && upData) { writeFile(it.relPath, upData, true); forced++; }
+  }
+
+  for (const id of targetIds) {
+    const entry = manifest.components[id];
+    entry.hashes = entry.hashes ?? {};
+    for (const it of items) {
+      if (it.componentId !== id) continue;
+      const upData = dataFor.get(it.relPath);
+      if (upData && (it.cls === "update" || it.cls === "added" || (it.cls === "conflict" && force))) {
+        const h = sha256(upData);
+        entry.hashes[it.relPath] = { hash: h, srcHash: h };
+        if (!entry.files.includes(it.relPath)) entry.files.push(it.relPath);
+      }
+    }
+  }
+  manifest.schemaVersion = 2;
+  writeManifest(projectDir, manifest);
+
+  return { projectDir, dryRun: false, force, summary, items, backupDir: updated + forced > 0 ? backupDir : undefined, applied: { updated, added, forced } };
+}
+
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.16.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.17.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -1970,6 +2107,35 @@ export function buildServer(): McpServer {
     async (args) => ({
       content: [{ type: "text", text: generateReport({ projectDir: args.projectDir }) }],
     }),
+  );
+  // ── 업그레이드 도구 (v0.17.0) ──────────────────────────
+  server.tool(
+    "upgrade_egovframe_project",
+    "매니페스트에 기록된 설치 공통컴포넌트를 upstream 최신본과 비교해 갱신합니다. 사용자가 수정한 파일은 force 없이는 보존하며, dryRun(기본)으로 변경 계획을 먼저 확인합니다. 덮어쓰기 전 upgrade-backup/에 백업하고, 하드 충돌 시 아무것도 쓰지 않고 거부합니다.",
+    {
+      projectDir: z.string().describe("업그레이드할 프로젝트 디렉터리(절대경로 권장)"),
+      components: z.array(z.string()).optional().describe("대상 컴포넌트 id (미지정 시 매니페스트 전체)"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 계획만 미리보기, 디스크 변경 없음"),
+      force: z.boolean().default(false).describe("사용자 수정 파일(충돌)도 백업 후 덮어쓸지"),
+    },
+    async (args) => {
+      const r = await upgradeProject(args);
+      const s = r.summary;
+      const head = r.dryRun ? `🔍 업그레이드 미리보기(dryRun): ${r.projectDir}` : `✅ 업그레이드 적용: ${r.projectDir}`;
+      const lines = [
+        head,
+        `- 불변 ${s.unchanged} · 갱신 ${s.update} · 추가 ${s.added} · 사용자수정(보존) ${s["user-modified"]} · 충돌 ${s.conflict} · upstream삭제 ${s.removed}`,
+      ];
+      if (r.dryRun) {
+        const changing = r.items.filter((i) => i.cls === "update" || i.cls === "added" || i.cls === "conflict").slice(0, 20);
+        if (changing.length) lines.push(``, `변경 예정:`, ...changing.map((i) => ` · [${i.cls}] ${i.relPath}`));
+        lines.push(``, s.conflict ? `⚠️ 충돌 ${s.conflict}건 — force=true라야 덮어씁니다.` : `적용하려면 dryRun=false로 다시 호출하세요.`);
+      } else {
+        lines.push(`- 적용: 갱신 ${r.applied?.updated} · 추가 ${r.applied?.added} · 강제 ${r.applied?.forced}`);
+        if (r.backupDir) lines.push(`- 백업: ${r.backupDir}`);
+      }
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    },
   );
   return server;
 }
