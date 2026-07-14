@@ -1,6 +1,6 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트 스캐폴딩·공통컴포넌트 조립 MCP 서버 — create/search/add/validate/remove",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,7 +15,7 @@
     "test:catalog": "node test/catalog.mjs",
     "test:components": "node test/components.mjs",
     "generate:catalog": "node scripts/generate-catalog.mjs",
-    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade",
+    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade && npm run test:explain",
     "test:ai": "node test/ai.mjs",
     "generate:ai-catalog": "node scripts/generate-ai-catalog.mjs",
     "test:ai-assembly": "node test/ai-assembly.mjs",
@@ -24,7 +24,8 @@
     "test:diagnose": "node test/diagnose.mjs",
     "test:docs": "node test/docs-search.mjs",
     "test:report": "node test/report.mjs",
-    "test:upgrade": "node test/upgrade.mjs"
+    "test:upgrade": "node test/upgrade.mjs",
+    "test:explain": "node test/explain.mjs"
   },
   "engines": {
     "node": ">=18"

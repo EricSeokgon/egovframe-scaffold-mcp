@@ -1630,8 +1630,41 @@ export async function upgradeProject(opts: {
   return { projectDir, dryRun: false, force, summary, items, backupDir: updated + forced > 0 ? backupDir : undefined, applied: { updated, added, forced } };
 }
 
+// ── 컴포넌트 상세 설명 (v0.18.0) ────────────────────────
+export interface ComponentExplain {
+  id: string; name: string; category: string; description: string;
+  dependsOn: string[]; transitiveDeps: string[]; dependents: string[];
+  tables: string[]; docs: { title: string; url: string }[]; approxFiles: number; installHint: string;
+}
+
+/** 컴포넌트 하나의 상세(설명·의존성·역의존·테이블·가이드·설치 힌트)를 계산한다. (읽기 전용) */
+export function explainComponent(id: string): ComponentExplain {
+  const catalog = loadCatalog();
+  const byId = new Map(catalog.components.map((c) => [c.id, c]));
+  const c = byId.get(id);
+  if (!c) throw new Error(`알 수 없는 컴포넌트 id: ${id} — list_egovframe_components로 확인하세요.`);
+
+  const seen = new Set<string>();
+  const stack = [...c.dependsOn];
+  while (stack.length) {
+    const d = stack.pop()!;
+    if (seen.has(d)) continue;
+    seen.add(d);
+    const dc = byId.get(d);
+    if (dc) stack.push(...dc.dependsOn);
+  }
+  const transitiveDeps = [...seen];
+  const dependents = catalog.components.filter((x) => x.dependsOn.includes(id)).map((x) => x.id);
+  const docs = (c.docs ?? []).map((d) => ({ title: d.title, url: `https://github.com/${DOCS_REPO}/blob/main/${d.path}` }));
+  return {
+    id: c.id, name: c.name, category: c.category, description: c.description,
+    dependsOn: c.dependsOn, transitiveDeps, dependents, tables: c.tables ?? [], docs, approxFiles: c.approxFiles,
+    installHint: `add_egovframe_components(projectDir="...", components=["${c.id}"]) — 의존성 ${transitiveDeps.length ? transitiveDeps.join(", ") : "없음"} 포함`,
+  };
+}
+
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.17.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.18.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -2136,6 +2169,84 @@ export function buildServer(): McpServer {
       }
       return { content: [{ type: "text", text: lines.join("\n") }] };
     },
+  );
+  // ── 컴포넌트 설명 도구 (v0.18.0) ───────────────────────
+  server.tool(
+    "explain_egovframe_component",
+    "공통컴포넌트 하나의 상세(설명·직접/전이 의존성·이 컴포넌트에 의존하는 컴포넌트·참조 테이블·가이드 문서 링크·설치 명령)를 한 번에 반환합니다. (읽기 전용)",
+    {
+      id: z.string().describe("컴포넌트 id. 예: bbs"),
+    },
+    async (args) => {
+      const e = explainComponent(args.id);
+      const L = [
+        `# ${e.name} (${e.id}) · ${e.category}`,
+        ``,
+        e.description,
+        ``,
+        `- 직접 의존: ${e.dependsOn.join(", ") || "없음"}`,
+        `- 전이 의존: ${e.transitiveDeps.join(", ") || "없음"}`,
+        `- 이 컴포넌트에 의존: ${e.dependents.join(", ") || "없음"}`,
+        `- 참조 테이블(${e.tables.length}): ${e.tables.join(", ") || "-"}`,
+        `- 예상 파일: ${e.approxFiles}`,
+        ``,
+        `설치: ${e.installHint}`,
+      ];
+      if (e.docs.length) L.push(``, `가이드:`, ...e.docs.map((d) => `- [${d.title}](${d.url})`));
+      return { content: [{ type: "text", text: L.join("\n") }] };
+    },
+  );
+
+  // ── 리소스·프롬프트 확장 (v0.18.0) ─────────────────────
+  server.resource(
+    "ai-catalog",
+    "egovframe://catalog/ai-components",
+    { mimeType: "application/json", description: "AI 컴포넌트 카탈로그(스택 정의)" },
+    async (uri) => {
+      let text = "{}";
+      try { text = JSON.stringify(loadAiCatalog(), null, 2); } catch { /* AI 카탈로그 없으면 빈 객체 */ }
+      return { contents: [{ uri: uri.href, mimeType: "application/json", text }] };
+    },
+  );
+
+  server.prompt(
+    "scaffold_portal",
+    "포털사이트 최소 구성(공통·게시판·로그인)을 만드는 절차를 안내합니다.",
+    { projectName: z.string(), database: z.string().optional() },
+    ({ projectName, database }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `포털 백엔드 '${projectName}'를 만들어줘. ` +
+              `apply_egovframe_recipe(recipeId="standard-portal", projectName="${projectName}"` +
+              `${database ? `, database="${database}"` : ""}) 실행 후 validate_egovframe_project로 확인.`,
+          },
+        },
+      ],
+    }),
+  );
+
+  server.prompt(
+    "maintain_existing",
+    "기존 프로젝트를 진단→리포트→업그레이드로 점검하는 유지보수 절차를 안내합니다.",
+    { projectDir: z.string() },
+    ({ projectDir }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `기존 표준프레임워크 프로젝트 '${projectDir}'를 점검해줘. ` +
+              `1) diagnose_egovframe_project 2) generate_egovframe_report ` +
+              `3) upgrade_egovframe_project(dryRun=true)로 갱신 계획을 확인.`,
+          },
+        },
+      ],
+    }),
   );
   return server;
 }
