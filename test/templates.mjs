@@ -30,6 +30,7 @@ const r1 = await createProject({ ...base, projectName: "t-web", template: "web-s
 const pom = fs.readFileSync(path.join(r1.projectPath, "pom.xml"), "utf-8");
 console.log("[web-sample] generated:", r1.filesExtracted > 50);
 console.log("[web-sample] pom renamed:", pom.includes("<groupId>egovframework.example</groupId>") && pom.includes("t-web"));
+console.log("[web-sample] parent preserved:", pom.includes("egovframe-web-config-parent") && !pom.includes("t-web-config-parent"));
 
 // 실생성: simple-homepage — globals.properties DbType 적용 확인
 const r2 = await createProject({ ...base, projectName: "t-home", template: "simple-homepage" });
