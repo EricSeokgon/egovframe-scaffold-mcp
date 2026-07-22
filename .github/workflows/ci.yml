@@ -19,11 +19,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
 
-      - name: Build (tsc)
-        run: npm run build
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release gate (build + offline tests)
+        run: npm run prepublishOnly
 
       - name: MCP handshake (offline)
         run: |
@@ -35,16 +42,17 @@ jobs:
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
           | node dist/index.js 2>/dev/null | grep -q '"add_egovframe_components"' \
+          && printf '%s\n%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+          | node dist/index.js 2>/dev/null | grep -q '"generate_egovframe_crud"' \
           && echo "handshake OK" || (echo "handshake FAILED" && exit 1)
-
-      - name: Catalog test (offline)
-        run: npm run test:catalog
-
-      - name: AI catalog test (offline)
-        run: npm run test:ai
 
       - name: Smoke test (downloads official templates)
         run: npm run smoke
+
+      - name: CRUD compile test (official simple-backend)
+        run: npm run test:crud-integration
 
       - name: Extended templates test (downloads official templates)
         run: npm run test:templates

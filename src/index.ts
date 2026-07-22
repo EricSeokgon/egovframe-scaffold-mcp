@@ -18,6 +18,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createHash } from "node:crypto";
+import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
+
+export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
+export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult } from "./crud.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -95,6 +99,41 @@ export interface CreateResult {
   nextSteps: string[];
   ref: string;
   dryRun: boolean;
+}
+
+export function customizePomCoordinates(pom: string, groupId: string, projectName: string): string {
+  const parents: string[] = [];
+  let masked = pom.replace(/<parent\b[^>]*>[\s\S]*?<\/parent>/g, (block) => {
+    const token = `@@EGOV_PARENT_${parents.length}@@`;
+    parents.push(block);
+    return token;
+  });
+
+  const artifactLine = /^([ \t]*)<artifactId>[^<]+<\/artifactId>/m.exec(masked);
+  if (!artifactLine || artifactLine.index === undefined)
+    throw new Error("pom.xml에서 프로젝트 artifactId를 찾지 못했습니다");
+  const indent = artifactLine[1];
+  const beforeArtifact = masked.slice(0, artifactLine.index);
+  const groupMatches = [...beforeArtifact.matchAll(/^([ \t]*)<groupId>[^<]+<\/groupId>/gm)];
+  const directGroup = groupMatches.at(-1);
+  if (directGroup?.index !== undefined) {
+    const start = directGroup.index;
+    masked = masked.slice(0, start) + `${directGroup[1]}<groupId>${groupId}</groupId>` + masked.slice(start + directGroup[0].length);
+  } else {
+    masked = masked.slice(0, artifactLine.index) + `${indent}<groupId>${groupId}</groupId>\n` + masked.slice(artifactLine.index);
+  }
+
+  masked = masked.replace(/^([ \t]*)<artifactId>[^<]+<\/artifactId>/m, `$1<artifactId>${projectName}</artifactId>`);
+  if (/^([ \t]*)<name>[^<]*<\/name>/m.test(masked)) {
+    masked = masked.replace(/^([ \t]*)<name>[^<]*<\/name>/m, `$1<name>${projectName}</name>`);
+  } else {
+    masked = masked.replace(
+      /^([ \t]*)<artifactId>[^<]+<\/artifactId>/m,
+      `$&\n${indent}<name>${projectName}</name>`,
+    );
+  }
+
+  return parents.reduce((result, block, index) => result.replace(`@@EGOV_PARENT_${index}@@`, block), masked);
 }
 
 /** 제한 시간이 적용된 fetch. AbortError를 사람이 읽을 수 있는 메시지로 바꾼다. */
@@ -188,11 +227,7 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
   const pomPath = path.join(projectPath, "pom.xml");
   if (!tpl.multiProject && fs.existsSync(pomPath)) {
     let pom = fs.readFileSync(pomPath, "utf-8");
-    const artifactMatch = pom.match(/<artifactId>([^<]+)<\/artifactId>/);
-    const oldArtifact = artifactMatch ? artifactMatch[1] : null;
-    // 프로젝트 자신의 groupId(첫 번째 <groupId>)만 교체
-    pom = pom.replace(/<groupId>[^<]+<\/groupId>/, `<groupId>${opts.groupId}</groupId>`);
-    if (oldArtifact) pom = pom.split(oldArtifact).join(opts.projectName);
+    pom = customizePomCoordinates(pom, opts.groupId, opts.projectName);
     fs.writeFileSync(pomPath, pom);
     customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
   }
@@ -1725,7 +1760,7 @@ function extractDocSnippet(body: string, terms: string[]): string {
 }
 
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.19.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.20.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -2323,6 +2358,61 @@ export function buildServer(): McpServer {
         },
       ],
     }),
+  );
+  server.tool(
+    "generate_egovframe_crud",
+    "eGovFrame Development의 공식 CRUD wizard 입력 체계에 맞춰 VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5 테스트(선택) 골격을 생성합니다. Classic XML과 Boot REST 프로필을 지원하며, 전체 파일 충돌을 먼저 검사해 하나라도 존재하면 아무것도 쓰지 않습니다.",
+    {
+      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장, pom.xml 또는 build.gradle 필요)"),
+      tableName: z.string().describe("CRUD 대상 테이블명. 단일 SQL 식별자, 예: SAMPLE_BOARD"),
+      entityName: z.string().optional().describe("생성 클래스명. 미지정 시 tableName에서 PascalCase로 생성"),
+      basePackage: z.string().describe("기본 자바 패키지. 예: egovframework.example.board"),
+      fields: z.array(z.object({
+        columnName: z.string().describe("DB 컬럼명. 예: BOARD_ID"),
+        propertyName: z.string().optional().describe("자바 프로퍼티명. 미지정 시 columnName에서 camelCase로 생성"),
+        javaType: z.enum(CRUD_JAVA_TYPES).default("String").describe("자바 타입"),
+        jdbcType: z.string().optional().describe("MyBatis JDBC 타입. 미지정 시 javaType에서 추론"),
+        primaryKey: z.boolean().default(false).describe("기본키 여부. 안전한 update/delete를 위해 최소 1개 필수"),
+        generated: z.boolean().default(false).describe("DB 생성키 여부. 단일 기본키에서만 지원"),
+        nullable: z.boolean().default(true).describe("NULL 허용 여부(메타데이터·후속 검증용)"),
+        label: z.string().optional().describe("Javadoc/JSP 표시명"),
+      })).min(1).max(100).describe("테이블 컬럼 정의"),
+      profile: z.enum(CRUD_PROFILES).default("classic").describe("classic=Spring MVC+JSP, boot=REST Controller"),
+      author: z.string().default("egovframe-scaffold-mcp").describe("공식 wizard의 author"),
+      createDate: z.string().optional().describe("공식 wizard의 createDate. 미지정 시 오늘 날짜"),
+      mapperFolder: z.string().optional().describe("프로젝트 기준 Mapper XML 폴더"),
+      mapperPackage: z.string().optional().describe("Mapper 인터페이스 패키지"),
+      voPackage: z.string().optional().describe("VO 패키지"),
+      servicePackage: z.string().optional().describe("Service 패키지"),
+      implPackage: z.string().optional().describe("ServiceImpl 패키지"),
+      controllerPackage: z.string().optional().describe("Controller 패키지"),
+      jspFolder: z.string().optional().describe("프로젝트 기준 JSP 폴더"),
+      checkDataAccess: z.boolean().default(true).describe("공식 wizard DataAccess 그룹 생성 여부"),
+      checkService: z.boolean().default(true).describe("공식 wizard Service 그룹 생성 여부"),
+      checkWeb: z.boolean().default(true).describe("공식 wizard Web 그룹 생성 여부"),
+      includeJsp: z.boolean().optional().describe("classic 프로필의 JSP 2종 생성 여부(기본 true)"),
+      withTest: z.boolean().default(false).describe("JUnit 5 서비스 계약 테스트 골격 생성"),
+      dryRun: z.boolean().default(false).describe("true면 파일을 쓰지 않고 생성 계획만 반환"),
+    },
+    async (args) => {
+      const r = generateCrud(args);
+      const head = r.dryRun
+        ? `🔍 CRUD 생성 미리보기(dryRun): ${r.entityName} ← ${r.tableName}`
+        : `✅ CRUD 생성 완료: ${r.entityName} ← ${r.tableName}`;
+      const componentCounts = new Map<string, number>();
+      for (const file of r.files) componentCounts.set(file.component, (componentCounts.get(file.component) ?? 0) + 1);
+      const lines = [
+        head,
+        `- 프로젝트: ${r.projectDir}`,
+        `- 프로필: ${r.profile}`,
+        `- 파일: ${r.files.length}개 (${[...componentCounts].map(([name, count]) => `${name} ${count}`).join(" · ")})`,
+        ...r.files.map((file) => `  · ${file.path} (${file.bytes} bytes)`),
+      ];
+      if (r.warnings.length) lines.push(``, `확인 사항:`, ...r.warnings.map((warning) => `  ! ${warning}`));
+      if (r.dryRun) lines.push(``, `실제 생성하려면 dryRun=false로 다시 호출하세요.`);
+      else lines.push(``, `다음 단계: 생성 프로젝트에서 컴파일·테스트를 실행해 의존성과 설정을 확인하세요.`);
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    },
   );
   // ── CI 설정 생성 도구 (v0.19.0) ────────────────────────
   server.tool(
