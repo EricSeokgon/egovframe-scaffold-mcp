@@ -14,17 +14,35 @@
  *  - catalog/overrides.json으로 id·이름·설명·의존성을 큐레이션 (기본 dependsOn: ["cmm"])
  */
 import AdmZip from "adm-zip";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCE = { repo: "eGovFramework/egovframe-common-components", branch: "main" };
+const SOURCE = {
+  repository: "eGovFramework/egovframe-common-components",
+  repo: "eGovFramework/egovframe-common-components",
+  branch: "main",
+  tag: "v5.0.6",
+  commit: "23d01889e01fcfa486d28d7a2ec4adb51fbaf3ad",
+  surveyedAt: "2026-07-22",
+  securityPatchLevel: "v5.0.6",
+};
 const JAVA = "src/main/java/egovframework/com/";
 const MAPPER = "src/main/resources/egovframework/mapper/com/";
 const JSP = "src/main/webapp/WEB-INF/jsp/egovframework/com/";
+const MESSAGE = "src/main/resources/egovframework/message/com/";
+const IDGN = "src/main/resources/egovframework/spring/com/idgn/";
+const SCHEDULING = "src/main/resources/egovframework/spring/com/scheduling/";
+const WEB_ASSET_BASES = ["css", "js", "images", "html"].map((kind) => `src/main/webapp/${kind}/egovframework/com/`);
+const WEB_FRAGMENT_PREFIXES = [
+  "src/main/resources/egovframework/spring/com/",
+  "src/main/webapp/WEB-INF/config/egovframework/springmvc/",
+];
 
 let zipEntriesCache = null;
+let zipBufferCache = null;
 async function loadZipEntries() {
   if (zipEntriesCache) return zipEntriesCache;
   const zipArg = process.argv.indexOf("--zip");
@@ -32,12 +50,13 @@ async function loadZipEntries() {
   if (zipArg > -1) {
     buf = fs.readFileSync(process.argv[zipArg + 1]);
   } else {
-    const url = `https://codeload.github.com/${SOURCE.repo}/zip/${SOURCE.branch}`;
+    const url = `https://codeload.github.com/${SOURCE.repository}/zip/${SOURCE.commit}`;
     console.error(`다운로드: ${url}`);
     const res = await fetch(url);
     if (!res.ok) throw new Error(`다운로드 실패 (${res.status})`);
     buf = Buffer.from(await res.arrayBuffer());
   }
+  zipBufferCache = buf;
   const zip = new AdmZip(buf);
   zipEntriesCache = zip.getEntries().filter((e) => !e.isDirectory);
   return zipEntriesCache;
@@ -176,6 +195,12 @@ for (const key of leafKeys) {
     dependsOn: o.dependsOn ?? (key === "cmm" ? [] : ["cmm"]),
     approxFiles: byKey.get(key),
     tables: await extractTables(MAPPER + pkg),
+    messageBundles: [],
+    idgnContexts: [],
+    schedulingContexts: [],
+    webAssets: [],
+    webFragments: [],
+    mavenDependencies: [],
     docs: docsMap
       ? (docsMap.get(key) ?? docsMap.get(parent2) ?? []).slice(0, 5).map(({ path: p, title }) => ({ path: p.split(path.sep).join("/"), title }))
       : (prevDocs.get(o.id ?? key) ?? undefined),
@@ -206,15 +231,130 @@ for (const [g, children] of [...groups.entries()].sort()) {
     dependsOn: [],
     approxFiles: children.reduce((n, c) => n + (byId.get(c)?.approxFiles ?? 0), 0),
     children,
+    messageBundles: [],
+    idgnContexts: [],
+    schedulingContexts: [],
+    webAssets: [],
+    webFragments: [],
+    mavenDependencies: [],
     docs: docsMap ? (docsMap.get(g) ?? []).slice(0, 5).map(({ path: p, title }) => ({ path: p.split(path.sep).join("/"), title })) : (prevDocs.get(o.id ?? g) ?? undefined),
   });
 }
+
+const MAVEN_IMPORTS = [
+  ["org.egovframe.rte.psl.dataaccess", "org.egovframe.rte:egovframe-rte-psl-dataaccess"],
+  ["org.egovframe.rte.fdl.idgnr", "org.egovframe.rte:egovframe-rte-fdl-idgnr"],
+  ["org.egovframe.rte.fdl.property", "org.egovframe.rte:egovframe-rte-fdl-property"],
+  ["org.egovframe.rte.fdl.security", "org.egovframe.rte:egovframe-rte-fdl-security"],
+  ["org.egovframe.rte.fdl.excel", "org.egovframe.rte:egovframe-rte-fdl-excel"],
+  ["org.egovframe.rte.fdl.crypto", "org.egovframe.rte:egovframe-rte-fdl-crypto"],
+  ["org.egovframe.rte.fdl.access", "org.egovframe.rte:egovframe-rte-fdl-access"],
+  ["org.egovframe.rte.ptl.mvc", "org.egovframe.rte:egovframe-rte-ptl-mvc"],
+  ["org.egovframe.rte.bat.core", "org.egovframe.rte:egovframe-rte-bat-core"],
+  ["org.quartz", "org.quartz-scheduler:quartz"],
+  ["org.apache.poi", "org.apache.poi:poi-ooxml"],
+  ["jakarta.mail", "com.sun.mail:jakarta.mail"],
+  ["org.apache.commons.compress", "org.apache.commons:commons-compress"],
+  ["org.apache.commons.fileupload2", "org.apache.commons:commons-fileupload2-jakarta-servlet6"],
+  ["org.springframework.web.socket", "org.springframework:spring-websocket"],
+];
+
+const entries = await loadZipEntries();
+const entryRoot = entries[0].entryName.split("/")[0] + "/";
+const entryRel = (entry) => entry.entryName.startsWith(entryRoot) ? entry.entryName.slice(entryRoot.length) : entry.entryName;
+const entryByPath = new Map(entries.map((entry) => [entryRel(entry), entry]));
+const componentByKey = new Map(leafKeys.map((key) => [key, byId.get(overrides[key]?.id ?? key)]));
+const keysBySpecificity = [...leafKeys].sort((a, b) => b.split(".").length - a.split(".").length || b.length - a.length);
+const sourceTextByKey = new Map(keysBySpecificity.map((key) => {
+  const javaPrefix = JAVA + (key === "cmm" ? "cmm/" : key.replaceAll(".", "/") + "/");
+  const sourceText = [...entryByPath]
+    .filter(([file]) => file.startsWith(javaPrefix) && file.endsWith(".java"))
+    .map(([, entry]) => entry.getData().toString("utf8"))
+    .join("\n");
+  return [key, sourceText];
+}));
+const assign = (key, field, file) => {
+  const component = componentByKey.get(key);
+  if (component && !component[field].includes(file)) component[field].push(file);
+};
+const keyFromText = (text) => {
+  for (const key of keysBySpecificity) {
+    const dotted = `egovframework.com.${key}.`;
+    const slashed = `egovframework/com/${key.replaceAll(".", "/")}/`;
+    if (text.includes(dotted) || text.includes(slashed)) return key;
+  }
+  return null;
+};
+
+for (const [file, entry] of entryByPath) {
+  if (file.startsWith(JSP) && !file.slice(JSP.length).includes("/"))
+    assign("cmm", "webFragments", file);
+
+  if (file.startsWith(MESSAGE) && file.endsWith(".properties"))
+    assign(componentKey(file, MESSAGE) ?? "cmm", "messageBundles", file);
+
+  for (const base of WEB_ASSET_BASES)
+    if (file.startsWith(base)) assign(componentKey(file, base) ?? "cmm", "webAssets", file);
+
+  if (file.startsWith(IDGN) && file.endsWith(".xml")) {
+    const text = entry.getData().toString("utf8");
+    let key = keyFromText(text);
+    const beanIds = [...text.matchAll(/<bean\b[^>]*\b(?:id|name)="([^"]+)"/g)].map((match) => match[1]);
+    if (!key && beanIds.length)
+      key = keysBySpecificity.find((candidate) => beanIds.some((beanId) => sourceTextByKey.get(candidate)?.includes(`"${beanId}"`))) ?? null;
+    if (!key) {
+      for (const candidate of keysBySpecificity) {
+        const component = componentByKey.get(candidate);
+        if (component?.tables?.some((table) => new RegExp(`\\b${table}\\b`).test(text))) { key = candidate; break; }
+      }
+    }
+    if (key) assign(key, "idgnContexts", file);
+    continue;
+  }
+
+  if (file.startsWith(SCHEDULING) && file.endsWith(".xml")) {
+    const text = entry.getData().toString("utf8");
+    const code = path.basename(file, ".xml").replace(/^context-scheduling-/, "");
+    const key = keyFromText(text) ?? keysBySpecificity.find((candidate) => code === candidate.replaceAll(".", "-")) ?? "cmm";
+    assign(key, "schedulingContexts", file);
+    continue;
+  }
+
+  if (WEB_FRAGMENT_PREFIXES.some((prefix) => file.startsWith(prefix)) && file.endsWith(".xml") &&
+      !file.startsWith(IDGN) && !file.startsWith(SCHEDULING)) {
+    const text = entry.getData().toString("utf8");
+    assign(keyFromText(text) ?? "cmm", "webFragments", file);
+  }
+}
+
+for (const key of leafKeys) {
+  const component = componentByKey.get(key);
+  if (!component) continue;
+  const sourceText = sourceTextByKey.get(key) ?? "";
+  component.mavenDependencies = MAVEN_IMPORTS.filter(([prefix]) => sourceText.includes(prefix)).map(([, coordinate]) => coordinate);
+  for (const field of ["messageBundles", "idgnContexts", "schedulingContexts", "webAssets", "webFragments", "mavenDependencies"])
+    component[field].sort();
+  const exactFiles = [component.messageBundles, component.idgnContexts, component.schedulingContexts, component.webAssets, component.webFragments].flat();
+  const allFiles = new Set([
+    ...[...entryByPath.keys()].filter((file) => component.pathPrefixes.some((prefix) => file.startsWith(prefix))),
+    ...exactFiles,
+  ]);
+  component.approxFiles = allFiles.size;
+}
+
 components.sort((a, b) => a.id.localeCompare(b.id));
 
 const catalog = {
-  schemaVersion: 1,
-  source: { ...SOURCE, surveyedAt: new Date().toISOString().slice(0, 10) },
-  sqlNote: "DB 스크립트는 script/ddl|dml/<db>/ 의 통합본(com_DDL_<db>.sql 등)으로 제공됩니다. 컴포넌트별 테이블 선별 적용은 로드맵 항목입니다.",
+  schemaVersion: 2,
+  source: {
+    ...SOURCE,
+    archive: {
+      sha256: createHash("sha256").update(zipBufferCache).digest("hex"),
+      bytes: zipBufferCache.length,
+      files: entries.length,
+    },
+  },
+  sqlNote: "DB 스크립트는 선택 컴포넌트의 참조 테이블을 기준으로 DDL·DML을 선별 추출하며 자동 실행하지 않습니다.",
   generatedBy: "scripts/generate-catalog.mjs",
   components,
 };
