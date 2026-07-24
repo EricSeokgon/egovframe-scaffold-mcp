@@ -654,6 +654,9 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
       sqlScripts.push(relPath);
       if (!sqlBy.has(componentId)) sqlBy.set(componentId, []);
       sqlBy.get(componentId)!.push(relPath);
+      const h = "sha256:" + createHash("sha256").update(content).digest("hex");
+      if (!hashesBy.has(componentId)) hashesBy.set(componentId, {});
+      hashesBy.get(componentId)![relPath] = { hash: h, srcHash: h };
     }
   } catch (error) {
     for (const file of createdFiles.reverse()) {
@@ -807,6 +810,20 @@ export interface RemoveOptions {
   projectDir: string;
   components: string[];
   dryRun?: boolean;
+  /** 사용자 수정 또는 기준선 hash가 없는 파일도 백업 후 제거 */
+  force?: boolean;
+  /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
+  faultInjection?: "after-stage";
+}
+
+export type RemoveFileState = "unchanged" | "modified" | "unverified" | "missing";
+
+export interface RemoveFilePlan {
+  componentId: string;
+  relPath: string;
+  state: RemoveFileState;
+  expectedHash?: string;
+  currentHash?: string;
 }
 
 export interface RemoveResult {
@@ -814,6 +831,11 @@ export interface RemoveResult {
   removed: { id: string; files: number; sqlScripts: number }[];
   totalFiles: number;
   dryRun: boolean;
+  force: boolean;
+  blocked: boolean;
+  summary: Record<RemoveFileState, number>;
+  files: RemoveFilePlan[];
+  backupDir?: string;
 }
 
 /** 빈 상위 디렉터리를 projectDir까지 거슬러 올라가며 정리한다. */
@@ -827,15 +849,36 @@ function pruneEmptyDirs(startDir: string, rootDir: string): void {
   }
 }
 
+/** 매니페스트 상대경로를 프로젝트 내부의 일반 파일 후보로만 해석한다. */
+function resolveTrackedFile(projectDir: string, realProjectDir: string, relPath: string): string {
+  if (path.isAbsolute(relPath))
+    throw new Error(`매니페스트의 절대경로를 거부합니다: ${relPath}`);
+  const target = path.resolve(projectDir, relPath);
+  const relative = path.relative(projectDir, target);
+  if (!relative || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative))
+    throw new Error(`매니페스트의 프로젝트 밖 경로를 거부합니다: ${relPath}`);
+  if (fs.existsSync(target)) {
+    const realTarget = fs.realpathSync(target);
+    const realRelative = path.relative(realProjectDir, realTarget);
+    if (!realRelative || realRelative === ".." || realRelative.startsWith(".." + path.sep) || path.isAbsolute(realRelative))
+      throw new Error(`매니페스트 경로가 symlink를 통해 프로젝트 밖을 가리킵니다: ${relPath}`);
+  }
+  return target;
+}
+
 /**
  * 매니페스트에 기록된 파일만 삭제하여 컴포넌트를 제거한다.
  * 다른 설치 컴포넌트가 의존하는 컴포넌트는 제거를 거부한다.
+ * 설치·갱신 시점 hash와 현재 파일이 다르면 기본 거부하고, force=true일 때만
+ * remove-backup/에 사본을 만든 뒤 같은 파일시스템 staging으로 트랜잭션 제거한다.
  */
 export async function removeComponents(opts: RemoveOptions): Promise<RemoveResult> {
   const projectDir = path.resolve(opts.projectDir);
   const manifest = readManifest(projectDir);
   if (!manifest)
     throw new Error(`설치 매니페스트(${MANIFEST_FILE})가 없습니다 — add_egovframe_components(v0.5.0 이상)로 조립한 프로젝트만 제거를 지원합니다`);
+  if (new Set(opts.components).size !== opts.components.length)
+    throw new Error("제거할 컴포넌트 id가 중복되었습니다");
 
   const catalog = loadCatalog();
   const byId = new Map(catalog.components.map((c) => [c.id, c]));
@@ -854,30 +897,160 @@ export async function removeComponents(opts: RemoveOptions): Promise<RemoveResul
   }
 
   const dryRun = opts.dryRun === true;
+  const force = opts.force === true;
   const removed: RemoveResult["removed"] = [];
-  let totalFiles = 0;
+  const files: RemoveFilePlan[] = [];
+  const targetByRel = new Map<string, string>();
+  const ownerByTarget = new Map<string, string>();
+  const realProjectDir = fs.realpathSync(projectDir);
   for (const id of opts.components) {
     const entry = manifest.components[id];
-    const all = [...entry.files, ...entry.sqlScripts];
-    if (!dryRun) {
-      for (const rel of all) {
-        const target = path.join(projectDir, rel);
-        if (!target.startsWith(projectDir + path.sep)) continue;
-        if (fs.existsSync(target)) fs.unlinkSync(target);
-        pruneEmptyDirs(path.dirname(target), projectDir);
+    const all = [...new Set([...entry.files, ...entry.sqlScripts])];
+    for (const relPath of all) {
+      const target = resolveTrackedFile(projectDir, realProjectDir, relPath);
+      const targetKey = process.platform === "win32" ? target.toLowerCase() : target;
+      const previousOwner = ownerByTarget.get(targetKey);
+      if (previousOwner)
+        throw new Error(`매니페스트 오류: 정규화한 '${relPath}' 대상이 '${previousOwner}' 항목과 중복됩니다 — 자동 제거를 거부합니다`);
+      ownerByTarget.set(targetKey, `${id}:${relPath}`);
+      targetByRel.set(relPath, target);
+      const expectedHash = entry.hashes?.[relPath]?.hash;
+      if (!fs.existsSync(target)) {
+        files.push({ componentId: id, relPath, state: "missing", expectedHash });
+        continue;
       }
-      if (entry.pom) stripAiPomAdditions(projectDir, id);
-      delete manifest.components[id];
+      const stat = fs.lstatSync(target);
+      if (!stat.isFile())
+        throw new Error(`매니페스트 파일이 일반 파일이 아닙니다(디렉터리·symlink 제거 거부): ${relPath}`);
+      const currentHash = sha256(fs.readFileSync(target));
+      const state: RemoveFileState = expectedHash === undefined
+        ? "unverified"
+        : currentHash === expectedHash ? "unchanged" : "modified";
+      files.push({ componentId: id, relPath, state, expectedHash, currentHash });
     }
     removed.push({ id, files: entry.files.length, sqlScripts: entry.sqlScripts.length });
-    totalFiles += all.length;
   }
-  if (!dryRun) {
-    if (Object.keys(manifest.components).length === 0)
-      fs.unlinkSync(path.join(projectDir, MANIFEST_FILE));
-    else writeManifest(projectDir, manifest);
+
+  const summary: Record<RemoveFileState, number> = { unchanged: 0, modified: 0, unverified: 0, missing: 0 };
+  for (const file of files) summary[file.state]++;
+  const risky = files.filter((file) => file.state === "modified" || file.state === "unverified");
+  const blocked = risky.length > 0 && !force;
+  const existing = files.filter((file) => file.state !== "missing");
+  const baseResult = {
+    projectDir,
+    removed,
+    totalFiles: existing.length,
+    force,
+    blocked,
+    summary,
+    files,
+  };
+  if (dryRun) return { ...baseResult, dryRun: true };
+
+  if (blocked)
+    throw new Error(
+      `사용자 수정 또는 기준선 hash가 없는 파일 ${risky.length}건으로 제거를 중단합니다(아무것도 삭제하지 않았습니다):\n` +
+        risky.slice(0, 10).map((file) => `  - [${file.state}] ${file.relPath}`).join("\n") +
+        (risky.length > 10 ? `\n  … 외 ${risky.length - 10}건` : "") +
+        "\ndryRun으로 전체 분류를 확인하고, 보존이 필요하면 직접 정리하거나 force=true로 백업 후 제거하세요.",
+    );
+
+  let backupDir: string | undefined;
+  if (force && risky.length > 0) {
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupRoot = path.join(projectDir, "remove-backup");
+    fs.mkdirSync(backupRoot, { recursive: true });
+    backupDir = fs.mkdtempSync(path.join(backupRoot, `${ts}-`));
+    for (const file of existing) {
+      const source = targetByRel.get(file.relPath)!;
+      const backup = path.join(backupDir, file.relPath);
+      fs.mkdirSync(path.dirname(backup), { recursive: true });
+      fs.copyFileSync(source, backup);
+    }
+    fs.writeFileSync(
+      path.join(backupDir, "remove-plan.json"),
+      JSON.stringify({ createdAt: new Date().toISOString(), components: opts.components, summary, files }, null, 2) + "\n",
+    );
   }
-  return { projectDir, removed, totalFiles, dryRun };
+
+  const manifestPath = path.join(projectDir, MANIFEST_FILE);
+  const txnDir = fs.mkdtempSync(path.join(projectDir, ".egovframe-remove-txn-"));
+  const stagedManifest = path.join(txnDir, MANIFEST_FILE);
+  const moved: { relPath: string; target: string; staged: string }[] = [];
+  const pomEntries = opts.components.filter((id) => manifest.components[id].pom);
+  const pomPath = path.join(projectDir, "pom.xml");
+  const aiBackupPath = path.join(projectDir, AI_POM_BACKUP);
+  const pomBefore = pomEntries.length > 0 && fs.existsSync(pomPath) ? fs.readFileSync(pomPath) : null;
+  const aiBackupBefore = pomEntries.length > 0 && fs.existsSync(aiBackupPath) ? fs.readFileSync(aiBackupPath) : null;
+  let pomTouched = false;
+  let manifestStaged = false;
+
+  try {
+    for (const file of existing) {
+      const target = targetByRel.get(file.relPath)!;
+      const staged = path.join(txnDir, "files", file.relPath);
+      fs.mkdirSync(path.dirname(staged), { recursive: true });
+      fs.renameSync(target, staged);
+      moved.push({ relPath: file.relPath, target, staged });
+    }
+
+    if (opts.faultInjection === "after-stage")
+      throw new Error("remove fault injection: after-stage");
+
+    for (const id of pomEntries) {
+      pomTouched = true;
+      stripAiPomAdditions(projectDir, id);
+    }
+    for (const id of opts.components) delete manifest.components[id];
+
+    fs.renameSync(manifestPath, stagedManifest);
+    manifestStaged = true;
+    if (Object.keys(manifest.components).length > 0)
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n", { flag: "wx" });
+
+    fs.rmSync(txnDir, { recursive: true, force: true });
+  } catch (error) {
+    const rollbackErrors: string[] = [];
+    if (manifestStaged) {
+      try {
+        fs.rmSync(manifestPath, { force: true });
+        if (fs.existsSync(stagedManifest)) fs.renameSync(stagedManifest, manifestPath);
+      } catch (rollbackError) {
+        rollbackErrors.push(`manifest: ${String(rollbackError)}`);
+      }
+    }
+    if (pomTouched) {
+      try {
+        if (pomBefore) fs.writeFileSync(pomPath, pomBefore);
+        else fs.rmSync(pomPath, { force: true });
+        if (aiBackupBefore) fs.writeFileSync(aiBackupPath, aiBackupBefore);
+        else fs.rmSync(aiBackupPath, { force: true });
+      } catch (rollbackError) {
+        rollbackErrors.push(`pom: ${String(rollbackError)}`);
+      }
+    }
+    for (const file of [...moved].reverse()) {
+      try {
+        if (!fs.existsSync(file.staged)) continue;
+        fs.mkdirSync(path.dirname(file.target), { recursive: true });
+        fs.renameSync(file.staged, file.target);
+      } catch (rollbackError) {
+        rollbackErrors.push(`${file.relPath}: ${String(rollbackError)}`);
+      }
+    }
+    try { fs.rmSync(txnDir, { recursive: true, force: true }); }
+    catch (rollbackError) { rollbackErrors.push(`staging: ${String(rollbackError)}`); }
+    const suffix = rollbackErrors.length
+      ? `\n롤백 실패 ${rollbackErrors.length}건:\n${rollbackErrors.map((message) => `  - ${message}`).join("\n")}`
+      : "\n작업 전 상태로 롤백했습니다.";
+    throw new Error(`컴포넌트 제거 트랜잭션 실패: ${error instanceof Error ? error.message : String(error)}${suffix}`);
+  }
+
+  for (const file of existing) {
+    const target = targetByRel.get(file.relPath)!;
+    try { pruneEmptyDirs(path.dirname(target), projectDir); } catch { /* 제거 성공 후 빈 디렉터리 정리는 best-effort */ }
+  }
+  return { ...baseResult, dryRun: false, blocked: false, backupDir };
 }
 
 /* ------------------------------------------------------------------ */
@@ -1385,18 +1558,24 @@ export async function addAiComponents(opts: AddAiComponentsOptions): Promise<Add
 
   // ---- 매니페스트 기록 ----
   const manifest: Manifest = readManifest(projectDir) ?? {
-    schemaVersion: 1,
+    schemaVersion: 3,
     source: { repo: catalog.source.repo, branch: catalog.source.branch },
     components: {},
   };
+  const hashes = Object.fromEntries(plan.map((f) => {
+    const h = sha256(f.entry.getData());
+    return [f.destRel, { hash: h, srcHash: h }];
+  }));
   manifest.components[comp.id] = {
     installedAt: new Date().toISOString(),
     files: plan.map((f) => f.destRel),
+    hashes,
     sqlScripts: [],
     pom: pomChanged
       ? { backup: AI_POM_BACKUP, addedDeps: p.toAddDeps.map((d) => d.artifactId), addedProps: Object.keys(p.toAddProps) }
       : undefined,
   };
+  manifest.schemaVersion = 3;
   writeManifest(projectDir, manifest);
 
   const copyPlan = p.groups.map((g) => ({
@@ -2059,19 +2238,25 @@ export function buildServer(): McpServer {
   server.tool(
     "remove_egovframe_components",
     "add_egovframe_components로 조립한 컴포넌트를 제거합니다. 설치 매니페스트에 기록된 파일만 삭제하며, " +
-      "다른 설치 컴포넌트가 의존하는 컴포넌트는 거부합니다. dryRun 미리보기를 지원합니다.",
+      "다른 설치 컴포넌트가 의존하거나 설치 시점 hash와 달라진 파일은 기본 거부합니다. " +
+      "force=true는 remove-backup/에 사본을 만든 뒤 트랜잭션 제거하며, dryRun 미리보기를 지원합니다.",
     {
       projectDir: z.string().describe("대상 프로젝트 디렉터리"),
       components: z.array(z.string()).min(1).describe("제거할 컴포넌트 id 목록"),
       dryRun: z.boolean().default(false).describe("true면 삭제 없이 대상만 미리보기"),
+      force: z.boolean().default(false).describe("사용자 수정·hash 미검증 파일도 remove-backup/에 백업한 뒤 제거"),
     },
     async (args) => {
       const r = await removeComponents(args as RemoveOptions);
       const head = r.dryRun ? `🔍 제거 미리보기(dryRun): ${r.projectDir}` : `🗑️ 컴포넌트 제거 완료: ${r.projectDir}`;
       const text = [head,
         ...r.removed.map((c) => `  - ${c.id}: 파일 ${c.files}개${c.sqlScripts ? `, DB 스크립트 ${c.sqlScripts}개` : ""}`),
-        `- 총 ${r.dryRun ? "삭제 예정" : "삭제"} 파일: ${r.totalFiles}개`,
-        ...(r.dryRun ? ["", "실제 제거하려면 dryRun 없이 다시 호출하세요."] : []),
+        `- 현재 파일: 정상 ${r.summary.unchanged} · 수정 ${r.summary.modified} · hash 미검증 ${r.summary.unverified} · 누락 ${r.summary.missing}`,
+        `- 총 ${r.dryRun ? "삭제 가능" : "삭제"} 파일: ${r.totalFiles}개`,
+        ...(r.backupDir ? [`- 강제 제거 백업: ${r.backupDir}`] : []),
+        ...(r.dryRun && r.blocked
+          ? ["", "⚠️ 수정·hash 미검증 파일이 있어 기본 제거는 중단됩니다. 직접 보존하거나 force=true로 백업 후 제거하세요."]
+          : r.dryRun ? ["", "실제 제거하려면 dryRun 없이 다시 호출하세요."] : []),
       ].join("\n");
       return { content: [{ type: "text", text }] };
     },
