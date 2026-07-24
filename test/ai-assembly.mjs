@@ -1,5 +1,6 @@
 // AI 컴포넌트 실조립(M2) 통합 테스트 — egovframe-ai-rag 저장소를 실제로 내려받는다
 import { addAiComponents, removeComponents, validateProject, readManifest, AI_POM_BACKUP } from "../dist/index.js";
+import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
@@ -36,45 +37,49 @@ fs.writeFileSync(path.join(proj, "pom.xml"), ORIGINAL_POM);
 
 // ---- 조립 ----
 const r = await addAiComponents({ projectDir: proj, stack: "spring-ai" });
-console.log("assembled:", r.dryRun === false && r.copiedFiles > 40);
-console.log("pom changed with backup:", r.pomChanged === true && fs.existsSync(path.join(proj, AI_POM_BACKUP)));
+assert.ok(r.dryRun === false && r.copiedFiles > 40, "spring-ai 파일을 실제 조립해야 한다");
+assert.ok(r.pomChanged === true && fs.existsSync(path.join(proj, AI_POM_BACKUP)), "POM 변경 전 백업해야 한다");
 
 const pom = fs.readFileSync(path.join(proj, "pom.xml"), "utf-8");
-console.log("pom markers present:", pom.includes("egovframe-scaffold-mcp:ai:ai-rag-spring-ai:deps:start"));
-console.log("dep inserted:", pom.includes("spring-ai-client-chat"));
-console.log("existing deps untouched:", (pom.match(/spring-boot-starter-web/g) || []).length === 1);
-console.log("exclusions preserved in pom:", pom.includes("spring-boot-starter-logging"));
+assert.ok(pom.includes("egovframe-scaffold-mcp:ai:ai-rag-spring-ai:deps:start"), "spring-ai POM 마커를 기록해야 한다");
+assert.ok(pom.includes("spring-ai-client-chat"), "spring-ai 의존성을 추가해야 한다");
+assert.equal((pom.match(/spring-boot-starter-web/g) || []).length, 1, "기존 의존성을 중복시키면 안 된다");
+assert.ok(pom.includes("spring-boot-starter-logging"), "POM exclusion을 보존해야 한다");
 
-console.log("config profiled:", fs.existsSync(path.join(proj, "src/main/resources/application-ai.yml")));
-console.log("original yml NOT created:", !fs.existsSync(path.join(proj, "src/main/resources/application.yml")));
-console.log("source copied:", fs.existsSync(path.join(proj, "src/main/java/com/example/chat/config/EgovRagConfig.java")));
-console.log("infra renamed:", fs.existsSync(path.join(proj, "docker-compose.ai.yml")) && fs.existsSync(path.join(proj, "Dockerfile.ai")));
-console.log("k8s under ai/:", fs.existsSync(path.join(proj, "k8s/ai")));
-console.log("ui copied:", fs.existsSync(path.join(proj, "src/main/resources/templates/chat.html")));
-console.log("tests excluded:", !fs.existsSync(path.join(proj, "src/test")));
+assert.ok(fs.existsSync(path.join(proj, "src/main/resources/application-ai.yml")), "AI 프로필 설정을 생성해야 한다");
+assert.ok(!fs.existsSync(path.join(proj, "src/main/resources/application.yml")), "원본 application.yml 경로에 쓰면 안 된다");
+assert.ok(fs.existsSync(path.join(proj, "src/main/java/com/example/chat/config/EgovRagConfig.java")), "spring-ai 소스를 복사해야 한다");
+assert.ok(
+  fs.existsSync(path.join(proj, "docker-compose.ai.yml")) && fs.existsSync(path.join(proj, "Dockerfile.ai")),
+  "인프라 파일을 AI 전용 이름으로 복사해야 한다",
+);
+assert.ok(fs.existsSync(path.join(proj, "k8s/ai")), "Kubernetes 자산을 k8s/ai 아래에 복사해야 한다");
+assert.ok(fs.existsSync(path.join(proj, "src/main/resources/templates/chat.html")), "채팅 UI를 복사해야 한다");
+assert.ok(!fs.existsSync(path.join(proj, "src/test")), "테스트는 기본 제외되어야 한다");
 
 const manifest = readManifest(proj);
 const entry = manifest?.components["ai-rag-spring-ai"];
-console.log("manifest recorded:", !!entry && entry.files.length === r.copiedFiles && entry.pom?.addedDeps.length > 10);
+assert.ok(
+  !!entry && entry.files.length === r.copiedFiles && entry.pom?.addedDeps.length > 10,
+  "조립 파일과 POM 변경을 매니페스트에 기록해야 한다",
+);
 
 // ---- 중복/배타 거부 ----
-try { await addAiComponents({ projectDir: proj, stack: "spring-ai" }); console.log("dup guard: FAIL"); }
-catch { console.log("dup guard: OK"); }
-try { await addAiComponents({ projectDir: proj, stack: "langchain4j" }); console.log("conflict guard: FAIL"); }
-catch { console.log("conflict guard: OK"); }
+await assert.rejects(() => addAiComponents({ projectDir: proj, stack: "spring-ai" }), "동일 AI 스택의 중복 설치를 거부해야 한다");
+await assert.rejects(() => addAiComponents({ projectDir: proj, stack: "langchain4j" }), "서로 다른 AI 스택의 동시 설치를 거부해야 한다");
 
 // ---- 검증 ----
 const v = await validateProject({ projectDir: proj });
-console.log("validate ok:", v.ok === true && v.components.some((c) => c.id === "ai-rag-spring-ai"));
+assert.ok(v.ok === true && v.components.some((c) => c.id === "ai-rag-spring-ai"), "spring-ai 설치 검증을 통과해야 한다");
 
 // ---- 제거 → pom 원복 ----
 const rm = await removeComponents({ projectDir: proj, components: ["ai-rag-spring-ai"] });
-console.log("removed files:", rm.totalFiles === r.copiedFiles);
+assert.equal(rm.totalFiles, r.copiedFiles, "설치한 spring-ai 파일을 모두 제거해야 한다");
 const pomAfter = fs.readFileSync(path.join(proj, "pom.xml"), "utf-8");
-console.log("pom restored:", pomAfter === ORIGINAL_POM);
-console.log("backup cleaned:", !fs.existsSync(path.join(proj, AI_POM_BACKUP)));
-console.log("manifest cleaned:", readManifest(proj) === null);
-console.log("source dir pruned:", !fs.existsSync(path.join(proj, "src/main/java/com")));
+assert.equal(pomAfter, ORIGINAL_POM, "spring-ai 제거 후 POM을 원복해야 한다");
+assert.ok(!fs.existsSync(path.join(proj, AI_POM_BACKUP)), "POM 백업을 정리해야 한다");
+assert.equal(readManifest(proj), null, "빈 매니페스트를 정리해야 한다");
+assert.ok(!fs.existsSync(path.join(proj, "src/main/java/com")), "빈 spring-ai 소스 디렉터리를 정리해야 한다");
 
 // ================= langchain4j 스택 사이클 =================
 const proj2 = path.join(tmp, "proj2");
@@ -82,23 +87,37 @@ fs.mkdirSync(path.join(proj2, "src/main/resources"), { recursive: true });
 fs.writeFileSync(path.join(proj2, "pom.xml"), ORIGINAL_POM.replace("ai-asm-fixture", "ai-asm-fixture-lc4j"));
 
 const r2 = await addAiComponents({ projectDir: proj2, stack: "langchain4j" });
-console.log("[lc4j] assembled:", r2.dryRun === false && r2.copiedFiles > 40);
+assert.ok(r2.dryRun === false && r2.copiedFiles > 40, "langchain4j 파일을 실제 조립해야 한다");
 const pom2 = fs.readFileSync(path.join(proj2, "pom.xml"), "utf-8");
-console.log("[lc4j] markers:", pom2.includes("egovframe-scaffold-mcp:ai:ai-rag-langchain4j:deps:start"));
-console.log("[lc4j] deps inserted:", pom2.includes("langchain4j-pgvector") && pom2.includes("spring-boot-starter-data-jpa"));
-console.log("[lc4j] init-scripts under ai/:", fs.existsSync(path.join(proj2, "init-scripts/ai")));
-console.log("[lc4j] entity copied:", fs.existsSync(path.join(proj2, "src/main/java/com/example/chat/entity/ChatMemoryEntity.java")));
-console.log("[lc4j] config profiled:", fs.existsSync(path.join(proj2, "src/main/resources/application-ai.yml")));
+assert.ok(pom2.includes("egovframe-scaffold-mcp:ai:ai-rag-langchain4j:deps:start"), "langchain4j POM 마커를 기록해야 한다");
+assert.ok(
+  pom2.includes("langchain4j-pgvector") && pom2.includes("spring-boot-starter-data-jpa"),
+  "langchain4j 의존성을 추가해야 한다",
+);
+assert.ok(fs.existsSync(path.join(proj2, "init-scripts/ai")), "langchain4j 초기화 스크립트를 ai 하위에 복사해야 한다");
+assert.ok(
+  fs.existsSync(path.join(proj2, "src/main/java/com/example/chat/entity/ChatMemoryEntity.java")),
+  "langchain4j 엔티티를 복사해야 한다",
+);
+assert.ok(fs.existsSync(path.join(proj2, "src/main/resources/application-ai.yml")), "langchain4j 프로필 설정을 생성해야 한다");
 
 // AI 실행 전제 진단 (aiChecks): 임베딩 설정 경로 검출 + compose 안내
 const v2 = await validateProject({ projectDir: proj2 });
-console.log("[lc4j] validate ok (aiChecks not warnings):", v2.ok === true);
-console.log("[lc4j] aiChecks detect embedding config:", v2.aiChecks.some((c) => c.note.includes("임베딩 설정")));
-console.log("[lc4j] aiChecks detect compose:", v2.aiChecks.some((c) => c.file.endsWith("docker-compose.ai.yml") && c.exists));
+assert.equal(v2.ok, true, "langchain4j 설치 검증을 통과해야 한다");
+assert.ok(v2.aiChecks.some((c) => c.note.includes("임베딩 설정")), "임베딩 설정을 진단해야 한다");
+assert.ok(
+  v2.aiChecks.some((c) => c.file.endsWith("docker-compose.ai.yml") && c.exists),
+  "AI docker-compose 파일을 진단해야 한다",
+);
 
 const rm2 = await removeComponents({ projectDir: proj2, components: ["ai-rag-langchain4j"] });
-console.log("[lc4j] removed:", rm2.totalFiles === r2.copiedFiles);
-console.log("[lc4j] pom restored:", fs.readFileSync(path.join(proj2, "pom.xml"), "utf-8") === ORIGINAL_POM.replace("ai-asm-fixture", "ai-asm-fixture-lc4j"));
-console.log("[lc4j] init-scripts pruned:", !fs.existsSync(path.join(proj2, "init-scripts")));
+assert.equal(rm2.totalFiles, r2.copiedFiles, "설치한 langchain4j 파일을 모두 제거해야 한다");
+assert.equal(
+  fs.readFileSync(path.join(proj2, "pom.xml"), "utf-8"),
+  ORIGINAL_POM.replace("ai-asm-fixture", "ai-asm-fixture-lc4j"),
+  "langchain4j 제거 후 POM을 원복해야 한다",
+);
+assert.ok(!fs.existsSync(path.join(proj2, "init-scripts")), "빈 langchain4j 초기화 디렉터리를 정리해야 한다");
 
 fs.rmSync(tmp, { recursive: true, force: true });
+console.log("ai-assembly OK");
