@@ -19,9 +19,19 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { createHash } from "node:crypto";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
+import {
+  downloadVerifiedCatalogArchive,
+  syncCatalog,
+  type ArchiveInspection,
+  type CatalogSourceMetadata,
+  type CatalogSyncOptions,
+  type CatalogSyncResult,
+} from "./catalog-sync.js";
 
 export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult } from "./crud.js";
+export { inspectCatalogArchive, syncCatalog } from "./catalog-sync.js";
+export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from "./catalog-sync.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -310,11 +320,23 @@ export interface CatalogComponent {
   docs?: { path: string; title: string }[];
   /** 그룹 항목: 설치 시 이 리프 컴포넌트들로 확장된다 (자체 파일 없음) */
   children?: string[];
+  /** 컴포넌트 메시지 번들(.properties) */
+  messageBundles?: string[];
+  /** ID 생성기 Spring context */
+  idgnContexts?: string[];
+  /** 스케줄러 Spring context */
+  schedulingContexts?: string[];
+  /** CSS·JS·이미지·HTML 등 웹 정적 자산 */
+  webAssets?: string[];
+  /** 공통 Spring·Spring MVC 설정 조각 */
+  webFragments?: string[];
+  /** 소스 import 분석으로 탐지한 Maven 좌표 */
+  mavenDependencies?: string[];
 }
 
 export interface Catalog {
   schemaVersion: number;
-  source: { repo: string; branch: string; surveyedAt: string };
+  source: CatalogSourceMetadata & { repo: string; branch: string; surveyedAt: string };
   sqlNote: string;
   components: CatalogComponent[];
 }
@@ -324,6 +346,14 @@ const CATALOG_URL = new URL("../catalog/components.json", import.meta.url);
 /** 카탈로그 로드 + 무결성 검증(id 중복, 의존 대상 존재) */
 export function loadCatalog(): Catalog {
   const catalog = JSON.parse(fs.readFileSync(CATALOG_URL, "utf-8")) as Catalog;
+  if (![1, 2].includes(catalog.schemaVersion)) throw new Error(`지원하지 않는 카탈로그 schemaVersion: ${catalog.schemaVersion}`);
+  if (catalog.schemaVersion >= 2) {
+    if (!catalog.source.repository || !catalog.source.tag || !/^[0-9a-f]{40}$/.test(catalog.source.commit ?? ""))
+      throw new Error("카탈로그 오류: schemaVersion 2는 source.repository/tag/commit이 필요합니다");
+    const archive = catalog.source.archive;
+    if (!archive || !/^[0-9a-f]{64}$/.test(archive.sha256) || archive.bytes <= 0 || archive.files <= 0)
+      throw new Error("카탈로그 오류: source.archive 무결성 메타데이터가 올바르지 않습니다");
+  }
   const ids = new Set<string>();
   for (const c of catalog.components) {
     if (ids.has(c.id)) throw new Error(`카탈로그 오류: 중복 id '${c.id}'`);
@@ -334,6 +364,12 @@ export function loadCatalog(): Catalog {
       if (!ids.has(d)) throw new Error(`카탈로그 오류: '${c.id}'가 의존하는 '${d}'가 카탈로그에 없습니다`);
     for (const ch of c.children ?? [])
       if (!ids.has(ch)) throw new Error(`카탈로그 오류: '${c.id}'의 children '${ch}'가 카탈로그에 없습니다`);
+    for (const field of COMPONENT_ASSET_FIELDS)
+      for (const asset of c[field] ?? []) {
+        const normalized = asset.replace(/\\/g, "/");
+        if (normalized.startsWith("/") || normalized.split("/").includes(".."))
+          throw new Error(`카탈로그 오류: '${c.id}.${field}'에 안전하지 않은 경로가 있습니다: ${asset}`);
+      }
   }
   return catalog;
 }
@@ -396,23 +432,53 @@ export interface AddComponentsResult {
   installOrder: { id: string; name: string; files: number }[];
   totalFiles: number;
   sqlScripts: string[];
+  assets: {
+    messageBundles: number;
+    idgnContexts: number;
+    schedulingContexts: number;
+    webAssets: number;
+    webFragments: number;
+    reusedFiles: number;
+  };
+  mavenDependencies: string[];
+  sourceVerification?: ArchiveInspection;
   sqlNote: string;
   nextSteps: string[];
   dryRun: boolean;
 }
 
 /** 프로세스 수명 동안 공통컴포넌트 zip을 1회만 내려받기 위한 캐시 */
-let eccZipCache: { key: string; zip: AdmZip } | null = null;
+let eccZipCache: { key: string; zip: AdmZip; inspection: ArchiveInspection } | null = null;
 
-async function downloadComponentsZip(repo: string, branch: string): Promise<AdmZip> {
-  const key = `${repo}@${branch}`;
-  if (eccZipCache && eccZipCache.key === key) return eccZipCache.zip;
-  const zipUrl = `https://codeload.github.com/${repo}/zip/${branch}`;
-  const res = await fetchWithTimeout(zipUrl, COMPONENTS_DOWNLOAD_TIMEOUT_MS);
-  if (!res.ok) throw new Error(`공통컴포넌트 저장소 다운로드 실패 (${res.status}): ${zipUrl}`);
-  const zip = new AdmZip(Buffer.from(await res.arrayBuffer()));
-  eccZipCache = { key, zip };
-  return zip;
+async function downloadComponentsZip(source: CatalogSourceMetadata & { repo: string; branch: string }): Promise<{ zip: AdmZip; inspection: ArchiveInspection }> {
+  const repository = source.repository ?? source.repo;
+  const ref = source.commit ?? source.tag ?? source.branch;
+  const key = `${repository}@${ref}`;
+  if (eccZipCache && eccZipCache.key === key) return eccZipCache;
+  const verified = await downloadVerifiedCatalogArchive(source);
+  eccZipCache = { key, ...verified };
+  return eccZipCache;
+}
+
+const COMPONENT_ASSET_FIELDS = [
+  "messageBundles", "idgnContexts", "schedulingContexts", "webAssets", "webFragments",
+] as const;
+type ComponentAssetField = (typeof COMPONENT_ASSET_FIELDS)[number];
+
+function componentAssetCounts(components: CatalogComponent[]): AddComponentsResult["assets"] {
+  const count = (field: ComponentAssetField) => new Set(components.flatMap((component) => component[field] ?? [])).size;
+  return {
+    messageBundles: count("messageBundles"),
+    idgnContexts: count("idgnContexts"),
+    schedulingContexts: count("schedulingContexts"),
+    webAssets: count("webAssets"),
+    webFragments: count("webFragments"),
+    reusedFiles: 0,
+  };
+}
+
+function componentMavenDependencies(components: CatalogComponent[]): string[] {
+  return [...new Set(components.flatMap((component) => component.mavenDependencies ?? []))].sort();
 }
 
 /**
@@ -438,6 +504,8 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
       installOrder: order.map((c) => ({ id: c.id, name: c.name, files: c.approxFiles })),
       totalFiles: order.reduce((n, c) => n + c.approxFiles, 0),
       sqlScripts: opts.database ? [`script/ddl|dml/${opts.database}/ → scripts/egovframe-components/${opts.database}/ (복사 예정)`] : [],
+      assets: componentAssetCounts(order),
+      mavenDependencies: componentMavenDependencies(order),
       sqlNote: catalog.sqlNote,
       nextSteps: ["미리보기 모드입니다. 실제 조립하려면 dryRun 없이 다시 호출하세요."],
       dryRun: true,
@@ -458,18 +526,28 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
       throw new Error(`이미 설치된 컴포넌트가 포함되어 있습니다: ${dup.join(", ")} — 해당 id를 빼고 다시 호출하세요`);
   }
 
-  const zip = await downloadComponentsZip(catalog.source.repo, catalog.source.branch);
+  const { zip, inspection: sourceVerification } = await downloadComponentsZip(catalog.source);
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
   const rootPrefix = entries[0].entryName.split("/")[0] + "/";
   const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
+  const entryByPath = new Map(entries.map((entry) => [rel(entry.entryName), entry]));
 
   // 컴포넌트별 대상 파일 수집
-  const plan: { entry: AdmZip.IZipEntry; relPath: string; componentId: string }[] = [];
-  for (const c of order)
+  const planByPath = new Map<string, { entry: AdmZip.IZipEntry; relPath: string; componentId: string; asset: "source" | ComponentAssetField }>();
+  for (const c of order) {
     for (const e of entries) {
       const r = rel(e.entryName);
-      if (r && c.pathPrefixes.some((p) => r.startsWith(p))) plan.push({ entry: e, relPath: r, componentId: c.id });
+      if (r && c.pathPrefixes.some((p) => r.startsWith(p)) && !planByPath.has(r))
+        planByPath.set(r, { entry: e, relPath: r, componentId: c.id, asset: "source" });
     }
+    for (const asset of COMPONENT_ASSET_FIELDS)
+      for (const r of c[asset] ?? []) {
+        const entry = entryByPath.get(r);
+        if (!entry) throw new Error(`고정 카탈로그 자산이 upstream 아카이브에 없습니다: ${c.id}.${asset} → ${r}`);
+        if (!planByPath.has(r)) planByPath.set(r, { entry, relPath: r, componentId: c.id, asset });
+      }
+  }
+  const plan = [...planByPath.values()];
   if (plan.length === 0) throw new Error("복사할 파일이 없습니다 — 카탈로그 pathPrefixes를 확인하세요");
 
   // DB 스크립트 수집 — 컴포넌트별 테이블 선별 추출 (M4)
@@ -500,7 +578,11 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     };
     const noTables: CatalogComponent[] = [];
     for (const c of order) {
-      if (!c.tables || c.tables.length === 0) { noTables.push(c); continue; }
+      if (!c.tables || c.tables.length === 0) {
+        const hasMapper = plan.some((item) => item.componentId === c.id && item.relPath.startsWith("src/main/resources/egovframework/mapper/"));
+        if (hasMapper) noTables.push(c);
+        continue;
+      }
       for (const kind of ["ddl", "dml"]) {
         const sql = extractFor(c.tables, kind);
         if (sql)
@@ -526,10 +608,16 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
 
   // 전체 사전 충돌 검사 — 하나라도 충돌하면 아무것도 쓰지 않음
   const conflicts: string[] = [];
-  for (const { relPath } of [...plan, ...sqlPlan]) {
-    const dest = path.join(projectDir, relPath);
-    if (!dest.startsWith(projectDir + path.sep)) continue; // zip slip 방지
-    if (fs.existsSync(dest)) conflicts.push(relPath);
+  const reusedFiles = new Set<string>();
+  for (const item of [...plan, ...sqlPlan]) {
+    const dest = path.resolve(projectDir, item.relPath);
+    if (!dest.startsWith(projectDir + path.sep)) throw new Error(`프로젝트 밖 자산 경로를 거부합니다: ${item.relPath}`);
+    if (fs.existsSync(dest)) {
+      const incoming = "entry" in item ? item.entry.getData() : item.content;
+      const current = fs.readFileSync(dest);
+      if (current.equals(incoming)) reusedFiles.add(item.relPath);
+      else conflicts.push(item.relPath);
+    }
   }
   if (conflicts.length > 0)
     throw new Error(
@@ -538,30 +626,40 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
         (conflicts.length > 10 ? `\n  … 외 ${conflicts.length - 10}건` : ""),
     );
 
-  // 복사 실행
+  // 복사 실행 — 쓰기 실패 시 이번 호출에서 생성한 파일을 롤백한다.
   const countBy = new Map<string, number>();
   const hashesBy = new Map<string, Record<string, { hash: string; srcHash: string }>>();
-  for (const { entry, relPath, componentId } of plan) {
-    const dest = path.join(projectDir, relPath);
-    if (!dest.startsWith(projectDir + path.sep)) continue;
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    const data = entry.getData();
-    fs.writeFileSync(dest, data);
-    countBy.set(componentId, (countBy.get(componentId) ?? 0) + 1);
-    const h = "sha256:" + createHash("sha256").update(data).digest("hex");
-    if (!hashesBy.has(componentId)) hashesBy.set(componentId, {});
-    hashesBy.get(componentId)![relPath] = { hash: h, srcHash: h };
-  }
   const sqlScripts: string[] = [];
   const sqlBy = new Map<string, string[]>();
-  for (const { relPath, content, componentId } of sqlPlan) {
-    const dest = path.join(projectDir, relPath);
-    if (!dest.startsWith(projectDir + path.sep)) continue;
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.writeFileSync(dest, content);
-    sqlScripts.push(relPath);
-    if (!sqlBy.has(componentId)) sqlBy.set(componentId, []);
-    sqlBy.get(componentId)!.push(relPath);
+  const createdFiles: string[] = [];
+  try {
+    for (const { entry, relPath, componentId } of plan) {
+      if (reusedFiles.has(relPath)) continue;
+      const dest = path.resolve(projectDir, relPath);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      const data = entry.getData();
+      fs.writeFileSync(dest, data, { flag: "wx" });
+      createdFiles.push(dest);
+      countBy.set(componentId, (countBy.get(componentId) ?? 0) + 1);
+      const h = "sha256:" + createHash("sha256").update(data).digest("hex");
+      if (!hashesBy.has(componentId)) hashesBy.set(componentId, {});
+      hashesBy.get(componentId)![relPath] = { hash: h, srcHash: h };
+    }
+    for (const { relPath, content, componentId } of sqlPlan) {
+      if (reusedFiles.has(relPath)) continue;
+      const dest = path.resolve(projectDir, relPath);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, content, { flag: "wx" });
+      createdFiles.push(dest);
+      sqlScripts.push(relPath);
+      if (!sqlBy.has(componentId)) sqlBy.set(componentId, []);
+      sqlBy.get(componentId)!.push(relPath);
+    }
+  } catch (error) {
+    for (const file of createdFiles.reverse()) {
+      try { fs.rmSync(file, { force: true }); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    throw error;
   }
 
   const nextSteps = [
@@ -570,18 +668,23 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
       : "database 파라미터를 지정하면 컴포넌트별로 선별 추출된 DDL·DML 스크립트도 함께 생성됩니다.",
     "복사된 소스는 egovframework.com.* 원본 패키지를 유지합니다 (eGovFrame IDE 마법사와 동일).",
     "빈 스캐너/설정에 egovframework.com 패키지 스캔이 포함되어 있는지 확인 후 mvn compile로 빌드를 검증하세요.",
-    "일부 컴포넌트는 web.xml·필터·스케줄러 등 수동 설정이 필요할 수 있습니다 (공통컴포넌트 가이드 참조).",
+    ...(componentMavenDependencies(order).length
+      ? [`필요 Maven 좌표 ${componentMavenDependencies(order).length}건을 확인해 대상 pom.xml의 dependencyManagement 또는 dependencies에 반영하세요.`]
+      : []),
+    "web.xml 노드 병합은 대상 프로젝트 구조에 따라 달라 자동 수정하지 않습니다. 공식 가이드와 webFragments 목록을 확인하세요.",
   ];
 
   // 설치 매니페스트 기록 (제거·검증 지원)
   const manifest: Manifest = readManifest(projectDir) ?? {
-    schemaVersion: 1,
-    source: { repo: catalog.source.repo, branch: catalog.source.branch },
+    schemaVersion: 3,
+    source: { ...catalog.source },
     components: {},
   };
+  manifest.source = { ...manifest.source, ...catalog.source };
   const now = new Date().toISOString();
   const filesBy = new Map<string, string[]>();
   for (const { relPath, componentId } of plan) {
+    if (reusedFiles.has(relPath)) continue;
     if (!filesBy.has(componentId)) filesBy.set(componentId, []);
     filesBy.get(componentId)!.push(relPath);
   }
@@ -592,15 +695,34 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
       hashes: hashesBy.get(c.id) ?? {},
       sqlScripts: sqlBy.get(c.id) ?? [],
     };
-  manifest.schemaVersion = 2;
-  writeManifest(projectDir, manifest);
+  manifest.schemaVersion = 3;
+  const manifestPath = path.join(projectDir, MANIFEST_FILE);
+  const previousManifest = fs.existsSync(manifestPath) ? fs.readFileSync(manifestPath) : null;
+  try {
+    writeManifest(projectDir, manifest);
+  } catch (error) {
+    for (const file of [...createdFiles].reverse()) {
+      try { fs.rmSync(file, { force: true }); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    try {
+      if (previousManifest) fs.writeFileSync(manifestPath, previousManifest);
+      else fs.rmSync(manifestPath, { force: true });
+    } catch { /* 원래 오류를 보존한다 */ }
+    throw error;
+  }
+
+  const assets = componentAssetCounts(order);
+  assets.reusedFiles = reusedFiles.size;
 
   return {
     projectDir,
     requested: opts.components,
     installOrder: order.map((c) => ({ id: c.id, name: c.name, files: countBy.get(c.id) ?? 0 })),
-    totalFiles: plan.length,
+    totalFiles: createdFiles.length,
     sqlScripts,
+    assets,
+    mavenDependencies: componentMavenDependencies(order),
+    sourceVerification,
     sqlNote: catalog.sqlNote,
     nextSteps,
     dryRun: false,
@@ -663,7 +785,7 @@ export interface ManifestEntry {
 
 export interface Manifest {
   schemaVersion: number;
-  source: { repo: string; branch: string };
+  source: CatalogSourceMetadata & { repo: string; branch: string };
   components: Record<string, ManifestEntry>;
 }
 
@@ -1587,7 +1709,7 @@ export async function upgradeProject(opts: {
 
   const catalog = loadCatalog();
   const byId = new Map(catalog.components.map((c) => [c.id, c]));
-  const zip = await downloadComponentsZip(manifest.source.repo, manifest.source.branch);
+  const { zip } = await downloadComponentsZip(manifest.source);
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
   const rootPrefix = entries[0].entryName.split("/")[0] + "/";
   const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
@@ -1760,7 +1882,7 @@ function extractDocSnippet(body: string, terms: string[]): string {
 }
 
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.20.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.21.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -1811,6 +1933,29 @@ export function buildServer(): McpServer {
 
 
   server.tool(
+    "sync_egovframe_catalog",
+    "공식 egovframe-common-components 태그·commit·아카이브 무결성을 검증하고, 고정 카탈로그 대비 upstream 변경과 sec.security 보안 패키지를 점검합니다.",
+    {
+      ref: z.string().optional().describe("확인할 태그·브랜치·commit. 미지정 시 카탈로그의 공식 고정 태그 사용"),
+    },
+    async (args) => {
+      const result = await syncCatalog(args as CatalogSyncOptions);
+      const text = [
+        result.upToDate ? "✅ 공통컴포넌트 카탈로그가 고정 upstream과 일치합니다." : "⚠️ 공통컴포넌트 upstream 변경이 감지됐습니다.",
+        `- 저장소: ${result.repository}`,
+        `- 요청 ref: ${result.requestedRef}`,
+        `- resolved commit: ${result.resolvedCommit}`,
+        `- pinned commit: ${result.pinnedCommit ?? "없음"}`,
+        `- 아카이브: ${result.archive.files}개 파일, ${result.archive.bytes} bytes, sha256:${result.archive.sha256}`,
+        `- sec.security: ${result.archive.securityPaths.length}개 파일`,
+        `- 미매핑 경로: ${result.archive.unmappedComponentPaths.length}건`,
+        ...result.warnings.map((warning) => `- 경고: ${warning}`),
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+  server.tool(
     "list_egovframe_components",
     "선택 설치를 지원하는 공통컴포넌트 카탈로그를 반환합니다 (저장소 스캔으로 자동 생성, scripts/generate-catalog.mjs).",
     {},
@@ -1838,6 +1983,14 @@ export function buildServer(): McpServer {
                 components: catalog.components.map((c) => ({
                   id: c.id, name: c.name, category: c.category,
                   description: c.description, dependsOn: c.dependsOn, approxFiles: c.approxFiles,
+                  assets: {
+                    messageBundles: c.messageBundles?.length ?? 0,
+                    idgnContexts: c.idgnContexts?.length ?? 0,
+                    schedulingContexts: c.schedulingContexts?.length ?? 0,
+                    webAssets: c.webAssets?.length ?? 0,
+                    webFragments: c.webFragments?.length ?? 0,
+                  },
+                  mavenDependencies: c.mavenDependencies ?? [],
                 })),
               },
               null,
@@ -1872,6 +2025,10 @@ export function buildServer(): McpServer {
         `- 설치 순서(의존성 포함):`,
         ...r.installOrder.map((c, i) => `  ${i + 1}. ${c.id} — ${c.name} (${r.dryRun ? "약 " : ""}${c.files}개 파일)`),
         `- 총 ${r.dryRun ? "예상 " : ""}복사 파일: ${r.totalFiles}개`,
+        `- 추가 자산: 메시지 ${r.assets.messageBundles}, ID 생성기 ${r.assets.idgnContexts}, 스케줄러 ${r.assets.schedulingContexts}, 웹 자산 ${r.assets.webAssets}, 설정 조각 ${r.assets.webFragments}`,
+        ...(r.assets.reusedFiles ? [`- 동일 파일 재사용: ${r.assets.reusedFiles}개`] : []),
+        ...(r.mavenDependencies.length ? [`- 감지된 Maven 좌표: ${r.mavenDependencies.length}건`, ...r.mavenDependencies.map((dependency) => `  · ${dependency}`)] : []),
+        ...(r.sourceVerification ? [`- upstream 검증: ${r.sourceVerification.files}개 파일, sha256:${r.sourceVerification.sha256}`] : []),
         ...(r.sqlScripts.length ? [`- DB 스크립트: ${r.sqlScripts.length}개 복사`] : []),
         `- 참고: ${r.sqlNote}`,
         ``,

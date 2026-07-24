@@ -1,7 +1,7 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.20.0",
-  "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트·CRUD 스캐폴딩과 공통컴포넌트 조립 MCP 서버",
+  "version": "0.21.0",
+  "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트·CRUD 스캐폴딩과 검증된 공통컴포넌트 완전 조립 MCP 서버",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
@@ -15,7 +15,7 @@
     "test:catalog": "node test/catalog.mjs",
     "test:components": "node test/components.mjs",
     "generate:catalog": "node scripts/generate-catalog.mjs",
-    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade && npm run test:explain && npm run test:ci && npm run test:pom && npm run test:crud",
+    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:catalog-sync && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade && npm run test:explain && npm run test:ci && npm run test:pom && npm run test:crud",
     "test:ai": "node test/ai.mjs",
     "generate:ai-catalog": "node scripts/generate-ai-catalog.mjs",
     "test:ai-assembly": "node test/ai-assembly.mjs",
@@ -29,7 +29,9 @@
     "test:ci": "node test/ci.mjs",
     "test:crud": "node test/crud.mjs",
     "test:crud-integration": "node test/crud-integration.mjs",
-    "test:pom": "node test/pom.mjs"
+    "test:pom": "node test/pom.mjs",
+    "test:catalog-sync": "node test/catalog-sync.mjs",
+    "test:catalog-sync-live": "node test/catalog-sync-live.mjs"
   },
   "engines": {
     "node": ">=18"

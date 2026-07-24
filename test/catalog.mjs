@@ -3,11 +3,13 @@ import { loadCatalog, resolveComponents, addComponents, searchComponents } from 
 
 const catalog = loadCatalog();
 console.log("catalog loaded:", catalog.components.length >= 3);
-console.log("schema version:", catalog.schemaVersion === 1);
+console.log("schema version:", catalog.schemaVersion === 2);
+console.log("source pinned:", catalog.source.tag === "v5.0.6" && /^[0-9a-f]{40}$/.test(catalog.source.commit) && catalog.source.archive.files > 6000);
 console.log("coverage >= 150 (leaf expansion):", catalog.components.length >= 150);
 const leaves = catalog.components.filter((c) => c.pathPrefixes.length > 0);
 const groups = catalog.components.filter((c) => (c.children ?? []).length > 0 && c.pathPrefixes.length === 0);
 console.log("leaves >= 150 / groups >= 10:", leaves.length >= 150 && groups.length >= 10);
+console.log("complete asset metadata:", leaves.every((c) => ["messageBundles", "idgnContexts", "schedulingContexts", "webAssets", "webFragments", "mavenDependencies"].every((key) => Array.isArray(c[key]))));
 console.log("auto names extracted:", leaves.filter((c) => c.name !== c.id).length >= 80);
 // 그룹 확장: sym.mnu → cmm + 하위 리프 전체
 const auto = resolveComponents(catalog, ["sym.mnu"]).map((c) => c.id);
@@ -53,3 +55,6 @@ console.log("search empty:", s4.length === 0);
 // 가이드 문서 매핑 (v0.7.0)
 const bbsComp = catalog.components.find((c) => c.id === "bbs");
 console.log("bbs docs mapped:", Array.isArray(bbsComp.docs) && bbsComp.docs.length >= 3 && bbsComp.docs[0].path.startsWith("common-component/"));
+console.log("bbs runtime assets:", bbsComp.messageBundles.length === 2 && bbsComp.idgnContexts.some((p) => p.endsWith("context-idgn-bbs.xml")) && bbsComp.webAssets.length > 10);
+const security = catalog.components.find((c) => c.id === "sec.security");
+console.log("security package detected:", security?.pathPrefixes.some((p) => p.includes("sec/security")) === true && security.approxFiles >= 3);
