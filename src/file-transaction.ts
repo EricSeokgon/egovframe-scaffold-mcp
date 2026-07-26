@@ -19,6 +19,28 @@ function isOutside(root: string, candidate: string): boolean {
   return relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative);
 }
 
+function pathEntryExists(target: string): boolean {
+  try {
+    fs.lstatSync(target);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function missingDirectories(directory: string): string[] {
+  const missing: string[] = [];
+  let current = directory;
+  while (!pathEntryExists(current)) {
+    missing.push(current);
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return missing;
+}
+
 /**
  * 프로젝트 내부 파일 쓰기를 하나의 롤백 가능한 transaction으로 묶는다.
  *
@@ -173,5 +195,59 @@ export async function withFileTransaction<T>(
       ? "작업 전 상태로 롤백했습니다."
       : `롤백 실패 ${rollbackErrors.length}건:\n${rollbackErrors.map((message) => `  - ${message}`).join("\n")}`;
     throw new Error(`${label} transaction 실패: ${reason}\n${rollback}`);
+  }
+}
+
+/**
+ * 존재하지 않는 최종 디렉터리를 sibling staging에서 완성한 뒤 atomic rename한다.
+ * 실패하면 staging과 transaction이 만든 빈 상위 디렉터리만 제거한다.
+ */
+export async function withDirectoryTransaction<T>(
+  parentDir: string,
+  finalName: string,
+  label: string,
+  action: (stagingDir: string) => T | Promise<T>,
+): Promise<T> {
+  if (!finalName || path.isAbsolute(finalName) || path.basename(finalName) !== finalName || finalName === "." || finalName === "..")
+    throw new Error(`directory transaction의 최종 이름이 안전하지 않습니다: ${finalName}`);
+
+  const parent = path.resolve(parentDir);
+  const finalPath = path.join(parent, finalName);
+  if (pathEntryExists(parent) && !fs.statSync(parent).isDirectory())
+    throw new Error(`directory transaction 상위 경로가 디렉터리가 아닙니다: ${parent}`);
+  if (pathEntryExists(finalPath))
+    throw new Error(`directory transaction 대상이 이미 존재합니다: ${finalPath}`);
+
+  const createdParents = missingDirectories(parent);
+  const safeLabel = label.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 40) || "create";
+  let stagingDir: string | undefined;
+  try {
+    fs.mkdirSync(parent, { recursive: true });
+    stagingDir = fs.mkdtempSync(path.join(parent, `.egovframe-dir-txn-${safeLabel}-`));
+    const result = await action(stagingDir);
+    if (pathEntryExists(finalPath))
+      throw new Error(`commit 직전 대상 디렉터리가 생성되어 덮어쓰기를 거부합니다: ${finalPath}`);
+    fs.renameSync(stagingDir, finalPath);
+    stagingDir = undefined;
+    return result;
+  } catch (error) {
+    const rollbackErrors: string[] = [];
+    if (stagingDir) {
+      try { fs.rmSync(stagingDir, { recursive: true, force: true }); }
+      catch (rollbackError) { rollbackErrors.push(`staging: ${String(rollbackError)}`); }
+    }
+    for (const directory of createdParents) {
+      try {
+        if (pathEntryExists(directory) && fs.statSync(directory).isDirectory() && fs.readdirSync(directory).length === 0)
+          fs.rmdirSync(directory);
+      } catch (rollbackError) {
+        rollbackErrors.push(`${directory}: ${String(rollbackError)}`);
+      }
+    }
+    const reason = error instanceof Error ? error.message : String(error);
+    const rollback = rollbackErrors.length === 0
+      ? "작업 전 상태로 롤백했습니다."
+      : `롤백 실패 ${rollbackErrors.length}건:\n${rollbackErrors.map((message) => `  - ${message}`).join("\n")}`;
+    throw new Error(`${label} directory transaction 실패: ${reason}\n${rollback}`);
   }
 }

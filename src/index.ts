@@ -19,7 +19,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { createHash } from "node:crypto";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
-import { withFileTransaction } from "./file-transaction.js";
+import { withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 import {
   downloadVerifiedCatalogArchive,
   syncCatalog,
@@ -33,7 +33,7 @@ export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult } from "./crud.js";
 export { inspectCatalogArchive, syncCatalog } from "./catalog-sync.js";
 export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from "./catalog-sync.js";
-export { ProjectFileTransaction, withFileTransaction } from "./file-transaction.js";
+export { ProjectFileTransaction, withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -102,6 +102,8 @@ export interface CreateOptions {
   ref?: string;
   /** true면 디스크에 쓰지 않고 수행 예정 내용만 미리보기로 반환한다. */
   dryRun?: boolean;
+  /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
+  faultInjection?: "after-extract" | "after-customize";
 }
 
 export interface CreateResult {
@@ -221,68 +223,83 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     };
   }
 
-  // 3) 최상위 폴더를 제거하며 압축 해제
-  let count = 0;
-  for (const e of entries) {
-    if (e.isDirectory) continue;
-    const r = rel(e.entryName);
-    if (!r) continue;
-    const dest = path.join(projectPath, r);
-    // zip slip 방지
-    if (!dest.startsWith(projectPath + path.sep)) continue;
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.writeFileSync(dest, e.getData());
-    count++;
-  }
-
-  // 4) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지) — 멀티 프로젝트 템플릿은 건너뜀
-  const pomPath = path.join(projectPath, "pom.xml");
-  if (!tpl.multiProject && fs.existsSync(pomPath)) {
-    let pom = fs.readFileSync(pomPath, "utf-8");
-    pom = customizePomCoordinates(pom, opts.groupId, opts.projectName);
-    fs.writeFileSync(pomPath, pom);
-    customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
-  }
-
-  // 5) application.properties: DB 타입 적용
-  const appProps = path.join(projectPath, "src/main/resources/application.properties");
-  if (!tpl.multiProject && fs.existsSync(appProps)) {
-    let props = fs.readFileSync(appProps, "utf-8");
-    if (/^Globals\.DbType=.*$/m.test(props)) {
-      props = props.replace(/^Globals\.DbType=.*$/m, `Globals.DbType=${opts.database}`);
-      fs.writeFileSync(appProps, props);
-      customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database})`);
-    }
-  }
-
-  // 5b) 레거시 템플릿(egovProps/globals.properties): DB 타입 적용
-  const globalsProps = path.join(projectPath, GLOBALS_PROPS_REL);
-  if (!tpl.multiProject && fs.existsSync(globalsProps)) {
-    let props = fs.readFileSync(globalsProps, "utf-8");
-    if (/^Globals\.DbType\s*=.*$/m.test(props)) {
-      props = props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`);
-      fs.writeFileSync(globalsProps, props);
-      customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database})`);
-    }
-  }
-
-  // 6) package.json: 프론트엔드 템플릿의 프로젝트명 적용
-  const pkgPath = path.join(projectPath, "package.json");
-  if (!tpl.multiProject && fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-      if (typeof pkg.name === "string") {
-        pkg.name = opts.projectName;
-        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-        customized.push(`package.json (name=${opts.projectName})`);
+  const count = await withDirectoryTransaction(
+    path.resolve(opts.outputDir),
+    opts.projectName,
+    "프로젝트 생성",
+    async (stagingPath) => {
+      // 3) 최상위 폴더를 제거하며 sibling staging에 압축 해제
+      let extracted = 0;
+      for (const e of entries) {
+        if (e.isDirectory) continue;
+        const r = rel(e.entryName);
+        if (!r) continue;
+        const dest = path.join(stagingPath, r);
+        // zip slip 방지
+        if (!dest.startsWith(stagingPath + path.sep)) continue;
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, e.getData());
+        extracted++;
       }
-    } catch {
-      // package.json 파싱 실패 시 건너뜀 (원본 유지)
-    }
-  }
 
-  if (tpl.multiProject)
-    customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
+      if (opts.faultInjection === "after-extract")
+        throw new Error("createProject fault injection: after-extract");
+
+      // 4) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지) — 멀티 프로젝트 템플릿은 건너뜀
+      const pomPath = path.join(stagingPath, "pom.xml");
+      if (!tpl.multiProject && fs.existsSync(pomPath)) {
+        let pom = fs.readFileSync(pomPath, "utf-8");
+        pom = customizePomCoordinates(pom, opts.groupId, opts.projectName);
+        fs.writeFileSync(pomPath, pom);
+        customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
+      }
+
+      // 5) application.properties: DB 타입 적용
+      const appProps = path.join(stagingPath, "src/main/resources/application.properties");
+      if (!tpl.multiProject && fs.existsSync(appProps)) {
+        let props = fs.readFileSync(appProps, "utf-8");
+        if (/^Globals\.DbType=.*$/m.test(props)) {
+          props = props.replace(/^Globals\.DbType=.*$/m, `Globals.DbType=${opts.database}`);
+          fs.writeFileSync(appProps, props);
+          customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database})`);
+        }
+      }
+
+      // 5b) 레거시 템플릿(egovProps/globals.properties): DB 타입 적용
+      const globalsProps = path.join(stagingPath, GLOBALS_PROPS_REL);
+      if (!tpl.multiProject && fs.existsSync(globalsProps)) {
+        let props = fs.readFileSync(globalsProps, "utf-8");
+        if (/^Globals\.DbType\s*=.*$/m.test(props)) {
+          props = props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`);
+          fs.writeFileSync(globalsProps, props);
+          customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database})`);
+        }
+      }
+
+      // 6) package.json: 프론트엔드 템플릿의 프로젝트명 적용
+      const pkgPath = path.join(stagingPath, "package.json");
+      if (!tpl.multiProject && fs.existsSync(pkgPath)) {
+        try {
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+          if (typeof pkg.name === "string") {
+            pkg.name = opts.projectName;
+            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+            customized.push(`package.json (name=${opts.projectName})`);
+          }
+        } catch {
+          // package.json 파싱 실패 시 건너뜀 (원본 유지)
+        }
+      }
+
+      if (tpl.multiProject)
+        customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
+
+      if (opts.faultInjection === "after-customize")
+        throw new Error("createProject fault injection: after-customize");
+
+      return extracted;
+    },
+  );
 
   const buildStep = tpl.multiProject
     ? "README.md 참조 — backend/frontend/k8s/docker-compose 하위 프로젝트별 기동 안내"

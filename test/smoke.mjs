@@ -2,8 +2,10 @@
 import { createProject } from "../dist/index.js";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
-const out = "/tmp/scaffold-out";
-fs.rmSync(out, { recursive: true, force: true });
+import * as os from "node:os";
+import * as path from "node:path";
+const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), "scaffold-smoke-"));
+const out = path.join(sandbox, "out");
 const r = await createProject({
   projectName: "my-egov-app", groupId: "egovframework.example",
   database: "mysql", template: "simple-backend", outputDir: out,
@@ -22,8 +24,7 @@ await assert.rejects(
 );
 
 // 2) dryRun 미리보기: 디스크에 쓰지 않고 카운트만
-const out2 = "/tmp/scaffold-dry";
-fs.rmSync(out2, { recursive: true, force: true });
+const out2 = path.join(sandbox, "dry");
 const dry = await createProject({
   projectName: "dry-app", groupId: "egovframework.example",
   database: "oracle", template: "simple-backend", outputDir: out2, dryRun: true,
@@ -31,4 +32,23 @@ const dry = await createProject({
 assert.ok(!fs.existsSync(dry.projectPath), "dryRun은 디스크에 기록하면 안 된다");
 assert.ok(dry.filesExtracted > 100, "dryRun도 추출 예정 파일을 계산해야 한다");
 assert.equal(dry.dryRun, true, "dryRun 플래그를 반환해야 한다");
+
+// 3) 커스터마이징 뒤 실패해도 최종·staging 디렉터리를 남기지 않는다.
+await assert.rejects(
+  () => createProject({
+    projectName: "rollback-app", groupId: "egovframework.example",
+    database: "mysql", template: "simple-backend", outputDir: out,
+    faultInjection: "after-customize",
+  }),
+  /작업 전 상태로 롤백했습니다/,
+  "프로젝트 생성 중간 실패는 전체 디렉터리를 롤백해야 한다",
+);
+assert.equal(fs.existsSync(path.join(out, "rollback-app")), false, "실패한 프로젝트 디렉터리를 남기면 안 된다");
+assert.equal(
+  fs.readdirSync(out).filter((name) => name.startsWith(".egovframe-dir-txn-")).length,
+  0,
+  "프로젝트 생성 rollback 후 staging이 남으면 안 된다",
+);
+
+fs.rmSync(sandbox, { recursive: true, force: true });
 console.log("smoke OK");
