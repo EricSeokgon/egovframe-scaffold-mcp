@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { ProjectFileTransaction, withFileTransaction } from "../dist/index.js";
+import { ProjectFileTransaction, withDirectoryTransaction, withFileTransaction } from "../dist/index.js";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "file-transaction-"));
 const project = path.join(tmp, "project");
@@ -68,6 +68,71 @@ assert.throws(
 );
 assert.deepEqual(symlinkBoundary.rollback(), [], "symlink 경로 거부는 깨끗하게 종료되어야 한다");
 assert.equal(fs.existsSync(path.join(outside, "escaped.txt")), false, "프로젝트 밖 파일을 만들면 안 된다");
+
+// 4) 신규 디렉터리는 sibling staging에서 완성한 뒤 commit하고 실패 시 흔적을 제거한다.
+const directoryParent = path.join(tmp, "directory-parent");
+const directoryResult = await withDirectoryTransaction(directoryParent, "created-project", "directory-commit", (stagingDir) => {
+  assert.match(path.basename(stagingDir), /^\.egovframe-dir-txn-/, "최종 경로와 구분되는 staging을 사용해야 한다");
+  fs.mkdirSync(path.join(stagingDir, "nested"), { recursive: true });
+  fs.writeFileSync(path.join(stagingDir, "nested/file.txt"), "committed\n");
+  return 7;
+});
+assert.equal(directoryResult, 7, "directory transaction action 결과를 보존해야 한다");
+assert.equal(
+  fs.readFileSync(path.join(directoryParent, "created-project/nested/file.txt"), "utf-8"),
+  "committed\n",
+  "완성한 staging 디렉터리를 최종 경로로 commit해야 한다",
+);
+assert.equal(
+  fs.readdirSync(directoryParent).filter((name) => name.startsWith(".egovframe-dir-txn-")).length,
+  0,
+  "directory commit 후 staging이 남으면 안 된다",
+);
+
+const rollbackParent = path.join(tmp, "new-parent", "nested-output");
+await assert.rejects(
+  () => withDirectoryTransaction(rollbackParent, "failed-project", "directory-rollback", (stagingDir) => {
+    fs.writeFileSync(path.join(stagingDir, "partial.txt"), "partial\n");
+    throw new Error("directory fault injection");
+  }),
+  /작업 전 상태로 롤백했습니다/,
+  "신규 디렉터리 생성 실패는 staging과 새 상위 디렉터리를 롤백해야 한다",
+);
+assert.equal(fs.existsSync(path.join(rollbackParent, "failed-project")), false, "실패한 최종 디렉터리를 남기면 안 된다");
+assert.equal(fs.existsSync(path.join(tmp, "new-parent")), false, "transaction이 만든 빈 상위 디렉터리를 제거해야 한다");
+
+fs.mkdirSync(path.join(directoryParent, "existing-project"));
+await assert.rejects(
+  () => withDirectoryTransaction(directoryParent, "existing-project", "directory-conflict", () => undefined),
+  /대상이 이미 존재/,
+  "기존 최종 디렉터리를 덮어쓰면 안 된다",
+);
+
+const racedProject = path.join(directoryParent, "raced-project");
+await assert.rejects(
+  () => withDirectoryTransaction(directoryParent, "raced-project", "directory-race", (stagingDir) => {
+    fs.writeFileSync(path.join(stagingDir, "planned.txt"), "planned\n");
+    fs.mkdirSync(racedProject);
+    fs.writeFileSync(path.join(racedProject, "external.txt"), "external\n");
+  }),
+  /commit 직전 대상 디렉터리가 생성/,
+  "commit 직전에 생긴 최종 디렉터리를 덮어쓰면 안 된다",
+);
+assert.equal(
+  fs.readFileSync(path.join(racedProject, "external.txt"), "utf-8"),
+  "external\n",
+  "경합으로 생긴 외부 디렉터리 내용을 보존해야 한다",
+);
+assert.equal(
+  fs.readdirSync(directoryParent).filter((name) => name.startsWith(".egovframe-dir-txn-")).length,
+  0,
+  "경합 거부 후 staging이 남으면 안 된다",
+);
+await assert.rejects(
+  () => withDirectoryTransaction(directoryParent, "../escape", "directory-boundary", () => undefined),
+  /최종 이름이 안전하지 않습니다/,
+  "최종 디렉터리 이름의 상대경로 이탈을 거부해야 한다",
+);
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log("transaction OK");
