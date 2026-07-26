@@ -81,6 +81,11 @@ assert.ok(
   "매니페스트에 공식 소스 provenance를 기록해야 한다",
 );
 assert.ok(mf.components.bbs.files.length >= 88, "bbs 설치 파일 목록을 기록해야 한다");
+assert.equal(
+  Object.keys(mf.components.bbs.hashes ?? {}).length,
+  mf.components.bbs.files.length + mf.components.bbs.sqlScripts.length,
+  "bbs 소스·실행 자산·SQL의 설치 hash를 모두 기록해야 한다",
+);
 
 // 5) 중복 설치 거부 (매니페스트 기준)
 await assert.rejects(() => addComponents({ projectDir: proj, components: ["bbs"] }), "매니페스트 기준 중복 설치를 거부해야 한다");
@@ -103,7 +108,12 @@ await assert.rejects(() => removeComponents({ projectDir: proj, components: ["cm
 // 9) 제거 dryRun → 실제 제거 → 매니페스트 갱신
 const rd = await removeComponents({ projectDir: proj, components: ["login"], dryRun: true });
 assert.ok(
-  rd.dryRun && rd.totalFiles >= 31 && fs.existsSync(proj + "/src/main/java/egovframework/com/uat/uia/service/EgovLoginService.java"),
+  rd.dryRun &&
+    !rd.blocked &&
+    rd.summary.modified === 0 &&
+    rd.summary.unverified === 0 &&
+    rd.totalFiles >= 31 &&
+    fs.existsSync(proj + "/src/main/java/egovframework/com/uat/uia/service/EgovLoginService.java"),
   "제거 dryRun은 파일을 유지하며 대상을 계산해야 한다",
 );
 const rr = await removeComponents({ projectDir: proj, components: ["login"] });

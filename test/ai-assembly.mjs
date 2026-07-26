@@ -63,6 +63,7 @@ assert.ok(
   !!entry && entry.files.length === r.copiedFiles && entry.pom?.addedDeps.length > 10,
   "조립 파일과 POM 변경을 매니페스트에 기록해야 한다",
 );
+assert.equal(Object.keys(entry.hashes ?? {}).length, r.copiedFiles, "AI 조립 파일의 설치 hash를 모두 기록해야 한다");
 
 // ---- 중복/배타 거부 ----
 await assert.rejects(() => addAiComponents({ projectDir: proj, stack: "spring-ai" }), "동일 AI 스택의 중복 설치를 거부해야 한다");
