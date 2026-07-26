@@ -1,0 +1,177 @@
+import { randomUUID } from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+interface FileSnapshot {
+  relPath: string;
+  target: string;
+  existed: boolean;
+  backup?: string;
+}
+
+export interface TransactionWriteOptions {
+  /** true면 기존 파일이 있는 경우 쓰기 전에 거부한다. */
+  mustNotExist?: boolean;
+}
+
+function isOutside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative);
+}
+
+/**
+ * 프로젝트 내부 파일 쓰기를 하나의 롤백 가능한 transaction으로 묶는다.
+ *
+ * 기존 파일은 같은 파일시스템의 숨김 staging 디렉터리로 먼저 이동하고,
+ * 신규 내용은 대상 디렉터리의 임시 파일을 거쳐 rename한다. commit 전 오류가
+ * 발생하면 새 파일을 제거하고 기존 파일을 역순으로 복원한다.
+ */
+export class ProjectFileTransaction {
+  readonly rootDir: string;
+  readonly stagingDir: string;
+  private readonly realRootDir: string;
+  private readonly snapshots = new Map<string, FileSnapshot>();
+  private readonly createdDirs = new Set<string>();
+  private active = true;
+
+  constructor(rootDir: string, label: string) {
+    this.rootDir = path.resolve(rootDir);
+    if (!fs.existsSync(this.rootDir) || !fs.statSync(this.rootDir).isDirectory())
+      throw new Error(`transaction root가 디렉터리가 아닙니다: ${this.rootDir}`);
+    this.realRootDir = fs.realpathSync(this.rootDir);
+    const safeLabel = label.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 40) || "write";
+    this.stagingDir = fs.mkdtempSync(path.join(this.rootDir, `.egovframe-write-txn-${safeLabel}-`));
+  }
+
+  private assertActive(): void {
+    if (!this.active) throw new Error("이미 종료된 file transaction입니다");
+  }
+
+  private resolveTarget(relPath: string): string {
+    if (!relPath || path.isAbsolute(relPath))
+      throw new Error(`transaction 절대·빈 경로를 거부합니다: ${relPath}`);
+    const target = path.resolve(this.rootDir, relPath);
+    if (isOutside(this.rootDir, target) || target === this.rootDir)
+      throw new Error(`transaction 프로젝트 밖 경로를 거부합니다: ${relPath}`);
+    if (target === this.stagingDir || !isOutside(this.stagingDir, target))
+      throw new Error(`transaction staging 내부 경로를 거부합니다: ${relPath}`);
+
+    let existingParent = path.dirname(target);
+    while (!fs.existsSync(existingParent)) {
+      const parent = path.dirname(existingParent);
+      if (parent === existingParent) break;
+      existingParent = parent;
+    }
+    const realParent = fs.realpathSync(existingParent);
+    const realCandidate = path.resolve(realParent, path.relative(existingParent, target));
+    if (isOutside(this.realRootDir, realCandidate))
+      throw new Error(`transaction 경로가 symlink를 통해 프로젝트 밖을 가리킵니다: ${relPath}`);
+
+    if (fs.existsSync(target)) {
+      const stat = fs.lstatSync(target);
+      if (!stat.isFile())
+        throw new Error(`transaction 대상이 일반 파일이 아닙니다: ${relPath}`);
+      if (isOutside(this.realRootDir, fs.realpathSync(target)))
+        throw new Error(`transaction 파일이 프로젝트 밖을 가리킵니다: ${relPath}`);
+    }
+    return target;
+  }
+
+  private ensureParentDirectory(directory: string): void {
+    const missing: string[] = [];
+    let current = directory;
+    while (current !== this.rootDir && !fs.existsSync(current)) {
+      missing.push(current);
+      current = path.dirname(current);
+    }
+    fs.mkdirSync(directory, { recursive: true });
+    for (const created of missing) this.createdDirs.add(created);
+  }
+
+  writeFile(relPath: string, data: string | Buffer, options: TransactionWriteOptions = {}): void {
+    this.assertActive();
+    const target = this.resolveTarget(relPath);
+    const key = process.platform === "win32" ? target.toLowerCase() : target;
+    let snapshot = this.snapshots.get(key);
+
+    if (!snapshot) {
+      const existed = fs.existsSync(target);
+      if (existed && options.mustNotExist)
+        throw new Error(`transaction 대상 파일이 이미 존재합니다: ${relPath}`);
+      snapshot = { relPath, target, existed };
+      if (existed) {
+        const backup = path.join(this.stagingDir, "originals", relPath);
+        fs.mkdirSync(path.dirname(backup), { recursive: true });
+        fs.renameSync(target, backup);
+        snapshot.backup = backup;
+      }
+      this.snapshots.set(key, snapshot);
+    } else if (options.mustNotExist) {
+      throw new Error(`transaction 대상 파일을 이미 기록했습니다: ${relPath}`);
+    }
+
+    if (fs.existsSync(target)) fs.rmSync(target, { force: true });
+    this.ensureParentDirectory(path.dirname(target));
+    const temporary = path.join(path.dirname(target), `.${path.basename(target)}.egovframe-txn-${randomUUID()}`);
+    try {
+      fs.writeFileSync(temporary, data, { flag: "wx" });
+      fs.renameSync(temporary, target);
+    } catch (error) {
+      try { fs.rmSync(temporary, { force: true }); } catch { /* 원래 오류 보존 */ }
+      throw error;
+    }
+  }
+
+  commit(): void {
+    this.assertActive();
+    fs.rmSync(this.stagingDir, { recursive: true, force: true });
+    this.active = false;
+  }
+
+  rollback(): string[] {
+    if (!this.active) return [];
+    const errors: string[] = [];
+    for (const snapshot of [...this.snapshots.values()].reverse()) {
+      try {
+        fs.rmSync(snapshot.target, { force: true });
+        if (snapshot.existed && snapshot.backup && fs.existsSync(snapshot.backup)) {
+          this.ensureParentDirectory(path.dirname(snapshot.target));
+          fs.renameSync(snapshot.backup, snapshot.target);
+        }
+      } catch (error) {
+        errors.push(`${snapshot.relPath}: ${String(error)}`);
+      }
+    }
+    for (const directory of [...this.createdDirs].sort((left, right) => right.length - left.length)) {
+      try {
+        if (fs.existsSync(directory) && fs.readdirSync(directory).length === 0) fs.rmdirSync(directory);
+      } catch (error) {
+        errors.push(`${path.relative(this.rootDir, directory)}: ${String(error)}`);
+      }
+    }
+    try { fs.rmSync(this.stagingDir, { recursive: true, force: true }); }
+    catch (error) { errors.push(`staging: ${String(error)}`); }
+    this.active = false;
+    return errors;
+  }
+}
+
+export async function withFileTransaction<T>(
+  rootDir: string,
+  label: string,
+  action: (transaction: ProjectFileTransaction) => T | Promise<T>,
+): Promise<T> {
+  const transaction = new ProjectFileTransaction(rootDir, label);
+  try {
+    const result = await action(transaction);
+    transaction.commit();
+    return result;
+  } catch (error) {
+    const rollbackErrors = transaction.rollback();
+    const reason = error instanceof Error ? error.message : String(error);
+    const rollback = rollbackErrors.length === 0
+      ? "작업 전 상태로 롤백했습니다."
+      : `롤백 실패 ${rollbackErrors.length}건:\n${rollbackErrors.map((message) => `  - ${message}`).join("\n")}`;
+    throw new Error(`${label} transaction 실패: ${reason}\n${rollback}`);
+  }
+}

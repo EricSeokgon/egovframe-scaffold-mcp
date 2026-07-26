@@ -82,6 +82,29 @@ assert.ok(!fs.existsSync(path.join(proj, AI_POM_BACKUP)), "POM 백업을 정리�
 assert.equal(readManifest(proj), null, "빈 매니페스트를 정리해야 한다");
 assert.ok(!fs.existsSync(path.join(proj, "src/main/java/com")), "빈 spring-ai 소스 디렉터리를 정리해야 한다");
 
+// ---- AI 조립 fault injection → 파일·POM·매니페스트 전체 롤백 ----
+const rollbackProj = path.join(tmp, "rollback");
+fs.mkdirSync(path.join(rollbackProj, "src/main/resources"), { recursive: true });
+fs.writeFileSync(path.join(rollbackProj, "pom.xml"), ORIGINAL_POM.replace("ai-asm-fixture", "ai-asm-rollback"));
+await assert.rejects(
+  () => addAiComponents({ projectDir: rollbackProj, stack: "spring-ai", faultInjection: "after-pom" }),
+  /작업 전 상태로 롤백했습니다/,
+  "POM 반영 뒤 실패해도 AI 조립 전체를 롤백해야 한다",
+);
+assert.equal(
+  fs.readFileSync(path.join(rollbackProj, "pom.xml"), "utf-8"),
+  ORIGINAL_POM.replace("ai-asm-fixture", "ai-asm-rollback"),
+  "AI transaction이 원본 POM을 복원해야 한다",
+);
+assert.equal(fs.existsSync(path.join(rollbackProj, AI_POM_BACKUP)), false, "실패한 조립의 POM 백업을 제거해야 한다");
+assert.equal(readManifest(rollbackProj), null, "실패한 조립의 매니페스트를 남기면 안 된다");
+assert.equal(fs.existsSync(path.join(rollbackProj, "src/main/resources/application-ai.yml")), false, "실패한 조립 파일을 제거해야 한다");
+assert.equal(
+  fs.readdirSync(rollbackProj).filter((name) => name.startsWith(".egovframe-write-txn-")).length,
+  0,
+  "AI rollback 후 transaction staging을 정리해야 한다",
+);
+
 // ================= langchain4j 스택 사이클 =================
 const proj2 = path.join(tmp, "proj2");
 fs.mkdirSync(path.join(proj2, "src/main/resources"), { recursive: true });

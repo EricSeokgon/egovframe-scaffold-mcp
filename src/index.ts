@@ -19,6 +19,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { createHash } from "node:crypto";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
+import { withFileTransaction } from "./file-transaction.js";
 import {
   downloadVerifiedCatalogArchive,
   syncCatalog,
@@ -32,6 +33,7 @@ export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult } from "./crud.js";
 export { inspectCatalogArchive, syncCatalog } from "./catalog-sync.js";
 export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from "./catalog-sync.js";
+export { ProjectFileTransaction, withFileTransaction } from "./file-transaction.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -1260,6 +1262,8 @@ export interface AddAiComponentsOptions {
   includeTests?: boolean;
   ref?: string;
   dryRun?: boolean;
+  /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
+  faultInjection?: "after-files" | "after-pom";
 }
 
 export interface AiPlanResult {
@@ -1461,10 +1465,11 @@ export const AI_POM_BACKUP = "pom.xml.bak-ai";
 
 /**
  * AI 컴포넌트 실조립 (M2).
- * - 파일 복사: 전체 사전 충돌 검사 후 하나라도 충돌하면 아무것도 쓰지 않고 거부 (원자적)
+ * - 파일 복사: 전체 사전 충돌 검사 후 하나라도 충돌하면 아무것도 쓰지 않고 거부
  * - pom 병합: 누락 좌표만 마커 주석 구간으로 삽입(기존 항목 불변), 병합 전 pom.xml.bak-ai 백업
  * - 설정 프로필화: application.yml → application-ai.yml 복사 (기존 설정 파일은 수정하지 않음)
  * - 매니페스트 기록: remove_egovframe_components가 파일과 pom 삽입분을 함께 정리
+ * - transaction: 파일·POM 백업·매니페스트 중 어느 단계가 실패해도 호출 전 상태로 롤백
  */
 export async function addAiComponents(opts: AddAiComponentsOptions): Promise<AddAiResult> {
   if (opts.dryRun === true) {
@@ -1517,21 +1522,13 @@ export async function addAiComponents(opts: AddAiComponentsOptions): Promise<Add
   if ((p.toAddDeps.length > 0 || Object.keys(p.toAddProps).length > 0) && fs.existsSync(backupPath))
     throw new Error(`pom 백업(${AI_POM_BACKUP})이 이미 있습니다 — 이전 조립 잔여물을 정리한 뒤 다시 시도하세요`);
 
-  // ---- 파일 복사 ----
-  for (const f of plan) {
-    const target = path.join(projectDir, f.destRel);
-    if (!target.startsWith(projectDir + path.sep)) throw new Error(`경로 이탈 감지: ${f.destRel}`);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, f.entry.getData());
-  }
-
-  // ---- pom 병합 (마커 구간 삽입) ----
+  // ---- POM·매니페스트를 메모리에서 완성해 모든 검증을 쓰기 전에 끝낸다. ----
   let pomChanged = false;
+  const pomBefore = fs.readFileSync(pomPath, "utf-8");
+  let nextPom = pomBefore;
   if (p.toAddDeps.length > 0 || Object.keys(p.toAddProps).length > 0) {
-    let pom = fs.readFileSync(pomPath, "utf-8");
-    fs.writeFileSync(backupPath, pom);
     if (p.toAddDeps.length > 0) {
-      const close = findProjectDependenciesClose(pom);
+      const close = findProjectDependenciesClose(nextPom);
       if (close < 0) throw new Error("pom.xml에서 <dependencies> 블록을 찾지 못했습니다");
       const block = [
         `        ${AI_POM_MARKER(comp.id, "deps", "start")}`,
@@ -1539,10 +1536,10 @@ export async function addAiComponents(opts: AddAiComponentsOptions): Promise<Add
         `        ${AI_POM_MARKER(comp.id, "deps", "end")}`,
         "    ",
       ].join("\n");
-      pom = pom.slice(0, close) + block + pom.slice(close);
+      nextPom = nextPom.slice(0, close) + block + nextPom.slice(close);
     }
     if (Object.keys(p.toAddProps).length > 0) {
-      const pClose = pom.indexOf("</properties>");
+      const pClose = nextPom.indexOf("</properties>");
       if (pClose < 0) throw new Error("pom.xml에서 <properties> 블록을 찾지 못했습니다");
       const block = [
         `        ${AI_POM_MARKER(comp.id, "props", "start")}`,
@@ -1550,13 +1547,12 @@ export async function addAiComponents(opts: AddAiComponentsOptions): Promise<Add
         `        ${AI_POM_MARKER(comp.id, "props", "end")}`,
         "    ",
       ].join("\n");
-      pom = pom.slice(0, pClose) + block + pom.slice(pClose);
+      nextPom = nextPom.slice(0, pClose) + block + nextPom.slice(pClose);
     }
-    fs.writeFileSync(pomPath, pom);
     pomChanged = true;
   }
 
-  // ---- 매니페스트 기록 ----
+  // ---- 매니페스트 계획 ----
   const manifest: Manifest = readManifest(projectDir) ?? {
     schemaVersion: 3,
     source: { repo: catalog.source.repo, branch: catalog.source.branch },
@@ -1576,7 +1572,26 @@ export async function addAiComponents(opts: AddAiComponentsOptions): Promise<Add
       : undefined,
   };
   manifest.schemaVersion = 3;
-  writeManifest(projectDir, manifest);
+  const manifestContent = JSON.stringify(manifest, null, 2) + "\n";
+
+  // ---- 파일·POM·매니페스트를 하나의 공통 transaction으로 반영 ----
+  await withFileTransaction(projectDir, "AI 조립", async (transaction) => {
+    for (const f of plan)
+      transaction.writeFile(f.destRel, f.entry.getData(), { mustNotExist: true });
+
+    if (opts.faultInjection === "after-files")
+      throw new Error("AI assembly fault injection: after-files");
+
+    if (pomChanged) {
+      transaction.writeFile(AI_POM_BACKUP, pomBefore, { mustNotExist: true });
+      transaction.writeFile("pom.xml", nextPom);
+    }
+
+    if (opts.faultInjection === "after-pom")
+      throw new Error("AI assembly fault injection: after-pom");
+
+    transaction.writeFile(MANIFEST_FILE, manifestContent);
+  });
 
   const copyPlan = p.groups.map((g) => ({
     group: g as string,
