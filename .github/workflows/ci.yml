@@ -63,6 +63,9 @@ jobs:
       - name: Components assembly test (downloads egovframe-common-components)
         run: npm run test:components
 
+      - name: Recipe transaction rollback (official template and components)
+        run: npm run test:recipe-transaction
+
       - name: Catalog pin and archive verification (official v5.0.6)
         run: npm run test:catalog-sync-live
 

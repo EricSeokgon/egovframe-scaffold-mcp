@@ -165,8 +165,8 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   }
 }
 
-/** 템플릿 zip 다운로드 → 압축 해제 → 사용자 값 적용 (dryRun이면 미리보기만) */
-export async function createProject(opts: CreateOptions): Promise<CreateResult> {
+/** 템플릿 zip 다운로드 → 지정 staging에 압축 해제 → 사용자 값 적용. */
+async function createProjectInternal(opts: CreateOptions, transactionStagingPath?: string): Promise<CreateResult> {
   const tpl = TEMPLATES[opts.template];
   if (!tpl) throw new Error(`알 수 없는 템플릿: ${opts.template}`);
   if (!NAME_RE.test(opts.projectName))
@@ -223,83 +223,95 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
     };
   }
 
-  const count = await withDirectoryTransaction(
-    path.resolve(opts.outputDir),
-    opts.projectName,
-    "프로젝트 생성",
-    async (stagingPath) => {
-      // 3) 최상위 폴더를 제거하며 sibling staging에 압축 해제
-      let extracted = 0;
-      for (const e of entries) {
-        if (e.isDirectory) continue;
-        const r = rel(e.entryName);
-        if (!r) continue;
-        const dest = path.join(stagingPath, r);
-        // zip slip 방지
-        if (!dest.startsWith(stagingPath + path.sep)) continue;
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        fs.writeFileSync(dest, e.getData());
-        extracted++;
+  const populate = async (stagingPath: string): Promise<number> => {
+    // 3) 최상위 폴더를 제거하며 sibling staging에 압축 해제
+    let extracted = 0;
+    for (const e of entries) {
+      if (e.isDirectory) continue;
+      const r = rel(e.entryName);
+      if (!r) continue;
+      const dest = path.join(stagingPath, r);
+      // zip slip 방지
+      if (!dest.startsWith(stagingPath + path.sep)) continue;
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, e.getData());
+      extracted++;
+    }
+
+    if (opts.faultInjection === "after-extract")
+      throw new Error("createProject fault injection: after-extract");
+
+    // 4) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지) — 멀티 프로젝트 템플릿은 건너뜀
+    const pomPath = path.join(stagingPath, "pom.xml");
+    if (!tpl.multiProject && fs.existsSync(pomPath)) {
+      let pom = fs.readFileSync(pomPath, "utf-8");
+      pom = customizePomCoordinates(pom, opts.groupId, opts.projectName);
+      fs.writeFileSync(pomPath, pom);
+      customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
+    }
+
+    // 5) application.properties: DB 타입 적용
+    const appProps = path.join(stagingPath, "src/main/resources/application.properties");
+    if (!tpl.multiProject && fs.existsSync(appProps)) {
+      let props = fs.readFileSync(appProps, "utf-8");
+      if (/^Globals\.DbType=.*$/m.test(props)) {
+        props = props.replace(/^Globals\.DbType=.*$/m, `Globals.DbType=${opts.database}`);
+        fs.writeFileSync(appProps, props);
+        customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database})`);
       }
+    }
 
-      if (opts.faultInjection === "after-extract")
-        throw new Error("createProject fault injection: after-extract");
-
-      // 4) pom.xml: 프로젝트 좌표 적용 (parent 좌표는 유지) — 멀티 프로젝트 템플릿은 건너뜀
-      const pomPath = path.join(stagingPath, "pom.xml");
-      if (!tpl.multiProject && fs.existsSync(pomPath)) {
-        let pom = fs.readFileSync(pomPath, "utf-8");
-        pom = customizePomCoordinates(pom, opts.groupId, opts.projectName);
-        fs.writeFileSync(pomPath, pom);
-        customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
+    // 5b) 레거시 템플릿(egovProps/globals.properties): DB 타입 적용
+    const globalsProps = path.join(stagingPath, GLOBALS_PROPS_REL);
+    if (!tpl.multiProject && fs.existsSync(globalsProps)) {
+      let props = fs.readFileSync(globalsProps, "utf-8");
+      if (/^Globals\.DbType\s*=.*$/m.test(props)) {
+        props = props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`);
+        fs.writeFileSync(globalsProps, props);
+        customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database})`);
       }
+    }
 
-      // 5) application.properties: DB 타입 적용
-      const appProps = path.join(stagingPath, "src/main/resources/application.properties");
-      if (!tpl.multiProject && fs.existsSync(appProps)) {
-        let props = fs.readFileSync(appProps, "utf-8");
-        if (/^Globals\.DbType=.*$/m.test(props)) {
-          props = props.replace(/^Globals\.DbType=.*$/m, `Globals.DbType=${opts.database}`);
-          fs.writeFileSync(appProps, props);
-          customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database})`);
+    // 6) package.json: 프론트엔드 템플릿의 프로젝트명 적용
+    const pkgPath = path.join(stagingPath, "package.json");
+    if (!tpl.multiProject && fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if (typeof pkg.name === "string") {
+          pkg.name = opts.projectName;
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+          customized.push(`package.json (name=${opts.projectName})`);
         }
+      } catch {
+        // package.json 파싱 실패 시 건너뜀 (원본 유지)
       }
+    }
 
-      // 5b) 레거시 템플릿(egovProps/globals.properties): DB 타입 적용
-      const globalsProps = path.join(stagingPath, GLOBALS_PROPS_REL);
-      if (!tpl.multiProject && fs.existsSync(globalsProps)) {
-        let props = fs.readFileSync(globalsProps, "utf-8");
-        if (/^Globals\.DbType\s*=.*$/m.test(props)) {
-          props = props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`);
-          fs.writeFileSync(globalsProps, props);
-          customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database})`);
-        }
-      }
+    if (tpl.multiProject)
+      customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
 
-      // 6) package.json: 프론트엔드 템플릿의 프로젝트명 적용
-      const pkgPath = path.join(stagingPath, "package.json");
-      if (!tpl.multiProject && fs.existsSync(pkgPath)) {
-        try {
-          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-          if (typeof pkg.name === "string") {
-            pkg.name = opts.projectName;
-            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-            customized.push(`package.json (name=${opts.projectName})`);
-          }
-        } catch {
-          // package.json 파싱 실패 시 건너뜀 (원본 유지)
-        }
-      }
+    if (opts.faultInjection === "after-customize")
+      throw new Error("createProject fault injection: after-customize");
 
-      if (tpl.multiProject)
-        customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
+    return extracted;
+  };
 
-      if (opts.faultInjection === "after-customize")
-        throw new Error("createProject fault injection: after-customize");
-
-      return extracted;
-    },
-  );
+  let count: number;
+  if (transactionStagingPath !== undefined) {
+    const stagingPath = path.resolve(transactionStagingPath);
+    if (!fs.existsSync(stagingPath) || !fs.statSync(stagingPath).isDirectory())
+      throw new Error(`내부 staging 디렉터리가 없습니다: ${stagingPath}`);
+    if (fs.readdirSync(stagingPath).length > 0)
+      throw new Error(`내부 staging 디렉터리가 비어 있지 않습니다: ${stagingPath}`);
+    count = await populate(stagingPath);
+  } else {
+    count = await withDirectoryTransaction(
+      path.resolve(opts.outputDir),
+      opts.projectName,
+      "프로젝트 생성",
+      populate,
+    );
+  }
 
   const buildStep = tpl.multiProject
     ? "README.md 참조 — backend/frontend/k8s/docker-compose 하위 프로젝트별 기동 안내"
@@ -315,6 +327,11 @@ export async function createProject(opts: CreateOptions): Promise<CreateResult> 
   ];
 
   return { projectPath, filesExtracted: count, customized, nextSteps, ref, dryRun: false };
+}
+
+/** 템플릿 zip 다운로드 → 압축 해제 → 사용자 값 적용 (dryRun이면 미리보기만) */
+export async function createProject(opts: CreateOptions): Promise<CreateResult> {
+  return createProjectInternal(opts);
 }
 
 
@@ -1688,6 +1705,94 @@ export function loadRecipes(): Recipe[] {
   return _recipes;
 }
 
+export interface ApplyRecipeOptions {
+  recipeId: string;
+  projectName: string;
+  groupId: string;
+  outputDir: string;
+  database?: (typeof ECC_DB_TYPES)[number];
+  dryRun?: boolean;
+  /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
+  faultInjection?: "after-create" | "after-components" | "after-ai";
+}
+
+export interface ApplyRecipeResult {
+  recipe: Recipe;
+  project: CreateResult;
+  steps: string[];
+}
+
+/** 프로젝트 생성과 공통·AI 컴포넌트 조립을 하나의 신규 디렉터리 transaction으로 실행한다. */
+export async function applyRecipe(opts: ApplyRecipeOptions): Promise<ApplyRecipeResult> {
+  const recipe = loadRecipes().find((candidate) => candidate.id === opts.recipeId);
+  if (!recipe) throw new Error(`알 수 없는 recipeId: ${opts.recipeId}`);
+
+  const dryRun = opts.dryRun === true;
+  const eccDb = opts.database ?? recipe.database;
+  const createDb = (DB_TYPES as readonly string[]).includes(eccDb ?? "")
+    ? (eccDb as (typeof DB_TYPES)[number])
+    : "hsql";
+
+  const execute = async (transactionStagingPath?: string): Promise<ApplyRecipeResult> => {
+    const project = await createProjectInternal({
+      projectName: opts.projectName,
+      groupId: opts.groupId,
+      database: createDb,
+      template: recipe.template,
+      outputDir: opts.outputDir,
+      dryRun,
+    }, transactionStagingPath);
+    const workingProjectPath = transactionStagingPath ?? project.projectPath;
+    const steps = [
+      `① 생성: ${project.projectPath} (${project.dryRun ? "예정" : "추출"} ${project.filesExtracted}파일, ref ${project.ref})`,
+    ];
+
+    if (!dryRun && opts.faultInjection === "after-create")
+      throw new Error("recipe fault injection: after-create");
+
+    if (recipe.components.length) {
+      const add = await addComponents({
+        projectDir: workingProjectPath,
+        components: recipe.components,
+        includeDependencies: true,
+        database: eccDb,
+        dryRun,
+      });
+      steps.push(
+        `② 컴포넌트(${add.requested.join(", ")}) — ${add.dryRun ? "예정 " : ""}${add.totalFiles}파일` +
+          (add.sqlScripts.length ? `, SQL ${add.sqlScripts.length}건` : ""),
+      );
+    }
+
+    if (!dryRun && opts.faultInjection === "after-components")
+      throw new Error("recipe fault injection: after-components");
+
+    if (recipe.ai) {
+      const ai = await addAiComponents({
+        projectDir: workingProjectPath,
+        stack: recipe.ai.stack,
+        dryRun,
+      });
+      steps.push(
+        `③ AI(${recipe.ai.stack}) — ${dryRun ? "예정 " : ""}${ai.copiedFiles}파일` +
+          (ai.pomChanged ? ", pom 병합" : ""),
+      );
+      if (!dryRun && opts.faultInjection === "after-ai")
+        throw new Error("recipe fault injection: after-ai");
+    }
+
+    return { recipe, project, steps };
+  };
+
+  if (dryRun) return execute();
+  return withDirectoryTransaction(
+    path.resolve(opts.outputDir),
+    opts.projectName,
+    "레시피 적용",
+    execute,
+  );
+}
+
 // ── 프로젝트 진단 (v0.14.0) ─────────────────────────────
 export interface DiagnoseResult {
   projectDir: string;
@@ -2410,47 +2515,7 @@ export function buildServer(): McpServer {
       if (!recipe) {
         return { content: [{ type: "text", text: `❌ 알 수 없는 recipeId: ${args.recipeId}` }] };
       }
-      const steps: string[] = [];
-      const eccDb = args.database ?? recipe.database;
-      const createDb = (DB_TYPES as readonly string[]).includes(eccDb ?? "")
-        ? (eccDb as (typeof DB_TYPES)[number])
-        : "hsql";
-
-      const proj = await createProject({
-        projectName: args.projectName,
-        groupId: args.groupId,
-        database: createDb,
-        template: recipe.template,
-        outputDir: args.outputDir,
-        dryRun: args.dryRun,
-      });
-      steps.push(`① 생성: ${proj.projectPath} (${proj.dryRun ? "예정" : "추출"} ${proj.filesExtracted}파일, ref ${proj.ref})`);
-
-      if (recipe.components.length) {
-        const add = await addComponents({
-          projectDir: proj.projectPath,
-          components: recipe.components,
-          includeDependencies: true,
-          database: eccDb,
-          dryRun: args.dryRun,
-        });
-        steps.push(
-          `② 컴포넌트(${add.requested.join(", ")}) — ${add.dryRun ? "예정 " : ""}${add.totalFiles}파일` +
-            (add.sqlScripts.length ? `, SQL ${add.sqlScripts.length}건` : ""),
-        );
-      }
-
-      if (recipe.ai) {
-        const ai = await addAiComponents({
-          projectDir: proj.projectPath,
-          stack: recipe.ai.stack,
-          dryRun: args.dryRun,
-        });
-        steps.push(
-          `③ AI(${recipe.ai.stack}) — ${args.dryRun ? "예정 " : ""}${ai.copiedFiles}파일` +
-            (ai.pomChanged ? ", pom 병합" : ""),
-        );
-      }
+      const result = await applyRecipe(args as ApplyRecipeOptions);
 
       const head = args.dryRun
         ? `🔍 레시피 미리보기(dryRun): ${recipe.name}`
@@ -2458,9 +2523,9 @@ export function buildServer(): McpServer {
       const text = [
         head,
         `- recipe: ${recipe.id}`,
-        ...steps,
+        ...result.steps,
         ``,
-        `다음 단계: validate_egovframe_project(projectDir="${proj.projectPath}")로 무결성 확인`,
+        `다음 단계: validate_egovframe_project(projectDir="${result.project.projectPath}")로 무결성 확인`,
       ].join("\n");
       return { content: [{ type: "text", text }] };
     },

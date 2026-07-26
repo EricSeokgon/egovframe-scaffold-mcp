@@ -28,7 +28,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 | `get_egovframe_guide` | 컴포넌트의 공식 가이드 문서 조회 (egovframe-docs, 151종 매핑) |
 | `add_ai_components` | 공식 [egovframe-ai-rag](https://github.com/eGovFramework/egovframe-ai-rag) 샘플 기반 AI RAG 챗봇 조립 — Spring AI(Redis Stack)·LangChain4j(PGVector) 스택 선택(상호 배타), 소스·설정(`application-ai.yml` 프로필)·UI·인프라 복사, **pom 누락 의존성만 마커 구간 삽입**(백업 생성, 제거 시 원복), 충돌 시 전체 거부, `dryRun` 미리보기 (설계: [docs/design-ai-components.md](docs/design-ai-components.md)) |
 | `list_egovframe_recipes` | 큐레이션된 레시피(템플릿+컴포넌트 번들) 목록 |
-| `apply_egovframe_recipe` | 레시피 하나로 생성→컴포넌트(→AI 계층)까지 순차 조립 (`dryRun` 지원) |
+| `apply_egovframe_recipe` | 레시피 하나로 생성→컴포넌트(→AI 계층)까지 조립하고 전체 성공 시에만 최종 경로로 atomic commit (`dryRun` 지원) |
 | `diagnose_egovframe_project` | 기존/레거시 프로젝트를 스캔해 빌드시스템·RTE 버전·DbType·설치 공통컴포넌트(pathPrefixes 지문)·설정 문제 진단 (읽기 전용) |
 | `search_egovframe_docs` | 공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색 — 제목·경로·연계 컴포넌트, 문서 URL·조립용 id 반환 (오프라인) |
 | `generate_egovframe_report` | 프로젝트를 스캔해 설치 컴포넌트·참조 테이블·가이드 링크·이슈를 Markdown 리포트로 생성 (읽기 전용) |
@@ -162,7 +162,7 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 - 조립 레벨: 실제 공통컴포넌트 저장소로 bbs+login+sec.security(+cmm) 조립, message·IDGN·웹 자산·공용 fragment·Maven 좌표·선별 DB 스크립트·충돌 전체 거부 검증 (`npm run test:components`)
 - 수명주기 레벨: 설치 매니페스트 기록, 중복 설치 거부, 의존 컴포넌트 제거 보호, 제거·검증 동작 (`npm run test:components`)
 - 프로토콜 레벨: MCP initialize / tools/list 핸드셰이크 및 `ref`·`dryRun` 파라미터 노출 확인
-- 레시피 레벨: `catalog/recipes.json`의 컴포넌트 id 존재·의존성 정합 검증 (`npm run test:recipes`, 네트워크 불필요)
+- 레시피 레벨: `catalog/recipes.json`의 컴포넌트 id 존재·의존성 정합 검증 (`npm run test:recipes`, 네트워크 불필요), 공식 템플릿 생성 뒤 컴포넌트 단계 실패(현재 충돌 또는 충돌 해소 뒤 fault injection)의 전체 staging rollback 검증 (`npm run test:recipe-transaction`)
 - 진단 레벨: 픽스처(pom·DbType·컴포넌트 패키지)로 `diagnose_egovframe_project`의 빌드·버전·DbType·컴포넌트 지문·의존성 검출 검증 (`npm run test:diagnose`, 네트워크 불필요)
 - 문서 검색 레벨: `search_egovframe_docs`의 키워드 매칭·점수 정렬·컴포넌트 매핑·빈질의/미존재어 처리 검증 (`npm run test:docs`, 네트워크 불필요)
 - 리포트 레벨: 픽스처로 `generate_egovframe_report`의 컴포넌트·테이블·가이드 링크 렌더링 검증 (`npm run test:report`, 네트워크 불필요)
@@ -206,7 +206,7 @@ v0.21.0까지 프로젝트·CRUD 생성과 검증된 공통컴포넌트 실행 �
 
 ## 변경 이력
 
-- **0.21.1 (진행 중)** — 안전한 제거 hardening: 설치·갱신 시점 SHA-256과 현재 파일을 비교해 사용자 수정·기준선 미확인 파일을 기본 보존합니다. `dryRun`은 unchanged/modified/unverified/missing을 분류하고, `force=true`는 기존 파일을 `remove-backup/`에 복사한 뒤 같은 파일시스템 staging으로 제거합니다. 중간 실패는 파일·POM·매니페스트를 작업 전 상태로 롤백합니다. 공통컴포넌트 SQL과 AI 조립 파일도 매니페스트 hash 기준선을 기록합니다. AI 조립은 재사용 가능한 project file transaction으로 파일·POM 백업·매니페스트를 함께 commit하며, 어느 단계가 실패해도 호출 전 상태로 복구합니다. 프로젝트 생성도 sibling staging에서 압축 해제·커스터마이징을 모두 끝낸 뒤 최종 경로로 atomic rename해 부분 프로젝트를 남기지 않습니다.
+- **0.21.1 (진행 중)** — 안전한 제거 hardening: 설치·갱신 시점 SHA-256과 현재 파일을 비교해 사용자 수정·기준선 미확인 파일을 기본 보존합니다. `dryRun`은 unchanged/modified/unverified/missing을 분류하고, `force=true`는 기존 파일을 `remove-backup/`에 복사한 뒤 같은 파일시스템 staging으로 제거합니다. 중간 실패는 파일·POM·매니페스트를 작업 전 상태로 롤백합니다. 공통컴포넌트 SQL과 AI 조립 파일도 매니페스트 hash 기준선을 기록합니다. AI 조립은 재사용 가능한 project file transaction으로 파일·POM 백업·매니페스트를 함께 commit하며, 어느 단계가 실패해도 호출 전 상태로 복구합니다. 프로젝트 생성과 recipe 전체 조립도 sibling staging에서 모두 끝낸 뒤 최종 경로로 atomic rename해 부분 프로젝트를 남기지 않습니다.
 - **0.21.0** — 검증된 공통컴포넌트 완전 조립: `sync_egovframe_catalog`를 추가하고 common-components 공식 v5.0.6 태그·commit(`23d01889…`)·archive SHA-256/크기/파일 수를 고정했습니다. 카탈로그 schema v2를 190항목(리프 176+그룹 14)으로 재생성해 message bundle 278건, IDGN context 91건, scheduling context 18건, 웹 자산 662건, Spring/web fragment 26건과 Maven 좌표를 연결했습니다. `add_egovframe_components`가 이 자산을 함께 복사하며 동일 파일 재사용, 다른 내용 충돌 전체 거부, 쓰기 실패 롤백, DB 비사용 컴포넌트의 SQL 폴백 방지를 적용합니다. `sec.security` 신규 보안 패키지와 미매핑 upstream 경로를 CI에서 검증하고 매니페스트 schema v3에 source 고정 정보를 기록합니다. 기존 카탈로그 schema v1·매니페스트 v1/v2 하위 호환.
 
 - **0.20.0** — CRUD 코드 생성: `generate_egovframe_crud` 추가. eGovFrame Development의 공식 `wizard.xml` 입력 그룹(author/createDate, DataAccess·Service·Web, mapper/VO/service/controller/JSP 경로)에 맞춰 VO·DefaultVO·EgovMapper 인터페이스·MyBatis XML·Service·ServiceImpl·Controller를 생성합니다. Classic은 MVC+JSP 2종, Boot는 REST Controller를 생성하고 `withTest`로 JUnit 5 계약 테스트를 추가합니다. PK 필수, SQL/Java 식별자·상대경로 검증, dryRun, 전체 충돌 사전 검사, 쓰기 실패 롤백을 적용했습니다. 오프라인 테스트(`npm run test:crud`)와 공식 simple-backend/Boot·web-sample/Classic Maven compile 통합 테스트를 추가했습니다. 프로젝트 직접 Maven 좌표만 변경해 parent·dependency를 보존하고, lockfile·npm 패키지 설계 문서·CI 전체 릴리스 게이트를 추가했으며 `adm-zip` 0.6.0으로 고위험 ZIP 취약점을 해소했습니다. 기존 17개 도구 하위 호환.
