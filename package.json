@@ -21,6 +21,7 @@
     "test:ai-assembly": "node test/ai-assembly.mjs",
     "test:templates": "node test/templates.mjs",
     "test:recipes": "node test/recipes.mjs",
+    "test:recipe-transaction": "node test/recipe-transaction.mjs",
     "test:diagnose": "node test/diagnose.mjs",
     "test:docs": "node test/docs-search.mjs",
     "test:report": "node test/report.mjs",
