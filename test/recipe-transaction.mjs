@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { applyRecipe } from "../dist/index.js";
+import { applyRecipe, readManifest, validateProject } from "../dist/index.js";
 
 const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), "recipe-transaction-"));
 const outputDir = path.join(sandbox, "new-parent", "output");
@@ -22,8 +22,8 @@ try {
     (error) => {
       assert.match(
         String(error),
-        /recipe fault injection: after-components|기존 파일과 충돌하여 중단합니다/,
-        "현재 템플릿 충돌 또는 향후 충돌 해소 뒤 fault injection으로 컴포넌트 단계 이후 실패해야 한다",
+        /recipe fault injection: after-components/,
+        "컴포넌트 조립 성공 뒤 fault injection으로 실패해야 한다",
       );
       assert.match(String(error), /작업 전 상태로 롤백했습니다/);
       return true;
@@ -46,6 +46,28 @@ try {
     false,
     "recipe rollback 후 staging이 남으면 안 된다",
   );
+
+  const success = await applyRecipe({
+    recipeId: "board-login",
+    projectName: "recipe-success-app",
+    groupId: "egovframework.example",
+    outputDir: path.join(sandbox, "success-output"),
+    database: "mysql",
+  });
+  assert.match(success.steps.join("\n"), /템플릿 제공 cmm 보존·확인/);
+  assert.match(success.steps.join("\n"), /추가 bbs, login — 133파일, SQL 4건/);
+  assert.equal(fs.existsSync(success.project.projectPath), true, "성공한 recipe는 최종 프로젝트를 공개해야 한다");
+
+  const manifest = readManifest(success.project.projectPath);
+  assert.ok(manifest, "성공한 recipe는 설치 매니페스트를 기록해야 한다");
+  assert.equal(manifest.components.cmm, undefined, "템플릿 제공 cmm을 도구 소유 파일로 기록하면 안 된다");
+  assert.deepEqual(Object.keys(manifest.components).sort(), ["bbs", "login"]);
+  assert.equal(manifest.components.bbs.files.length, 88);
+  assert.equal(manifest.components.login.files.length, 41);
+
+  const validation = await validateProject({ projectDir: success.project.projectPath });
+  assert.equal(validation.ok, true, validation.warnings.join("\n"));
+  assert.deepEqual(validation.components.map((component) => component.id).sort(), ["bbs", "login"]);
 } finally {
   fs.rmSync(sandbox, { recursive: true, force: true });
 }

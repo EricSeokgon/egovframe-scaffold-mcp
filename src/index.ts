@@ -1690,6 +1690,8 @@ export interface Recipe {
   description: string;
   template: keyof typeof TEMPLATES;
   components: string[];
+  /** 공식 템플릿이 이미 제공하므로 다시 복사하지 않는 의존 컴포넌트. */
+  providedComponents?: string[];
   database?: (typeof ECC_DB_TYPES)[number];
   ai?: { stack: (typeof AI_STACKS)[number] };
 }
@@ -1751,17 +1753,43 @@ export async function applyRecipe(opts: ApplyRecipeOptions): Promise<ApplyRecipe
       throw new Error("recipe fault injection: after-create");
 
     if (recipe.components.length) {
-      const add = await addComponents({
-        projectDir: workingProjectPath,
-        components: recipe.components,
-        includeDependencies: true,
-        database: eccDb,
-        dryRun,
-      });
-      steps.push(
-        `② 컴포넌트(${add.requested.join(", ")}) — ${add.dryRun ? "예정 " : ""}${add.totalFiles}파일` +
-          (add.sqlScripts.length ? `, SQL ${add.sqlScripts.length}건` : ""),
-      );
+      const provided = [...new Set(recipe.providedComponents ?? [])];
+      const unknownProvided = provided.filter((id) => !recipe.components.includes(id));
+      if (unknownProvided.length)
+        throw new Error(`레시피 카탈로그 오류: providedComponents가 components에 없습니다: ${unknownProvided.join(", ")}`);
+
+      if (!dryRun && provided.length) {
+        const catalogById = new Map(loadCatalog().components.map((component) => [component.id, component]));
+        for (const id of provided) {
+          const component = catalogById.get(id);
+          if (!component)
+            throw new Error(`레시피 카탈로그 오류: 템플릿 제공 컴포넌트 '${id}'가 카탈로그에 없습니다`);
+          const found = component.pathPrefixes.some((prefix) => fs.existsSync(path.resolve(workingProjectPath, prefix)));
+          if (!found)
+            throw new Error(`템플릿 제공 컴포넌트 '${id}'를 생성된 프로젝트에서 확인할 수 없습니다 — template/ref 호환성을 확인하세요`);
+        }
+      }
+
+      const providedSet = new Set(provided);
+      const installComponents = recipe.components.filter((id) => !providedSet.has(id));
+      const componentSteps: string[] = [];
+      if (provided.length)
+        componentSteps.push(`템플릿 제공 ${provided.join(", ")} 보존${dryRun ? " 예정" : "·확인"}`);
+      if (installComponents.length) {
+        const add = await addComponents({
+          projectDir: workingProjectPath,
+          components: installComponents,
+          // recipe.components가 전체 의존성을 열거하고 providedComponents는 템플릿이 충족한다.
+          includeDependencies: false,
+          database: eccDb,
+          dryRun,
+        });
+        componentSteps.push(
+          `추가 ${add.requested.join(", ")} — ${add.dryRun ? "예정 " : ""}${add.totalFiles}파일` +
+            (add.sqlScripts.length ? `, SQL ${add.sqlScripts.length}건` : ""),
+        );
+      }
+      steps.push(`② 컴포넌트 — ${componentSteps.join("; ")}`);
     }
 
     if (!dryRun && opts.faultInjection === "after-components")

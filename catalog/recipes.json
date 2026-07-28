@@ -7,7 +7,8 @@
       "name": "게시판+로그인",
       "description": "가장 흔한 최소 조합 — 공통(cmm)·게시판(bbs)·로그인(login).",
       "template": "simple-backend",
-      "components": ["cmm", "bbs", "login"]
+      "components": ["cmm", "bbs", "login"],
+      "providedComponents": ["cmm"]
     },
     {
       "id": "standard-portal",
@@ -15,6 +16,7 @@
       "description": "포털사이트 템플릿 기반 백엔드에 공통·게시판·로그인을 조립.",
       "template": "portal-site",
       "components": ["cmm", "bbs", "login"],
+      "providedComponents": ["cmm"],
       "database": "mysql"
     },
     {
@@ -23,6 +25,7 @@
       "description": "심플 백엔드에 공통(cmm)을 조립하고 Spring AI RAG 챗봇 계층을 붙임.",
       "template": "simple-backend",
       "components": ["cmm"],
+      "providedComponents": ["cmm"],
       "ai": { "stack": "spring-ai" }
     }
   ]
