@@ -8,8 +8,10 @@ const recipes = JSON.parse(readFileSync(path.join(root, "../catalog/recipes.json
 const catalog = JSON.parse(readFileSync(path.join(root, "../catalog/components.json"), "utf-8"));
 
 const ids = new Set();
+const byId = new Map();
 for (const c of catalog.components) {
   ids.add(c.id);
+  byId.set(c.id, c);
   if (Array.isArray(c.children)) for (const ch of c.children) ids.add(typeof ch === "string" ? ch : ch.id);
 }
 const STACKS = ["spring-ai", "langchain4j"];
@@ -19,6 +21,19 @@ for (const r of recipes) {
   if (!r.template) { console.error(`recipe ${r.id}: no template`); fail++; }
   for (const c of r.components) {
     if (!ids.has(c)) { console.error(`recipe ${r.id}: missing component id "${c}"`); fail++; }
+  }
+  const listed = new Set(r.components);
+  const provided = r.providedComponents ?? [];
+  if (new Set(provided).size !== provided.length) {
+    console.error(`recipe ${r.id}: duplicate providedComponents`); fail++;
+  }
+  for (const c of provided) {
+    if (!listed.has(c)) { console.error(`recipe ${r.id}: provided component "${c}" is not listed in components`); fail++; }
+  }
+  for (const c of r.components) {
+    for (const dep of byId.get(c)?.dependsOn ?? []) {
+      if (!listed.has(dep)) { console.error(`recipe ${r.id}: dependency "${dep}" of "${c}" is not listed`); fail++; }
+    }
   }
   if (r.ai && !STACKS.includes(r.ai.stack)) { console.error(`recipe ${r.id}: bad ai.stack ${r.ai.stack}`); fail++; }
 }
