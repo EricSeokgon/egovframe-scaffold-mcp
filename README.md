@@ -32,7 +32,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 | `diagnose_egovframe_project` | 기존/레거시 프로젝트를 스캔해 빌드시스템·RTE 버전·DbType·설치 공통컴포넌트(pathPrefixes 지문)·설정 문제 진단 (읽기 전용) |
 | `search_egovframe_docs` | 공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색 — 제목·경로·연계 컴포넌트, 문서 URL·조립용 id 반환 (오프라인) |
 | `generate_egovframe_report` | 프로젝트를 스캔해 설치 컴포넌트·참조 테이블·가이드 링크·이슈를 Markdown 리포트로 생성 (읽기 전용) |
-| `upgrade_egovframe_project` | 설치 컴포넌트를 upstream과 3-way 비교해 갱신 — 사용자 수정 보존, dryRun 기본, 백업, 충돌 시 원자적 거부 (파괴적, 게이트) |
+| `upgrade_egovframe_project` | 설치 컴포넌트를 upstream과 3-way 비교해 갱신 — 사용자 수정 보존, dryRun 기본, 적용 직전 재검증, 파일·백업·매니페스트 단일 transaction (파괴적, 게이트) |
 | `explain_egovframe_component` | 컴포넌트 하나의 상세(설명·직접/전이 의존성·역의존·참조 테이블·가이드 링크·설치 명령)를 한 번에 반환 (읽기 전용) |
 | `generate_egovframe_ci` | GitHub Actions CI 워크플로(빌드·테스트) 생성 — maven/gradle 자동 감지, dryRun, 기존 파일 보호 |
 | `generate_egovframe_crud` | 공식 Development CRUD wizard 입력 체계 기반 코드 생성 — VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5(선택), Classic/Boot 분기, 전체 충돌 사전 검사 |
@@ -166,7 +166,7 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 - 진단 레벨: 픽스처(pom·DbType·컴포넌트 패키지)로 `diagnose_egovframe_project`의 빌드·버전·DbType·컴포넌트 지문·의존성 검출 검증 (`npm run test:diagnose`, 네트워크 불필요)
 - 문서 검색 레벨: `search_egovframe_docs`의 키워드 매칭·점수 정렬·컴포넌트 매핑·빈질의/미존재어 처리 검증 (`npm run test:docs`, 네트워크 불필요)
 - 리포트 레벨: 픽스처로 `generate_egovframe_report`의 컴포넌트·테이블·가이드 링크 렌더링 검증 (`npm run test:report`, 네트워크 불필요)
-- 업그레이드 레벨: 3-way 판정 6분류(unchanged/update/user-modified/conflict/added/removed)·v1 보수모드·매니페스트 부재 예외 검증 (`npm run test:upgrade`, 네트워크 불필요)
+- 업그레이드 레벨: 3-way 판정 6분류(unchanged/update/user-modified/conflict/added/removed)·v1 보수모드·정상 적용/백업 계획·파일/매니페스트 fault-injection rollback·상위 symlink 경계 검증 (`npm run test:upgrade`, 네트워크 불필요)
 - 컴포넌트 설명 레벨: `explain_egovframe_component`의 의존성(직접·전이)·역의존·테이블·가이드 URL·미존재 예외 검증 (`npm run test:explain`, 네트워크 불필요)
 - CI 생성 레벨: `generate_egovframe_ci`의 maven/gradle 감지·YAML·dryRun 무기록·기존 파일 거부·빌드파일 부재 예외 검증 (`npm run test:ci`, 네트워크 불필요)
 - CRUD 생성 레벨: 공식 wizard 그룹, Classic/Boot 분기, DB 생성키, JUnit 5, dryRun, PK·경로 검증, 충돌 시 전체 무기록 검증 (`npm run test:crud`, 네트워크 불필요)
@@ -212,6 +212,7 @@ v0.21.0까지 프로젝트·CRUD 생성과 검증된 공통컴포넌트 실행 �
   - [PR #11](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/11): 프로젝트를 sibling staging에서 압축 해제·커스터마이징한 뒤 atomic rename하며, 실패·목적지 경합 시 부분 프로젝트를 노출하지 않습니다.
   - [PR #12](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/12): 프로젝트 생성→공통컴포넌트→선택적 AI 조립을 하나의 디렉터리 transaction으로 실행하고 모든 단계가 성공한 뒤에만 최종 경로를 공개합니다. 공식 템플릿·컴포넌트 rollback 통합 테스트와 CI gate를 포함합니다.
   - [PR #13](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/13): 직접 공통컴포넌트 조립의 파일·SQL·매니페스트를 공통 file transaction으로 commit하고, 중간 실패와 상위 symlink 경계 이탈에서 작업 전 상태로 복구합니다.
+  - [PR #14](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/14): 컴포넌트 업그레이드의 대상 hash를 적용 직전에 재검증하고, 파일·고유 백업·`upgrade-plan.json`·매니페스트를 공통 transaction으로 반영합니다. 중간 실패와 상위 symlink 경계 이탈에서는 작업 전 상태로 복구합니다.
   - recipe 호환성: 공식 템플릿에 이미 포함된 `cmm`을 `providedComponents`로 확인·보존하고, recipe가 추가하는 bbs/login만 설치합니다. 기존 38파일을 덮거나 도구 소유로 기록하지 않으며 성공 조립·검증과 후반 rollback을 모두 통합 테스트합니다.
   - 상세 분석·검증·실패/복구 이력은 [`egovframe-contribution-notes/작업이력.md`](https://github.com/EricSeokgon/egovframe-contribution-notes/blob/main/%EC%9E%91%EC%97%85%EC%9D%B4%EB%A0%A5.md)를 단일 원장으로 사용합니다.
 - **0.21.0** — 검증된 공통컴포넌트 완전 조립: `sync_egovframe_catalog`를 추가하고 common-components 공식 v5.0.6 태그·commit(`23d01889…`)·archive SHA-256/크기/파일 수를 고정했습니다. 카탈로그 schema v2를 190항목(리프 176+그룹 14)으로 재생성해 message bundle 278건, IDGN context 91건, scheduling context 18건, 웹 자산 662건, Spring/web fragment 26건과 Maven 좌표를 연결했습니다. `add_egovframe_components`가 이 자산을 함께 복사하며 동일 파일 재사용, 다른 내용 충돌 전체 거부, 쓰기 실패 롤백, DB 비사용 컴포넌트의 SQL 폴백 방지를 적용합니다. `sec.security` 신규 보안 패키지와 미매핑 upstream 경로를 CI에서 검증하고 매니페스트 schema v3에 source 고정 정보를 기록합니다. 기존 카탈로그 schema v1·매니페스트 v1/v2 하위 호환.
