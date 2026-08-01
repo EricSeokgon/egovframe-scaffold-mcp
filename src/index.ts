@@ -17,7 +17,7 @@ import AdmZip from "adm-zip";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 import { withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 import {
@@ -877,6 +877,19 @@ function resolveTrackedFile(projectDir: string, realProjectDir: string, relPath:
   const relative = path.relative(projectDir, target);
   if (!relative || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative))
     throw new Error(`매니페스트의 프로젝트 밖 경로를 거부합니다: ${relPath}`);
+
+  let existingParent = path.dirname(target);
+  while (!fs.existsSync(existingParent)) {
+    const parent = path.dirname(existingParent);
+    if (parent === existingParent) break;
+    existingParent = parent;
+  }
+  const realParent = fs.realpathSync(existingParent);
+  const realCandidate = path.resolve(realParent, path.relative(existingParent, target));
+  const candidateRelative = path.relative(realProjectDir, realCandidate);
+  if (candidateRelative === ".." || candidateRelative.startsWith(".." + path.sep) || path.isAbsolute(candidateRelative))
+    throw new Error(`매니페스트 경로가 symlink를 통해 프로젝트 밖을 가리킵니다: ${relPath}`);
+
   if (fs.existsSync(target)) {
     const realTarget = fs.realpathSync(target);
     const realRelative = path.relative(realProjectDir, realTarget);
@@ -2020,9 +2033,18 @@ export interface UpgradeResult {
   applied?: { updated: number; added: number; forced: number };
 }
 
-export async function upgradeProject(opts: {
-  projectDir: string; components?: string[]; dryRun?: boolean; force?: boolean;
-}): Promise<UpgradeResult> {
+export interface UpgradeOptions {
+  projectDir: string;
+  components?: string[];
+  dryRun?: boolean;
+  force?: boolean;
+  /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
+  faultInjection?: "after-files" | "after-manifest";
+  /** 검증된 upstream zip을 대체하는 오프라인 테스트 전용 입력. MCP 스키마에는 노출하지 않는다. */
+  archiveData?: Buffer;
+}
+
+export async function upgradeProject(opts: UpgradeOptions): Promise<UpgradeResult> {
   const projectDir = path.resolve(opts.projectDir);
   const dryRun = opts.dryRun !== false;
   const force = opts.force === true;
@@ -2037,13 +2059,17 @@ export async function upgradeProject(opts: {
 
   const catalog = loadCatalog();
   const byId = new Map(catalog.components.map((c) => [c.id, c]));
-  const { zip } = await downloadComponentsZip(manifest.source);
+  const zip = opts.archiveData ? new AdmZip(opts.archiveData) : (await downloadComponentsZip(manifest.source)).zip;
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
+  if (entries.length === 0)
+    throw new Error("upstream 공통컴포넌트 archive에 파일이 없습니다");
   const rootPrefix = entries[0].entryName.split("/")[0] + "/";
   const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
 
   const items: UpgradeItem[] = [];
   const dataFor = new Map<string, Buffer>();
+  const currentHashFor = new Map<string, string | undefined>();
+  const realProjectDir = fs.realpathSync(projectDir);
   for (const id of targetIds) {
     const c = byId.get(id);
     const entry = manifest.components[id];
@@ -2057,8 +2083,9 @@ export async function upgradeProject(opts: {
     for (const r of relPaths) {
       const upData = upstream.get(r);
       const upstreamHash = upData ? sha256(upData) : undefined;
-      const abs = path.join(projectDir, r);
+      const abs = resolveTrackedFile(projectDir, realProjectDir, r);
       const currentHash = fs.existsSync(abs) ? sha256(fs.readFileSync(abs)) : undefined;
+      currentHashFor.set(r, currentHash);
       const base = entry.hashes?.[r];
       const cls = classifyUpgrade({ baselineHash: base?.hash, baselineSrcHash: base?.srcHash, currentHash, upstreamHash });
       items.push({ componentId: id, relPath: r, cls });
@@ -2076,43 +2103,91 @@ export async function upgradeProject(opts: {
     throw new Error(`충돌 ${hardConflicts.length}건(사용자 수정 + upstream 변경)으로 중단합니다. dryRun으로 확인 후 force=true로 강제하거나 해당 파일을 정리하세요. 아무것도 쓰지 않았습니다.`);
 
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  const backupDir = path.join(projectDir, "upgrade-backup", ts);
+  const backupRelDir = path.join("upgrade-backup", `${ts}-${randomUUID()}`);
   let updated = 0, added = 0, forced = 0;
-  const writeFile = (relPath: string, data: Buffer, backup: boolean) => {
-    const abs = path.join(projectDir, relPath);
-    if (!abs.startsWith(projectDir + path.sep)) return;
-    if (backup && fs.existsSync(abs)) {
-      const b = path.join(backupDir, relPath);
-      fs.mkdirSync(path.dirname(b), { recursive: true });
-      fs.copyFileSync(abs, b);
-    }
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, data);
-  };
-  for (const it of items) {
-    const upData = dataFor.get(it.relPath);
-    if (it.cls === "update" && upData) { writeFile(it.relPath, upData, true); updated++; }
-    else if (it.cls === "added" && upData) { writeFile(it.relPath, upData, false); added++; }
-    else if (it.cls === "conflict" && force && upData) { writeFile(it.relPath, upData, true); forced++; }
-  }
+  const applicable = items.filter((item) =>
+    item.cls === "update" || item.cls === "added" || (item.cls === "conflict" && force));
+  const needsBackup = applicable.some((item) => item.cls === "update" || item.cls === "conflict");
 
-  for (const id of targetIds) {
-    const entry = manifest.components[id];
-    entry.hashes = entry.hashes ?? {};
-    for (const it of items) {
-      if (it.componentId !== id) continue;
-      const upData = dataFor.get(it.relPath);
-      if (upData && (it.cls === "update" || it.cls === "added" || (it.cls === "conflict" && force))) {
-        const h = sha256(upData);
-        entry.hashes[it.relPath] = { hash: h, srcHash: h };
-        if (!entry.files.includes(it.relPath)) entry.files.push(it.relPath);
+  await withFileTransaction(projectDir, "공통컴포넌트 업그레이드", (transaction) => {
+    const currentDataFor = new Map<string, Buffer | null>();
+    for (const item of applicable) {
+      const current = transaction.readFile(item.relPath);
+      const actualHash = current !== null ? sha256(current) : undefined;
+      if (actualHash !== currentHashFor.get(item.relPath))
+        throw new Error(`검증 이후 대상 파일이 변경되어 업그레이드를 중단합니다: ${item.relPath}`);
+      currentDataFor.set(item.relPath, current);
+      if (needsBackup && (item.cls === "update" || item.cls === "conflict")) {
+        const backupRelPath = path.join(backupRelDir, item.relPath);
+        if (transaction.readFile(backupRelPath) !== null)
+          throw new Error(`업그레이드 백업 대상이 이미 존재합니다: ${backupRelPath}`);
       }
     }
-  }
-  manifest.schemaVersion = 2;
-  writeManifest(projectDir, manifest);
 
-  return { projectDir, dryRun: false, force, summary, items, backupDir: updated + forced > 0 ? backupDir : undefined, applied: { updated, added, forced } };
+    for (const item of applicable) {
+      const upData = dataFor.get(item.relPath);
+      if (!upData) throw new Error(`upstream 파일 데이터가 없습니다: ${item.relPath}`);
+      const current = currentDataFor.get(item.relPath) ?? null;
+      if ((item.cls === "update" || item.cls === "conflict") && current)
+        transaction.writeFile(path.join(backupRelDir, item.relPath), current, { mustNotExist: true });
+      transaction.writeFile(item.relPath, upData, { mustNotExist: item.cls === "added" });
+      if (item.cls === "update") updated++;
+      else if (item.cls === "added") added++;
+      else forced++;
+    }
+
+    if (needsBackup) {
+      const plan = {
+        createdAt: new Date().toISOString(),
+        components: targetIds,
+        summary,
+        files: applicable.map((item) => ({
+          componentId: item.componentId,
+          relPath: item.relPath,
+          classification: item.cls,
+          previousHash: currentHashFor.get(item.relPath),
+          upstreamHash: sha256(dataFor.get(item.relPath)!),
+        })),
+      };
+      transaction.writeFile(
+        path.join(backupRelDir, "upgrade-plan.json"),
+        JSON.stringify(plan, null, 2) + "\n",
+        { mustNotExist: true },
+      );
+    }
+
+    if (opts.faultInjection === "after-files")
+      throw new Error("upgrade fault injection: after-files");
+
+    for (const id of targetIds) {
+      const entry = manifest.components[id];
+      entry.hashes = entry.hashes ?? {};
+      for (const item of items) {
+        if (item.componentId !== id) continue;
+        const upData = dataFor.get(item.relPath);
+        if (upData && (item.cls === "update" || item.cls === "added" || (item.cls === "conflict" && force))) {
+          const hash = sha256(upData);
+          entry.hashes[item.relPath] = { hash, srcHash: hash };
+          if (!entry.files.includes(item.relPath)) entry.files.push(item.relPath);
+        }
+      }
+    }
+    manifest.schemaVersion = 3;
+    transaction.writeFile(MANIFEST_FILE, JSON.stringify(manifest, null, 2) + "\n");
+
+    if (opts.faultInjection === "after-manifest")
+      throw new Error("upgrade fault injection: after-manifest");
+  });
+
+  return {
+    projectDir,
+    dryRun: false,
+    force,
+    summary,
+    items,
+    backupDir: needsBackup ? path.join(projectDir, backupRelDir) : undefined,
+    applied: { updated, added, forced },
+  };
 }
 
 // ── 컴포넌트 상세 설명 (v0.18.0) ────────────────────────
