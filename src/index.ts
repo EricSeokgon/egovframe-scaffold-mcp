@@ -452,6 +452,8 @@ export interface AddComponentsOptions {
   /** DB 스크립트를 함께 복사할 DB 종류 (공통컴포넌트 저장소 script/ 기준) */
   database?: (typeof ECC_DB_TYPES)[number];
   dryRun?: boolean;
+  /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
+  faultInjection?: "after-files" | "after-manifest";
 }
 
 /** 공통컴포넌트 저장소 script/ 디렉터리가 제공하는 DB 종류 */
@@ -521,7 +523,7 @@ function componentMavenDependencies(components: CatalogComponent[]): string[] {
  * 공통컴포넌트 선택 조립 (M2).
  * - dryRun=true : 네트워크 없이 카탈로그 메타데이터로 설치 순서·규모 미리보기
  * - dryRun=false: 공통컴포넌트 저장소를 내려받아 선택 컴포넌트 파일을 대상 프로젝트에 복사.
- *   기존 파일과 충돌하면 아무것도 쓰지 않고 거부한다(전체 사전 검사).
+ *   기존 파일과 충돌하면 아무것도 쓰지 않고 거부하며 파일·SQL·매니페스트를 하나의 transaction으로 반영한다.
  *   database 지정 시 script/ddl·dml/<db>/ 스크립트를 scripts/egovframe-components/<db>/로 복사한다.
  */
 export async function addComponents(opts: AddComponentsOptions): Promise<AddComponentsResult> {
@@ -642,40 +644,36 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     }
   }
 
-  // 전체 사전 충돌 검사 — 하나라도 충돌하면 아무것도 쓰지 않음
-  const conflicts: string[] = [];
+  // 파일·SQL·매니페스트를 하나의 공통 transaction으로 반영한다.
   const reusedFiles = new Set<string>();
-  for (const item of [...plan, ...sqlPlan]) {
-    const dest = path.resolve(projectDir, item.relPath);
-    if (!dest.startsWith(projectDir + path.sep)) throw new Error(`프로젝트 밖 자산 경로를 거부합니다: ${item.relPath}`);
-    if (fs.existsSync(dest)) {
-      const incoming = "entry" in item ? item.entry.getData() : item.content;
-      const current = fs.readFileSync(dest);
-      if (current.equals(incoming)) reusedFiles.add(item.relPath);
-      else conflicts.push(item.relPath);
-    }
-  }
-  if (conflicts.length > 0)
-    throw new Error(
-      `기존 파일과 충돌하여 중단합니다(총 ${conflicts.length}건, 아무것도 쓰지 않았습니다):\n` +
-        conflicts.slice(0, 10).map((c) => `  - ${c}`).join("\n") +
-        (conflicts.length > 10 ? `\n  … 외 ${conflicts.length - 10}건` : ""),
-    );
-
-  // 복사 실행 — 쓰기 실패 시 이번 호출에서 생성한 파일을 롤백한다.
   const countBy = new Map<string, number>();
   const hashesBy = new Map<string, Record<string, { hash: string; srcHash: string }>>();
   const sqlScripts: string[] = [];
   const sqlBy = new Map<string, string[]>();
-  const createdFiles: string[] = [];
-  try {
+  const writtenFiles: string[] = [];
+  await withFileTransaction(projectDir, "공통컴포넌트 조립", async (transaction) => {
+    // 전체 사전 충돌·경계 검사 — 하나라도 실패하면 transaction staging 외에는 쓰지 않음
+    const conflicts: string[] = [];
+    for (const item of [...plan, ...sqlPlan]) {
+      const incoming = "entry" in item ? item.entry.getData() : item.content;
+      const current = transaction.readFile(item.relPath);
+      if (current !== null) {
+        if (current.equals(incoming)) reusedFiles.add(item.relPath);
+        else conflicts.push(item.relPath);
+      }
+    }
+    if (conflicts.length > 0)
+      throw new Error(
+        `기존 파일과 충돌하여 중단합니다(총 ${conflicts.length}건, 아무것도 쓰지 않았습니다):\n` +
+          conflicts.slice(0, 10).map((c) => `  - ${c}`).join("\n") +
+          (conflicts.length > 10 ? `\n  … 외 ${conflicts.length - 10}건` : ""),
+      );
+
     for (const { entry, relPath, componentId } of plan) {
       if (reusedFiles.has(relPath)) continue;
-      const dest = path.resolve(projectDir, relPath);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
       const data = entry.getData();
-      fs.writeFileSync(dest, data, { flag: "wx" });
-      createdFiles.push(dest);
+      transaction.writeFile(relPath, data, { mustNotExist: true });
+      writtenFiles.push(relPath);
       countBy.set(componentId, (countBy.get(componentId) ?? 0) + 1);
       const h = "sha256:" + createHash("sha256").update(data).digest("hex");
       if (!hashesBy.has(componentId)) hashesBy.set(componentId, {});
@@ -683,10 +681,8 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     }
     for (const { relPath, content, componentId } of sqlPlan) {
       if (reusedFiles.has(relPath)) continue;
-      const dest = path.resolve(projectDir, relPath);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.writeFileSync(dest, content, { flag: "wx" });
-      createdFiles.push(dest);
+      transaction.writeFile(relPath, content, { mustNotExist: true });
+      writtenFiles.push(relPath);
       sqlScripts.push(relPath);
       if (!sqlBy.has(componentId)) sqlBy.set(componentId, []);
       sqlBy.get(componentId)!.push(relPath);
@@ -694,12 +690,37 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
       if (!hashesBy.has(componentId)) hashesBy.set(componentId, {});
       hashesBy.get(componentId)![relPath] = { hash: h, srcHash: h };
     }
-  } catch (error) {
-    for (const file of createdFiles.reverse()) {
-      try { fs.rmSync(file, { force: true }); } catch { /* 원래 오류를 보존한다 */ }
+
+    if (opts.faultInjection === "after-files")
+      throw new Error("component assembly fault injection: after-files");
+
+    // 설치 매니페스트 기록 (제거·검증 지원)
+    const manifest: Manifest = existing ?? {
+      schemaVersion: 3,
+      source: { ...catalog.source },
+      components: {},
+    };
+    manifest.source = { ...manifest.source, ...catalog.source };
+    const now = new Date().toISOString();
+    const filesBy = new Map<string, string[]>();
+    for (const { relPath, componentId } of plan) {
+      if (reusedFiles.has(relPath)) continue;
+      if (!filesBy.has(componentId)) filesBy.set(componentId, []);
+      filesBy.get(componentId)!.push(relPath);
     }
-    throw error;
-  }
+    for (const c of order)
+      manifest.components[c.id] = {
+        installedAt: now,
+        files: filesBy.get(c.id) ?? [],
+        hashes: hashesBy.get(c.id) ?? {},
+        sqlScripts: sqlBy.get(c.id) ?? [],
+      };
+    manifest.schemaVersion = 3;
+    transaction.writeFile(MANIFEST_FILE, JSON.stringify(manifest, null, 2) + "\n");
+
+    if (opts.faultInjection === "after-manifest")
+      throw new Error("component assembly fault injection: after-manifest");
+  });
 
   const nextSteps = [
     opts.database
@@ -713,43 +734,6 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     "web.xml 노드 병합은 대상 프로젝트 구조에 따라 달라 자동 수정하지 않습니다. 공식 가이드와 webFragments 목록을 확인하세요.",
   ];
 
-  // 설치 매니페스트 기록 (제거·검증 지원)
-  const manifest: Manifest = readManifest(projectDir) ?? {
-    schemaVersion: 3,
-    source: { ...catalog.source },
-    components: {},
-  };
-  manifest.source = { ...manifest.source, ...catalog.source };
-  const now = new Date().toISOString();
-  const filesBy = new Map<string, string[]>();
-  for (const { relPath, componentId } of plan) {
-    if (reusedFiles.has(relPath)) continue;
-    if (!filesBy.has(componentId)) filesBy.set(componentId, []);
-    filesBy.get(componentId)!.push(relPath);
-  }
-  for (const c of order)
-    manifest.components[c.id] = {
-      installedAt: now,
-      files: filesBy.get(c.id) ?? [],
-      hashes: hashesBy.get(c.id) ?? {},
-      sqlScripts: sqlBy.get(c.id) ?? [],
-    };
-  manifest.schemaVersion = 3;
-  const manifestPath = path.join(projectDir, MANIFEST_FILE);
-  const previousManifest = fs.existsSync(manifestPath) ? fs.readFileSync(manifestPath) : null;
-  try {
-    writeManifest(projectDir, manifest);
-  } catch (error) {
-    for (const file of [...createdFiles].reverse()) {
-      try { fs.rmSync(file, { force: true }); } catch { /* 원래 오류를 보존한다 */ }
-    }
-    try {
-      if (previousManifest) fs.writeFileSync(manifestPath, previousManifest);
-      else fs.rmSync(manifestPath, { force: true });
-    } catch { /* 원래 오류를 보존한다 */ }
-    throw error;
-  }
-
   const assets = componentAssetCounts(order);
   assets.reusedFiles = reusedFiles.size;
 
@@ -757,7 +741,7 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
     projectDir,
     requested: opts.components,
     installOrder: order.map((c) => ({ id: c.id, name: c.name, files: countBy.get(c.id) ?? 0 })),
-    totalFiles: createdFiles.length,
+    totalFiles: writtenFiles.length,
     sqlScripts,
     assets,
     mavenDependencies: componentMavenDependencies(order),
