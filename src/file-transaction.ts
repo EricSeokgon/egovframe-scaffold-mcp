@@ -110,6 +110,13 @@ export class ProjectFileTransaction {
     for (const created of missing) this.createdDirs.add(created);
   }
 
+  /** 프로젝트 경계를 검증한 뒤 현재 파일 내용을 읽는다. 없으면 null을 반환한다. */
+  readFile(relPath: string): Buffer | null {
+    this.assertActive();
+    const target = this.resolveTarget(relPath);
+    return fs.existsSync(target) ? fs.readFileSync(target) : null;
+  }
+
   writeFile(relPath: string, data: string | Buffer, options: TransactionWriteOptions = {}): void {
     this.assertActive();
     const target = this.resolveTarget(relPath);

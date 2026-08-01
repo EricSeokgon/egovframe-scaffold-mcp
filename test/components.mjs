@@ -2,6 +2,7 @@
 import { addComponents, removeComponents, validateProject, readManifest, MANIFEST_FILE } from "../dist/index.js";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
+import * as path from "node:path";
 
 const proj = "/tmp/scaffold-comp-test";
 fs.rmSync(proj, { recursive: true, force: true });
@@ -61,16 +62,47 @@ assert.ok(
 );
 assert.equal(r.sourceVerification.sha256.length, 64);
 
-// 2) 충돌 시 전체 거부 (재실행 → 기존 파일 존재)
+// 2) 매니페스트 기록 뒤 실패해도 파일·매니페스트·신규 빈 디렉터리를 모두 롤백
+const rollbackProj = "/tmp/scaffold-comp-rollback-test";
+fs.rmSync(rollbackProj, { recursive: true, force: true });
+fs.mkdirSync(rollbackProj, { recursive: true });
+fs.writeFileSync(path.join(rollbackProj, "sentinel.txt"), "preserve\n");
+await assert.rejects(
+  () => addComponents({ projectDir: rollbackProj, components: ["bbs"], database: "mysql", faultInjection: "after-manifest" }),
+  /공통컴포넌트 조립 transaction 실패:[\s\S]*작업 전 상태로 롤백/,
+  "매니페스트 기록 뒤 오류도 전체 조립을 원복해야 한다",
+);
+assert.deepEqual(fs.readdirSync(rollbackProj), ["sentinel.txt"], "호출 전 파일 외 산출물과 빈 디렉터리가 남지 않아야 한다");
+assert.equal(fs.readFileSync(path.join(rollbackProj, "sentinel.txt"), "utf8"), "preserve\n", "기존 파일은 불변이어야 한다");
+
+// 3) 상위 symlink를 통한 프로젝트 밖 쓰기 거부
+const symlinkProj = "/tmp/scaffold-comp-symlink-test";
+const symlinkOutside = "/tmp/scaffold-comp-symlink-outside";
+fs.rmSync(symlinkProj, { recursive: true, force: true });
+fs.rmSync(symlinkOutside, { recursive: true, force: true });
+fs.mkdirSync(symlinkProj, { recursive: true });
+fs.mkdirSync(symlinkOutside, { recursive: true });
+fs.writeFileSync(path.join(symlinkOutside, "outside.txt"), "outside preserve\n");
+fs.symlinkSync(symlinkOutside, path.join(symlinkProj, "src"), process.platform === "win32" ? "junction" : "dir");
+await assert.rejects(
+  () => addComponents({ projectDir: symlinkProj, components: ["bbs"] }),
+  /symlink를 통해 프로젝트 밖/,
+  "상위 symlink를 통해 프로젝트 밖 파일을 읽거나 쓸 수 없어야 한다",
+);
+assert.deepEqual(fs.readdirSync(symlinkProj), ["src"], "거부 뒤 transaction staging이나 부분 산출물이 남지 않아야 한다");
+assert.deepEqual(fs.readdirSync(symlinkOutside), ["outside.txt"], "프로젝트 밖 디렉터리는 불변이어야 한다");
+assert.equal(fs.readFileSync(path.join(symlinkOutside, "outside.txt"), "utf8"), "outside preserve\n");
+
+// 4) 충돌 시 전체 거부 (재실행 → 기존 파일 존재)
 await assert.rejects(() => addComponents({ projectDir: proj, components: ["bbs"] }), "기존 파일 충돌 시 전체 조립을 거부해야 한다");
 
-// 3) 없는 프로젝트 디렉터리 거부
+// 5) 없는 프로젝트 디렉터리 거부
 await assert.rejects(
   () => addComponents({ projectDir: "/tmp/no-such-dir-xyz", components: ["bbs"] }),
   "존재하지 않는 프로젝트 디렉터리를 거부해야 한다",
 );
 
-// 4) 매니페스트 기록 (v0.5.0)
+// 6) 매니페스트 기록 (v0.5.0)
 const mf = readManifest(proj);
 assert.ok(mf !== null, "조립 매니페스트를 기록해야 한다");
 assert.deepEqual(Object.keys(mf.components).sort(), ["bbs", "cmm", "login", "sec.security"], "설치 컴포넌트를 기록해야 한다");
@@ -87,14 +119,14 @@ assert.equal(
   "bbs 소스·실행 자산·SQL의 설치 hash를 모두 기록해야 한다",
 );
 
-// 5) 중복 설치 거부 (매니페스트 기준)
+// 7) 중복 설치 거부 (매니페스트 기준)
 await assert.rejects(() => addComponents({ projectDir: proj, components: ["bbs"] }), "매니페스트 기준 중복 설치를 거부해야 한다");
 
-// 6) 검증: 정상
+// 8) 검증: 정상
 let v = await validateProject({ projectDir: proj });
 assert.ok(v.ok === true && v.manifestFound && v.components.length === 4, "정상 설치 검증을 통과해야 한다");
 
-// 7) 검증: 파일 누락 감지
+// 9) 검증: 파일 누락 감지
 fs.rmSync(proj + "/src/main/java/egovframework/com/cop/bbs/service/Board.java");
 v = await validateProject({ projectDir: proj });
 assert.ok(
@@ -102,10 +134,10 @@ assert.ok(
   "누락 파일을 탐지해야 한다",
 );
 
-// 8) 의존 컴포넌트 제거 거부 (cmm은 bbs·login이 의존)
+// 10) 의존 컴포넌트 제거 거부 (cmm은 bbs·login이 의존)
 await assert.rejects(() => removeComponents({ projectDir: proj, components: ["cmm"] }), "사용 중인 의존 컴포넌트 제거를 거부해야 한다");
 
-// 9) 제거 dryRun → 실제 제거 → 매니페스트 갱신
+// 11) 제거 dryRun → 실제 제거 → 매니페스트 갱신
 const rd = await removeComponents({ projectDir: proj, components: ["login"], dryRun: true });
 assert.ok(
   rd.dryRun &&
@@ -125,7 +157,7 @@ assert.ok(
 );
 assert.ok(!fs.existsSync(proj + "/scripts/egovframe-components/mysql/ddl/login.sql"), "login SQL을 제거해야 한다");
 
-// 10) 전체 제거 시 매니페스트 삭제
+// 12) 전체 제거 시 매니페스트 삭제
 await removeComponents({ projectDir: proj, components: ["bbs", "sec.security", "cmm"] });
 assert.ok(!fs.existsSync(proj + "/" + MANIFEST_FILE), "전체 제거 후 매니페스트를 삭제해야 한다");
 console.log("components OK");
