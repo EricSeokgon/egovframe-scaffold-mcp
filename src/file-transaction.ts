@@ -14,6 +14,44 @@ export interface TransactionWriteOptions {
   mustNotExist?: boolean;
 }
 
+export interface RollbackFailure {
+  path: string;
+  error: string;
+}
+
+/** rollback 수행 결과의 구조화된 보고. */
+export interface RollbackReport {
+  /** 되돌리기를 시도한 파일 스냅샷 수 */
+  filesAttempted: number;
+  /** 백업에서 복원한 기존 파일 수 */
+  restoredFiles: number;
+  /** 제거한 신규 파일 수 */
+  removedNewFiles: number;
+  /** 정리한 빈 디렉터리 수 */
+  cleanedDirs: number;
+  failures: RollbackFailure[];
+  /** failures가 없으면 true */
+  ok: boolean;
+}
+
+/** transaction 실패를 rollback 보고와 함께 전달하는 오류. */
+export class TransactionError extends Error {
+  readonly label: string;
+  readonly reason: string;
+  readonly rollback: RollbackReport;
+
+  constructor(kind: string, label: string, reason: string, rollback: RollbackReport) {
+    const prose = rollback.ok
+      ? "작업 전 상태로 롤백했습니다."
+      : `롤백 실패 ${rollback.failures.length}건:\n${rollback.failures.map((f) => `  - ${f.path}: ${f.error}`).join("\n")}`;
+    super(`${label} ${kind} 실패: ${reason}\n${prose}\nrollback-report: ${JSON.stringify(rollback)}`);
+    this.name = "TransactionError";
+    this.label = label;
+    this.reason = reason;
+    this.rollback = rollback;
+  }
+}
+
 function isOutside(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
   return relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative);
@@ -157,31 +195,49 @@ export class ProjectFileTransaction {
     this.active = false;
   }
 
-  rollback(): string[] {
-    if (!this.active) return [];
-    const errors: string[] = [];
-    for (const snapshot of [...this.snapshots.values()].reverse()) {
+  rollback(): RollbackReport {
+    if (!this.active)
+      return { filesAttempted: 0, restoredFiles: 0, removedNewFiles: 0, cleanedDirs: 0, failures: [], ok: true };
+    const failures: RollbackFailure[] = [];
+    let restoredFiles = 0;
+    let removedNewFiles = 0;
+    let cleanedDirs = 0;
+    const snapshots = [...this.snapshots.values()].reverse();
+    for (const snapshot of snapshots) {
       try {
         fs.rmSync(snapshot.target, { force: true });
         if (snapshot.existed && snapshot.backup && fs.existsSync(snapshot.backup)) {
           this.ensureParentDirectory(path.dirname(snapshot.target));
           fs.renameSync(snapshot.backup, snapshot.target);
+          restoredFiles += 1;
+        } else if (!snapshot.existed) {
+          removedNewFiles += 1;
         }
       } catch (error) {
-        errors.push(`${snapshot.relPath}: ${String(error)}`);
+        failures.push({ path: snapshot.relPath, error: String(error) });
       }
     }
     for (const directory of [...this.createdDirs].sort((left, right) => right.length - left.length)) {
       try {
-        if (fs.existsSync(directory) && fs.readdirSync(directory).length === 0) fs.rmdirSync(directory);
+        if (fs.existsSync(directory) && fs.readdirSync(directory).length === 0) {
+          fs.rmdirSync(directory);
+          cleanedDirs += 1;
+        }
       } catch (error) {
-        errors.push(`${path.relative(this.rootDir, directory)}: ${String(error)}`);
+        failures.push({ path: path.relative(this.rootDir, directory), error: String(error) });
       }
     }
     try { fs.rmSync(this.stagingDir, { recursive: true, force: true }); }
-    catch (error) { errors.push(`staging: ${String(error)}`); }
+    catch (error) { failures.push({ path: "staging", error: String(error) }); }
     this.active = false;
-    return errors;
+    return {
+      filesAttempted: snapshots.length,
+      restoredFiles,
+      removedNewFiles,
+      cleanedDirs,
+      failures,
+      ok: failures.length === 0,
+    };
   }
 }
 
@@ -196,12 +252,9 @@ export async function withFileTransaction<T>(
     transaction.commit();
     return result;
   } catch (error) {
-    const rollbackErrors = transaction.rollback();
+    const report = transaction.rollback();
     const reason = error instanceof Error ? error.message : String(error);
-    const rollback = rollbackErrors.length === 0
-      ? "작업 전 상태로 롤백했습니다."
-      : `롤백 실패 ${rollbackErrors.length}건:\n${rollbackErrors.map((message) => `  - ${message}`).join("\n")}`;
-    throw new Error(`${label} transaction 실패: ${reason}\n${rollback}`);
+    throw new TransactionError("transaction", label, reason, report);
   }
 }
 
@@ -238,23 +291,30 @@ export async function withDirectoryTransaction<T>(
     stagingDir = undefined;
     return result;
   } catch (error) {
-    const rollbackErrors: string[] = [];
+    const failures: RollbackFailure[] = [];
+    let cleanedDirs = 0;
     if (stagingDir) {
       try { fs.rmSync(stagingDir, { recursive: true, force: true }); }
-      catch (rollbackError) { rollbackErrors.push(`staging: ${String(rollbackError)}`); }
+      catch (rollbackError) { failures.push({ path: "staging", error: String(rollbackError) }); }
     }
     for (const directory of createdParents) {
       try {
-        if (pathEntryExists(directory) && fs.statSync(directory).isDirectory() && fs.readdirSync(directory).length === 0)
+        if (pathEntryExists(directory) && fs.statSync(directory).isDirectory() && fs.readdirSync(directory).length === 0) {
           fs.rmdirSync(directory);
+          cleanedDirs += 1;
+        }
       } catch (rollbackError) {
-        rollbackErrors.push(`${directory}: ${String(rollbackError)}`);
+        failures.push({ path: directory, error: String(rollbackError) });
       }
     }
     const reason = error instanceof Error ? error.message : String(error);
-    const rollback = rollbackErrors.length === 0
-      ? "작업 전 상태로 롤백했습니다."
-      : `롤백 실패 ${rollbackErrors.length}건:\n${rollbackErrors.map((message) => `  - ${message}`).join("\n")}`;
-    throw new Error(`${label} directory transaction 실패: ${reason}\n${rollback}`);
+    throw new TransactionError("directory transaction", label, reason, {
+      filesAttempted: 0,
+      restoredFiles: 0,
+      removedNewFiles: 0,
+      cleanedDirs,
+      failures,
+      ok: failures.length === 0,
+    });
   }
 }

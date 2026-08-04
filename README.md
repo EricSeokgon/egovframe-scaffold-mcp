@@ -153,6 +153,22 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 **레시피** — 자주 쓰는 조합을 한 번에 조립합니다. 예: `apply_egovframe_recipe(recipeId="board-login", projectName="my-egov-app", outputDir="~/work")`. 목록은 `catalog/recipes.json`에서 관리하며 기여 환영합니다.
 
+## 보안 설정 — 허용 root (선택)
+
+환경변수 `EGOVFRAME_ALLOWED_ROOTS`를 설정하면, 모든 도구의 디렉터리 인자(`outputDir`·`projectDir`)가 지정한 root 내부일 때만 실행됩니다. 미설정 시 기존과 동일하게 제한이 없습니다.
+
+```jsonc
+// MCP 클라이언트 설정 예 (여러 root는 OS 경로 구분자로 연결: POSIX ":", Windows ";")
+{ "mcpServers": { "egovframe-scaffold": {
+    "command": "npx", "args": ["-y", "egovframe-scaffold-mcp"],
+    "env": { "EGOVFRAME_ALLOWED_ROOTS": "/home/user/workspaces" }
+} } }
+```
+
+- 검사는 realpath 기준이라 symlink를 통한 우회도 차단합니다.
+- 위반 시 도구는 아무 파일도 만들지 않고 `AllowedRootsError`(허용 root 목록 포함)로 거부합니다.
+- transaction 실패 메시지에는 사람용 문구와 함께 기계가 읽을 수 있는 `rollback-report: {...}` JSON 한 줄(복원·제거·정리 건수, 실패 목록)이 포함됩니다.
+
 ## 검증
 
 - 함수 레벨: 실제 템플릿(약 296파일) 생성, pom 좌표·DbType 적용, 중복 생성 거부, `dryRun` 미리보기(무기록) 확인 (`npm run smoke`)
