@@ -13,6 +13,13 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 
 현재 v0.22.0은 **도구 19종, 공식 템플릿 7종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
+## 진행 현황 (2026-08-04)
+
+- **소스 기준**: v0.22.0(`package.json`), 도구 19종·공식 템플릿 7종·카탈로그 190항목.
+- **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
+- **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
+- **배포 상태**: 저장소 소스는 v0.22.0이며 npm·tag·GitHub Release는 v0.21.0까지 정렬된 상태입니다. v0.22.0 배포 전에는 아래 설치 명령이 v0.21.0을 받을 수 있으므로, 기능 검증 시 소스 버전과 배포 버전을 구분해 확인하세요.
+
 ## 제공 도구
 
 | 도구 | 설명 |
@@ -187,6 +194,7 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 - CI 생성 레벨: `generate_egovframe_ci`의 maven/gradle 감지·YAML·dryRun 무기록·기존 파일 거부·빌드파일 부재 예외 검증 (`npm run test:ci`, 네트워크 불필요)
 - CRUD 생성 레벨: 공식 wizard 그룹, Classic/Boot 분기, DB 생성키, JUnit 5, dryRun, PK·경로 검증, 충돌 시 전체 무기록 검증 (`npm run test:crud`, 네트워크 불필요)
 - CRUD 컴파일 레벨: 공식 simple-backend/Boot CRUD 7파일과 web-sample/Classic CRUD 9파일 생성 → JDK 17에서 `mvn -q -DskipTests compile` (`npm run test:crud-integration`, 네트워크 필요, CI 실행)
+- 안전성 레벨: 19개 도구 공통 허용 root의 미설정 호환·격리·`..` 이탈·symlink 우회·다중 root·비대상 인자 무해 6케이스와 구조화 rollback 필드를 검증합니다 (`npm run test:allowed-roots`, `npm run test:transaction`, 네트워크 불필요).
 
 ## 현재 지원 범위와 알려진 제약
 
@@ -204,11 +212,12 @@ v0.22.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 |---|---|---|
 | **v0.20 완료** | `generate_egovframe_crud` | 공식 `wizard.xml` 그룹과 경로 입력, VO·Mapper(XML)·Service·Controller·JSP(선택), Classic/Boot, JUnit 5, dryRun·충돌 원자적 거부 구현. 오프라인 테스트와 공식 simple-backend/Boot·web-sample/Classic Maven compile 통과 |
 | **v0.21 완료** | `sync_egovframe_catalog` + 컴포넌트 완전 조립 | common-components v5.0.6 태그/commit/archive 고정, 190항목, message·IDGN·scheduling·정적 자산·web fragment 조립, Maven 좌표 탐지, sec.security·미매핑 경로 검증, 매니페스트 v3 |
-| **v0.22** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
-| **v0.23** | `build_egovframe_project` / `test_egovframe_project` | Maven/Gradle 자동 감지, 타임아웃·로그 상한, 파일/라인 단위 오류 구조화로 생성→검증 에이전트 루프 완성 |
-| **v0.24** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
-| **v0.25** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
-| **v0.26+** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 공식 템플릿 커버리지 확대 |
+| **v0.22 완료** | 전 도구 안전성 기반 | 모든 쓰기 경로 transaction, 사용자 파일 보호, 전 도구 허용 root, symlink/junction 이탈 차단, 구조화 rollback 보고 |
+| **v0.23 후보** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
+| **v0.24 후보** | `build_egovframe_project` / `test_egovframe_project` | Maven/Gradle 자동 감지, 타임아웃·로그 상한, 파일/라인 단위 오류 구조화로 생성→검증 에이전트 루프 완성 |
+| **v0.25 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
+| **v0.26 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
+| **v0.27+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 공식 템플릿 커버리지 확대 |
 
 로드맵 근거:
 
@@ -222,14 +231,15 @@ v0.22.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 
 ## 변경 이력
 
-- **0.21.1 (진행 중)** — 사용자 프로젝트를 손상시키지 않는 실패·복구 경계를 우선 강화합니다.
+- **0.21.1 (완료, v0.22.0에 통합)** — 사용자 프로젝트를 손상시키지 않는 실패·복구 경계를 우선 강화했습니다.
   - [PR #9](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/9): 설치 SHA-256과 현재 파일을 비교해 `unchanged/modified/unverified/missing`으로 분류하고 사용자 수정·기준선 미확인 파일을 기본 보존합니다. `force=true`는 기존 파일과 제거 계획을 `remove-backup/`에 보존한 뒤 제거하며, 중간 실패는 파일·POM·매니페스트를 작업 전 상태로 롤백합니다.
   - [PR #10](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/10): 재사용 가능한 `ProjectFileTransaction`을 도입하고 AI 파일·POM 백업/갱신·매니페스트를 한 transaction으로 commit합니다.
   - [PR #11](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/11): 프로젝트를 sibling staging에서 압축 해제·커스터마이징한 뒤 atomic rename하며, 실패·목적지 경합 시 부분 프로젝트를 노출하지 않습니다.
   - [PR #12](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/12): 프로젝트 생성→공통컴포넌트→선택적 AI 조립을 하나의 디렉터리 transaction으로 실행하고 모든 단계가 성공한 뒤에만 최종 경로를 공개합니다. 공식 템플릿·컴포넌트 rollback 통합 테스트와 CI gate를 포함합니다.
   - [PR #13](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/13): 직접 공통컴포넌트 조립의 파일·SQL·매니페스트를 공통 file transaction으로 commit하고, 중간 실패와 상위 symlink 경계 이탈에서 작업 전 상태로 복구합니다.
   - [PR #14](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/14): 컴포넌트 업그레이드의 대상 hash를 적용 직전에 재검증하고, 파일·고유 백업·`upgrade-plan.json`·매니페스트를 공통 transaction으로 반영합니다. 중간 실패와 상위 symlink 경계 이탈에서는 작업 전 상태로 복구합니다.
-  - recipe 호환성: 공식 템플릿에 이미 포함된 `cmm`을 `providedComponents`로 확인·보존하고, recipe가 추가하는 bbs/login만 설치합니다. 기존 38파일을 덮거나 도구 소유로 기록하지 않으며 성공 조립·검증과 후반 rollback을 모두 통합 테스트합니다.
+  - [PR #15](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/15): 공식 템플릿에 이미 포함된 `cmm`을 `providedComponents`로 확인·보존하고, recipe가 추가하는 bbs/login만 설치합니다. 기존 38파일을 덮거나 도구 소유로 기록하지 않으며 성공 조립·검증과 후반 rollback을 모두 통합 테스트합니다.
+  - [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16): `EGOVFRAME_ALLOWED_ROOTS`를 전 도구 진입점에 적용하고 realpath 기준으로 symlink/junction 우회를 차단합니다. transaction 실패는 `RollbackReport`(`filesAttempted`·`restoredFiles`·`removedNewFiles`·`cleanedDirs`·`failures`·`ok`)를 제공합니다.
   - 상세 분석·검증·실패/복구 이력은 [`egovframe-contribution-notes/작업이력.md`](https://github.com/EricSeokgon/egovframe-contribution-notes/blob/main/%EC%9E%91%EC%97%85%EC%9D%B4%EB%A0%A5.md)를 단일 원장으로 사용합니다.
 - **0.22.0** — 안전성 기반 완성: 모든 쓰기 도구를 롤백 가능한 transaction으로 통일하고(프로젝트 생성·레시피·직접 조립·AI 조립·업그레이드), 회귀 시 테스트가 실패하도록 판정을 강제했으며, 컴포넌트 제거 시 사용자 파일을 보호합니다. 신규 `EGOVFRAME_ALLOWED_ROOTS`로 **전 도구 공통 허용 root**를 강제(realpath 기반, symlink 우회 차단, 미설정 시 무제한 하위 호환)하고, transaction 실패 시 사람용 문구와 함께 기계가 읽는 `rollback-report: {json}`(복원·제거·정리 건수, 실패 목록)을 제공합니다. 레시피의 템플릿 컴포넌트 보존 픽스 포함. (#8–#16)
 - **0.21.0** — 검증된 공통컴포넌트 완전 조립: `sync_egovframe_catalog`를 추가하고 common-components 공식 v5.0.6 태그·commit(`23d01889…`)·archive SHA-256/크기/파일 수를 고정했습니다. 카탈로그 schema v2를 190항목(리프 176+그룹 14)으로 재생성해 message bundle 278건, IDGN context 91건, scheduling context 18건, 웹 자산 662건, Spring/web fragment 26건과 Maven 좌표를 연결했습니다. `add_egovframe_components`가 이 자산을 함께 복사하며 동일 파일 재사용, 다른 내용 충돌 전체 거부, 쓰기 실패 롤백, DB 비사용 컴포넌트의 SQL 폴백 방지를 적용합니다. `sec.security` 신규 보안 패키지와 미매핑 upstream 경로를 CI에서 검증하고 매니페스트 schema v3에 source 고정 정보를 기록합니다. 기존 카탈로그 schema v1·매니페스트 v1/v2 하위 호환.
