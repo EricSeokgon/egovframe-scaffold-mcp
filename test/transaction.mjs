@@ -19,7 +19,16 @@ await assert.rejects(
     transaction.writeFile("preserved-empty/new.txt", "new\n", { mustNotExist: true });
     throw new Error("fault injection");
   }),
-  /작업 전 상태로 롤백했습니다/,
+  (error) => {
+    assert.match(error.message, /작업 전 상태로 롤백했습니다/, "사람용 롤백 문구를 유지해야 한다");
+    assert.match(error.message, /rollback-report: \{/, "구조화된 rollback-report 라인을 포함해야 한다");
+    assert.equal(error.name, "TransactionError", "TransactionError 타입이어야 한다");
+    assert.equal(error.rollback.ok, true, "롤백 자체는 성공이어야 한다");
+    assert.equal(error.rollback.restoredFiles, 1, "기존 파일 1건을 복원해야 한다");
+    assert.equal(error.rollback.removedNewFiles, 2, "신규 파일 2건을 제거해야 한다");
+    assert.ok(error.rollback.cleanedDirs >= 1, "생성했던 빈 디렉터리를 정리해야 한다");
+    return true;
+  },
   "중간 실패는 transaction 전체를 롤백해야 한다",
 );
 assert.equal(fs.readFileSync(path.join(project, "config/existing.txt"), "utf-8"), "original\n", "기존 파일을 복원해야 한다");
@@ -54,7 +63,12 @@ assert.throws(
   /staging 내부 경로/,
   "transaction 자체 staging 경로 쓰기를 거부해야 한다",
 );
-assert.deepEqual(boundary.rollback(), [], "쓰기 전 경로 거부는 깨끗하게 종료되어야 한다");
+{
+  const report = boundary.rollback();
+  assert.equal(report.ok, true, "쓰기 전 경로 거부는 깨끗하게 종료되어야 한다");
+  assert.deepEqual(report.failures, [], "실패 목록이 비어 있어야 한다");
+  assert.equal(report.filesAttempted, 0, "기록한 파일이 없으므로 시도 수는 0이어야 한다");
+}
 
 const outside = path.join(tmp, "outside");
 fs.mkdirSync(outside, { recursive: true });
@@ -66,7 +80,7 @@ assert.throws(
   /symlink를 통해 프로젝트 밖/,
   "symlink 상위 경로를 통한 프로젝트 이탈을 거부해야 한다",
 );
-assert.deepEqual(symlinkBoundary.rollback(), [], "symlink 경로 거부는 깨끗하게 종료되어야 한다");
+assert.equal(symlinkBoundary.rollback().ok, true, "symlink 경로 거부는 깨끗하게 종료되어야 한다");
 assert.equal(fs.existsSync(path.join(outside, "escaped.txt")), false, "프로젝트 밖 파일을 만들면 안 된다");
 
 // 4) 신규 디렉터리는 sibling staging에서 완성한 뒤 commit하고 실패 시 흔적을 제거한다.

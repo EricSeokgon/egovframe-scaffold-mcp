@@ -20,6 +20,7 @@ import * as os from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 import { withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
+import { enforceAllowedRoots } from "./allowed-roots.js";
 import {
   downloadVerifiedCatalogArchive,
   syncCatalog,
@@ -33,7 +34,9 @@ export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult } from "./crud.js";
 export { inspectCatalogArchive, syncCatalog } from "./catalog-sync.js";
 export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from "./catalog-sync.js";
-export { ProjectFileTransaction, withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
+export { ProjectFileTransaction, TransactionError, withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
+export type { RollbackFailure, RollbackReport } from "./file-transaction.js";
+export { ALLOWED_ROOTS_ENV, AllowedRootsError, assertPathAllowed, describeAllowedRoots, enforceAllowedRoots, loadAllowedRoots } from "./allowed-roots.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -2316,6 +2319,7 @@ export function buildServer(): McpServer {
       dryRun: z.boolean().default(false).describe("true면 디스크에 쓰지 않고 생성 예정 내용만 미리보기"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const result = await createProject(args as CreateOptions);
       const head = result.dryRun
         ? `🔍 미리보기(dryRun): ${result.projectPath}`
@@ -2342,6 +2346,7 @@ export function buildServer(): McpServer {
       ref: z.string().optional().describe("확인할 태그·브랜치·commit. 미지정 시 카탈로그의 공식 고정 태그 사용"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const result = await syncCatalog(args as CatalogSyncOptions);
       const text = [
         result.upToDate ? "✅ 공통컴포넌트 카탈로그가 고정 upstream과 일치합니다." : "⚠️ 공통컴포넌트 upstream 변경이 감지됐습니다.",
@@ -2418,6 +2423,7 @@ export function buildServer(): McpServer {
       dryRun: z.boolean().default(false).describe("true면 복사 없이 설치 순서·규모만 미리보기(네트워크 불필요)"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = await addComponents(args as AddComponentsOptions);
       const head = r.dryRun
         ? `🔍 컴포넌트 조립 미리보기(dryRun): ${r.projectDir}`
@@ -2450,6 +2456,7 @@ export function buildServer(): McpServer {
       category: z.string().optional().describe("카테고리 필터 (cmm|cop|uss|sym|sec|utl|dam|ext|ssi|sts|uat)"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const results = searchComponents(loadCatalog(), args.query as string, args.category as string | undefined);
       const text = results.length === 0
         ? `'${args.query}'에 해당하는 컴포넌트가 없습니다 — list_egovframe_components로 전체 목록을 확인하세요`
@@ -2471,6 +2478,7 @@ export function buildServer(): McpServer {
       force: z.boolean().default(false).describe("사용자 수정·hash 미검증 파일도 remove-backup/에 백업한 뒤 제거"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = await removeComponents(args as RemoveOptions);
       const head = r.dryRun ? `🔍 제거 미리보기(dryRun): ${r.projectDir}` : `🗑️ 컴포넌트 제거 완료: ${r.projectDir}`;
       const text = [head,
@@ -2493,6 +2501,7 @@ export function buildServer(): McpServer {
       projectDir: z.string().describe("검증할 프로젝트 디렉터리"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = await validateProject(args as { projectDir: string });
       const text = [
         r.ok ? `✅ 검증 통과: ${r.projectDir}` : `⚠️ 경고 ${r.warnings.length}건: ${r.projectDir}`,
@@ -2519,6 +2528,7 @@ export function buildServer(): McpServer {
       docIndex: z.number().int().min(0).default(0).describe("문서가 여러 건일 때 선택 (0부터, 기본 0)"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = await getGuide(args.component as string, args.docIndex as number);
       if (!r.selected)
         return { content: [{ type: "text", text: `'${r.componentId}'에 매핑된 가이드 문서가 없습니다. list_egovframe_components로 다른 컴포넌트를 확인하세요.` }] };
@@ -2549,6 +2559,7 @@ export function buildServer(): McpServer {
       dryRun: z.boolean().default(false).describe("true면 복사·병합 없이 계획만 미리보기(네트워크 불필요)"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = await addAiComponents(args as AddAiComponentsOptions);
       const c = r.compatibility;
       const head = r.dryRun
@@ -2598,6 +2609,7 @@ export function buildServer(): McpServer {
       dryRun: z.boolean().default(false).describe("true면 디스크 변경 없이 전체 계획만 미리보기"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const recipe = loadRecipes().find((r) => r.id === args.recipeId);
       if (!recipe) {
         return { content: [{ type: "text", text: `❌ 알 수 없는 recipeId: ${args.recipeId}` }] };
@@ -2719,6 +2731,7 @@ export function buildServer(): McpServer {
       projectDir: z.string().describe("진단할 프로젝트 디렉터리(절대경로 권장)"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = diagnoseProject({ projectDir: args.projectDir });
       const lines = [
         `📋 진단: ${r.projectDir}`,
@@ -2743,6 +2756,7 @@ export function buildServer(): McpServer {
       fetchTop: z.number().int().min(0).max(5).default(0).describe("본문을 내려받아 스니펫을 붙일 상위 결과 수 (0=오프라인, 최대 5)"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const hits = searchDocs({ query: args.query, limit: args.limit });
       if (hits.length === 0)
         return { content: [{ type: "text", text: `🔎 "${args.query}" — 검색 결과 없음` }] };
@@ -2774,9 +2788,12 @@ export function buildServer(): McpServer {
     {
       projectDir: z.string().describe("리포트를 만들 프로젝트 디렉터리(절대경로 권장)"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: generateReport({ projectDir: args.projectDir }) }],
-    }),
+    async (args) => {
+      enforceAllowedRoots(args);
+      return {
+        content: [{ type: "text", text: generateReport({ projectDir: args.projectDir }) }],
+      };
+    },
   );
   // ── 업그레이드 도구 (v0.17.0) ──────────────────────────
   server.tool(
@@ -2789,6 +2806,7 @@ export function buildServer(): McpServer {
       force: z.boolean().default(false).describe("사용자 수정 파일(충돌)도 백업 후 덮어쓸지"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = await upgradeProject(args);
       const s = r.summary;
       const head = r.dryRun ? `🔍 업그레이드 미리보기(dryRun): ${r.projectDir}` : `✅ 업그레이드 적용: ${r.projectDir}`;
@@ -2815,6 +2833,7 @@ export function buildServer(): McpServer {
       id: z.string().describe("컴포넌트 id. 예: bbs"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const e = explainComponent(args.id);
       const L = [
         `# ${e.name} (${e.id}) · ${e.category}`,
@@ -2921,6 +2940,7 @@ export function buildServer(): McpServer {
       dryRun: z.boolean().default(false).describe("true면 파일을 쓰지 않고 생성 계획만 반환"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = generateCrud(args);
       const head = r.dryRun
         ? `🔍 CRUD 생성 미리보기(dryRun): ${r.entityName} ← ${r.tableName}`
@@ -2950,6 +2970,7 @@ export function buildServer(): McpServer {
       dryRun: z.boolean().default(false).describe("true면 파일 생성 없이 내용만 반환"),
     },
     async (args) => {
+      enforceAllowedRoots(args);
       const r = generateCiConfig(args);
       const head = r.dryRun
         ? `🔍 CI 설정 미리보기(dryRun): ${r.path} (${r.buildTool})`
