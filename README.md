@@ -11,7 +11,7 @@
 Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
 프로젝트를 만들고 공통컴포넌트·AI 계층을 조립할 수 있습니다. 기존 프로젝트 진단, 리포트, 안전한 upstream 재동기화도 지원합니다.
 
-현재 v0.21.0은 **도구 19종, 공식 템플릿 7종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
+현재 v0.22.0은 **도구 19종, 공식 템플릿 7종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
 ## 제공 도구
 
@@ -198,7 +198,7 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 ## 로드맵
 
-v0.21.0까지 프로젝트·CRUD 생성과 검증된 공통컴포넌트 실행 자산 조립을 완료했습니다. 새 기능 확대 전에 v0.21.1에서 테스트 판정 강제, 사용자 수정 파일 보호, 트랜잭션 제거와 배포 추적성을 먼저 강화합니다.
+v0.22.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 그리고 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고)을 완료했습니다.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -231,6 +231,7 @@ v0.21.0까지 프로젝트·CRUD 생성과 검증된 공통컴포넌트 실행 �
   - [PR #14](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/14): 컴포넌트 업그레이드의 대상 hash를 적용 직전에 재검증하고, 파일·고유 백업·`upgrade-plan.json`·매니페스트를 공통 transaction으로 반영합니다. 중간 실패와 상위 symlink 경계 이탈에서는 작업 전 상태로 복구합니다.
   - recipe 호환성: 공식 템플릿에 이미 포함된 `cmm`을 `providedComponents`로 확인·보존하고, recipe가 추가하는 bbs/login만 설치합니다. 기존 38파일을 덮거나 도구 소유로 기록하지 않으며 성공 조립·검증과 후반 rollback을 모두 통합 테스트합니다.
   - 상세 분석·검증·실패/복구 이력은 [`egovframe-contribution-notes/작업이력.md`](https://github.com/EricSeokgon/egovframe-contribution-notes/blob/main/%EC%9E%91%EC%97%85%EC%9D%B4%EB%A0%A5.md)를 단일 원장으로 사용합니다.
+- **0.22.0** — 안전성 기반 완성: 모든 쓰기 도구를 롤백 가능한 transaction으로 통일하고(프로젝트 생성·레시피·직접 조립·AI 조립·업그레이드), 회귀 시 테스트가 실패하도록 판정을 강제했으며, 컴포넌트 제거 시 사용자 파일을 보호합니다. 신규 `EGOVFRAME_ALLOWED_ROOTS`로 **전 도구 공통 허용 root**를 강제(realpath 기반, symlink 우회 차단, 미설정 시 무제한 하위 호환)하고, transaction 실패 시 사람용 문구와 함께 기계가 읽는 `rollback-report: {json}`(복원·제거·정리 건수, 실패 목록)을 제공합니다. 레시피의 템플릿 컴포넌트 보존 픽스 포함. (#8–#16)
 - **0.21.0** — 검증된 공통컴포넌트 완전 조립: `sync_egovframe_catalog`를 추가하고 common-components 공식 v5.0.6 태그·commit(`23d01889…`)·archive SHA-256/크기/파일 수를 고정했습니다. 카탈로그 schema v2를 190항목(리프 176+그룹 14)으로 재생성해 message bundle 278건, IDGN context 91건, scheduling context 18건, 웹 자산 662건, Spring/web fragment 26건과 Maven 좌표를 연결했습니다. `add_egovframe_components`가 이 자산을 함께 복사하며 동일 파일 재사용, 다른 내용 충돌 전체 거부, 쓰기 실패 롤백, DB 비사용 컴포넌트의 SQL 폴백 방지를 적용합니다. `sec.security` 신규 보안 패키지와 미매핑 upstream 경로를 CI에서 검증하고 매니페스트 schema v3에 source 고정 정보를 기록합니다. 기존 카탈로그 schema v1·매니페스트 v1/v2 하위 호환.
 
 - **0.20.0** — CRUD 코드 생성: `generate_egovframe_crud` 추가. eGovFrame Development의 공식 `wizard.xml` 입력 그룹(author/createDate, DataAccess·Service·Web, mapper/VO/service/controller/JSP 경로)에 맞춰 VO·DefaultVO·EgovMapper 인터페이스·MyBatis XML·Service·ServiceImpl·Controller를 생성합니다. Classic은 MVC+JSP 2종, Boot는 REST Controller를 생성하고 `withTest`로 JUnit 5 계약 테스트를 추가합니다. PK 필수, SQL/Java 식별자·상대경로 검증, dryRun, 전체 충돌 사전 검사, 쓰기 실패 롤백을 적용했습니다. 오프라인 테스트(`npm run test:crud`)와 공식 simple-backend/Boot·web-sample/Classic Maven compile 통합 테스트를 추가했습니다. 프로젝트 직접 Maven 좌표만 변경해 parent·dependency를 보존하고, lockfile·npm 패키지 설계 문서·CI 전체 릴리스 게이트를 추가했으며 `adm-zip` 0.6.0으로 고위험 ZIP 취약점을 해소했습니다. 기존 17개 도구 하위 호환.
