@@ -1,6 +1,6 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트·CRUD 스캐폴딩과 검증된 공통컴포넌트 완전 조립 MCP 서버",
   "license": "Apache-2.0",
   "type": "module",
