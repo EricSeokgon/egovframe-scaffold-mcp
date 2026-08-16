@@ -168,6 +168,17 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   }
 }
 
+/**
+ * zip 엔트리 목록에서 최상위 디렉터리 접두사(예: "repo-main/")를 구한다.
+ *
+ * 아카이브가 비어 있으면(잘린 다운로드·잘못된 ref·빈 저장소 등) `entries[0]` 접근에서
+ * 원인을 알기 어려운 TypeError가 발생하므로, 명확한 메시지로 먼저 실패시킨다.
+ */
+export function archiveRootPrefix(entries: AdmZip.IZipEntry[], emptyMessage: string): string {
+  if (entries.length === 0) throw new Error(emptyMessage);
+  return entries[0].entryName.split("/")[0] + "/";
+}
+
 /** 템플릿 zip 다운로드 → 지정 staging에 압축 해제 → 사용자 값 적용. */
 async function createProjectInternal(opts: CreateOptions, transactionStagingPath?: string): Promise<CreateResult> {
   const tpl = TEMPLATES[opts.template];
@@ -196,7 +207,7 @@ async function createProjectInternal(opts: CreateOptions, transactionStagingPath
 
   const zip = new AdmZip(buf);
   const entries = zip.getEntries();
-  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const rootPrefix = archiveRootPrefix(entries, `템플릿 아카이브에 파일이 없습니다 — ref='${ref}'가 유효한지 확인하세요: ${zipUrl}`);
   const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
 
   const customized: string[] = [];
@@ -569,7 +580,7 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
 
   const { zip, inspection: sourceVerification } = await downloadComponentsZip(catalog.source);
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
-  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const rootPrefix = archiveRootPrefix(entries, "공통컴포넌트 archive에 파일이 없습니다");
   const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
   const entryByPath = new Map(entries.map((entry) => [rel(entry.entryName), entry]));
 
@@ -1527,7 +1538,7 @@ export async function addAiComponents(opts: AddAiComponentsOptions): Promise<Add
   const catalog = loadAiCatalog();
   const zip = await downloadAiZip(catalog.source.repo, opts.ref ?? catalog.source.branch);
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
-  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
+  const rootPrefix = archiveRootPrefix(entries, "AI 샘플 archive에 파일이 없습니다");
   const modPrefix = rootPrefix + comp.modulePath + "/";
 
   const plan: { entry: AdmZip.IZipEntry; destRel: string; group: string }[] = [];
