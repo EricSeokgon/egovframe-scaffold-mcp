@@ -11,14 +11,15 @@
 Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
 프로젝트를 만들고 공통컴포넌트·AI 계층을 조립할 수 있습니다. 기존 프로젝트 진단, 리포트, 안전한 upstream 재동기화도 지원합니다.
 
-현재 v0.22.0은 **도구 19종, 공식 템플릿 7종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
+현재 v0.23.0은 **도구 20종, 공식 템플릿 7종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
-## 진행 현황 (2026-08-04)
+## 진행 현황 (2026-08-18)
 
-- **소스 기준**: v0.22.0(`package.json`), 도구 19종·공식 템플릿 7종·카탈로그 190항목.
+- **소스 기준**: v0.23.0(`package.json`), 도구 20종·공식 템플릿 7종·카탈로그 190항목.
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
-- **배포 상태**: 저장소 소스는 v0.22.0이며 npm·tag·GitHub Release는 v0.21.0까지 정렬된 상태입니다. v0.22.0 배포 전에는 아래 설치 명령이 v0.21.0을 받을 수 있으므로, 기능 검증 시 소스 버전과 배포 버전을 구분해 확인하세요.
+- **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
+- **배포 상태**: 저장소 소스는 v0.23.0이며 npm은 v0.22.0까지 배포된 상태입니다. v0.23.0 배포 전에는 아래 설치 명령이 v0.22.0을 받을 수 있으므로, 기능 검증 시 소스 버전과 배포 버전을 구분해 확인하세요.
 
 ## 제공 도구
 
@@ -206,15 +207,15 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 ## 로드맵
 
-v0.22.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 그리고 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고)을 완료했습니다.
+v0.23.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 그리고 생성→검증 루프(실제 빌드·오류 구조화)를 완료했습니다.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
 | **v0.20 완료** | `generate_egovframe_crud` | 공식 `wizard.xml` 그룹과 경로 입력, VO·Mapper(XML)·Service·Controller·JSP(선택), Classic/Boot, JUnit 5, dryRun·충돌 원자적 거부 구현. 오프라인 테스트와 공식 simple-backend/Boot·web-sample/Classic Maven compile 통과 |
 | **v0.21 완료** | `sync_egovframe_catalog` + 컴포넌트 완전 조립 | common-components v5.0.6 태그/commit/archive 고정, 190항목, message·IDGN·scheduling·정적 자산·web fragment 조립, Maven 좌표 탐지, sec.security·미매핑 경로 검증, 매니페스트 v3 |
 | **v0.22 완료** | 전 도구 안전성 기반 | 모든 쓰기 경로 transaction, 사용자 파일 보호, 전 도구 허용 root, symlink/junction 이탈 차단, 구조화 rollback 보고 |
-| **v0.23 후보** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
-| **v0.24 후보** | `build_egovframe_project` / `test_egovframe_project` | Maven/Gradle 자동 감지, 타임아웃·로그 상한, 파일/라인 단위 오류 구조화로 생성→검증 에이전트 루프 완성 |
+| **v0.23 완료** | `build_egovframe_project` | Maven/Gradle·래퍼(mvnw/gradlew) 자동 감지, 타임아웃·로그 상한, 파일/라인 단위 오류 구조화로 생성→검증 에이전트 루프 완성([PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)). `test_egovframe_project`는 후속 |
+| **v0.24 후보** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
 | **v0.25 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
 | **v0.26 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
 | **v0.27+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 공식 템플릿 커버리지 확대 |
