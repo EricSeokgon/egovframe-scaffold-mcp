@@ -21,6 +21,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 import { withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 import { enforceAllowedRoots } from "./allowed-roots.js";
+import { runBuild } from "./build-runner.js";
 import {
   downloadVerifiedCatalogArchive,
   syncCatalog,
@@ -37,6 +38,8 @@ export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from ".
 export { ProjectFileTransaction, TransactionError, withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 export type { RollbackFailure, RollbackReport } from "./file-transaction.js";
 export { ALLOWED_ROOTS_ENV, AllowedRootsError, assertPathAllowed, describeAllowedRoots, enforceAllowedRoots, loadAllowedRoots } from "./allowed-roots.js";
+export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capOutput, defaultRunner, runBuild } from "./build-runner.js";
+export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerResult, BuildRunResult } from "./build-runner.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -2288,7 +2291,7 @@ function extractDocSnippet(body: string, terms: string[]): string {
 }
 
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.21.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.23.0" });
 
   server.tool(
     "list_egovframe_templates",
@@ -2976,6 +2979,80 @@ export function buildServer(): McpServer {
         ? `🔍 CI 설정 미리보기(dryRun): ${r.path} (${r.buildTool})`
         : `✅ CI 설정 생성: ${r.path} (${r.buildTool})`;
       return { content: [{ type: "text", text: `${head}\n\n\`\`\`yaml\n${r.content}\`\`\`` }] };
+    },
+  );
+  // ── 프로젝트 빌드 실행 도구 (v0.23.0) ────────────────────────
+  // generate_egovframe_ci가 CI '설정'만 만들던 한계를 보완: 생성한 프로젝트를 실제로
+  // 컴파일·테스트하고, 오류를 파일·라인 단위로 구조화해 생성→검증 루프를 닫는다.
+  server.tool(
+    "build_egovframe_project",
+    "생성한 eGovFrame 프로젝트를 실제로 빌드(컴파일·테스트·패키지)하고 결과를 구조화해 반환합니다. 빌드도구(maven/gradle)와 래퍼(mvnw/gradlew)를 자동 감지하고, 컴파일·테스트 오류를 파일·라인 단위로 파싱합니다. dryRun으로 실행 예정 명령만 미리볼 수 있습니다. (생성→검증 루프 완성)",
+    {
+      projectDir: z.string().describe("빌드할 프로젝트 루트 디렉터리(pom.xml 또는 build.gradle 위치, 절대경로 권장)"),
+      goal: z
+        .enum(["compile", "test", "package"])
+        .default("compile")
+        .describe("빌드 작업: compile(컴파일만), test(테스트까지), package(패키징, 테스트 생략). 기본 compile"),
+      timeoutSeconds: z
+        .number()
+        .int()
+        .positive()
+        .max(3600)
+        .default(300)
+        .describe("빌드 타임아웃(초). 초과 시 중단. 기본 300초"),
+      maxLogLines: z
+        .number()
+        .int()
+        .positive()
+        .max(5000)
+        .default(200)
+        .describe("반환 로그의 최대 줄 수(마지막 N줄). 기본 200줄"),
+      dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령만 반환"),
+    },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await runBuild({
+        projectDir: args.projectDir,
+        goal: args.goal,
+        timeoutMs: args.timeoutSeconds * 1000,
+        maxLogLines: args.maxLogLines,
+        dryRun: args.dryRun,
+      });
+
+      if (r.dryRun) {
+        const text = [
+          `🔍 빌드 미리보기(dryRun)`,
+          `- 빌드도구: ${r.buildTool}${r.usedWrapper ? " (wrapper)" : ""}`,
+          `- 작업(goal): ${r.goal}`,
+          `- 실행 예정 명령: ${r.command}`,
+          `- 작업 디렉터리: ${r.cwd}`,
+          ``,
+          `실제 실행하려면 dryRun=false로 다시 호출하세요.`,
+        ].join("\n");
+        return { content: [{ type: "text", text }] };
+      }
+
+      const secs = ((r.durationMs ?? 0) / 1000).toFixed(1);
+      const head = r.success
+        ? `✅ 빌드 성공: ${r.goal} (${r.buildTool}${r.usedWrapper ? ", wrapper" : ""}) — ${secs}s`
+        : r.timedOut
+          ? `⏱️ 빌드 시간 초과: ${r.goal} (${r.buildTool}) — ${secs}s 후 중단`
+          : `❌ 빌드 실패: ${r.goal} (${r.buildTool}) — exit=${r.exitCode}, ${secs}s`;
+      const lines = [head, `- 명령: ${r.command}`, `- 디렉터리: ${r.cwd}`];
+      if (r.errors && r.errors.length) {
+        lines.push(``, `발견된 오류 ${r.errors.length}개:`);
+        for (const e of r.errors.slice(0, 50)) {
+          lines.push(`  · ${e.file}:${e.line}${e.column ? ":" + e.column : ""} — ${e.message}`);
+        }
+        if (r.errors.length > 50) lines.push(`  … 외 ${r.errors.length - 50}개`);
+      } else if (!r.success) {
+        lines.push(``, `구조화된 오류를 추출하지 못했습니다. 아래 로그를 확인하세요.`);
+      }
+      if (r.logTail) {
+        const label = r.logTruncated ? `마지막 ${args.maxLogLines}/${r.totalLogLines}줄` : `전체 ${r.totalLogLines}줄`;
+        lines.push(``, `로그(${label}):`, "```", r.logTail, "```");
+      }
+      return { content: [{ type: "text", text: lines.join("\n") }], isError: !r.success };
     },
   );
   return server;
