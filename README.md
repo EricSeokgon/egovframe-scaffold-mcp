@@ -207,7 +207,7 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 ## 로드맵
 
-v0.23.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 그리고 생성→검증 루프(실제 빌드·오류 구조화)를 완료했습니다.
+v0.24.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 그리고 생성→검증 루프(실제 빌드·오류 구조화)를 완료했습니다.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -215,10 +215,11 @@ v0.23.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 | **v0.21 완료** | `sync_egovframe_catalog` + 컴포넌트 완전 조립 | common-components v5.0.6 태그/commit/archive 고정, 190항목, message·IDGN·scheduling·정적 자산·web fragment 조립, Maven 좌표 탐지, sec.security·미매핑 경로 검증, 매니페스트 v3 |
 | **v0.22 완료** | 전 도구 안전성 기반 | 모든 쓰기 경로 transaction, 사용자 파일 보호, 전 도구 허용 root, symlink/junction 이탈 차단, 구조화 rollback 보고 |
 | **v0.23 완료** | `build_egovframe_project` | Maven/Gradle·래퍼(mvnw/gradlew) 자동 감지, 타임아웃·로그 상한, 파일/라인 단위 오류 구조화로 생성→검증 에이전트 루프 완성([PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)). `test_egovframe_project`는 후속 |
-| **v0.24 후보** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
-| **v0.25 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
-| **v0.26 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
-| **v0.27+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 공식 템플릿 커버리지 확대 |
+| **v0.24 완료** | 공식 템플릿 커버리지 확대 (7 → **10종**) | Initializr 카탈로그(22항목) 대조로 미커버 공식 자산을 식별해 `msa-common-components`(KRDS)·`mobile-device-api`·`ai-rag` 추가. 모두 멀티 프로젝트로 표시해 좌표/DB 자동 재작성을 건너뛰고 하위 모듈 참조를 보호하며, 실제 아카이브 다운로드 통합 테스트로 검증 |
+| **v0.25 후보** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
+| **v0.26 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
+| **v0.27 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
+| **v0.28+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 공식 템플릿 커버리지 확대 |
 
 로드맵 근거:
 
@@ -232,6 +233,7 @@ v0.23.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 
 ## 변경 이력
 
+- **0.24.0** — 공식 템플릿 커버리지 확대(7 → **10종**): eGovFrame VSCode Initializr 카탈로그(22항목)와 대조해 MCP가 다루지 않던 공식 자산을 식별하고, GitHub 공개 저장소로 제공되는 `msa-common-components`(MSA 공통컴포넌트, KRDS)·`mobile-device-api`(디바이스 API)·`ai-rag`(Spring AI·LangChain4j RAG 예제)를 추가했습니다. 세 템플릿 모두 하위 모듈을 가진 멀티 프로젝트이므로 `multiProject`로 표시해 좌표·DB 자동 재작성을 건너뛰고 하위 모듈 참조를 보호하며, 생성 결과에 좌표/DB 자동 적용이 없음을 명시합니다. `npm run test:templates`에 등록·표시·공식 저장소 경로 검증과 실제 아카이브를 내려받는 dryRun 통합 검증을 추가했습니다. 기존 7종·전체 도구 하위 호환.
 - **0.21.1 (완료, v0.22.0에 통합)** — 사용자 프로젝트를 손상시키지 않는 실패·복구 경계를 우선 강화했습니다.
   - [PR #9](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/9): 설치 SHA-256과 현재 파일을 비교해 `unchanged/modified/unverified/missing`으로 분류하고 사용자 수정·기준선 미확인 파일을 기본 보존합니다. `force=true`는 기존 파일과 제거 계획을 `remove-backup/`에 보존한 뒤 제거하며, 중간 실패는 파일·POM·매니페스트를 작업 전 상태로 롤백합니다.
   - [PR #10](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/10): 재사용 가능한 `ProjectFileTransaction`을 도입하고 AI 파일·POM 백업/갱신·매니페스트를 한 transaction으로 commit합니다.
