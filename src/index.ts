@@ -85,6 +85,24 @@ export const TEMPLATES: Record<
     description: "MSA 템플릿 (클라우드 네이티브 — backend/frontend/k8s/docker-compose 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
     multiProject: true,
   },
+  "msa-common-components": {
+    repo: "eGovFramework/egovframe-msa-common-components",
+    branch: "main",
+    description: "MSA 공통컴포넌트 (KRDS — 게시판·로그인·권한·코드 등 서비스별 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
+    multiProject: true,
+  },
+  "mobile-device-api": {
+    repo: "eGovFramework/egovframe-mobile-device-api",
+    branch: "main",
+    description: "모바일 디바이스 API (device-api-web + device-api-app 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
+    multiProject: true,
+  },
+  "ai-rag": {
+    repo: "eGovFramework/egovframe-ai-rag",
+    branch: "main",
+    description: "AI RAG 예제 (Spring AI · LangChain4j 2종 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
+    multiProject: true,
+  },
 };
 
 /** 레거시 템플릿의 DB 설정 파일 경로 */
