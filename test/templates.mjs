@@ -12,6 +12,18 @@ assert.ok(
 );
 assert.equal(TEMPLATES["msa-edu"].multiProject, true, "msa-edu는 멀티 프로젝트로 표시해야 한다");
 
+// v0.24.0 추가 템플릿 — 공식 저장소 경로와 멀티 프로젝트 표시를 강제한다
+const ADDED = ["msa-common-components", "mobile-device-api", "ai-rag"];
+assert.ok(
+  ADDED.every((t) => t in TEMPLATES),
+  "v0.24.0 신규 템플릿(msa-common-components·mobile-device-api·ai-rag)이 등록되어야 한다",
+);
+for (const t of ADDED) {
+  assert.equal(TEMPLATES[t].multiProject, true, `${t}는 멀티 프로젝트로 표시해야 한다`);
+  assert.match(TEMPLATES[t].repo, /^eGovFramework\//, `${t}는 공식 조직 저장소를 가리켜야 한다`);
+  assert.ok(TEMPLATES[t].branch, `${t}는 기본 브랜치를 지정해야 한다`);
+}
+
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tpl-"));
 const base = { groupId: "egovframework.example", database: "mysql", outputDir: tmp };
 
@@ -48,6 +60,14 @@ const globals = fs.readFileSync(path.join(r2.projectPath, GLOBALS_PROPS_REL), "u
 assert.ok(r2.filesExtracted > 100, "homepage 파일을 생성해야 한다");
 assert.match(globals, /^Globals\.DbType = mysql$/m, "homepage MySQL DbType을 적용해야 한다");
 assert.ok(r2.nextSteps.some((s) => s.includes("mvn -B package")), "homepage Maven 빌드 단계를 안내해야 한다");
+
+// v0.24.0 신규 멀티 프로젝트 템플릿도 실제 아카이브를 내려받아 계획을 세워야 한다
+const d3 = await createProject({ ...base, projectName: "t-msa-cc", template: "msa-common-components", dryRun: true });
+assert.ok(d3.filesExtracted > 100, "msa-common-components dryRun 파일 수를 계산해야 한다");
+assert.ok(
+  d3.customized.some((c) => c.includes("멀티 프로젝트")),
+  "msa-common-components는 좌표/DB 자동 적용 없음을 안내해야 한다",
+);
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log("templates OK");
