@@ -11,15 +11,17 @@
 Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
 프로젝트를 만들고 공통컴포넌트·AI 계층을 조립할 수 있습니다. 기존 프로젝트 진단, 리포트, 안전한 upstream 재동기화도 지원합니다.
 
-현재 v0.23.0은 **도구 20종, 공식 템플릿 7종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
+현재 v0.25.0은 **도구 21종, 공식 템플릿 10종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
-## 진행 현황 (2026-08-18)
+## 진행 현황 (2026-09-12)
 
-- **소스 기준**: v0.23.0(`package.json`), 도구 20종·공식 템플릿 7종·카탈로그 190항목.
+- **소스 기준**: v0.25.0(`package.json`), 도구 21종·공식 템플릿 10종·카탈로그 190항목.
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
-- **배포 상태**: 저장소 소스는 v0.23.0이며 npm은 v0.22.0까지 배포된 상태입니다. v0.23.0 배포 전에는 아래 설치 명령이 v0.22.0을 받을 수 있으므로, 기능 검증 시 소스 버전과 배포 버전을 구분해 확인하세요.
+- **v0.24.0 추가**: 공식 템플릿 커버리지 7 → 10종(`msa-common-components`·`mobile-device-api`·`ai-rag`, 모두 멀티 프로젝트). [PR #19](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/19).
+- **v0.25.0 추가**: `test_egovframe_project` — 테스트를 실행하고 빌드도구가 남기는 JUnit XML 리포트(surefire·gradle)를 읽어 스위트·케이스 단위로 결과를 구조화합니다. 실패 케이스의 메시지·예외 타입·테스트 파일/라인, `testFilter`(클래스/메서드 패턴), 이전 실행 리포트 제외, 종료 코드가 0이어도 리포트에 실패가 있으면 실패로 판정. 오프라인 54단언(`npm run test:test`).
+- **배포 상태**: 저장소 소스는 v0.25.0이며 npm은 v0.23.0까지 배포된 상태입니다(2026-09-12 `npm view` 기준). 배포 전에는 아래 설치 명령이 v0.23.0을 받을 수 있으므로, 기능 검증 시 소스 버전과 배포 버전을 구분해 확인하세요.
 
 ## 제공 도구
 
@@ -43,6 +45,8 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 | `upgrade_egovframe_project` | 설치 컴포넌트를 upstream과 3-way 비교해 갱신 — 사용자 수정 보존, dryRun 기본, 적용 직전 재검증, 파일·백업·매니페스트 단일 transaction (파괴적, 게이트) |
 | `explain_egovframe_component` | 컴포넌트 하나의 상세(설명·직접/전이 의존성·역의존·참조 테이블·가이드 링크·설치 명령)를 한 번에 반환 (읽기 전용) |
 | `generate_egovframe_ci` | GitHub Actions CI 워크플로(빌드·테스트) 생성 — maven/gradle 자동 감지, dryRun, 기존 파일 보호 |
+| `build_egovframe_project` | 생성한 프로젝트를 실제로 빌드(compile·test·package) — maven/gradle·mvnw/gradlew 자동 감지, 타임아웃·로그 상한, 컴파일 오류 파일/라인 구조화, dryRun |
+| `test_egovframe_project` | 테스트 실행 + JUnit XML 리포트(surefire·gradle) 구조화 — 스위트별 통과/실패/오류/건너뜀, 실패 케이스 메시지·예외 타입·테스트 파일/라인, `testFilter`, 이전 실행 리포트 제외, dryRun |
 | `generate_egovframe_crud` | 공식 Development CRUD wizard 입력 체계 기반 코드 생성 — VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5(선택), Classic/Boot 분기, 전체 충돌 사전 검사 |
 
 ### create_egovframe_project 파라미터
@@ -201,25 +205,26 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 - 공통컴포넌트 실행 자산과 Maven 좌표 탐지는 지원합니다. 기존 `pom.xml`·`web.xml`의 구조적 노드 병합은 프로젝트별 dependency management·설정 경로를 보호하기 위해 자동 수행하지 않습니다.
 - 카탈로그는 공식 v5.0.6 태그·commit·archive 지문에 고정됩니다. 최신 main 변경은 `sync_egovframe_catalog(ref="main")` 결과를 검토한 뒤 생성 스크립트로 승격합니다.
-- `generate_egovframe_ci`는 워크플로를 생성하지만 MCP 프로세스가 프로젝트 빌드·테스트를 직접 실행하고 오류를 구조화해 반환하지는 않습니다.
+- `build_egovframe_project`·`test_egovframe_project`는 로컬에 설치된 JDK와 maven/gradle(또는 프로젝트 래퍼)을 사용합니다. DB 등 외부 의존성이 필요한 테스트는 그 환경이 준비되지 않으면 오류(error)로 집계됩니다.
 - 자바 패키지 구조 변경(groupId에 맞춘 소스 디렉터리 이동)은 미지원입니다. 현재는 IDE rename refactoring을 권장합니다.
 - 템플릿·컴포넌트·가이드 원본을 받을 때 GitHub(`codeload.github.com`, `raw.githubusercontent.com`) 네트워크 접근이 필요합니다.
 
 ## 로드맵
 
-v0.24.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 그리고 생성→검증 루프(실제 빌드·오류 구조화)를 완료했습니다.
+v0.25.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 그리고 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화)를 완료했습니다.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
 | **v0.20 완료** | `generate_egovframe_crud` | 공식 `wizard.xml` 그룹과 경로 입력, VO·Mapper(XML)·Service·Controller·JSP(선택), Classic/Boot, JUnit 5, dryRun·충돌 원자적 거부 구현. 오프라인 테스트와 공식 simple-backend/Boot·web-sample/Classic Maven compile 통과 |
 | **v0.21 완료** | `sync_egovframe_catalog` + 컴포넌트 완전 조립 | common-components v5.0.6 태그/commit/archive 고정, 190항목, message·IDGN·scheduling·정적 자산·web fragment 조립, Maven 좌표 탐지, sec.security·미매핑 경로 검증, 매니페스트 v3 |
 | **v0.22 완료** | 전 도구 안전성 기반 | 모든 쓰기 경로 transaction, 사용자 파일 보호, 전 도구 허용 root, symlink/junction 이탈 차단, 구조화 rollback 보고 |
-| **v0.23 완료** | `build_egovframe_project` | Maven/Gradle·래퍼(mvnw/gradlew) 자동 감지, 타임아웃·로그 상한, 파일/라인 단위 오류 구조화로 생성→검증 에이전트 루프 완성([PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)). `test_egovframe_project`는 후속 |
+| **v0.23 완료** | `build_egovframe_project` | Maven/Gradle·래퍼(mvnw/gradlew) 자동 감지, 타임아웃·로그 상한, 파일/라인 단위 오류 구조화로 생성→검증 에이전트 루프 완성([PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)). `test_egovframe_project`는 v0.25에서 완료 |
 | **v0.24 완료** | 공식 템플릿 커버리지 확대 (7 → **10종**) | Initializr 카탈로그(22항목) 대조로 미커버 공식 자산을 식별해 `msa-common-components`(KRDS)·`mobile-device-api`·`ai-rag` 추가. 모두 멀티 프로젝트로 표시해 좌표/DB 자동 재작성을 건너뛰고 하위 모듈 참조를 보호하며, 실제 아카이브 다운로드 통합 테스트로 검증 |
-| **v0.25 후보** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
-| **v0.26 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
-| **v0.27 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
-| **v0.28+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 공식 템플릿 커버리지 확대 |
+| **v0.25 완료** | `test_egovframe_project` | 테스트 실행 후 JUnit XML 리포트(surefire `target/surefire-reports`, gradle `build/test-results/test`)를 읽어 스위트·케이스 단위 집계, 실패 메시지·예외 타입·테스트 파일/라인, `testFilter`, 오래된 리포트 제외, exit 0이어도 리포트 실패면 실패 판정 |
+| **v0.26 후보** | IDE·Initializr·MCP 공통 카탈로그 | Initializr JSON, Development `wizard.xml`, MCP catalog를 버전 스키마와 변환기로 연결해 중복 유지보수와 경로 추론 축소 |
+| **v0.27 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
+| **v0.28 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
+| **v0.29+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 공식 템플릿 커버리지 확대 |
 
 로드맵 근거:
 
@@ -233,6 +238,7 @@ v0.24.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 
 ## 변경 이력
 
+- **0.25.0** — 테스트 실행·리포트 구조화: `test_egovframe_project` 추가. `build_egovframe_project(goal=test)`가 종료 코드와 로그만 돌려주던 한계를 보완해, 빌드도구가 쓰는 JUnit XML 리포트(maven-surefire `target/surefire-reports`, gradle `build/test-results/test`)를 1차 근거로 읽습니다. 스위트별 통과·실패·오류·건너뜀과 실패 케이스의 메시지·예외 타입·스택트레이스 내 테스트 클래스 프레임(파일:라인)을 반환하고, `testFilter`는 빌드도구 문법 그대로(`-Dtest=… -Dsurefire.failIfNoSpecifiedTests=false` / `--tests …`) 전달하되 인자 해석을 깨는 문자를 거부합니다. 이번 실행 이전의 리포트는 mtime으로 제외하고, 종료 코드가 0이어도 리포트에 실패가 있으면(`testFailureIgnore`) 실패로 판정하며, 리포트가 없으면 컴파일 오류(로그 파싱)와 원인 후보를 안내합니다. 타임아웃·로그 상한·허용 root·dryRun은 build 도구와 동일. 오프라인 54단언(`npm run test:test`), 외부 의존성 없음. 기존 20개 도구 하위 호환.
 - **0.24.0** — 공식 템플릿 커버리지 확대(7 → **10종**): eGovFrame VSCode Initializr 카탈로그(22항목)와 대조해 MCP가 다루지 않던 공식 자산을 식별하고, GitHub 공개 저장소로 제공되는 `msa-common-components`(MSA 공통컴포넌트, KRDS)·`mobile-device-api`(디바이스 API)·`ai-rag`(Spring AI·LangChain4j RAG 예제)를 추가했습니다. 세 템플릿 모두 하위 모듈을 가진 멀티 프로젝트이므로 `multiProject`로 표시해 좌표·DB 자동 재작성을 건너뛰고 하위 모듈 참조를 보호하며, 생성 결과에 좌표/DB 자동 적용이 없음을 명시합니다. `npm run test:templates`에 등록·표시·공식 저장소 경로 검증과 실제 아카이브를 내려받는 dryRun 통합 검증을 추가했습니다. 기존 7종·전체 도구 하위 호환.
 - **0.21.1 (완료, v0.22.0에 통합)** — 사용자 프로젝트를 손상시키지 않는 실패·복구 경계를 우선 강화했습니다.
   - [PR #9](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/9): 설치 SHA-256과 현재 파일을 비교해 `unchanged/modified/unverified/missing`으로 분류하고 사용자 수정·기준선 미확인 파일을 기본 보존합니다. `force=true`는 기존 파일과 제거 계획을 `remove-backup/`에 보존한 뒤 제거하며, 중간 실패는 파일·POM·매니페스트를 작업 전 상태로 롤백합니다.

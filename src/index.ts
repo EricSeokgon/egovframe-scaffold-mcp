@@ -22,6 +22,7 @@ import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 import { withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 import { enforceAllowedRoots } from "./allowed-roots.js";
 import { runBuild } from "./build-runner.js";
+import { runTests } from "./test-runner.js";
 import {
   downloadVerifiedCatalogArchive,
   syncCatalog,
@@ -40,6 +41,8 @@ export type { RollbackFailure, RollbackReport } from "./file-transaction.js";
 export { ALLOWED_ROOTS_ENV, AllowedRootsError, assertPathAllowed, describeAllowedRoots, enforceAllowedRoots, loadAllowedRoots } from "./allowed-roots.js";
 export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capOutput, defaultRunner, runBuild } from "./build-runner.js";
 export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerResult, BuildRunResult } from "./build-runner.js";
+export { reportDirFor, resolveTestArgs, validateTestFilter, locateInStack, parseJUnitXml, snapshotReports, readJUnitReports, summarizeReports, runTests } from "./test-runner.js";
+export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRunResult, ParsedReport } from "./test-runner.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -3065,6 +3068,109 @@ export function buildServer(): McpServer {
         if (r.errors.length > 50) lines.push(`  … 외 ${r.errors.length - 50}개`);
       } else if (!r.success) {
         lines.push(``, `구조화된 오류를 추출하지 못했습니다. 아래 로그를 확인하세요.`);
+      }
+      if (r.logTail) {
+        const label = r.logTruncated ? `마지막 ${args.maxLogLines}/${r.totalLogLines}줄` : `전체 ${r.totalLogLines}줄`;
+        lines.push(``, `로그(${label}):`, "```", r.logTail, "```");
+      }
+      return { content: [{ type: "text", text: lines.join("\n") }], isError: !r.success };
+    },
+  );
+
+  // ── 테스트 실행 도구 (v0.25.0) ────────────────────────────────
+  // build_egovframe_project(goal=test)는 종료 코드와 로그만 돌려줬다. 이 도구는 빌드도구가 남기는
+  // JUnit XML 리포트를 읽어 스위트·케이스 단위로 결과를 구조화하고, 실패 케이스의 메시지와
+  // 테스트 클래스 내 파일·라인까지 제공해 "어느 테스트가 왜 깨졌는가"에 바로 답한다.
+  server.tool(
+    "test_egovframe_project",
+    "eGovFrame 프로젝트의 테스트를 실제로 실행하고 JUnit XML 리포트(surefire/gradle)를 읽어 결과를 구조화합니다. 스위트별 통과·실패·오류·건너뜀 수와, 실패 케이스의 메시지·예외 타입·테스트 파일/라인을 반환합니다. testFilter로 특정 클래스/메서드만 실행할 수 있고, dryRun으로 실행 예정 명령을 미리볼 수 있습니다. (build_egovframe_project 의 테스트 후속)",
+    {
+      projectDir: z.string().describe("테스트할 프로젝트 루트 디렉터리(pom.xml 또는 build.gradle 위치, 절대경로 권장)"),
+      testFilter: z
+        .string()
+        .optional()
+        .describe("실행할 테스트 패턴(빌드도구 문법 그대로). maven: `FooTest`, `FooTest#bar`, `com.acme.*Test` / gradle: `com.acme.FooTest`, `*FooTest.bar`. 생략 시 전체"),
+      timeoutSeconds: z
+        .number()
+        .int()
+        .positive()
+        .max(3600)
+        .default(600)
+        .describe("테스트 타임아웃(초). 초과 시 중단. 기본 600초"),
+      maxLogLines: z
+        .number()
+        .int()
+        .positive()
+        .max(5000)
+        .default(200)
+        .describe("반환 로그의 최대 줄 수(마지막 N줄). 기본 200줄"),
+      maxFailures: z
+        .number()
+        .int()
+        .positive()
+        .max(500)
+        .default(50)
+        .describe("반환할 실패·오류 케이스 최대 수. 기본 50"),
+      dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령·리포트 위치만 반환"),
+    },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await runTests({
+        projectDir: args.projectDir,
+        testFilter: args.testFilter,
+        timeoutMs: args.timeoutSeconds * 1000,
+        maxLogLines: args.maxLogLines,
+        maxFailures: args.maxFailures,
+        dryRun: args.dryRun,
+      });
+
+      if (r.dryRun) {
+        const text = [
+          `🔍 테스트 미리보기(dryRun)`,
+          `- 빌드도구: ${r.buildTool}${r.usedWrapper ? " (wrapper)" : ""}`,
+          `- 실행 예정 명령: ${r.command}`,
+          `- 작업 디렉터리: ${r.cwd}`,
+          `- 리포트 위치: ${r.reportDir}`,
+          ``,
+          `실제 실행하려면 dryRun=false로 다시 호출하세요.`,
+        ].join("\n");
+        return { content: [{ type: "text", text }] };
+      }
+
+      const secs = ((r.durationMs ?? 0) / 1000).toFixed(1);
+      const s = r.summary!;
+      const counts = `${s.tests}건: 통과 ${s.passed} · 실패 ${s.failures} · 오류 ${s.errors} · 건너뜀 ${s.skipped} (스위트 ${s.suites})`;
+      const head = r.success
+        ? `✅ 테스트 통과 — ${counts} — ${secs}s`
+        : r.timedOut
+          ? `⏱️ 테스트 시간 초과 — ${secs}s 후 중단 — 집계 ${counts}`
+          : `❌ 테스트 실패 — ${counts} — exit=${r.exitCode}, ${secs}s`;
+      const lines = [head, `- 명령: ${r.command}`, `- 디렉터리: ${r.cwd}`, `- 리포트: ${r.reportDir}${r.reportsFound ? "" : " (리포트 없음)"}`];
+
+      if (r.failures && r.failures.length) {
+        lines.push(``, `실패·오류 케이스 ${r.failures.length}${r.failuresTruncated ? "+" : ""}개:`);
+        for (const f of r.failures) {
+          const where = f.file ? ` @ ${f.file}${f.line ? ":" + f.line : ""}` : "";
+          const type = f.type ? ` [${f.type.split(".").pop()}]` : "";
+          lines.push(`  · ${f.suite}#${f.name}${type}${where}${f.message ? " — " + f.message.split("\n")[0].slice(0, 300) : ""}`);
+        }
+        if (r.failuresTruncated) lines.push(`  … maxFailures(${args.maxFailures}) 초과분은 ${r.reportDir} 리포트에서 확인`);
+      }
+      if (r.suites && r.suites.length) {
+        const bad = r.suites.filter((x) => x.failures || x.errors);
+        const shown = (bad.length ? bad : r.suites).slice(0, 30);
+        lines.push(``, bad.length ? `문제 스위트 ${bad.length}개:` : `스위트 ${r.suites.length}개:`);
+        for (const x of shown) lines.push(`  · ${x.name} — ${x.tests}건 (실패 ${x.failures}, 오류 ${x.errors}, 건너뜀 ${x.skipped})`);
+        if ((bad.length ? bad : r.suites).length > 30) lines.push(`  … 외 ${(bad.length ? bad : r.suites).length - 30}개`);
+      }
+      if (r.compileErrors && r.compileErrors.length) {
+        lines.push(``, `컴파일 오류 ${r.compileErrors.length}개(테스트 이전 단계):`);
+        for (const e of r.compileErrors.slice(0, 30)) {
+          lines.push(`  · ${e.file}:${e.line}${e.column ? ":" + e.column : ""} — ${e.message}`);
+        }
+      }
+      if (!r.success && !r.reportsFound && !(r.compileErrors && r.compileErrors.length)) {
+        lines.push(``, `리포트가 생성되지 않았습니다 — 컴파일 실패, testFilter 불일치, 테스트 없음, 또는 DB 등 외부 의존성 오류일 수 있습니다. 아래 로그를 확인하세요.`);
       }
       if (r.logTail) {
         const label = r.logTruncated ? `마지막 ${args.maxLogLines}/${r.totalLogLines}줄` : `전체 ${r.totalLogLines}줄`;
