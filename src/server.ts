@@ -157,6 +157,12 @@ export function buildServer(): McpServer {
         ...(result.uncovered.length > 0
           ? [`- 미커버 목록: ${result.uncovered.map((project) => `${project.id}(${project.category})`).join(", ")}`]
           : []),
+        `- zip 조달 템플릿 지문: ${result.archivesChecked}종 대조, 차이 ${result.archiveDrift.length}건`,
+        ...result.archiveDrift.map((d) =>
+          d.error
+            ? `  - ${d.template}: 확인 실패 (${d.error})`
+            : `  - ${d.template}: sha256 ${d.pinnedSha256.slice(0, 12)}… → ${d.upstreamSha256} (${d.pinnedBytes} → ${d.upstreamBytes} bytes)`,
+        ),
         ...result.warnings.map((warning) => `- 경고: ${warning}`),
       ].join("\n");
       return { content: [{ type: "text", text }] };

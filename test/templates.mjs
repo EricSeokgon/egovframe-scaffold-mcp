@@ -69,5 +69,39 @@ assert.ok(
   "msa-common-components는 좌표/DB 자동 적용 없음을 안내해야 한다",
 );
 
+// ── v0.27.0: Initializr zip 조달 템플릿 (고정 commit + sha256 검증) ──
+// 실생성: batch-file-commandline — 지문 검증·pom 자리표시자·batch 경로의 globals.properties
+const z1 = await createProject({ ...base, projectName: "t-batch", template: "batch-file-commandline" });
+assert.equal(z1.archiveVerified, true, "zip 지문을 검증해야 한다");
+assert.match(z1.ref, /^[0-9a-f]{40}$/, "zip 템플릿은 고정 commit 으로 내려받아야 한다");
+assert.ok(z1.filesExtracted >= 40, "batch 파일을 생성해야 한다");
+const zPom = fs.readFileSync(path.join(z1.projectPath, "pom.xml"), "utf-8");
+assert.ok(!/###[A-Z_]+###/.test(zPom), "pom 자리표시자가 남으면 안 된다");
+assert.ok(zPom.includes("<groupId>egovframework.example</groupId>") && zPom.includes("<artifactId>t-batch</artifactId>"), "batch 프로젝트 좌표를 적용해야 한다");
+assert.ok(fs.existsSync(path.join(z1.projectPath, "src")) && !fs.existsSync(path.join(z1.projectPath, "main")), "zip 루트를 최상위 폴더로 오인해 잘라내면 안 된다");
+const zGlobals = fs.readFileSync(path.join(z1.projectPath, "src/main/resources/egovframework/batch/properties/globals.properties"), "utf-8");
+assert.match(zGlobals, /^Globals\.DbType = mysql$/m, "batch globals.properties 에 DbType 을 적용해야 한다");
+
+// 지문이 다르면 아무것도 만들지 않고 거부한다
+const pinned = TEMPLATES["batch-file-commandline"].archive.sha256;
+TEMPLATES["batch-file-commandline"].archive.sha256 = "0".repeat(64);
+await assert.rejects(
+  () => createProject({ ...base, projectName: "t-batch-bad", template: "batch-file-commandline" }),
+  /지문이 고정값과 다릅니다/,
+  "지문 불일치를 거부해야 한다",
+);
+TEMPLATES["batch-file-commandline"].archive.sha256 = pinned;
+assert.ok(!fs.existsSync(path.join(tmp, "t-batch-bad")), "지문 불일치 시 디렉터리를 만들면 안 된다");
+
+// ref 를 직접 주면 검증을 건너뛰고 그 사실을 알린다
+const z2 = await createProject({ ...base, projectName: "t-batch-ref", template: "batch-file-commandline", ref: "main", dryRun: true });
+assert.equal(z2.archiveVerified, false, "ref 지정 시 지문 검증을 생략해야 한다");
+assert.ok(z2.customized.some((c) => c.includes("검증을 건너뜁니다")), "검증 생략을 안내해야 한다");
+
+// dryRun: 멀티 프로젝트 zip
+const z3 = await createProject({ ...base, projectName: "t-msa-portal", template: "msa-portal-backend", dryRun: true });
+assert.ok(z3.filesExtracted > 100 && z3.archiveVerified === true, "msa-portal-backend dryRun 계획과 지문 검증");
+assert.ok(z3.customized.some((c) => c.includes("멀티 프로젝트")), "msa-portal-backend 는 자동 적용 없음을 안내해야 한다");
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log("templates OK");

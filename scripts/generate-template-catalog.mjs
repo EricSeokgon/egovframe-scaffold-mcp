@@ -83,6 +83,10 @@ export function fromMcpTemplates(templates) {
     branch: t.branch,
     description: t.description,
     multiProject: Boolean(t.multiProject),
+    // zip 조달 템플릿은 고정 지문을 카탈로그에 함께 싣는다 — sync 가 upstream LFS 포인터와 대조한다
+    ...(t.archive
+      ? { archive: { kind: t.archive.kind, commit: t.archive.commit, path: t.archive.path, sha256: t.archive.sha256, bytes: t.archive.bytes } }
+      : {}),
   }));
 }
 
@@ -101,7 +105,9 @@ export function mergeCatalog(initializrEntries, mcpEntries, mapping) {
     return {
       ...e,
       mcpTemplate,
-      mcp: mcp ? { repository: mcp.repository, branch: mcp.branch, multiProject: mcp.multiProject } : null,
+      mcp: mcp
+        ? { repository: mcp.repository, branch: mcp.branch, multiProject: mcp.multiProject, ...(mcp.archive ? { archive: mcp.archive } : {}) }
+        : null,
       ...(curated.note ? { note: curated.note } : {}),
     };
   });
