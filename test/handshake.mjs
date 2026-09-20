@@ -53,4 +53,33 @@ assert(new Set(tools.map((t) => t.name)).size === tools.length, "도구 이름 �
 const ci = tools.find((t) => t.name === "generate_egovframe_ci");
 assert(typeof ci?.inputSchema?.properties?.jdk?.pattern === "string", "generate_egovframe_ci.jdk 에 패턴 제약 노출");
 
+// ── bin symlink 경유 기동 (POSIX 의 npx / node_modules/.bin 경로) ──
+// npm 은 POSIX 에서 bin 을 symlink 로 설치한다. symlink 로 실행해도 서버가 떠야 한다.
+if (process.platform !== "win32") {
+  const { mkdtempSync, symlinkSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const pathMod = await import("node:path");
+  const binDir = mkdtempSync(pathMod.join(tmpdir(), "hs-bin-"));
+  const link = pathMod.join(binDir, "egovframe-scaffold-mcp");
+  symlinkSync(entry, link);
+  const viaLink = spawn(process.execPath, [link], { stdio: ["pipe", "pipe", "ignore"] });
+  let out = "";
+  const got = new Promise((resolve) => {
+    const timer = setTimeout(resolve, 10000);
+    viaLink.stdout.on("data", (d) => { out += d.toString(); if (out.includes("\n")) { clearTimeout(timer); resolve(); } });
+    viaLink.on("close", () => { clearTimeout(timer); resolve(); });
+  });
+  viaLink.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "handshake-test", version: "0" } } }) + "\n");
+  await got;
+  viaLink.kill();
+  let linkInfo; try { linkInfo = JSON.parse(out.split("\n")[0]).result?.serverInfo; } catch { /* 응답 없음 */ }
+  assert(linkInfo?.version === pkg.version, "bin symlink 로 실행해도 서버가 기동됨 (npx 경로)");
+  rmSync(binDir, { recursive: true, force: true });
+}
+
+const { isMainModule } = await import("../dist/index.js");
+assert(isMainModule(entry, new URL("../dist/index.js", import.meta.url).href) === true, "isMainModule: 진입점 일치");
+assert(isMainModule(fileURLToPath(import.meta.url), new URL("../dist/index.js", import.meta.url).href) === false, "isMainModule: 다른 파일이면 false (라이브러리 import)");
+assert(isMainModule(undefined) === false, "isMainModule: argv 없음");
+
 if (process.exitCode) console.error("handshake FAIL"); else console.log("handshake OK");

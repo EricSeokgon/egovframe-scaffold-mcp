@@ -11,18 +11,19 @@
 Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
 프로젝트를 만들고 공통컴포넌트·AI 계층을 조립할 수 있습니다. 기존 프로젝트 진단, 리포트, 안전한 upstream 재동기화도 지원합니다.
 
-현재 v0.25.2는 **도구 21종, 공식 템플릿 10종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
+현재 v0.25.3은 **도구 21종, 공식 템플릿 10종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
 ## 진행 현황 (2026-09-13)
 
-- **소스 기준**: v0.25.2(`package.json`), 도구 21종·공식 템플릿 10종·카탈로그 190항목.
+- **소스 기준**: v0.25.3(`package.json`), 도구 21종·공식 템플릿 10종·카탈로그 190항목.
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
 - **v0.24.0 추가**: 공식 템플릿 커버리지 7 → 10종(`msa-common-components`·`mobile-device-api`·`ai-rag`, 모두 멀티 프로젝트). [PR #19](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/19).
 - **v0.25.0 추가**: `test_egovframe_project` — 테스트를 실행하고 빌드도구가 남기는 JUnit XML 리포트(surefire·gradle)를 읽어 스위트·케이스 단위로 결과를 구조화합니다. 실패 케이스의 메시지·예외 타입·테스트 파일/라인, `testFilter`(클래스/메서드 패턴), 이전 실행 리포트 제외, 종료 코드가 0이어도 리포트에 실패가 있으면 실패로 판정. 오프라인 54단언(`npm run test:test`).
 - **v0.25.2 추가**: 보안·안정성 보강 — `generate_egovframe_ci`의 `jdk` 입력 검증(생성 YAML 주입 차단), 빌드·테스트 타임아웃 시 프로세스 트리 종료(래퍼가 띄운 JVM 때문에 타임아웃이 걸려도 호출이 끝나지 않던 문제 해결), MCP handshake 서버 버전을 `package.json`과 일치, 의존성 갱신으로 `npm audit` 0건.
-- **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다. (v0.25.2는 2026-09-20 게시·태그 완료)
+- **v0.25.3 추가**: Linux·macOS에서 `npx egovframe-scaffold-mcp`(bin symlink 경유) 실행 시 서버가 기동하지 않고 종료되던 문제 수정, CI를 ubuntu·windows × Node 18·20·22 매트릭스로 확장.
+- **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 제공 도구
 
@@ -240,6 +241,11 @@ v0.25.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 
 ## 변경 이력
 
+- **0.25.3** — 기동 버그 수정 + CI 확장(도구 인터페이스 하위 호환).
+  - **npx 기동 실패 수정(Linux·macOS)**: 진입점 판정이 `process.argv[1]`의 파일명 끝을 `import.meta.url`과 비교하는 방식이어서, npm이 POSIX에서 bin을 symlink(`node_modules/.bin/egovframe-scaffold-mcp → dist/index.js`)로 설치하면 진입점이 아니라고 판단해 서버를 띄우지 않고 오류 없이 종료했습니다. README가 안내하는 `npx -y egovframe-scaffold-mcp` 설정이 Linux·macOS에서 동작하지 않던 원인입니다(Windows는 `.cmd` shim이 `dist/index.js`를 직접 실행해 영향 없음, `node dist/index.js` 직접 실행도 영향 없음). 양쪽 경로를 realpath로 풀어 비교하도록 바꾸고, symlink 경유 기동을 회귀 테스트로 고정했습니다(`npm run test:handshake`).
+  - **CI**: 릴리스 게이트를 ubuntu·windows × Node 18·20·22 매트릭스로 실행하고, 공식 저장소를 내려받는 통합 테스트는 별도 job(ubuntu/Node 20)으로 분리했습니다. bash 파이프라인이던 핸드셰이크 확인을 플랫폼 중립 테스트(`test:handshake`)로 대체해 `prepublishOnly`에 포함했고, 런타임 의존성 `npm audit`(high 이상) 단계를 추가했습니다.
+  - **테스트**: 타임아웃 시 프로세스 트리 종료 회귀 테스트를 node 손자 프로세스 기반으로 바꿔 Windows(`taskkill /T /F` 경로)에서도 실행합니다.
+  - **문서**: 게시 시점에 따라 틀어지던 "배포 상태" 문구를 npm 배지 단일 출처 방식으로 정리했습니다.
 - **0.25.2** — 보안·안정성 보강(도구 인터페이스 하위 호환).
   - `generate_egovframe_ci`: `jdk` 값이 생성 워크플로 YAML에 검증 없이 삽입되어 따옴표·줄바꿈으로 임의 step을 끼워 넣을 수 있던 문제를 수정했습니다. 숫자·점 형식(`17`, `21`, `1.8`, `17.0.9`)만 허용하며 도구 스키마와 함수 양쪽에서 거부합니다. 위반 시 파일을 만들지 않습니다.
   - `build_egovframe_project`·`test_egovframe_project`: 타임아웃 시 직접 자식 프로세스만 종료해, `mvnw`/`gradlew`가 띄운 JVM이 출력 파이프를 붙잡은 채 살아남으면 타임아웃이 지나도 호출이 끝나지 않던 문제를 수정했습니다(재현: `timeoutMs` 1초 설정에 30초 후 반환). POSIX는 프로세스 그룹 단위 SIGKILL, Windows는 `taskkill /T /F`로 트리를 종료하고, 그래도 파이프가 닫히지 않으면 2초 유예 후 결과를 반환합니다. 실제 프로세스를 띄우는 회귀 테스트를 추가했습니다(`npm run test:build`).
