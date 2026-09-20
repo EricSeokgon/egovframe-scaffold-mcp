@@ -7,8 +7,45 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-test:
+  # 릴리스 게이트(빌드 + 오프라인 테스트 + MCP 핸드셰이크)를 지원 범위 전체에서 실행한다.
+  # engines(node >=18)와 Windows 경로(프로세스 트리 종료, 경로 구분자, .cmd 래퍼)를 함께 검증한다.
+  gate:
+    name: gate (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['18', '20', '22']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release gate (build + offline tests + handshake)
+        run: npm run prepublishOnly
+
+      - name: Dependency audit (runtime)
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
+        run: npm audit --omit=dev --audit-level=high
+
+  # 공식 저장소를 실제로 내려받는 통합 테스트는 한 환경에서만 실행한다(네트워크·시간 비용).
+  integration:
+    name: integration (official templates & components)
+    needs: gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,6 +55,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -28,28 +66,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Release gate (build + offline tests)
-        run: npm run prepublishOnly
-
-      - name: MCP handshake (offline)
-        run: |
-          printf '%s\n%s\n' \
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-          | node dist/index.js 2>/dev/null | grep -q '"create_egovframe_project"' \
-          && printf '%s\n%s\n' \
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-          | node dist/index.js 2>/dev/null | grep -q '"add_egovframe_components"' \
-          && printf '%s\n%s\n' \
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-          | node dist/index.js 2>/dev/null | grep -q '"sync_egovframe_catalog"' \
-          && printf '%s\n%s\n' \
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-          | node dist/index.js 2>/dev/null | grep -q '"generate_egovframe_crud"' \
-          && echo "handshake OK" || (echo "handshake FAILED" && exit 1)
+      - name: Build
+        run: npm run build
 
       - name: Smoke test (downloads official templates)
         run: npm run smoke

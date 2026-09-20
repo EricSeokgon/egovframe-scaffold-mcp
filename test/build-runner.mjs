@@ -126,31 +126,46 @@ assert(threwDir, "없는 디렉터리면 예외");
 let threwNoBuild = false; try { await runBuild({ projectDir: empty }); } catch { threwNoBuild = true; }
 assert(threwNoBuild, "빌드파일 없으면 예외");
 
-// ── defaultRunner: 타임아웃 시 프로세스 트리 종료 (실제 프로세스, POSIX) ──
-// 래퍼(mvnw)가 띄운 손자 프로세스가 stdout 을 붙잡고 살아남으면 타임아웃이 걸려도
-// 호출이 끝나지 않던 회귀를 막는다.
-if (process.platform !== "win32") {
-  const { writeFileSync: wf, readFileSync: rf, chmodSync } = await import("node:fs");
+// ── defaultRunner: 타임아웃 시 프로세스 트리 종료 (실제 프로세스, POSIX·Windows) ──
+// 래퍼(mvnw / mvnw.cmd)가 띄운 손자 프로세스가 stdout 을 붙잡고 살아남으면 타임아웃이 걸려도
+// 호출이 끝나지 않던 회귀를 막는다. 손자 프로세스는 플랫폼 중립적으로 node 자신을 쓴다.
+{
+  const { writeFileSync: wf, readFileSync: rf, chmodSync, existsSync: ex } = await import("node:fs");
+  const isWin = process.platform === "win32";
   const tree = mkdtempSync(path.join(tmpdir(), "br-tree-"));
   wf(path.join(tree, "pom.xml"), "<project/>");
-  wf(path.join(tree, "mvnw"), "#!/bin/sh\nsleep 30 &\necho $! > child.pid\nwait\n");
-  chmodSync(path.join(tree, "mvnw"), 0o755);
+  // JVM 대역: pid 를 남기고 stdout 을 연 채 60초간 살아 있는다.
+  wf(
+    path.join(tree, "child.cjs"),
+    "require('node:fs').writeFileSync(require('node:path').join(__dirname,'child.pid'),String(process.pid));\n" +
+      "console.log('child started');\nsetTimeout(()=>{},60000);\n",
+  );
+  if (isWin) {
+    wf(path.join(tree, "mvnw.cmd"), `@echo off\r\n"${process.execPath}" "%~dp0child.cjs"\r\n`);
+  } else {
+    wf(path.join(tree, "mvnw"), `#!/bin/sh\n"${process.execPath}" "$(dirname "$0")/child.cjs" &\nwait\n`);
+    chmodSync(path.join(tree, "mvnw"), 0o755);
+  }
   const t0 = Date.now();
-  const treeRes = await runBuild({ projectDir: tree, goal: "compile", timeoutMs: 1000 });
+  const treeRes = await runBuild({ projectDir: tree, goal: "compile", timeoutMs: 2500 });
   const elapsed = Date.now() - t0;
+  assert(treeRes.usedWrapper === true, "실제 실행: 래퍼 사용");
   assert(treeRes.timedOut === true && treeRes.success === false, "실제 타임아웃 판정");
-  assert(elapsed < 8000, `타임아웃 후 즉시 반환 (${elapsed}ms)`);
-  const childPid = Number(rf(path.join(tree, "child.pid"), "utf-8").trim());
-  // 종료 직후에는 회수 전(zombie) 상태로 잠시 남을 수 있어 최대 3초간 확인한다.
+  assert(elapsed < 10000, `타임아웃 후 즉시 반환 (${elapsed}ms)`);
+  const pidFile = path.join(tree, "child.pid");
+  assert(ex(pidFile), "손자 프로세스가 실제로 기동됨");
+  const childPid = ex(pidFile) ? Number(rf(pidFile, "utf-8").trim()) : 0;
+  // 종료 직후에는 회수 전(zombie) 상태로 잠시 남을 수 있어 최대 5초간 확인한다.
   const isRunning = (pid) => {
     try { process.kill(pid, 0); } catch { return false; }
+    if (isWin) return true;
     try { return !/^\d+ \(.*\) Z /.test(rf(`/proc/${pid}/stat`, "utf-8")); } catch { return true; }
   };
-  let alive = true;
-  for (let i = 0; i < 30 && alive; i++) { alive = isRunning(childPid); if (alive) await new Promise((r) => setTimeout(r, 100)); }
+  let alive = childPid > 0;
+  for (let i = 0; i < 50 && alive; i++) { alive = isRunning(childPid); if (alive) await new Promise((r) => setTimeout(r, 100)); }
   assert(!alive, "손자 프로세스(JVM 대역)까지 종료");
   if (alive) { try { process.kill(childPid, "SIGKILL"); } catch {} }
-  rmSync(tree, { recursive: true, force: true });
+  try { rmSync(tree, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch {}
 }
 
 // ── 정리 ───────────────────────────────────────────
