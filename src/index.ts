@@ -39,13 +39,23 @@ export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from ".
 export { ProjectFileTransaction, TransactionError, withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 export type { RollbackFailure, RollbackReport } from "./file-transaction.js";
 export { ALLOWED_ROOTS_ENV, AllowedRootsError, assertPathAllowed, describeAllowedRoots, enforceAllowedRoots, loadAllowedRoots } from "./allowed-roots.js";
-export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capOutput, defaultRunner, runBuild } from "./build-runner.js";
+export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capOutput, defaultRunner, killProcessTree, KILL_GRACE_MS, runBuild } from "./build-runner.js";
 export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerResult, BuildRunResult } from "./build-runner.js";
 export { reportDirFor, resolveTestArgs, validateTestFilter, locateInStack, parseJUnitXml, snapshotReports, readJUnitReports, summarizeReports, runTests } from "./test-runner.js";
 export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRunResult, ParsedReport } from "./test-runner.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
+
+/** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
+export const SERVER_VERSION: string = (() => {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf-8")) as { version?: unknown };
+    return typeof pkg.version === "string" && pkg.version ? pkg.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
 
 /** 지원 템플릿 목록 (공식 eGovFramework 조직 저장소) */
 export const TEMPLATES: Record<
@@ -2257,7 +2267,19 @@ function detectBuildTool(projectDir: string): "maven" | "gradle" {
   throw new Error(`빌드 파일(pom.xml·build.gradle)을 찾지 못했습니다: ${projectDir}`);
 }
 
-export function generateCiYaml(buildTool: "maven" | "gradle", jdk: string): string {
+/** setup-java 의 java-version 으로 허용하는 형식: 8, 17, 21, 1.8, 17.0.9 등 숫자·점만. */
+export const CI_JDK_RE = /^[0-9]{1,2}(\.[0-9]{1,3}){0,2}$/;
+
+/** YAML 에 그대로 삽입되는 값이므로 따옴표·줄바꿈 등 구조를 깨는 입력을 거부한다. */
+export function validateCiJdk(jdk: string): string {
+  const v = jdk.trim();
+  if (!CI_JDK_RE.test(v))
+    throw new Error(`jdk 는 숫자와 점으로 된 버전이어야 합니다 (예: 17, 21, 1.8): ${JSON.stringify(jdk)}`);
+  return v;
+}
+
+export function generateCiYaml(buildTool: "maven" | "gradle", jdkInput: string): string {
+  const jdk = validateCiJdk(jdkInput);
   const buildStep = buildTool === "maven"
     ? "      - run: mvn -B verify"
     : "      - run: chmod +x ./gradlew\n      - run: ./gradlew build --no-daemon";
@@ -2312,7 +2334,7 @@ function extractDocSnippet(body: string, terms: string[]): string {
 }
 
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: "0.23.0" });
+  const server = new McpServer({ name: "egovframe-scaffold-mcp", version: SERVER_VERSION });
 
   server.tool(
     "list_egovframe_templates",
@@ -2990,7 +3012,7 @@ export function buildServer(): McpServer {
     "프로젝트에 GitHub Actions CI 워크플로(빌드·테스트)를 생성합니다. 빌드도구(maven/gradle) 자동 감지, JDK 지정. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다.",
     {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
-      jdk: z.string().default("17").describe("JDK 버전 (기본 17)"),
+      jdk: z.string().regex(CI_JDK_RE, "숫자와 점으로 된 버전만 허용 (예: 17, 21, 1.8)").default("17").describe("JDK 버전 (기본 17, 숫자·점만 허용)"),
       dryRun: z.boolean().default(false).describe("true면 파일 생성 없이 내용만 반환"),
     },
     async (args) => {

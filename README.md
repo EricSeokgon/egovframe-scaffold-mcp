@@ -11,17 +11,18 @@
 Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
 프로젝트를 만들고 공통컴포넌트·AI 계층을 조립할 수 있습니다. 기존 프로젝트 진단, 리포트, 안전한 upstream 재동기화도 지원합니다.
 
-현재 v0.25.1은 **도구 21종, 공식 템플릿 10종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
+현재 v0.25.2는 **도구 21종, 공식 템플릿 10종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
 ## 진행 현황 (2026-09-13)
 
-- **소스 기준**: v0.25.0(`package.json`), 도구 21종·공식 템플릿 10종·카탈로그 190항목.
+- **소스 기준**: v0.25.2(`package.json`), 도구 21종·공식 템플릿 10종·카탈로그 190항목.
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
 - **v0.24.0 추가**: 공식 템플릿 커버리지 7 → 10종(`msa-common-components`·`mobile-device-api`·`ai-rag`, 모두 멀티 프로젝트). [PR #19](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/19).
 - **v0.25.0 추가**: `test_egovframe_project` — 테스트를 실행하고 빌드도구가 남기는 JUnit XML 리포트(surefire·gradle)를 읽어 스위트·케이스 단위로 결과를 구조화합니다. 실패 케이스의 메시지·예외 타입·테스트 파일/라인, `testFilter`(클래스/메서드 패턴), 이전 실행 리포트 제외, 종료 코드가 0이어도 리포트에 실패가 있으면 실패로 판정. 오프라인 54단언(`npm run test:test`).
-- **배포 상태**: 저장소 소스와 npm 배포본 모두 **v0.25.1** 입니다(2026-09-13 실측). 미배포 상태였던 v0.24.0·v0.25.0을 함께 게시했고, npm 페이지에 남아 있던 옛 배포 문구는 v0.25.1에서 정정했습니다.
+- **v0.25.2 추가**: 보안·안정성 보강 — `generate_egovframe_ci`의 `jdk` 입력 검증(생성 YAML 주입 차단), 빌드·테스트 타임아웃 시 프로세스 트리 종료(래퍼가 띄운 JVM 때문에 타임아웃이 걸려도 호출이 끝나지 않던 문제 해결), MCP handshake 서버 버전을 `package.json`과 일치, 의존성 갱신으로 `npm audit` 0건.
+- **배포 상태**: npm 배포본은 **v0.25.1**(2026-09-13 실측), 저장소 소스는 v0.25.2 입니다. v0.25.2는 게시 전입니다.
 
 ## 제공 도구
 
@@ -54,9 +55,9 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - `projectName` — 프로젝트명(artifactId). 소문자·숫자·하이픈 (예: `my-egov-app`)
 - `groupId` — 자바 groupId (예: `egovframework.example`)
 - `database` — `hsql`(기본) | `mysql` | `oracle` | `altibase` | `tibero` (템플릿 `Globals.DbType` 지원 값)
-- `template` — `simple-backend`(기본, Spring Boot REST) | `simple-react` | `simple-homepage` | `portal-site` | `enterprise-business` | `web-sample` | `msa-edu`
+- `template` — `simple-backend`(기본, Spring Boot REST) | `simple-react` | `simple-homepage` | `portal-site` | `enterprise-business` | `web-sample` | `msa-edu` | `msa-common-components` | `mobile-device-api` | `ai-rag` (전체 10종, `list_egovframe_templates`로 확인)
   - 레거시 템플릿(simple-homepage·portal-site·enterprise-business·web-sample)은 `egovProps/globals.properties`의 `Globals.DbType`에 DB 타입을 적용합니다.
-  - `msa-edu`는 멀티 프로젝트(backend/frontend/k8s)라 좌표·DB 자동 적용 없이 원본 그대로 생성하고 README 안내를 반환합니다.
+  - `msa-edu`·`msa-common-components`·`mobile-device-api`·`ai-rag`는 멀티 프로젝트라 좌표·DB 자동 적용 없이 원본 그대로 생성하고 README 안내를 반환합니다.
 - `outputDir` — 생성 위치 상위 디렉터리
 - `ref` — (선택) 내려받을 브랜치/태그. 미지정 시 템플릿 기본 브랜치. 예: `main`, `v4.3.0`
 - `dryRun` — (선택, 기본 `false`) `true`면 디스크에 쓰지 않고 생성 예정 파일 수·적용 설정만 미리보기
@@ -196,7 +197,7 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 - 리포트 레벨: 픽스처로 `generate_egovframe_report`의 컴포넌트·테이블·가이드 링크 렌더링 검증 (`npm run test:report`, 네트워크 불필요)
 - 업그레이드 레벨: 3-way 판정 6분류(unchanged/update/user-modified/conflict/added/removed)·v1 보수모드·정상 적용/백업 계획·파일/매니페스트 fault-injection rollback·상위 symlink 경계 검증 (`npm run test:upgrade`, 네트워크 불필요)
 - 컴포넌트 설명 레벨: `explain_egovframe_component`의 의존성(직접·전이)·역의존·테이블·가이드 URL·미존재 예외 검증 (`npm run test:explain`, 네트워크 불필요)
-- CI 생성 레벨: `generate_egovframe_ci`의 maven/gradle 감지·YAML·dryRun 무기록·기존 파일 거부·빌드파일 부재 예외 검증 (`npm run test:ci`, 네트워크 불필요)
+- CI 생성 레벨: `generate_egovframe_ci`의 maven/gradle 감지·YAML·dryRun 무기록·기존 파일 거부·빌드파일 부재 예외·`jdk` 주입 입력 거부 검증 (`npm run test:ci`, 네트워크 불필요)
 - CRUD 생성 레벨: 공식 wizard 그룹, Classic/Boot 분기, DB 생성키, JUnit 5, dryRun, PK·경로 검증, 충돌 시 전체 무기록 검증 (`npm run test:crud`, 네트워크 불필요)
 - CRUD 컴파일 레벨: 공식 simple-backend/Boot CRUD 7파일과 web-sample/Classic CRUD 9파일 생성 → JDK 17에서 `mvn -q -DskipTests compile` (`npm run test:crud-integration`, 네트워크 필요, CI 실행)
 - 안전성 레벨: 19개 도구 공통 허용 root의 미설정 호환·격리·`..` 이탈·symlink 우회·다중 root·비대상 인자 무해 6케이스와 구조화 rollback 필드를 검증합니다 (`npm run test:allowed-roots`, `npm run test:transaction`, 네트워크 불필요).
@@ -238,6 +239,12 @@ v0.25.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 
 ## 변경 이력
 
+- **0.25.2** — 보안·안정성 보강(도구 인터페이스 하위 호환).
+  - `generate_egovframe_ci`: `jdk` 값이 생성 워크플로 YAML에 검증 없이 삽입되어 따옴표·줄바꿈으로 임의 step을 끼워 넣을 수 있던 문제를 수정했습니다. 숫자·점 형식(`17`, `21`, `1.8`, `17.0.9`)만 허용하며 도구 스키마와 함수 양쪽에서 거부합니다. 위반 시 파일을 만들지 않습니다.
+  - `build_egovframe_project`·`test_egovframe_project`: 타임아웃 시 직접 자식 프로세스만 종료해, `mvnw`/`gradlew`가 띄운 JVM이 출력 파이프를 붙잡은 채 살아남으면 타임아웃이 지나도 호출이 끝나지 않던 문제를 수정했습니다(재현: `timeoutMs` 1초 설정에 30초 후 반환). POSIX는 프로세스 그룹 단위 SIGKILL, Windows는 `taskkill /T /F`로 트리를 종료하고, 그래도 파이프가 닫히지 않으면 2초 유예 후 결과를 반환합니다. 실제 프로세스를 띄우는 회귀 테스트를 추가했습니다(`npm run test:build`).
+  - MCP handshake의 서버 버전이 `0.23.0`으로 고정되어 있던 것을 `package.json` 버전을 읽도록 변경했습니다.
+  - 의존성: `adm-zip` 0.6.1(0.6.0 이하 대상 symlink 추종·선언 크기 메모리 할당 권고 해소)과 MCP SDK 전이 의존성(hono·fast-uri·ip-address·qs)을 갱신해 `npm audit` 0건입니다.
+  - 문서: `create_egovframe_project` 템플릿 목록을 실제 10종으로 정정했습니다.
 - **0.25.1** — 문서 정정(코드 변경 없음): v0.25.0 시점까지 README 에 남아 있던 "npm 은 v0.23.0 까지 배포" 문구를 실제 배포 상태로 갱신했습니다. npm 패키지 페이지는 게시된 tarball 의 README 를 보여주므로, 문구 정정을 반영하려면 새 버전 게시가 필요해 패치 버전을 올렸습니다.
 - **0.25.0** — 테스트 실행·리포트 구조화: `test_egovframe_project` 추가. `build_egovframe_project(goal=test)`가 종료 코드와 로그만 돌려주던 한계를 보완해, 빌드도구가 쓰는 JUnit XML 리포트(maven-surefire `target/surefire-reports`, gradle `build/test-results/test`)를 1차 근거로 읽습니다. 스위트별 통과·실패·오류·건너뜀과 실패 케이스의 메시지·예외 타입·스택트레이스 내 테스트 클래스 프레임(파일:라인)을 반환하고, `testFilter`는 빌드도구 문법 그대로(`-Dtest=… -Dsurefire.failIfNoSpecifiedTests=false` / `--tests …`) 전달하되 인자 해석을 깨는 문자를 거부합니다. 이번 실행 이전의 리포트는 mtime으로 제외하고, 종료 코드가 0이어도 리포트에 실패가 있으면(`testFailureIgnore`) 실패로 판정하며, 리포트가 없으면 컴파일 오류(로그 파싱)와 원인 후보를 안내합니다. 타임아웃·로그 상한·허용 root·dryRun은 build 도구와 동일. 오프라인 54단언(`npm run test:test`), 외부 의존성 없음. 기존 20개 도구 하위 호환.
 - **0.24.0** — 공식 템플릿 커버리지 확대(7 → **10종**): eGovFrame VSCode Initializr 카탈로그(22항목)와 대조해 MCP가 다루지 않던 공식 자산을 식별하고, GitHub 공개 저장소로 제공되는 `msa-common-components`(MSA 공통컴포넌트, KRDS)·`mobile-device-api`(디바이스 API)·`ai-rag`(Spring AI·LangChain4j RAG 예제)를 추가했습니다. 세 템플릿 모두 하위 모듈을 가진 멀티 프로젝트이므로 `multiProject`로 표시해 좌표·DB 자동 재작성을 건너뛰고 하위 모듈 참조를 보호하며, 생성 결과에 좌표/DB 자동 적용이 없음을 명시합니다. `npm run test:templates`에 등록·표시·공식 저장소 경로 검증과 실제 아카이브를 내려받는 dryRun 통합 검증을 추가했습니다. 기존 7종·전체 도구 하위 호환.

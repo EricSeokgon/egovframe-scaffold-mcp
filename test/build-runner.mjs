@@ -126,6 +126,33 @@ assert(threwDir, "없는 디렉터리면 예외");
 let threwNoBuild = false; try { await runBuild({ projectDir: empty }); } catch { threwNoBuild = true; }
 assert(threwNoBuild, "빌드파일 없으면 예외");
 
+// ── defaultRunner: 타임아웃 시 프로세스 트리 종료 (실제 프로세스, POSIX) ──
+// 래퍼(mvnw)가 띄운 손자 프로세스가 stdout 을 붙잡고 살아남으면 타임아웃이 걸려도
+// 호출이 끝나지 않던 회귀를 막는다.
+if (process.platform !== "win32") {
+  const { writeFileSync: wf, readFileSync: rf, chmodSync } = await import("node:fs");
+  const tree = mkdtempSync(path.join(tmpdir(), "br-tree-"));
+  wf(path.join(tree, "pom.xml"), "<project/>");
+  wf(path.join(tree, "mvnw"), "#!/bin/sh\nsleep 30 &\necho $! > child.pid\nwait\n");
+  chmodSync(path.join(tree, "mvnw"), 0o755);
+  const t0 = Date.now();
+  const treeRes = await runBuild({ projectDir: tree, goal: "compile", timeoutMs: 1000 });
+  const elapsed = Date.now() - t0;
+  assert(treeRes.timedOut === true && treeRes.success === false, "실제 타임아웃 판정");
+  assert(elapsed < 8000, `타임아웃 후 즉시 반환 (${elapsed}ms)`);
+  const childPid = Number(rf(path.join(tree, "child.pid"), "utf-8").trim());
+  // 종료 직후에는 회수 전(zombie) 상태로 잠시 남을 수 있어 최대 3초간 확인한다.
+  const isRunning = (pid) => {
+    try { process.kill(pid, 0); } catch { return false; }
+    try { return !/^\d+ \(.*\) Z /.test(rf(`/proc/${pid}/stat`, "utf-8")); } catch { return true; }
+  };
+  let alive = true;
+  for (let i = 0; i < 30 && alive; i++) { alive = isRunning(childPid); if (alive) await new Promise((r) => setTimeout(r, 100)); }
+  assert(!alive, "손자 프로세스(JVM 대역)까지 종료");
+  if (alive) { try { process.kill(childPid, "SIGKILL"); } catch {} }
+  rmSync(tree, { recursive: true, force: true });
+}
+
 // ── 정리 ───────────────────────────────────────────
 for (const d of [mv, gr, grk, empty, mvw, mvwWin, grw, grwWin]) rmSync(d, { recursive: true, force: true });
 if (process.exitCode) console.error("build-runner FAIL"); else console.log("build-runner OK");
