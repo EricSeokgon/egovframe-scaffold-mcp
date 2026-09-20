@@ -1,0 +1,486 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/generate-template-catalog.mjs",
+  "sources": {
+    "initializr": {
+      "repository": "eGovFramework/egovframe-vscode-initializr",
+      "branch": "main",
+      "path": "templates/templates-projects.json",
+      "surveyedAt": "2026-09-20",
+      "entries": 22,
+      "sha256": "50394b91144e8d20f0f5d3fb138ab48cad3c3a28818f2906a2f38b07bfb9edef"
+    },
+    "development": {
+      "repository": "eGovFramework/egovframe-development",
+      "branch": "main",
+      "path": "egovframework.dev.imp.templates/src/main/resources/eGovFrameTemplates/wizards.xml",
+      "surveyedAt": "2026-09-20",
+      "categories": 8,
+      "wizards": 22,
+      "sha256": "077d3dc0a332a9ef60f06869a3ec4c9c86f517a74168850f715dcc461bea7ff6"
+    },
+    "mcp": {
+      "source": "src/index.ts TEMPLATES",
+      "templates": 10
+    }
+  },
+  "coverage": {
+    "initializrProjects": 22,
+    "coveredByMcp": 9,
+    "uncovered": 13,
+    "mcpTemplates": 10,
+    "mcpOnly": 2
+  },
+  "projects": [
+    {
+      "id": "egov-web",
+      "displayName": "Web Project",
+      "category": "Web",
+      "description": "Basic eGovFrame web application project",
+      "initializr": {
+        "fileName": "egovframe-web.zip",
+        "pomFile": "egovframe-web-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null,
+      "note": "빈 웹 프로젝트 골격이다. MCP 의 web-sample(egovframe-web-sample)은 게시판 샘플이라 같은 산출물로 보지 않는다"
+    },
+    {
+      "id": "egov-template-simple",
+      "displayName": "Template > Simple Homepage",
+      "category": "Template",
+      "description": "Simple homepage template with basic functionalities",
+      "initializr": {
+        "fileName": "egovframe-template-simple.zip",
+        "pomFile": "egovframe-template-simple-pom.xml"
+      },
+      "mcpTemplate": "simple-homepage",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-simple-homepage-template",
+        "branch": "main",
+        "multiProject": false
+      }
+    },
+    {
+      "id": "egov-template-portal",
+      "displayName": "Template > Portal Site",
+      "category": "Template",
+      "description": "Portal site template for enterprise applications",
+      "initializr": {
+        "fileName": "egovframe-template-portal.zip",
+        "pomFile": "egovframe-template-portal-pom.xml"
+      },
+      "mcpTemplate": "portal-site",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-portal-site-template",
+        "branch": "main",
+        "multiProject": false
+      }
+    },
+    {
+      "id": "egov-template-enterprise",
+      "displayName": "Template > Enterprise Business",
+      "category": "Template",
+      "description": "Enterprise business application template",
+      "initializr": {
+        "fileName": "egovframe-template-enterprise.zip",
+        "pomFile": "egovframe-template-enterprise-pom.xml"
+      },
+      "mcpTemplate": "enterprise-business",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-enterprise-business-template",
+        "branch": "main",
+        "multiProject": false
+      }
+    },
+    {
+      "id": "egov-template-common-components",
+      "displayName": "Template > Common Components",
+      "category": "Template",
+      "description": "Comprehensive common-components all-in-one project template",
+      "initializr": {
+        "fileName": "egovframe-template-common-components.zip",
+        "pomFile": "egovframe-template-common-components-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null,
+      "note": "공통컴포넌트 올인원 프로젝트. MCP 는 템플릿 통째로 받는 대신 list_egovframe_components / add_egovframe_components 로 선택 조립한다"
+    },
+    {
+      "id": "egov-boot-web",
+      "displayName": "Boot Web Project",
+      "category": "Boot",
+      "description": "Spring Boot based web project",
+      "initializr": {
+        "fileName": "egovframe-boot-web.zip",
+        "pomFile": "egovframe-boot-web-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-boot-simple-backend",
+      "displayName": "Boot Template > Simple Homepage (Backend)",
+      "category": "Boot",
+      "description": "Spring Boot simple homepage backend",
+      "initializr": {
+        "fileName": "egovframe-boot-simple-backend.zip",
+        "pomFile": "egovframe-boot-simple-backend-pom.xml"
+      },
+      "mcpTemplate": "simple-backend",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-template-simple-backend",
+        "branch": "main",
+        "multiProject": false
+      }
+    },
+    {
+      "id": "egov-boot-simple-frontend",
+      "displayName": "Boot Template > Simple Homepage (Frontend)",
+      "category": "Boot",
+      "description": "React-based frontend for simple homepage",
+      "initializr": {
+        "fileName": "egovframe-boot-simple-frontend.zip",
+        "pomFile": null
+      },
+      "mcpTemplate": "simple-react",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-template-simple-react",
+        "branch": "main",
+        "multiProject": false
+      }
+    },
+    {
+      "id": "egov-msa-boot-common-components",
+      "displayName": "MSA Boot Template > Common Components (KRDS)",
+      "category": "MSA",
+      "description": "MSA common components with KRDS integration",
+      "initializr": {
+        "fileName": "egovframe-msa-common-components.zip",
+        "pomFile": null
+      },
+      "mcpTemplate": "msa-common-components",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-msa-common-components",
+        "branch": "main",
+        "multiProject": true
+      }
+    },
+    {
+      "id": "egov-msa-portal-backend",
+      "displayName": "MSA Boot Template > Portal (Backend)",
+      "category": "MSA",
+      "description": "MSA portal backend services",
+      "initializr": {
+        "fileName": "egovframe-msa-portal-backend.zip",
+        "pomFile": null
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-msa-portal-frontend",
+      "displayName": "MSA Boot Template > Portal (Frontend)",
+      "category": "MSA",
+      "description": "MSA portal frontend application",
+      "initializr": {
+        "fileName": "egovframe-msa-portal-frontend.zip",
+        "pomFile": null
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-mobile-web",
+      "displayName": "Mobile Web Project",
+      "category": "Mobile",
+      "description": "Mobile web application project",
+      "initializr": {
+        "fileName": "egovframe-mobile-web.zip",
+        "pomFile": "egovframe-mobile-web-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-mobile-common-components",
+      "displayName": "Mobile Common Components Project",
+      "category": "Mobile",
+      "description": "Mobile template common-components project with hybrid app support",
+      "initializr": {
+        "fileName": "egovframe-mobile-common-components.zip",
+        "pomFile": "egovframe-mobile-common-components-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-mobile-deviceapi",
+      "displayName": "DeviceAPI Web Project",
+      "category": "Mobile",
+      "description": "Device API integration web project",
+      "initializr": {
+        "fileName": "egovframe-mobile-deviceapi.zip",
+        "pomFile": "egovframe-mobile-deviceapi-pom.xml"
+      },
+      "mcpTemplate": "mobile-device-api",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-mobile-device-api",
+        "branch": "main",
+        "multiProject": true
+      }
+    },
+    {
+      "id": "egov-boot-batch-scheduler-file",
+      "displayName": "Boot Batch Template > Scheduler (File)",
+      "category": "Batch",
+      "description": "File-based batch scheduler project",
+      "initializr": {
+        "fileName": "egovframe-boot-batch-file-scheduler.zip",
+        "pomFile": "egovframe-boot-batch-file-scheduler-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-boot-batch-commandline-file",
+      "displayName": "Boot Batch Template > CommandLine (File)",
+      "category": "Batch",
+      "description": "File-based command line batch project",
+      "initializr": {
+        "fileName": "egovframe-boot-batch-file-commandline.zip",
+        "pomFile": "egovframe-boot-batch-file-commandline-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-boot-batch-web-file",
+      "displayName": "Boot Batch Template > Web (File)",
+      "category": "Batch",
+      "description": "File-based web batch project",
+      "initializr": {
+        "fileName": "egovframe-boot-batch-file-web.zip",
+        "pomFile": "egovframe-boot-batch-file-web-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-boot-batch-scheduler-db",
+      "displayName": "Boot Batch Template > Scheduler (DB)",
+      "category": "Batch",
+      "description": "Database-based batch scheduler project",
+      "initializr": {
+        "fileName": "egovframe-boot-batch-db-scheduler.zip",
+        "pomFile": "egovframe-boot-batch-db-scheduler-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-boot-batch-commandline-db",
+      "displayName": "Boot Batch Template > CommandLine (DB)",
+      "category": "Batch",
+      "description": "Database-based command line batch project",
+      "initializr": {
+        "fileName": "egovframe-boot-batch-db-commandline.zip",
+        "pomFile": "egovframe-boot-batch-db-commandline-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-boot-batch-web-db",
+      "displayName": "Boot Batch Template > Web (DB)",
+      "category": "Batch",
+      "description": "Database-based web batch project",
+      "initializr": {
+        "fileName": "egovframe-boot-batch-db-web.zip",
+        "pomFile": "egovframe-boot-batch-db-web-pom.xml"
+      },
+      "mcpTemplate": null,
+      "mcp": null
+    },
+    {
+      "id": "egov-ai-rag-springai",
+      "displayName": "AI > RAG Project (Spring AI)",
+      "category": "AI",
+      "description": "RAG Project Using Spring AI and Redis Stack",
+      "initializr": {
+        "fileName": "egovframe-ai-rag-springai.zip",
+        "pomFile": "egovframe-ai-rag-springai-pom.xml"
+      },
+      "mcpTemplate": "ai-rag",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-ai-rag",
+        "branch": "main",
+        "multiProject": true
+      },
+      "note": "MCP 의 ai-rag 는 spring-ai·langchain4j 두 모듈을 함께 담은 멀티 프로젝트라 Initializr 의 두 항목이 같은 템플릿에 대응한다"
+    },
+    {
+      "id": "egov-ai-rag-langchain4j",
+      "displayName": "AI > RAG Project (Langchain4j)",
+      "category": "AI",
+      "description": "RAG Project Using Langchain4j and PostgreSQL",
+      "initializr": {
+        "fileName": "egovframe-ai-rag-langchain4j.zip",
+        "pomFile": "egovframe-ai-rag-langchain4j-pom.xml"
+      },
+      "mcpTemplate": "ai-rag",
+      "mcp": {
+        "repository": "eGovFramework/egovframe-ai-rag",
+        "branch": "main",
+        "multiProject": true
+      },
+      "note": "MCP 의 ai-rag 는 spring-ai·langchain4j 두 모듈을 함께 담은 멀티 프로젝트라 Initializr 의 두 항목이 같은 템플릿에 대응한다"
+    }
+  ],
+  "mcpOnly": [
+    {
+      "id": "web-sample",
+      "repository": "eGovFramework/egovframe-web-sample",
+      "branch": "main",
+      "multiProject": false,
+      "note": "Initializr 의 egov-web 은 빈 골격이라 대응 항목으로 보지 않는다"
+    },
+    {
+      "id": "msa-edu",
+      "repository": "eGovFramework/egovframe-msa-edu",
+      "branch": "main",
+      "multiProject": true,
+      "note": "Initializr 카탈로그에 없는 MCP 단독 템플릿(클라우드 네이티브 교육용 멀티 프로젝트)"
+    }
+  ],
+  "configWizards": [
+    {
+      "name": "CRUD",
+      "wizards": [
+        {
+          "description": "CRUD Program",
+          "template": "crud/wizard.xml"
+        }
+      ]
+    },
+    {
+      "name": "Cache",
+      "wizards": [
+        {
+          "description": "New Cache",
+          "template": "cache/cache.xml"
+        },
+        {
+          "description": "New Ehcache Configuration",
+          "template": "cache/ehcacheConfigForSpring.xml"
+        }
+      ]
+    },
+    {
+      "name": "Datasource",
+      "wizards": [
+        {
+          "description": "New Datasource",
+          "template": "datasource/datasource.xml"
+        },
+        {
+          "description": "New JNDI DataSource",
+          "template": "datasource/jndiDatasource.xml"
+        }
+      ]
+    },
+    {
+      "name": "Transaction",
+      "wizards": [
+        {
+          "description": "New Datasource Transaction",
+          "template": "transaction/transaction.xml"
+        },
+        {
+          "description": "New JPA Transaction",
+          "template": "transaction/jpa.xml"
+        },
+        {
+          "description": "New JTA Transaction",
+          "template": "transaction/jta.xml"
+        }
+      ]
+    },
+    {
+      "name": "ID Generation",
+      "wizards": [
+        {
+          "description": "New Sequence ID Generation",
+          "template": "idGeneration/sequenceId.xml"
+        },
+        {
+          "description": "New Table ID Generation",
+          "template": "idGeneration/tableId.xml"
+        },
+        {
+          "description": "New UUID Generation",
+          "template": "idGeneration/uuId.xml"
+        }
+      ]
+    },
+    {
+      "name": "Property",
+      "wizards": [
+        {
+          "description": "New Property",
+          "template": "property/property.xml"
+        }
+      ]
+    },
+    {
+      "name": "Scheduling",
+      "wizards": [
+        {
+          "description": "New Detail Bean Job",
+          "template": "scheduling/beanJob.xml"
+        },
+        {
+          "description": "New Method Invoking Job",
+          "template": "scheduling/methodJob.xml"
+        },
+        {
+          "description": "New Simple Trigger",
+          "template": "scheduling/simpleTrigger.xml"
+        },
+        {
+          "description": "New Cron Trigger",
+          "template": "scheduling/cronTrigger.xml"
+        },
+        {
+          "description": "New Scheduler",
+          "template": "scheduling/scheduler.xml"
+        }
+      ]
+    },
+    {
+      "name": "Logging",
+      "wizards": [
+        {
+          "description": "New Console Appender",
+          "template": "logging/console.xml"
+        },
+        {
+          "description": "New File Appender",
+          "template": "logging/file.xml"
+        },
+        {
+          "description": "New Rolling File Appender",
+          "template": "logging/rollingFile.xml"
+        },
+        {
+          "description": "New Time-Based Rolling File Appender",
+          "template": "logging/timeBasedRollingFile.xml"
+        },
+        {
+          "description": "New JDBC Appender",
+          "template": "logging/jdbc.xml"
+        }
+      ]
+    }
+  ]
+}

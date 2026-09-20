@@ -49,6 +49,10 @@ jobs:
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
           | node dist/index.js 2>/dev/null | grep -q '"generate_egovframe_crud"' \
+          && printf '%s\n%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+          | node dist/index.js 2>/dev/null | grep -q '"sync_egovframe_templates"' \
           && echo "handshake OK" || (echo "handshake FAILED" && exit 1)
 
       - name: Smoke test (downloads official templates)
