@@ -12,6 +12,7 @@ const REQUIRED_TOOLS = [
   "create_egovframe_project",
   "add_egovframe_components",
   "sync_egovframe_catalog",
+  "sync_egovframe_templates",
   "generate_egovframe_crud",
   "build_egovframe_project",
   "test_egovframe_project",
