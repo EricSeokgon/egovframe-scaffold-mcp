@@ -237,7 +237,7 @@ v0.25.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 
 상세 기획과 조사 근거는 [egovframe-contribution-notes의 v0.20+ 로드맵](https://github.com/EricSeokgon/egovframe-contribution-notes/blob/main/scaffold-mcp_v020%ED%94%8C%EB%9F%AC%EC%8A%A4_%EB%A1%9C%EB%93%9C%EB%A7%B5.md)에서 관리합니다.
 
-개발 기반 개선도 병행합니다: GitHub Actions와 `prepublishOnly` 전체 테스트 일치, lockfile 기반 재현 설치, 단일 `src/index.ts` 모듈 분리, Windows·한글 경로·대용량 zip 검증 강화.
+개발 기반 개선도 병행합니다: GitHub Actions와 `prepublishOnly` 전체 테스트 일치, lockfile 기반 재현 설치, Windows·한글 경로·대용량 zip 검증 강화. 단일 파일이던 `src/index.ts`(약 3,200줄)는 도메인별 모듈 14개로 분리했으며(공개 export·MCP 프로토콜 표면 불변), `index.ts`는 진입점과 공개 API 재수출만 담당합니다.
 
 ## 변경 이력
 
