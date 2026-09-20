@@ -17,6 +17,7 @@ import AdmZip from "adm-zip";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 import { withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
@@ -3204,7 +3205,25 @@ export function buildServer(): McpServer {
   return server;
 }
 
-const isMain = process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]));
+/**
+ * 이 파일이 실행 진입점인지 판정한다.
+ *
+ * POSIX 에서 npm 은 bin 을 `node_modules/.bin/egovframe-scaffold-mcp → dist/index.js` symlink 로 만들기 때문에
+ * `process.argv[1]` 은 symlink 경로(확장자·파일명이 다름)다. 파일명 끝을 비교하면 `npx egovframe-scaffold-mcp`
+ * 실행 시 진입점이 아니라고 판단해 서버를 띄우지 않고 조용히 종료하므로, 양쪽 모두 realpath 로 풀어 비교한다.
+ */
+export function isMainModule(argv1: string | undefined = process.argv[1], moduleUrl: string = import.meta.url): boolean {
+  if (!argv1) return false;
+  try {
+    const entry = fs.realpathSync(argv1);
+    const self = fs.realpathSync(fileURLToPath(moduleUrl));
+    return process.platform === "win32" ? entry.toLowerCase() === self.toLowerCase() : entry === self;
+  } catch {
+    return false;
+  }
+}
+
+const isMain = isMainModule();
 if (isMain) {
   const server = buildServer();
   const transport = new StdioServerTransport();
