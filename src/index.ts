@@ -14,6 +14,7 @@
  *   validate.ts    무결성 진단             diagnose.ts    기존 프로젝트 진단·리포트
  *   upgrade.ts     3-way 업그레이드        explain.ts     컴포넌트 설명
  *   guide.ts       가이드 문서 조회·검색   ci-config.ts   CI 워크플로 생성
+ *   template-catalog.ts  공식 템플릿 통합 카탈로그·upstream 대조
  *   crud.ts · catalog-sync.ts · build-runner.ts · test-runner.ts
  *   file-transaction.ts · allowed-roots.ts · shared.ts
  */
@@ -60,6 +61,17 @@ export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capO
 export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerResult, BuildRunResult } from "./build-runner.js";
 export { reportDirFor, resolveTestArgs, validateTestFilter, locateInStack, parseJUnitXml, snapshotReports, readJUnitReports, summarizeReports, runTests } from "./test-runner.js";
 export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRunResult, ParsedReport } from "./test-runner.js";
+export { loadTemplateCatalog, syncTemplateCatalog, diffProjects, normalizeInitializrProjects } from "./template-catalog.js";
+export type {
+  TemplateCatalog,
+  UnifiedProject,
+  McpOnlyTemplate,
+  ConfigWizardCategory,
+  TemplateCatalogCoverage,
+  TemplateDriftEntry,
+  TemplateSyncOptions,
+  TemplateSyncResult,
+} from "./template-catalog.js";
 
 /**
  * 이 파일이 실행 진입점인지 판정한다.

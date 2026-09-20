@@ -19,6 +19,7 @@ import { diagnoseProject, generateReport } from "./diagnose.js";
 import { upgradeProject } from "./upgrade.js";
 import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
+import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 
 /** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
 export const SERVER_VERSION: string = (() => {
@@ -29,6 +30,24 @@ export const SERVER_VERSION: string = (() => {
     return "0.0.0";
   }
 })();
+
+/** 통합 템플릿 카탈로그 요약 — 카탈로그 파일이 없어도 기본 목록은 계속 동작한다. */
+function unifiedTemplateSummary():
+  | { coverage: ReturnType<typeof loadTemplateCatalog>["coverage"]; uncovered: Array<{ id: string; category: string; displayName: string }>; mcpOnly: string[] }
+  | undefined {
+  try {
+    const catalog = loadTemplateCatalog();
+    return {
+      coverage: catalog.coverage,
+      uncovered: catalog.projects
+        .filter((project) => !project.mcpTemplate)
+        .map((project) => ({ id: project.id, category: project.category, displayName: project.displayName })),
+      mcpOnly: catalog.mcpOnly.map((template) => template.id),
+    };
+  } catch {
+    return undefined;
+  }
+}
 
 export function buildServer(): McpServer {
   const server = new McpServer({ name: "egovframe-scaffold-mcp", version: SERVER_VERSION });
@@ -41,7 +60,7 @@ export function buildServer(): McpServer {
       content: [
         {
           type: "text",
-          text: JSON.stringify({ templates: TEMPLATES, databases: DB_TYPES }, null, 2),
+          text: JSON.stringify({ templates: TEMPLATES, databases: DB_TYPES, unified: unifiedTemplateSummary() }, null, 2),
         },
       ],
     }),
@@ -100,6 +119,44 @@ export function buildServer(): McpServer {
         `- 아카이브: ${result.archive.files}개 파일, ${result.archive.bytes} bytes, sha256:${result.archive.sha256}`,
         `- sec.security: ${result.archive.securityPaths.length}개 파일`,
         `- 미매핑 경로: ${result.archive.unmappedComponentPaths.length}건`,
+        ...result.warnings.map((warning) => `- 경고: ${warning}`),
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+  server.tool(
+    "sync_egovframe_templates",
+    "공식 프로젝트 템플릿 통합 카탈로그(Initializr·MCP·Development)를 upstream 과 대조해 추가·삭제·변경과 MCP 커버리지 격차를 보고합니다.",
+    {
+      ref: z.string().optional().describe("확인할 Initializr 저장소의 브랜치·태그·commit. 미지정 시 고정 카탈로그의 branch 사용"),
+    },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const result = await syncTemplateCatalog(args as { ref?: string });
+      const driftLines =
+        result.drift.length === 0
+          ? ["- 차이: 없음"]
+          : result.drift.map((entry) =>
+              entry.kind === "changed"
+                ? `- 변경: ${entry.id} (${entry.fields?.join(", ")})`
+                : entry.kind === "added"
+                  ? `- 추가: ${entry.id}`
+                  : `- 삭제: ${entry.id}`,
+            );
+      const text = [
+        result.upToDate
+          ? "✅ 템플릿 카탈로그가 upstream 과 일치합니다."
+          : "⚠️ 템플릿 카탈로그와 upstream 사이에 차이가 있습니다.",
+        `- 출처: ${result.repository}/${result.path} @ ${result.requestedRef}`,
+        `- 고정 sha256: ${result.pinnedSha256 ?? "없음"}`,
+        `- upstream sha256: ${result.upstreamSha256}`,
+        `- 프로젝트 수: 고정 ${result.pinnedProjects} / upstream ${result.upstreamProjects}`,
+        ...driftLines,
+        `- MCP 커버리지: ${result.coverage.coveredByMcp}/${result.coverage.initializrProjects} (미커버 ${result.coverage.uncovered}종, MCP 단독 ${result.coverage.mcpOnly}종)`,
+        ...(result.uncovered.length > 0
+          ? [`- 미커버 목록: ${result.uncovered.map((project) => `${project.id}(${project.category})`).join(", ")}`]
+          : []),
         ...result.warnings.map((warning) => `- 경고: ${warning}`),
       ].join("\n");
       return { content: [{ type: "text", text }] };
