@@ -160,28 +160,75 @@ export function capOutput(
   return { text: lines.slice(lines.length - maxLines).join("\n"), truncated: true, totalLines: lines.length };
 }
 
-/** child_process.spawn 기반 기본 runner(타임아웃·스트리밍). */
+/**
+ * 자식 프로세스와 그 하위 트리를 함께 종료한다.
+ *
+ * mvnw/gradlew 는 셸 스크립트라 실제 빌드는 손자 프로세스(JVM)에서 돈다. 직접 자식에게만
+ * 신호를 보내면 JVM 이 살아남아 stdout 파이프를 붙잡고, `close` 이벤트가 오지 않아
+ * 타임아웃이 걸려도 호출이 끝나지 않는다.
+ *  - POSIX: detached 로 띄운 프로세스 그룹 전체(-pid)에 SIGKILL
+ *  - Windows: taskkill /T /F 로 트리 종료
+ */
+export function killProcessTree(pid: number | undefined, platform: NodeJS.Platform | string = process.platform): void {
+  if (!pid) return;
+  if (platform === "win32") {
+    try {
+      spawn("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore", windowsHide: true }).on("error", () => {});
+    } catch {
+      /* taskkill 을 쓸 수 없는 환경 */
+    }
+    return;
+  }
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      /* 이미 종료됨 */
+    }
+  }
+}
+
+/** 타임아웃으로 트리를 종료한 뒤에도 close 가 오지 않을 때 강제로 결과를 돌려주기까지의 유예. */
+export const KILL_GRACE_MS = 2_000;
+
+/** child_process.spawn 기반 기본 runner(타임아웃·스트리밍·프로세스 트리 종료). */
 export const defaultRunner: Runner = (cmd, opts) =>
   new Promise<RunnerResult>((resolve) => {
+    const isWin = process.platform === "win32";
     const child = spawn(cmd.command, cmd.args, {
       cwd: cmd.cwd,
-      shell: process.platform === "win32",
+      shell: isWin,
+      // POSIX: 새 프로세스 그룹의 리더로 띄워 그룹 단위로 종료할 수 있게 한다.
+      detached: !isWin,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
     });
     let timedOut = false;
+    let settled = false;
+    let graceTimer: NodeJS.Timeout | undefined;
+    const finish = (exitCode: number | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (graceTimer) clearTimeout(graceTimer);
+      resolve({ exitCode, timedOut });
+    };
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGKILL");
+      killProcessTree(child.pid);
+      // 그룹 밖으로 빠져나간 프로세스가 파이프를 붙잡아도 호출이 끝나도록 보장한다.
+      graceTimer = setTimeout(() => {
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        finish(null);
+      }, KILL_GRACE_MS);
     }, opts.timeoutMs);
     child.stdout?.on("data", (d) => opts.onData(d.toString()));
     child.stderr?.on("data", (d) => opts.onData(d.toString()));
-    child.on("error", () => {
-      clearTimeout(timer);
-      resolve({ exitCode: null, timedOut });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ exitCode: code, timedOut });
-    });
+    child.on("error", () => finish(null));
+    child.on("close", (code) => finish(code));
   });
 
 /**
