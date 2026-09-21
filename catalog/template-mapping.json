@@ -1,13 +1,27 @@
 {
   "comment": "Initializr 프로젝트(projectName)와 MCP 템플릿(TEMPLATES 키)의 큐레이션 매핑. 같은 공식 산출물을 가리킬 때만 mcpTemplate 을 채우고, 성격이 다르면 null 로 두고 note 에 근거를 남긴다. scripts/generate-template-catalog.mjs 가 읽는다.",
   "mappings": {
-    "egov-template-simple": { "mcpTemplate": "simple-homepage" },
-    "egov-template-portal": { "mcpTemplate": "portal-site" },
-    "egov-template-enterprise": { "mcpTemplate": "enterprise-business" },
-    "egov-boot-simple-backend": { "mcpTemplate": "simple-backend" },
-    "egov-boot-simple-frontend": { "mcpTemplate": "simple-react" },
-    "egov-msa-boot-common-components": { "mcpTemplate": "msa-common-components" },
-    "egov-mobile-deviceapi": { "mcpTemplate": "mobile-device-api" },
+    "egov-template-simple": {
+      "mcpTemplate": "simple-homepage"
+    },
+    "egov-template-portal": {
+      "mcpTemplate": "portal-site"
+    },
+    "egov-template-enterprise": {
+      "mcpTemplate": "enterprise-business"
+    },
+    "egov-boot-simple-backend": {
+      "mcpTemplate": "simple-backend"
+    },
+    "egov-boot-simple-frontend": {
+      "mcpTemplate": "simple-react"
+    },
+    "egov-msa-boot-common-components": {
+      "mcpTemplate": "msa-common-components"
+    },
+    "egov-mobile-deviceapi": {
+      "mcpTemplate": "mobile-device-api"
+    },
     "egov-ai-rag-springai": {
       "mcpTemplate": "ai-rag",
       "note": "MCP 의 ai-rag 는 spring-ai·langchain4j 두 모듈을 함께 담은 멀티 프로젝트라 Initializr 의 두 항목이 같은 템플릿에 대응한다"
@@ -17,27 +31,60 @@
       "note": "MCP 의 ai-rag 는 spring-ai·langchain4j 두 모듈을 함께 담은 멀티 프로젝트라 Initializr 의 두 항목이 같은 템플릿에 대응한다"
     },
     "egov-web": {
-      "mcpTemplate": null,
-      "note": "빈 웹 프로젝트 골격이다. MCP 의 web-sample(egovframe-web-sample)은 게시판 샘플이라 같은 산출물로 보지 않는다"
+      "mcpTemplate": "web",
+      "note": "빈 웹 프로젝트 골격 — Initializr zip 으로 조달한다. 게시판 샘플인 web-sample(egovframe-web-sample)과는 다른 산출물이라 따로 둔다"
     },
-    "egov-boot-web": { "mcpTemplate": null },
+    "egov-boot-web": {
+      "mcpTemplate": "boot-web",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
     "egov-template-common-components": {
       "mcpTemplate": null,
       "note": "공통컴포넌트 올인원 프로젝트. MCP 는 템플릿 통째로 받는 대신 list_egovframe_components / add_egovframe_components 로 선택 조립한다"
     },
-    "egov-msa-portal-backend": { "mcpTemplate": null },
-    "egov-msa-portal-frontend": { "mcpTemplate": null },
-    "egov-mobile-web": { "mcpTemplate": null },
-    "egov-mobile-common-components": { "mcpTemplate": null },
-    "egov-boot-batch-scheduler-file": { "mcpTemplate": null },
-    "egov-boot-batch-commandline-file": { "mcpTemplate": null },
-    "egov-boot-batch-web-file": { "mcpTemplate": null },
-    "egov-boot-batch-scheduler-db": { "mcpTemplate": null },
-    "egov-boot-batch-commandline-db": { "mcpTemplate": null },
-    "egov-boot-batch-web-db": { "mcpTemplate": null }
+    "egov-msa-portal-backend": {
+      "mcpTemplate": "msa-portal-backend",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-msa-portal-frontend": {
+      "mcpTemplate": "msa-portal-frontend",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-mobile-web": {
+      "mcpTemplate": "mobile-web",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-mobile-common-components": {
+      "mcpTemplate": "mobile-common-components",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-boot-batch-scheduler-file": {
+      "mcpTemplate": "batch-file-scheduler",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-boot-batch-commandline-file": {
+      "mcpTemplate": "batch-file-commandline",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-boot-batch-web-file": {
+      "mcpTemplate": "batch-file-web",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-boot-batch-scheduler-db": {
+      "mcpTemplate": "batch-db-scheduler",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-boot-batch-commandline-db": {
+      "mcpTemplate": "batch-db-commandline",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    },
+    "egov-boot-batch-web-db": {
+      "mcpTemplate": "batch-db-web",
+      "note": "단독 공식 저장소가 없어 Initializr 의 zip(Git LFS)을 commit·sha256 고정으로 조달한다"
+    }
   },
   "mcpOnlyNotes": {
-    "web-sample": "Initializr 의 egov-web 은 빈 골격이라 대응 항목으로 보지 않는다",
+    "web-sample": "게시판 샘플 저장소. Initializr 의 egov-web(빈 골격)은 MCP 의 web 템플릿에 대응한다",
     "msa-edu": "Initializr 카탈로그에 없는 MCP 단독 템플릿(클라우드 네이티브 교육용 멀티 프로젝트)"
   }
 }

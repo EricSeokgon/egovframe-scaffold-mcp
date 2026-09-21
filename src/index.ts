@@ -25,8 +25,8 @@ import { buildServer } from "./server.js";
 
 // ── 공개 API — 모듈 분리 전과 동일한 표면을 유지한다 ──
 export { DOWNLOAD_TIMEOUT_MS, COMPONENTS_DOWNLOAD_TIMEOUT_MS } from "./shared.js";
-export { TEMPLATES, GLOBALS_PROPS_REL, DB_TYPES, customizePomCoordinates, createProject } from "./project.js";
-export type { CreateOptions, CreateResult } from "./project.js";
+export { TEMPLATES, GLOBALS_PROPS_REL, DB_TYPES, INITIALIZR_REPO, INITIALIZR_COMMIT, archiveDownloadUrl, applyPomPlaceholders, isGlobalsPropertiesPath, customizePomCoordinates, createProject } from "./project.js";
+export type { CreateOptions, CreateResult, TemplateArchive, TemplateDefinition } from "./project.js";
 export { loadCatalog, resolveComponents, searchComponents } from "./catalog.js";
 export type { CatalogComponent, Catalog, SearchResult } from "./catalog.js";
 export { MANIFEST_FILE, readManifest } from "./manifest.js";
@@ -61,7 +61,7 @@ export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capO
 export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerResult, BuildRunResult } from "./build-runner.js";
 export { reportDirFor, resolveTestArgs, validateTestFilter, locateInStack, parseJUnitXml, snapshotReports, readJUnitReports, summarizeReports, runTests } from "./test-runner.js";
 export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRunResult, ParsedReport } from "./test-runner.js";
-export { loadTemplateCatalog, syncTemplateCatalog, diffProjects, normalizeInitializrProjects } from "./template-catalog.js";
+export { loadTemplateCatalog, syncTemplateCatalog, diffProjects, normalizeInitializrProjects, parseLfsPointer } from "./template-catalog.js";
 export type {
   TemplateCatalog,
   UnifiedProject,
@@ -71,6 +71,8 @@ export type {
   TemplateDriftEntry,
   TemplateSyncOptions,
   TemplateSyncResult,
+  TemplateArchivePin,
+  TemplateArchiveDrift,
 } from "./template-catalog.js";
 
 /**

@@ -26,8 +26,29 @@ export interface UnifiedProject {
   initializr: { fileName: string; pomFile: string | null };
   /** 대응하는 MCP TEMPLATES 키. 같은 공식 산출물일 때만 채운다 */
   mcpTemplate: string | null;
-  mcp: { repository: string; branch: string; multiProject: boolean } | null;
+  mcp: { repository: string; branch: string; multiProject: boolean; archive?: TemplateArchivePin } | null;
   note?: string;
+}
+
+/** zip 조달 템플릿의 고정 지문 (src/project.ts TemplateArchive 와 같은 값) */
+export interface TemplateArchivePin {
+  kind: string;
+  commit: string;
+  path: string;
+  sha256: string;
+  bytes: number;
+}
+
+/** 고정한 zip 지문이 upstream LFS 포인터와 달라진 항목 */
+export interface TemplateArchiveDrift {
+  template: string;
+  path: string;
+  pinnedSha256: string;
+  upstreamSha256: string | null;
+  pinnedBytes: number;
+  upstreamBytes: number | null;
+  /** 포인터를 읽지 못했을 때의 사유 */
+  error?: string;
 }
 
 export interface McpOnlyTemplate {
@@ -82,6 +103,10 @@ export interface TemplateSyncResult {
   coverage: TemplateCatalogCoverage;
   /** MCP 가 아직 담지 않은 Initializr 프로젝트 */
   uncovered: Array<{ id: string; category: string; displayName: string }>;
+  /** 대조한 zip 조달 템플릿 수 */
+  archivesChecked: number;
+  /** 고정 지문과 upstream LFS 포인터가 다른 zip */
+  archiveDrift: TemplateArchiveDrift[];
   warnings: string[];
 }
 
@@ -145,6 +170,15 @@ export function diffProjects(
   return drift.sort((a, b) => a.id.localeCompare(b.id));
 }
 
+/** Git LFS 포인터 본문에서 oid·size 를 읽는다. 포인터가 아니면 null. */
+export function parseLfsPointer(text: string): { sha256: string; bytes: number } | null {
+  if (!/^version https:\/\/git-lfs\.github\.com\/spec\/v1\s*$/m.test(text)) return null;
+  const oid = /^oid sha256:([0-9a-f]{64})\s*$/m.exec(text);
+  const size = /^size (\d+)\s*$/m.exec(text);
+  if (!oid || !size) return null;
+  return { sha256: oid[1], bytes: Number(size[1]) };
+}
+
 async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -203,18 +237,46 @@ export async function syncTemplateCatalog(
     .filter((p) => !p.mcpTemplate)
     .map((p) => ({ id: p.id, category: p.category, displayName: p.displayName }));
 
+  // zip 조달 템플릿: raw 호스트가 돌려주는 LFS 포인터(작은 텍스트)만 읽어 고정 지문과 대조한다(zip 본문은 받지 않는다).
+  const pins = new Map<string, { template: string; repository: string; pin: TemplateArchivePin }>();
+  for (const p of catalog.projects) {
+    if (p.mcpTemplate && p.mcp?.archive) pins.set(p.mcpTemplate, { template: p.mcpTemplate, repository: p.mcp.repository, pin: p.mcp.archive });
+  }
+  const archiveDrift: TemplateArchiveDrift[] = [];
+  await Promise.all(
+    [...pins.values()].map(async ({ template, repository, pin }) => {
+      const pointerUrl = `https://raw.githubusercontent.com/${repository}/${ref}/${pin.path}`;
+      const base = { template, path: pin.path, pinnedSha256: pin.sha256, pinnedBytes: pin.bytes };
+      try {
+        const pointer = parseLfsPointer(await fetchText(pointerUrl, TEMPLATE_CATALOG_TIMEOUT_MS));
+        if (!pointer) archiveDrift.push({ ...base, upstreamSha256: null, upstreamBytes: null, error: "LFS 포인터 형식이 아닙니다" });
+        else if (pointer.sha256 !== pin.sha256 || pointer.bytes !== pin.bytes)
+          archiveDrift.push({ ...base, upstreamSha256: pointer.sha256, upstreamBytes: pointer.bytes });
+      } catch (error) {
+        archiveDrift.push({ ...base, upstreamSha256: null, upstreamBytes: null, error: (error as Error).message });
+      }
+    }),
+  );
+  archiveDrift.sort((a, b) => a.template.localeCompare(b.template));
+  if (archiveDrift.length > 0)
+    warnings.push(
+      "zip 조달 템플릿의 upstream 지문이 고정값과 다릅니다 — 고정 commit 의 zip 은 계속 받을 수 있으므로 생성은 동작합니다. 새 zip 을 검토한 뒤 src/project.ts 의 INITIALIZR_COMMIT·sha256·bytes 를 갱신하세요",
+    );
+
   return {
     repository: source.repository,
     path: source.path,
     requestedRef: ref,
     pinnedSha256: source.sha256,
     upstreamSha256,
-    upToDate: drift.length === 0 && source.sha256 === upstreamSha256,
+    upToDate: drift.length === 0 && source.sha256 === upstreamSha256 && archiveDrift.length === 0,
     pinnedProjects: catalog.projects.length,
     upstreamProjects: upstream.length,
     drift,
     coverage: catalog.coverage,
     uncovered,
+    archivesChecked: pins.size,
+    archiveDrift,
     warnings,
   };
 }

@@ -3,13 +3,48 @@ import AdmZip from "adm-zip";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { withDirectoryTransaction } from "./file-transaction.js";
-import { DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
+import { createHash } from "node:crypto";
+import { COMPONENTS_DOWNLOAD_TIMEOUT_MS, DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
+
+/**
+ * 저장소 아카이브가 아니라 "고정된 zip 파일"로 조달하는 템플릿의 출처.
+ *
+ * 공식 eGovFrame VSCode Initializr 는 단독 저장소가 없는 프로젝트(배치·모바일·빈 골격 등)를
+ * `templates/projects/examples/*.zip`(Git LFS)로 배포한다. 브랜치는 움직이므로 commit 과
+ * LFS 포인터의 sha256·크기를 함께 고정해, 내려받은 바이트가 조사 시점과 같은지 검증한다.
+ */
+export interface TemplateArchive {
+  kind: "initializr-zip";
+  /** 조사 시점의 Initializr 저장소 commit (다운로드 URL 을 이 commit 으로 고정) */
+  commit: string;
+  /** 저장소 내 zip 경로 */
+  path: string;
+  /** LFS 포인터의 oid — 내려받은 zip 의 SHA-256 */
+  sha256: string;
+  /** LFS 포인터의 size(bytes) */
+  bytes: number;
+}
+
+export interface TemplateDefinition {
+  repo: string;
+  branch: string;
+  description: string;
+  multiProject?: boolean;
+  /** 있으면 codeload 저장소 아카이브 대신 이 zip 을 내려받는다. */
+  archive?: TemplateArchive;
+}
+
+export const INITIALIZR_REPO = "eGovFramework/egovframe-vscode-initializr";
+/** zip 지문을 조사한 Initializr commit (2026-09-18). 갱신 절차: docs/design-initializr-zip-templates.md */
+export const INITIALIZR_COMMIT = "f8f572596e0c19d7992b132298992d5ce56ea819";
+
+/** Git LFS 객체를 commit 기준으로 내려받는 URL. */
+export function archiveDownloadUrl(repo: string, ref: string, filePath: string): string {
+  return `https://media.githubusercontent.com/media/${repo}/${ref}/${filePath}`;
+}
 
 /** 지원 템플릿 목록 (공식 eGovFramework 조직 저장소) */
-export const TEMPLATES: Record<
-  string,
-  { repo: string; branch: string; description: string; multiProject?: boolean }
-> = {
+export const TEMPLATES: Record<string, TemplateDefinition> = {
   "simple-backend": {
     repo: "eGovFramework/egovframe-template-simple-backend",
     branch: "main",
@@ -64,7 +99,179 @@ export const TEMPLATES: Record<
     description: "AI RAG 예제 (Spring AI · LangChain4j 2종 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
     multiProject: true,
   },
+  // ── Initializr zip 조달 (v0.27.0) — 단독 저장소가 없는 공식 프로젝트 ──
+  "web": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "웹 프로젝트 빈 골격 (Spring MVC + JSP, 공통 설정만 포함 — 게시판 샘플이 필요하면 web-sample)",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-web.zip",
+      sha256: "13674f6f76e74e6d70478b7e9ad0689b0f84b5ffc9828a49f8b511dc2b3d6b69",
+      bytes: 15547491,
+    },
+  },
+  "boot-web": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "Boot 웹 프로젝트 빈 골격 (Spring Boot 기반)",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-boot-web.zip",
+      sha256: "1284019f991f0676683dc1b19e9133318e50f18092505e0c1635ef1336bd1f6c",
+      bytes: 15551650,
+    },
+  },
+  "batch-file-scheduler": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "Boot 배치 템플릿 — 파일(SAM) 기반, 스케줄러 실행",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-boot-batch-file-scheduler.zip",
+      sha256: "407b09f3c678f8bd96c5da7aa38fe574622a1b507a676d3937c1a8cafafb95d1",
+      bytes: 714016,
+    },
+  },
+  "batch-file-commandline": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "Boot 배치 템플릿 — 파일(SAM) 기반, 커맨드라인 실행",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-boot-batch-file-commandline.zip",
+      sha256: "c51352a2b4ce41ed64f0a0f543c5319164dcc16ac32f853bac44f1ee166535cc",
+      bytes: 713252,
+    },
+  },
+  "batch-file-web": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "Boot 배치 템플릿 — 파일(SAM) 기반, 웹 실행",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-boot-batch-file-web.zip",
+      sha256: "15b75e445cfd9dd0162dbf23034937acb6cac4cd25af45cc162b55ef91a7a1c8",
+      bytes: 1465409,
+    },
+  },
+  "batch-db-scheduler": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "Boot 배치 템플릿 — DB 기반, 스케줄러 실행",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-boot-batch-db-scheduler.zip",
+      sha256: "b0cb160b252325eb6c29c93d978a5026913d377339e15c5551f615ca0cd2b7e7",
+      bytes: 712628,
+    },
+  },
+  "batch-db-commandline": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "Boot 배치 템플릿 — DB 기반, 커맨드라인 실행",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-boot-batch-db-commandline.zip",
+      sha256: "0de452a317f939f37867f66d293d8e6879fd868aa89c3ad1cc7a07c2b1c0ffd9",
+      bytes: 1440218,
+    },
+  },
+  "batch-db-web": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "Boot 배치 템플릿 — DB 기반, 웹 실행",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-boot-batch-db-web.zip",
+      sha256: "e229849102dee90fe7605107d9a4122425b67ddf2aa1bbc41b01af42bbc9e0c9",
+      bytes: 1470738,
+    },
+  },
+  "mobile-web": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "모바일 웹 프로젝트 빈 골격",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-mobile-web.zip",
+      sha256: "b1ebcf172a775fada2418509a61b51914709eeb803ca6d03ef1bba766c9bc57b",
+      bytes: 359099,
+    },
+  },
+  "mobile-common-components": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "모바일 공통컴포넌트 올인원 프로젝트",
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-mobile-common-components.zip",
+      sha256: "0c0abe6922042e940221ea05f94868dac293ba4d2315d17fdc16d26ef23b42c0",
+      bytes: 10696748,
+    },
+  },
+  "msa-portal-backend": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "MSA 포털 백엔드 (apigateway·config·discovery·서비스별 Gradle 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
+    multiProject: true,
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-msa-portal-backend.zip",
+      sha256: "dd8e7563c6eb981c4ad6641f68bf9473badccac10164f51c8357b217c64fdd1d",
+      bytes: 1101491,
+    },
+  },
+  "msa-portal-frontend": {
+    repo: INITIALIZR_REPO,
+    branch: "main",
+    description: "MSA 포털 프론트엔드 (portal·admin 멀티 프로젝트, 좌표·DB 자동 적용 없음)",
+    multiProject: true,
+    archive: {
+      kind: "initializr-zip",
+      commit: INITIALIZR_COMMIT,
+      path: "templates/projects/examples/egovframe-msa-portal-frontend.zip",
+      sha256: "022b3615d7140f05361f09ce54024284b3be072a0f6f355ecd6738c71bb9e8e0",
+      bytes: 6562922,
+    },
+  },
 };
+
+/** Initializr zip 의 pom.xml 이 쓰는 자리표시자. */
+const POM_PLACEHOLDER_RE = /###(GROUP_ID|ARTIFACT_ID|NAME|VERSION|URL)###/g;
+
+/** Initializr 방식 pom 자리표시자(###GROUP_ID### 등)를 실제 값으로 바꾼다. 자리표시자가 없으면 원문 그대로. */
+export function applyPomPlaceholders(pom: string, groupId: string, projectName: string): { pom: string; replaced: number } {
+  const values: Record<string, string> = {
+    GROUP_ID: groupId,
+    ARTIFACT_ID: projectName,
+    NAME: projectName,
+    VERSION: "1.0.0",
+    URL: "https://www.egovframe.go.kr",
+  };
+  let replaced = 0;
+  const out = pom.replace(POM_PLACEHOLDER_RE, (_m, key: string) => {
+    replaced++;
+    return values[key];
+  });
+  return { pom: out, replaced };
+}
+
+/** zip 항목 중 DbType 설정을 가진 globals.properties 후보(템플릿마다 경로가 다르다). */
+export function isGlobalsPropertiesPath(relPath: string): boolean {
+  return /^src\/main\/resources\/.+\/globals\.properties$/.test(relPath);
+}
 
 /** 레거시 템플릿의 DB 설정 파일 경로 */
 export const GLOBALS_PROPS_REL = "src/main/resources/egovframework/egovProps/globals.properties";
@@ -100,6 +307,8 @@ export interface CreateResult {
   nextSteps: string[];
   ref: string;
   dryRun: boolean;
+  /** zip 조달 템플릿: 고정 지문(sha256·크기) 검증 결과. ref 를 직접 지정하면 검증을 건너뛰어 false. */
+  archiveVerified?: boolean;
 }
 
 export function customizePomCoordinates(pom: string, groupId: string, projectName: string): string {
@@ -157,18 +366,42 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
   if (!dryRun && fs.existsSync(projectPath))
     throw new Error(`대상 디렉터리가 이미 존재합니다: ${projectPath}`);
 
-  // 1) 공식 템플릿 다운로드 (branch/tag/SHA 모두 허용)
-  const zipUrl = `https://codeload.github.com/${tpl.repo}/zip/${ref}`;
-  const res = await fetchWithTimeout(zipUrl, DOWNLOAD_TIMEOUT_MS);
-  if (!res.ok) throw new Error(`템플릿 다운로드 실패 (${res.status}) — ref='${ref}'가 존재하는지 확인하세요: ${zipUrl}`);
+  // 1) 공식 템플릿 다운로드
+  //    - 저장소 템플릿: codeload 아카이브 (branch/tag/SHA 모두 허용)
+  //    - zip 조달 템플릿: 고정 commit 의 LFS 객체 + sha256·크기 검증 (ref 를 직접 주면 검증 생략)
+  const archive = tpl.archive;
+  const effectiveRef = archive ? (opts.ref ? ref : archive.commit) : ref;
+  const zipUrl = archive
+    ? archiveDownloadUrl(tpl.repo, effectiveRef, archive.path)
+    : `https://codeload.github.com/${tpl.repo}/zip/${ref}`;
+  const res = await fetchWithTimeout(zipUrl, archive ? COMPONENTS_DOWNLOAD_TIMEOUT_MS : DOWNLOAD_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`템플릿 다운로드 실패 (${res.status}) — ref='${effectiveRef}'가 존재하는지 확인하세요: ${zipUrl}`);
   const buf = Buffer.from(await res.arrayBuffer());
+
+  const customized: string[] = [];
+  let archiveVerified: boolean | undefined;
+  if (archive) {
+    if (opts.ref) {
+      archiveVerified = false;
+      customized.push(`⚠️ ref='${effectiveRef}' 지정 — 고정 지문(sha256) 검증을 건너뜁니다`);
+    } else {
+      // shared.sha256() 은 매니페스트용 "sha256:" 접두 표기라, LFS oid 와 비교할 순수 hex 를 따로 계산한다.
+      const actual = createHash("sha256").update(buf).digest("hex");
+      if (buf.length !== archive.bytes || actual !== archive.sha256)
+        throw new Error(
+          `템플릿 zip 지문이 고정값과 다릅니다 (${opts.template}) — 크기 ${buf.length}/${archive.bytes}, sha256 ${actual.slice(0, 12)}…/${archive.sha256.slice(0, 12)}…\n` +
+            `upstream 이 바뀌었는지 sync_egovframe_templates 로 확인하세요: ${zipUrl}`,
+        );
+      archiveVerified = true;
+    }
+  }
 
   const zip = new AdmZip(buf);
   const entries = zip.getEntries();
-  const rootPrefix = entries[0].entryName.split("/")[0] + "/";
-  const rel = (name: string) => (name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
-
-  const customized: string[] = [];
+  if (entries.length === 0) throw new Error(`템플릿 zip 이 비어 있습니다: ${zipUrl}`);
+  // codeload 아카이브는 `<repo>-<ref>/` 최상위 폴더가 있지만, Initializr zip 은 프로젝트 루트가 곧 zip 루트다.
+  const rootPrefix = archive ? "" : entries[0].entryName.split("/")[0] + "/";
+  const rel = (name: string) => (rootPrefix && name.startsWith(rootPrefix) ? name.slice(rootPrefix.length) : name);
 
   // 2) 미리보기(dryRun): 쓰지 않고 수행 예정 내용만 계산
   if (dryRun) {
@@ -177,20 +410,26 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     const hasProps = entries.some((e) => rel(e.entryName) === "src/main/resources/application.properties");
     const hasPkg = entries.some((e) => rel(e.entryName) === "package.json");
     const hasGlobals = entries.some((e) => rel(e.entryName) === GLOBALS_PROPS_REL);
+    const extraGlobals = archive
+      ? entries.map((e) => rel(e.entryName)).filter((r) => r !== GLOBALS_PROPS_REL && isGlobalsPropertiesPath(r))
+      : [];
+    if (archive && archiveVerified) customized.push(`zip 지문 검증 통과 (sha256 ${archive.sha256.slice(0, 12)}…, ${archive.bytes} bytes)`);
     if (tpl.multiProject) {
       customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
     } else {
       if (hasPom) customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName}) — 적용 예정`);
       if (hasProps) customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database}) — 적용 예정`);
       if (hasGlobals) customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database}) — 적용 예정`);
+      for (const g of extraGlobals) customized.push(`${g} (Globals.DbType=${opts.database}) — 파일에 설정이 있으면 적용 예정`);
       if (hasPkg) customized.push(`package.json (name=${opts.projectName}) — 적용 예정`);
     }
     return {
       projectPath,
       filesExtracted: fileCount,
       customized,
-      ref,
+      ref: effectiveRef,
       dryRun: true,
+      archiveVerified,
       nextSteps: [`미리보기 모드입니다. 실제 생성하려면 dryRun 없이 다시 호출하세요.`],
     };
   }
@@ -217,7 +456,9 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     const pomPath = path.join(stagingPath, "pom.xml");
     if (!tpl.multiProject && fs.existsSync(pomPath)) {
       let pom = fs.readFileSync(pomPath, "utf-8");
-      pom = customizePomCoordinates(pom, opts.groupId, opts.projectName);
+      // Initializr zip 은 좌표가 ###GROUP_ID### 같은 자리표시자다 — 먼저 채운 뒤 공통 좌표 적용을 거친다.
+      const filled = applyPomPlaceholders(pom, opts.groupId, opts.projectName);
+      pom = customizePomCoordinates(filled.pom, opts.groupId, opts.projectName);
       fs.writeFileSync(pomPath, pom);
       customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
     }
@@ -241,6 +482,21 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
         props = props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`);
         fs.writeFileSync(globalsProps, props);
         customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database})`);
+      }
+    }
+
+    // 5c) zip 조달 템플릿: globals.properties 위치가 템플릿마다 다르다(batch/properties 등)
+    if (archive && !tpl.multiProject) {
+      for (const e of entries) {
+        if (e.isDirectory) continue;
+        const r = rel(e.entryName);
+        if (r === GLOBALS_PROPS_REL || !isGlobalsPropertiesPath(r)) continue;
+        const target = path.join(stagingPath, r);
+        if (!target.startsWith(stagingPath + path.sep) || !fs.existsSync(target)) continue;
+        const props = fs.readFileSync(target, "utf-8");
+        if (!/^Globals\.DbType\s*=.*$/m.test(props)) continue;
+        fs.writeFileSync(target, props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`));
+        customized.push(`${r} (Globals.DbType=${opts.database})`);
       }
     }
 
@@ -285,10 +541,14 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     );
   }
 
+  if (archive && archiveVerified) customized.unshift(`zip 지문 검증 통과 (sha256 ${archive.sha256.slice(0, 12)}…, ${archive.bytes} bytes)`);
+
   const buildStep = tpl.multiProject
     ? "README.md 참조 — backend/frontend/k8s/docker-compose 하위 프로젝트별 기동 안내"
     : opts.template === "simple-react"
       ? "npm install && npm start"
+      : archive
+        ? "mvn -B package   # 빌드 (실행 방식·DB 준비는 프로젝트의 readme·DATABASE/·설정 파일 참조)"
       : opts.template === "simple-backend"
         ? "mvn -B verify   # 빌드/테스트 (JDK 17, hsql 외 DB는 접속정보를 application-*.properties에 설정)"
         : "mvn -B package   # WAR 빌드 (DB 초기화는 DATABASE/ 또는 README의 스크립트 참조)";
@@ -298,7 +558,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     "자바 패키지 구조 변경(groupId에 맞춘 소스 이동)은 PoC 범위 밖입니다 — IDE의 rename refactoring 사용을 권장합니다.",
   ];
 
-  return { projectPath, filesExtracted: count, customized, nextSteps, ref, dryRun: false };
+  return { projectPath, filesExtracted: count, customized, nextSteps, ref: effectiveRef, dryRun: false, archiveVerified };
 }
 
 /** 템플릿 zip 다운로드 → 압축 해제 → 사용자 값 적용 (dryRun이면 미리보기만) */

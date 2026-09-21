@@ -6,6 +6,7 @@ import {
   loadTemplateCatalog,
   normalizeInitializrProjects,
   syncTemplateCatalog,
+  parseLfsPointer,
 } from "../dist/index.js";
 
 let checks = 0;
@@ -107,12 +108,26 @@ const multiDrift = diffProjects(catalog.projects, multi);
 check(() => assert.deepEqual([...multiDrift].map((d) => d.id).sort(), multiDrift.map((d) => d.id)));
 
 /* ── 4. 동기화(네트워크 주입) ────────────────────────────── */
+// zip 조달 템플릿의 LFS 포인터 요청(.zip)에는 고정 지문과 같은 포인터를, 그 밖에는 카탈로그 본문을 돌려주는 가짜 fetch
+const pinByPath = new Map(
+  catalog.projects.filter((p) => p.mcp?.archive).map((p) => [p.mcp.archive.path, p.mcp.archive]),
+);
+const pointerText = (pin) => `version https://git-lfs.github.com/spec/v1\noid sha256:${pin.sha256}\nsize ${pin.bytes}\n`;
+const fakeFetch = (body, overrides = {}) => async (url) => {
+  if (!url.endsWith(".zip")) return body;
+  const pinPath = [...pinByPath.keys()].find((k) => url.endsWith(`/${k}`));
+  if (pinPath && pinPath in overrides) {
+    if (overrides[pinPath] instanceof Error) throw overrides[pinPath];
+    return overrides[pinPath];
+  }
+  return pinPath ? pointerText(pinByPath.get(pinPath)) : "not a pointer";
+};
 const identicalText = JSON.stringify(rawUpstream);
 const identicalSha = createHash("sha256").update(identicalText, "utf8").digest("hex");
 
 // 고정 sha 가 같은 카탈로그를 만들어 upToDate 경로를 검증
 const pinnedCatalog = { ...catalog, sources: { ...catalog.sources, initializr: { ...catalog.sources.initializr, sha256: identicalSha } } };
-const clean = await syncTemplateCatalog({}, { catalog: pinnedCatalog, fetchText: async () => identicalText });
+const clean = await syncTemplateCatalog({}, { catalog: pinnedCatalog, fetchText: fakeFetch(identicalText) });
 check(() => assert.equal(clean.upToDate, true));
 check(() => assert.equal(clean.drift.length, 0));
 check(() => assert.equal(clean.warnings.length, 0));
@@ -123,20 +138,20 @@ check(() => assert.equal(clean.requestedRef, catalog.sources.initializr.branch))
 check(() => assert.equal(clean.uncovered.length, catalog.coverage.uncovered));
 
 // 내용이 같아도 고정 sha 가 다르면 upToDate 가 아니다(스냅샷 갱신 필요 신호)
-const shaMismatch = await syncTemplateCatalog({}, { catalog, fetchText: async () => identicalText });
+const shaMismatch = await syncTemplateCatalog({}, { catalog, fetchText: fakeFetch(identicalText) });
 check(() => assert.equal(shaMismatch.drift.length, 0));
 check(() => assert.equal(shaMismatch.upToDate, catalog.sources.initializr.sha256 === identicalSha));
 
 // upstream 에 새 항목이 생기면 경고와 함께 보고한다
 const addedText = JSON.stringify([...rawUpstream, { projectName: "egov-new", displayName: "New", category: "Web", description: "", fileName: "n.zip" }]);
-const withAdded = await syncTemplateCatalog({}, { catalog, fetchText: async () => addedText });
+const withAdded = await syncTemplateCatalog({}, { catalog, fetchText: fakeFetch(addedText) });
 check(() => assert.equal(withAdded.upToDate, false));
 check(() => assert.deepEqual(withAdded.drift, [{ id: "egov-new", kind: "added" }]));
 check(() => assert.ok(withAdded.warnings.some((w) => w.includes("template-mapping.json"))));
 
 // upstream 에서 사라지면 removed 경고
 const removedText = JSON.stringify(rawUpstream.slice(1));
-const withRemoved = await syncTemplateCatalog({}, { catalog, fetchText: async () => removedText });
+const withRemoved = await syncTemplateCatalog({}, { catalog, fetchText: fakeFetch(removedText) });
 check(() => assert.deepEqual(withRemoved.drift, [{ id: rawUpstream[0].projectName, kind: "removed" }]));
 check(() => assert.ok(withRemoved.warnings.some((w) => w.includes("upstream"))));
 
@@ -147,13 +162,42 @@ await syncTemplateCatalog(
   {
     catalog,
     fetchText: async (url) => {
-      requestedUrl = url;
-      return identicalText;
+      if (!requestedUrl) requestedUrl = url;
+      return fakeFetch(identicalText)(url);
     },
   },
 );
 check(() => assert.ok(requestedUrl.includes("/v1.2.3/")));
 check(() => assert.ok(requestedUrl.startsWith("https://raw.githubusercontent.com/eGovFramework/egovframe-vscode-initializr/")));
+
+// zip 조달 템플릿 지문 대조 (v0.27)
+check(() => assert.ok(pinByPath.size >= 12, `zip 조달 템플릿 고정 지문 ${pinByPath.size}종`));
+check(() => assert.equal(clean.archivesChecked, new Set(catalog.projects.filter((p) => p.mcp?.archive).map((p) => p.mcpTemplate)).size));
+check(() => assert.equal(clean.archiveDrift.length, 0));
+for (const pin of pinByPath.values()) {
+  check(() => assert.match(pin.sha256, /^[0-9a-f]{64}$/));
+  check(() => assert.match(pin.commit, /^[0-9a-f]{40}$/));
+  check(() => assert.ok(Number.isInteger(pin.bytes) && pin.bytes > 0));
+  check(() => assert.match(pin.path, /^templates\/projects\/examples\/[a-z0-9-]+\.zip$/));
+}
+const [firstPinPath, firstPin] = [...pinByPath.entries()][0];
+const changedPointer = pointerText({ sha256: "0".repeat(64), bytes: firstPin.bytes + 1 });
+const pinDrift = await syncTemplateCatalog({}, { catalog: pinnedCatalog, fetchText: fakeFetch(identicalText, { [firstPinPath]: changedPointer }) });
+check(() => assert.equal(pinDrift.upToDate, false));
+check(() => assert.equal(pinDrift.drift.length, 0));
+check(() => assert.equal(pinDrift.archiveDrift.length, 1));
+check(() => assert.equal(pinDrift.archiveDrift[0].upstreamSha256, "0".repeat(64)));
+check(() => assert.equal(pinDrift.archiveDrift[0].upstreamBytes, firstPin.bytes + 1));
+check(() => assert.ok(pinDrift.warnings.some((w) => w.includes("INITIALIZR_COMMIT"))));
+// 포인터를 못 읽어도 동기화 전체가 실패하지 않고 항목별 오류로 보고한다
+const pinError = await syncTemplateCatalog({}, { catalog: pinnedCatalog, fetchText: fakeFetch(identicalText, { [firstPinPath]: new Error("boom") }) });
+check(() => assert.equal(pinError.archiveDrift.length, 1));
+check(() => assert.equal(pinError.archiveDrift[0].error, "boom"));
+const notPointer = await syncTemplateCatalog({}, { catalog: pinnedCatalog, fetchText: fakeFetch(identicalText, { [firstPinPath]: "PK\u0003\u0004 binary" }) });
+check(() => assert.ok(notPointer.archiveDrift[0].error?.includes("LFS")));
+check(() => assert.deepEqual(parseLfsPointer(pointerText(firstPin)), { sha256: firstPin.sha256, bytes: firstPin.bytes }));
+check(() => assert.equal(parseLfsPointer("oid sha256:abc"), null));
+check(() => assert.equal(parseLfsPointer(""), null));
 
 // 잘못된 ref 는 네트워크 접근 전에 거부한다
 let touched = false;
