@@ -1,0 +1,20 @@
+package {{txtConfigPackage}};
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jndi.JndiObjectFactoryBean;
+
+/**
+ * JNDI DataSource Configuration
+ * Spring Framework 6.x, Jakarta EE 9 호환
+ */
+@Configuration
+public class {{txtFileName}} {
+
+  @Bean(name = "{{txtDatasourceName}}")
+  public JndiObjectFactoryBean {{txtDatasourceName}}() {
+    JndiObjectFactoryBean jndiObjectFactoryBean = new JndiObjectFactoryBean();
+    jndiObjectFactoryBean.setJndiName("{{txtJndiName}}");
+    return jndiObjectFactoryBean;
+  }
+}

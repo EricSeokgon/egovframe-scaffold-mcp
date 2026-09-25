@@ -11,11 +11,11 @@
 Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
 프로젝트를 만들고 공통컴포넌트·AI 계층을 조립할 수 있습니다. 기존 프로젝트 진단, 리포트, 안전한 upstream 재동기화도 지원합니다.
 
-현재 v0.27.0은 **도구 22종, 공식 템플릿 22종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
+현재 v0.28.0은 **도구 23종, 공식 템플릿 22종, 설정 템플릿 21종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
 ## 진행 현황 (2026-09-13)
 
-- **소스 기준**: v0.27.0(`package.json`), 도구 22종·공식 템플릿 22종·카탈로그 190항목.
+- **소스 기준**: v0.28.0(`package.json`), 도구 23종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목.
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
@@ -25,6 +25,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - **v0.25.3 추가**: Linux·macOS에서 `npx egovframe-scaffold-mcp`(bin symlink 경유) 실행 시 서버가 기동하지 않고 종료되던 문제 수정, CI를 ubuntu·windows × Node 18·20·22 매트릭스로 확장.
 - **v0.26.0 추가**: `sync_egovframe_templates` + `catalog/templates.json` — 그동안 Initializr(프로젝트 22종 zip 카탈로그)·MCP(`TEMPLATES` 10종 저장소 조달)·Development(`wizards.xml` 설정 마법사)에 흩어져 있던 "어떤 공식 프로젝트가 있는가"를 하나의 스키마로 합쳤습니다. 매핑은 `catalog/template-mapping.json` 에서 큐레이션하고(자동 추론 없음), upstream 과의 추가·삭제·변경과 MCP 커버리지 격차(현재 22종 중 9종 대응)를 도구로 조회합니다. 오프라인 148단언(`npm run test:template-catalog`).
 - **v0.27.0 추가**: 공식 템플릿 커버리지 10 → **22종**(Initializr 22종 기준 대응 9 → 21종). 단독 저장소가 없는 배치 6종·빈 골격(`web`·`boot-web`)·모바일 2종·MSA 포털 2종을 Initializr 의 zip(Git LFS)으로 조달하며, commit 과 sha256·크기를 고정해 내려받은 바이트를 검증합니다. `sync_egovframe_templates` 가 zip 지문의 upstream 변화도 함께 보고합니다(설계: [docs/design-initializr-zip-templates.md](docs/design-initializr-zip-templates.md)).
+- **v0.28.0 추가**: `generate_egovframe_config` — 공식 Initializr 설정 템플릿 21종(datasource·transaction·cache·logging·scheduling·idGeneration·property)을 패키지에 동봉해 **오프라인**으로 Spring 설정 파일을 생성합니다. xml·javaConfig·yaml·properties 형식, Initializr 폼과 같은 필드명·기본값, 기존 파일 보호. 리소스 `egovframe://catalog/config-templates` 로 필드·기본값·선택지를 조회할 수 있고, `sync_egovframe_templates` 가 동봉 템플릿의 upstream 변화를 보고합니다(설계: [docs/design-config-generation.md](docs/design-config-generation.md)).
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 제공 도구
@@ -52,7 +53,8 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 | `build_egovframe_project` | 생성한 프로젝트를 실제로 빌드(compile·test·package) — maven/gradle·mvnw/gradlew 자동 감지, 타임아웃·로그 상한, 컴파일 오류 파일/라인 구조화, dryRun |
 | `test_egovframe_project` | 테스트 실행 + JUnit XML 리포트(surefire·gradle) 구조화 — 스위트별 통과/실패/오류/건너뜀, 실패 케이스 메시지·예외 타입·테스트 파일/라인, `testFilter`, 이전 실행 리포트 제외, dryRun |
 | `generate_egovframe_crud` | 공식 Development CRUD wizard 입력 체계 기반 코드 생성 — VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5(선택), Classic/Boot 분기, 전체 충돌 사전 검사 |
-| `sync_egovframe_templates` | 공식 프로젝트 템플릿 통합 카탈로그(Initializr·MCP·Development) upstream 대조 — 추가/삭제/변경 항목과 MCP 커버리지 격차, zip 조달 템플릿의 고정 지문(sha256·크기) 변화 보고, 네트워크 필요 |
+| `sync_egovframe_templates` | 공식 프로젝트 템플릿 통합 카탈로그(Initializr·MCP·Development) upstream 대조 — 추가/삭제/변경 항목과 MCP 커버리지 격차, zip 조달 템플릿의 고정 지문(sha256·크기)과 동봉 설정 템플릿의 변화 보고, 네트워크 필요 |
+| `generate_egovframe_config` | 공식 Initializr 설정 템플릿 21종으로 Spring 설정 파일 생성(오프라인 동봉) — datasource(DBCP/C3P0/JDBC·JNDI)·transaction(datasource/JPA/JTA)·cache·logging(log4j2 5종)·scheduling(Quartz 5종)·idGeneration(3종)·property, xml/javaConfig/yaml/properties, Initializr 폼과 같은 필드·기본값, 기존 파일 거부, dryRun |
 
 ### create_egovframe_project 파라미터
 
@@ -96,6 +98,27 @@ generate_egovframe_crud(
 ```
 
 생성 전 모든 대상 경로를 검사하며 기존 파일이 하나라도 있으면 아무 파일도 쓰지 않습니다. 지원 타입과 출력 계약은 [CRUD 생성 설계](docs/design-crud-generation.md)를 참고하세요.
+
+### generate_egovframe_config 핵심 파라미터
+
+- `projectDir` — 대상 프로젝트
+- `configId` — 설정 템플릿 id. `datasource` `datasource-jndi` `transaction-datasource` `transaction-jpa` `transaction-jta` `cache-ehcache-default` `cache-spring` `logging-console` `logging-file` `logging-rolling-file` `logging-time-rolling-file` `logging-jdbc` `scheduling-bean-job` `scheduling-method-job` `scheduling-simple-trigger` `scheduling-cron-trigger` `scheduling-scheduler` `idgen-sequence` `idgen-table` `idgen-uuid` `property`
+- `format` — `xml`(기본) | `javaConfig` | `yaml` | `properties` (yaml·properties 는 logging 계열만)
+- `fields` — 템플릿 변수 덮어쓰기. 필드명과 기본값은 Initializr 웹뷰 폼과 같습니다(예: `txtDatasourceName`, `rdoType`(DBCP|C3P0|JDBC), `txtDriver`, `txtUrl`, `txtUser`, `txtPasswd`, `txtConfigPackage`). 템플릿에 없는 필드나 선택지 밖 값은 거부합니다. 전체 목록은 리소스 `egovframe://catalog/config-templates` 참조
+- `fileName` — 파일명(확장자 제외) 또는 JavaConfig 클래스명. 미지정 시 Initializr 기본값(`context-datasource`, `EgovDataSourceConfig` 등)
+- `outputDir` — 프로젝트 상대 경로. 미지정 시 xml → `src/main/resources/egovframework/spring`(logging 은 `src/main/resources`), javaConfig → `src/main/java/<패키지>`
+- `dryRun` — 내용·경로·컨텍스트만 반환
+
+```text
+generate_egovframe_config(
+  projectDir="/work/my-egov-app",
+  configId="datasource",
+  format="javaConfig",
+  fields={ txtConfigPackage: "kr.go.sample.config", rdoType: "C3P0", txtUrl: "jdbc:mysql://db:3306/app", txtUser: "app", txtPasswd: "…" }
+)
+```
+
+기존 파일이 있으면 쓰지 않고 거부하며, 결과의 컨텍스트에서 비밀번호 필드는 가려집니다. 템플릿은 [eGovFramework/egovframe-vscode-initializr](https://github.com/eGovFramework/egovframe-vscode-initializr)(Apache-2.0)의 `templates/config` 를 commit·sha256 고정으로 동봉합니다. 설계와 upstream 에서 발견한 문제는 [설정 파일 생성 설계](docs/design-config-generation.md)를 참고하세요.
 
 ### sync_egovframe_catalog / 컴포넌트 조립
 
@@ -193,7 +216,8 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 - Maven 좌표 레벨: 프로젝트 직접 groupId/artifactId/name만 변경하고 parent·dependency artifactId 보존 (`npm run test:pom`, 네트워크 불필요)
 - 카탈로그 레벨: schema v2, 고정 source/archive 지문, 자산 메타데이터, 무결성·위상 정렬·미리보기 검증 (`npm run test:catalog`, `npm run test:catalog-sync`, 네트워크 불필요)
 - zip 조달 레벨: 자리표시자 치환·globals 경로 판별·12종 정의 유효성(`npm run test:pom`, 네트워크 불필요), `batch-file-commandline` 실생성으로 지문 검증·좌표·DbType·zip 루트 보존, 지문 불일치 거부와 무기록, `ref` 지정 시 검증 생략 표시(`npm run test:templates`, 네트워크 필요, CI 실행)
-- 템플릿 카탈로그 레벨: `catalog/templates.json` 스키마·커버리지 계산·큐레이션 매핑 정합·변환기·upstream 차이 계산(추가/삭제/필드 변경) 검증 (`npm run test:template-catalog`, 247단언, zip 지문 drift·LFS 포인터 해석 포함, 네트워크 불필요)
+- 설정 생성 레벨: 동봉 템플릿 지문·카탈로그 무결성, 49건 전 형식 기본값 렌더링, 분기·필드 덮어쓰기, 필드·선택지·파일명·패키지 거부, dryRun 무기록, 충돌 거부, 비밀번호 가림, `..`·절대경로·symlink 이탈 거부 (`npm run test:config`, 457단언, 네트워크 불필요)
+- 템플릿 카탈로그 레벨: `catalog/templates.json` 스키마·커버리지 계산·큐레이션 매핑 정합·변환기·upstream 차이 계산(추가/삭제/필드 변경) 검증 (`npm run test:template-catalog`, 256단언, zip 지문·동봉 설정 템플릿 drift·LFS 포인터 해석 포함, 네트워크 불필요)
 - 동기화 레벨: 공식 v5.0.6 태그→commit, SHA-256·크기·파일 수, `sec.security`, 미매핑 경로 0건 검증 (`npm run test:catalog-sync-live`, 네트워크 필요)
 - 조립 레벨: 실제 공통컴포넌트 저장소로 bbs+login+sec.security(+cmm) 843파일 조립, message·IDGN·웹 자산·공용 fragment·Maven 좌표·선별 DB 스크립트·충돌 전체 거부·파일/SQL/매니페스트 fault-injection rollback·상위 symlink 경계 검증 (`npm run test:components`)
 - 수명주기 레벨: 설치 매니페스트 기록, 중복 설치 거부, 의존 컴포넌트 제거 보호, 제거·검증 동작 (`npm run test:components`)
@@ -220,7 +244,7 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 ## 로드맵
 
-v0.27.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 그리고 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종)를 완료했습니다.
+v0.28.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 그리고 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성을 완료했습니다.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -232,9 +256,10 @@ v0.27.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 | **v0.25 완료** | `test_egovframe_project` | 테스트 실행 후 JUnit XML 리포트(surefire `target/surefire-reports`, gradle `build/test-results/test`)를 읽어 스위트·케이스 단위 집계, 실패 메시지·예외 타입·테스트 파일/라인, `testFilter`, 오래된 리포트 제외, exit 0이어도 리포트 실패면 실패 판정 |
 | **v0.26 완료** | IDE·Initializr·MCP 공통 카탈로그 | Initializr `templates-projects.json`(22종), MCP `TEMPLATES`(10종), Development `wizards.xml`(8카테고리)을 `schemaVersion: 1` 단일 스키마 `catalog/templates.json` 으로 통합. 변환기(`fromInitializr`·`fromMcpTemplates`)와 큐레이션 매핑(`catalog/template-mapping.json`), upstream 대조 도구 `sync_egovframe_templates` 로 커버리지 격차를 수작업 비교 없이 확인 |
 | **v0.27 완료** | 공식 템플릿 커버리지 확대 (10 → **22종**) | 통합 카탈로그가 계산한 미커버 13종 중 12종을 Initializr zip(Git LFS) 조달로 추가. commit·sha256·크기 고정과 다운로드 검증, pom 자리표시자 치환, 템플릿별 `globals.properties` 경로 대응, `sync_egovframe_templates` 의 zip 지문 drift 보고 |
-| **v0.28 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
-| **v0.29 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
-| **v0.30+ 후보** | 접근성·배포·AI 컨텍스트·설정 생성 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, Initializr 설정 템플릿(datasource·transaction·cache 등 21종) 기반 `generate_egovframe_config` |
+| **v0.28 완료** | `generate_egovframe_config` | Initializr 설정 템플릿 21종(Handlebars)을 commit·sha256 고정으로 동봉해 오프라인 생성. xml·javaConfig·yaml·properties, Initializr 폼과 같은 필드·기본값, 선택지·파일명·패키지 검증, 기존 파일 거부, `sync_egovframe_templates` 의 동봉 템플릿 drift 보고 |
+| **v0.29 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
+| **v0.30 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
+| **v0.31+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 네트워크 진단(프록시·IPv6 안내) |
 
 로드맵 근거:
 
@@ -248,6 +273,7 @@ v0.27.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 
 ## 변경 이력
 
+- **0.28.0** — 설정 파일 생성: `generate_egovframe_config` 추가(도구 22 → 23). 공식 eGovFrame VSCode Initializr 의 설정 마법사 템플릿 21종(`templates/config`, Handlebars, Apache-2.0)을 `catalog/config-templates/` 에 commit·파일별 sha256 고정으로 동봉해 **네트워크 없이** Spring 설정 파일을 만듭니다 — datasource(DBCP/C3P0/JDBC·JNDI), transaction(datasource/JPA/JTA), cache(Ehcache 정의·Spring 캐시), logging(log4j2 console/file/rolling/time-rolling/jdbc), scheduling(Quartz bean job/method job/simple·cron trigger/scheduler), idGeneration(sequence/table/uuid), property. 형식은 xml(전 템플릿)·javaConfig(`@Configuration`)·yaml·properties(logging), 필드명과 기본값은 Initializr 웹뷰 폼과 같아 필드를 생략하면 IDE 와 같은 결과가 나옵니다. 템플릿에 없는 필드·선택지 밖 값·잘못된 파일명/클래스명/패키지는 거부하고, 출력 경로는 프로젝트 안이어야 하며(`..`·절대경로·symlink 이탈 거부) 기존 파일은 덮어쓰지 않습니다. 결과 컨텍스트의 비밀번호 필드는 가립니다. 렌더링 전에 동봉 파일 지문을 대조하고, `sync_egovframe_templates` 가 upstream 의 같은 파일과 대조해 `configTemplates.drift` 를 보고합니다. 리소스 `egovframe://catalog/config-templates` 로 템플릿별 형식·필드·기본값·선택지를 조회합니다. upstream 에서 발견한 문제 3건(존재하지 않는 `timeBasedRollingFile-java.hbs`, XML 내용인 `jdbc-properties.hbs`, 폼의 `txtPasswrd` 오타)은 큐레이션으로 제외·정정하고 설계 문서에 기록했습니다. 런타임 의존성에 `handlebars` 추가(`npm audit` 0건). 오프라인 457단언(`npm run test:config`), 49건 출력의 XML·YAML 파싱과 JavaConfig 2종 `mvn compile` 확인. 기존 22개 도구 하위 호환. 로드맵 후보 번호는 한 칸씩 뒤로 옮겼습니다.
 - **0.27.0** — 공식 템플릿 커버리지 확대(10 → **22종**, Initializr 22종 기준 대응 9 → 21종): v0.26.0 의 통합 카탈로그가 계산해 준 미커버 13종 가운데, 단독 GitHub 저장소 없이 Initializr 저장소의 zip(Git LFS, `templates/projects/examples/`)으로만 배포되는 12종을 추가했습니다 — `web`·`boot-web`(빈 골격), `batch-file-scheduler`·`batch-file-commandline`·`batch-file-web`·`batch-db-scheduler`·`batch-db-commandline`·`batch-db-web`, `mobile-web`·`mobile-common-components`, `msa-portal-backend`·`msa-portal-frontend`(멀티 프로젝트). 브랜치는 움직이므로 Initializr **commit** 으로 다운로드 URL 을 고정하고 LFS 포인터의 **sha256·크기**로 내려받은 바이트를 검증하며, 다르면 아무것도 쓰지 않고 거부합니다(`ref` 를 직접 주면 검증을 건너뛰고 결과에 `archiveVerified: false` 와 경고를 남깁니다). zip 은 codeload 아카이브와 달리 최상위 폴더가 없어 루트를 잘라내지 않고, `pom.xml` 의 `###GROUP_ID###`·`###ARTIFACT_ID###`·`###NAME###`·`###VERSION###`·`###URL###` 자리표시자를 채운 뒤 기존 좌표 적용을 거칩니다. `Globals.DbType` 은 템플릿마다 다른 `globals.properties` 경로(배치는 `egovframework/batch/properties/`)를 찾아 적용합니다. `sync_egovframe_templates` 는 zip 본문 대신 LFS 포인터만 읽어 고정 지문과 대조한 `archivesChecked`·`archiveDrift` 를 보고하고, 통합 카탈로그의 `mcp.archive` 에 지문을 함께 싣습니다. 23MB 올인원인 `egov-template-common-components` 는 "공통컴포넌트는 `add_egovframe_components` 로 선택 조립한다"는 기존 큐레이션 결정에 따라 제외했습니다. 12종 전부 실생성해 자리표시자 0건을 확인했고 `batch-db-commandline`·`boot-web`·`mobile-web` 은 `mvn compile` 을 통과했습니다. zip 본문을 받기 위해 `media.githubusercontent.com` 접근이 추가로 필요합니다. 기존 10종·전체 도구 하위 호환. 로드맵의 후보 번호는 한 칸씩 뒤로 옮겼습니다(namespace 전환 v0.27 → v0.28 등).
 - **0.26.0** — 공식 템플릿 카탈로그 단일화: `sync_egovframe_templates` 추가(도구 21 → 22). 그동안 같은 사실이 세 곳에 따로 적혀 있었습니다 — Initializr 는 `templates/templates-projects.json` 에 프로젝트 22종을 zip·pom 스냅샷으로, MCP 는 `TEMPLATES`(현 `src/project.ts`)에 10종을 공식 저장소 조달 방식으로, Development 는 `eGovFrameTemplates/wizards.xml` 에 설정 스니펫 마법사 8카테고리를 담고 있었고, v0.24.0 의 커버리지 확대도 이 둘을 **사람이 눈으로 대조**해 진행했습니다. 이번에 `schemaVersion: 1` 의 `catalog/templates.json` 하나로 합쳐 프로젝트마다 Initializr 쪽 zip·pom 과 MCP 쪽 저장소·브랜치·멀티프로젝트 여부를 나란히 두고, 커버리지(22종 중 대응 9종·미커버 13종·MCP 단독 2종)를 계산된 값으로 기록합니다. 매핑은 `catalog/template-mapping.json` 에서 큐레이션하며 자동 추론하지 않습니다 — 예컨대 Initializr 의 `egov-web`(빈 웹 골격)과 MCP 의 `web-sample`(게시판 샘플)은 이름이 비슷해도 다른 산출물이라 대응시키지 않고 근거를 note 로 남겼습니다. 생성기 `scripts/generate-template-catalog.mjs` 는 매핑에 없는 upstream 항목을 만나면 실패해 조용한 누락을 막고, `sync_egovframe_templates` 는 upstream 을 내려받아 추가·삭제·변경(필드 단위)과 sha256 을 대조해 보고하되 파일을 고쳐 쓰지 않습니다. `list_egovframe_templates` 응답에도 커버리지 요약이 붙습니다(카탈로그가 없으면 기존 동작 유지). 오프라인 148단언(`npm run test:template-catalog`), 기존 21개 도구 하위 호환. 생성기는 Windows 에서도 동작하도록 `dist/index.js` 로드와 직접 실행 판정을 file URL·realpath 기준으로 처리합니다.
 - **0.25.3** — 기동 버그 수정 + CI 확장(도구 인터페이스 하위 호환).

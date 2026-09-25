@@ -1,0 +1,994 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/generate-config-catalog.mjs",
+  "source": {
+    "repository": "eGovFramework/egovframe-vscode-initializr",
+    "branch": "main",
+    "catalogPath": "templates/templates-context-xml.json",
+    "templateDir": "templates/config",
+    "license": "Apache-2.0",
+    "commit": "bc1864133ef3143118d33afb7ce43f5b8f433d5a",
+    "surveyedAt": "2026-09-25",
+    "catalogSha256": "017f8629af3849c393d45b4563194ecde6f3be674a9a9a725a308008136befc6"
+  },
+  "outputDirs": {
+    "xml": "src/main/resources/egovframework/spring",
+    "yaml": "src/main/resources",
+    "properties": "src/main/resources",
+    "javaConfig": "src/main/java/{package}"
+  },
+  "outputDirOverrides": {
+    "logging": {
+      "xml": "src/main/resources"
+    },
+    "cache": {
+      "xml": "src/main/resources/egovframework/egovProps"
+    }
+  },
+  "entries": [
+    {
+      "id": "cache-ehcache-default",
+      "category": "cache",
+      "displayName": "Cache > New Cache",
+      "description": "Creates a general cache configuration file.",
+      "formType": "cache",
+      "templateFolder": "cache",
+      "formats": {
+        "xml": {
+          "file": "cache/cache.hbs",
+          "sha256": "93aea6bc4dc890775dce6cf4d9af7b7ced4684c6a119764a449a14b2f0c52274"
+        }
+      },
+      "defaultFileName": {
+        "xml": "ehcache-default",
+        "javaConfig": "EgovEhcacheDefaultConfig"
+      },
+      "fields": [
+        "txtCacheName",
+        "txtDftDiskPersistence",
+        "txtDftEternal",
+        "txtDftHeapEntries",
+        "txtDftLiveTime",
+        "txtDftOffheapSize",
+        "txtDiskStore",
+        "txtEternal",
+        "txtHeapEntries",
+        "txtIdleTime"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtDiskStore": "user.dir/second",
+        "txtDftEternal": "false",
+        "txtDftLiveTime": "10",
+        "txtDftHeapEntries": "100",
+        "txtDftOffheapSize": "",
+        "txtDftDiskPersistence": "true",
+        "txtCacheName": "cache",
+        "txtEternal": "false",
+        "txtIdleTime": "300",
+        "txtHeapEntries": "10"
+      },
+      "note": "Ehcache 3.x 캐시 정의 파일. JavaConfig 템플릿(cache-java.hbs)은 Initializr 카탈로그에 등록되어 있지 않아 xml 만 제공한다"
+    },
+    {
+      "id": "cache-spring",
+      "category": "cache",
+      "displayName": "Cache > New Ehcache Configuration",
+      "description": "Creates a file that configures the path to Ehcache to be provided to the CacheManager in a Spring environment.",
+      "formType": "ehcache",
+      "templateFolder": "cache",
+      "formats": {
+        "xml": {
+          "file": "cache/ehcacheConfigForSpring.hbs",
+          "sha256": "e59e0eb83db35d32711e805be1d6e86f69ff02d68f0cec16d7d55ce434f6b434"
+        },
+        "javaConfig": {
+          "file": "cache/ehcacheConfigForSpring-java.hbs",
+          "sha256": "bebe1d2c18fa23cc5d18daa6ec191759b28b1e01989ab51bbdbe1a321ba0d3b2"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-cache",
+        "javaConfig": "EgovEhcacheSpringConfig"
+      },
+      "fields": [
+        "txtComponentScanBasePackage",
+        "txtConfigLocation",
+        "txtConfigPackage"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtComponentScanBasePackage": "egovframework.example",
+        "txtConfigLocation": ""
+      }
+    },
+    {
+      "id": "datasource",
+      "category": "datasource",
+      "displayName": "Datasource > New Datasource",
+      "description": "Creates datasource configurations for DBCP, C3P0, and JDBC.",
+      "formType": "datasource",
+      "templateFolder": "datasource",
+      "formats": {
+        "xml": {
+          "file": "datasource/datasource.hbs",
+          "sha256": "13b5a54e3ac06cb9b735bd841246658d52c8536e1a99ad24375ca7142afedf69"
+        },
+        "javaConfig": {
+          "file": "datasource/datasource-java.hbs",
+          "sha256": "6dd1655f4102a0209a2a8835c13902b0db37cdf245e3b5ef342f818cad221030"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-datasource",
+        "javaConfig": "EgovDataSourceConfig"
+      },
+      "fields": [
+        "rdoType",
+        "txtConfigPackage",
+        "txtDatasourceName",
+        "txtDriver",
+        "txtPasswd",
+        "txtUrl",
+        "txtUser"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtDatasourceName": "dataSource",
+        "rdoType": "DBCP",
+        "txtDriver": "com.mysql.cj.jdbc.Driver",
+        "txtUrl": "jdbc:mysql://127.0.0.1:3306/myDB",
+        "txtUser": "root",
+        "txtPasswd": ""
+      },
+      "enums": {
+        "rdoType": [
+          "DBCP",
+          "C3P0",
+          "JDBC"
+        ]
+      }
+    },
+    {
+      "id": "datasource-jndi",
+      "category": "datasource",
+      "displayName": "Datasource > New JNDI Datasource",
+      "description": "Creates a JNDI-based datasource configuration.",
+      "formType": "jndi",
+      "templateFolder": "datasource",
+      "formats": {
+        "xml": {
+          "file": "datasource/jndiDatasource.hbs",
+          "sha256": "fcb5fa393de8a3aab00756abd99f8a149de68d2ef5deddc99e96b8247ec60c65"
+        },
+        "javaConfig": {
+          "file": "datasource/jndiDatasource-java.hbs",
+          "sha256": "b4cd5af39d40857a92e717b63819b39e00606ca041b20b9e5a05bca11bc264bb"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-jndi-datasource",
+        "javaConfig": "EgovJndiDatasourceConfig"
+      },
+      "fields": [
+        "txtConfigPackage",
+        "txtDatasourceName",
+        "txtJndiName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtDatasourceName": "dataSource",
+        "txtJndiName": "java:comp/env/jdbc/myDataSource"
+      }
+    },
+    {
+      "id": "idgen-sequence",
+      "category": "idGeneration",
+      "displayName": "ID Generation > New Sequence ID Generation",
+      "description": "Creates a sequence-based ID generation service configuration.",
+      "formType": "sequence",
+      "templateFolder": "idGeneration",
+      "formats": {
+        "xml": {
+          "file": "idGeneration/xml-id-gnr-sequence-service.hbs",
+          "sha256": "66ef4481032bc08878a4eb3c789416eb8f7e22e33c6a4e2c397e23e7dca775f0"
+        },
+        "javaConfig": {
+          "file": "idGeneration/xml-id-gnr-sequence-service-java.hbs",
+          "sha256": "79431454ee0f7cf950e7edd34b1d95286754f1e348f34800503d4c03ec932a91"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-idgn-sequence",
+        "javaConfig": "EgovIdgnSequenceConfig"
+      },
+      "fields": [
+        "rdoIdType",
+        "txtConfigPackage",
+        "txtDatasourceName",
+        "txtIdServiceName",
+        "txtQuery"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtIdServiceName": "idGnrService",
+        "txtDatasourceName": "dataSource",
+        "rdoIdType": "Base",
+        "txtQuery": "SELECT SEQ_SAMPLE.NEXTVAL FROM DUAL"
+      },
+      "enums": {
+        "rdoIdType": [
+          "Base",
+          "BigDecimal"
+        ]
+      }
+    },
+    {
+      "id": "idgen-table",
+      "category": "idGeneration",
+      "displayName": "ID Generation > New Table ID Generation",
+      "description": "Creates a table-based ID generation service configuration.",
+      "formType": "table",
+      "templateFolder": "idGeneration",
+      "formats": {
+        "xml": {
+          "file": "idGeneration/xml-id-gnr-table-service.hbs",
+          "sha256": "b31905358abdf80bad1ddf15264b82cadfe0a8b82081a7e2d6abf351511da89b"
+        },
+        "javaConfig": {
+          "file": "idGeneration/xml-id-gnr-table-service-java.hbs",
+          "sha256": "3ecd6b30b707f17ba215ff956b2e239beed30dad35da48a1a0400a1abf87e343"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-idgn-table",
+        "javaConfig": "EgovIdgnTableConfig"
+      },
+      "fields": [
+        "chkStrategy",
+        "txtBlockSize",
+        "txtCipers",
+        "txtConfigPackage",
+        "txtDatasourceName",
+        "txtFillChar",
+        "txtIdServiceName",
+        "txtPrefix",
+        "txtStrategyName",
+        "txtTable",
+        "txtTableNameFieldValue"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtIdServiceName": "idGnrService",
+        "txtDatasourceName": "dataSource",
+        "txtTable": "IDS",
+        "txtTableNameFieldValue": "SAMPLE",
+        "txtBlockSize": "10",
+        "chkStrategy": false,
+        "txtStrategyName": "prefixIdGnrStrategy",
+        "txtPrefix": "egov-",
+        "txtCipers": "10",
+        "txtFillChar": "0"
+      }
+    },
+    {
+      "id": "idgen-uuid",
+      "category": "idGeneration",
+      "displayName": "ID Generation > New UUID Generation",
+      "description": "Creates a UUID-based ID generation service configuration.",
+      "formType": "uuid",
+      "templateFolder": "idGeneration",
+      "formats": {
+        "xml": {
+          "file": "idGeneration/xml-id-gnr-uuid-service.hbs",
+          "sha256": "9342a6ba1d1554a95f590d7ee888aabb416968ee97d20c158912ded0ea3f659d"
+        },
+        "javaConfig": {
+          "file": "idGeneration/xml-id-gnr-uuid-service-java.hbs",
+          "sha256": "43e0561dbc416b838d645b7a9a2efb55bd35dbb8dfc54ce882593421534653fa"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-idgn-uuid",
+        "javaConfig": "EgovIdgnUuidConfig"
+      },
+      "fields": [
+        "rdoIdType",
+        "txtAddress",
+        "txtConfigPackage",
+        "txtIdServiceName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtIdServiceName": "idGnrService",
+        "rdoIdType": "Base",
+        "txtAddress": "12:34:56:78:9A:AB"
+      },
+      "enums": {
+        "rdoIdType": [
+          "Base",
+          "Address"
+        ]
+      }
+    },
+    {
+      "id": "logging-console",
+      "category": "logging",
+      "displayName": "Logging > New Console Appender",
+      "description": "Creates an appender configuration that outputs logs to the console.",
+      "formType": "console",
+      "templateFolder": "logging",
+      "formats": {
+        "xml": {
+          "file": "logging/console.hbs",
+          "sha256": "2f84d56f0d5365d18764019a11a42c380f58db68097a59230982a9144c98a843"
+        },
+        "javaConfig": {
+          "file": "logging/console-java.hbs",
+          "sha256": "221b0a174d5416109123efcfd17d5622b4051b4ae3140f1d411c83db14a874ad"
+        },
+        "yaml": {
+          "file": "logging/console-yaml.hbs",
+          "sha256": "de83f7a0f9141e626379c14c8c984f5781b91ed99c9a508f73644f6611443ff4"
+        },
+        "properties": {
+          "file": "logging/console-properties.hbs",
+          "sha256": "cf2e9d9a89ef012150ff0aef8ee9ff22e413e2c3e389f888feddfdf7fd2d84c2"
+        }
+      },
+      "defaultFileName": {
+        "xml": "log4j2-console",
+        "javaConfig": "EgovLog4j2ConsoleConfig"
+      },
+      "fields": [
+        "txtAppenderName",
+        "txtConfigPackage",
+        "txtConversionPattern"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtAppenderName": "console",
+        "txtConversionPattern": "%d %5p [%c] %m%n"
+      }
+    },
+    {
+      "id": "logging-file",
+      "category": "logging",
+      "displayName": "Logging > New File Appender",
+      "description": "Creates an appender configuration that writes logs to a file.",
+      "formType": "file",
+      "templateFolder": "logging",
+      "formats": {
+        "xml": {
+          "file": "logging/file.hbs",
+          "sha256": "24439fe1fc8a5c178c701d6313f67fea1d326375e458afb259bf0515beca18f6"
+        },
+        "javaConfig": {
+          "file": "logging/file-java.hbs",
+          "sha256": "bfc70dcc333461a68cf5afdb764a4261259f4adabf9b46c75b3ee44e54177e71"
+        },
+        "yaml": {
+          "file": "logging/file-yaml.hbs",
+          "sha256": "a879e3585783279150e27dfda0d96105e732b3320cb04808fda7622782081ecf"
+        },
+        "properties": {
+          "file": "logging/file-properties.hbs",
+          "sha256": "073b766359e66b741f5a0ea079f3201803a1b1417daf11927c777db1aed3903a"
+        }
+      },
+      "defaultFileName": {
+        "xml": "log4j2-file",
+        "javaConfig": "EgovLog4j2FileConfig"
+      },
+      "fields": [
+        "cboAppend",
+        "txtAppenderName",
+        "txtConfigPackage",
+        "txtConversionPattern",
+        "txtLogFileName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtAppenderName": "file",
+        "txtConversionPattern": "%d %5p [%c] %m%n",
+        "txtLogFileName": "./logs/file/sample.log",
+        "cboAppend": true
+      }
+    },
+    {
+      "id": "logging-rolling-file",
+      "category": "logging",
+      "displayName": "Logging > New Rolling File Appender",
+      "description": "Creates an appender configuration that rolls log files based on file size.",
+      "formType": "rollingFile",
+      "templateFolder": "logging",
+      "formats": {
+        "xml": {
+          "file": "logging/rollingFile.hbs",
+          "sha256": "07f7bc578434d8f33f6332212befc93b7ffc0eeb8844ee7a43ccb996de8430a7"
+        },
+        "javaConfig": {
+          "file": "logging/rollingFile-java.hbs",
+          "sha256": "bf51c072c65d7b1427575f2f9230908e629ecdf26f2f47ce17b2976441fb3117"
+        },
+        "yaml": {
+          "file": "logging/rollingFile-yaml.hbs",
+          "sha256": "124033a87a96ca7238d6686e80faf42e4772e51b4328a0103a28dc49f82d8dd0"
+        },
+        "properties": {
+          "file": "logging/rollingFile-properties.hbs",
+          "sha256": "4f4aa083c950b04c511e1065ec02f7b032f4dad503fc337664470c4f7f87e927"
+        }
+      },
+      "defaultFileName": {
+        "xml": "log4j2-rollingFile",
+        "javaConfig": "EgovLog4j2RollingFileConfig"
+      },
+      "fields": [
+        "txtAppenderName",
+        "txtConfigPackage",
+        "txtConversionPattern",
+        "txtLogFileName",
+        "txtLogFileNamePattern",
+        "txtMaxFileSize",
+        "txtMaxIndex"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtAppenderName": "rollingFile",
+        "txtConversionPattern": "%d %5p [%c] %m%n",
+        "txtLogFileName": "./logs/rolling/rollingSample.log",
+        "txtLogFileNamePattern": "./logs/rolling/rollingSample.%i.log",
+        "txtMaxIndex": "20",
+        "txtMaxFileSize": "3000"
+      }
+    },
+    {
+      "id": "logging-time-rolling-file",
+      "category": "logging",
+      "displayName": "Logging > New Time-Based Rolling File Appender",
+      "description": "Creates an appender configuration that rolls log files based on time.",
+      "formType": "timeBasedRollingFile",
+      "templateFolder": "logging",
+      "formats": {
+        "xml": {
+          "file": "logging/timeBasedRollingFile.hbs",
+          "sha256": "f2b002976eacf311a1dfe0661456fdadf8d7f338f5807472a981720119c4aad3"
+        },
+        "yaml": {
+          "file": "logging/timeBasedRollingFile-yaml.hbs",
+          "sha256": "51d8151008d080bd5971e73ec4e456acc70a3f4560aa4da0c97b275a8105bc7a"
+        },
+        "properties": {
+          "file": "logging/timeBasedRollingFile-properties.hbs",
+          "sha256": "b6fd26e70708e791e25b275de0ac3172c4ddc556c091fb079b401b27dbfe4041"
+        }
+      },
+      "defaultFileName": {
+        "xml": "log4j2-timeBasedRollingFile",
+        "javaConfig": "EgovLog4j2TimeBasedRollingFileConfig"
+      },
+      "fields": [
+        "cboModulate",
+        "txtAppenderName",
+        "txtConversionPattern",
+        "txtInterval",
+        "txtLogFileName",
+        "txtLogFileNamePattern"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtAppenderName": "timeBasedRollingFile",
+        "txtConversionPattern": "%d %5p [%c] %m%n",
+        "txtLogFileName": "./logs/time/timeBasedRollingSample.log",
+        "txtLogFileNamePattern": "./logs/time/timeBasedRollingSample.%d{yyyy-MM-dd_HH-mm}.log",
+        "txtInterval": "1",
+        "cboModulate": true
+      },
+      "upstreamMissing": [
+        {
+          "format": "javaConfig",
+          "file": "templates/config/logging/timeBasedRollingFile-java.hbs"
+        }
+      ]
+    },
+    {
+      "id": "logging-jdbc",
+      "category": "logging",
+      "displayName": "Logging > New JDBC Appender",
+      "description": "Creates a JDBC appender configuration that stores logs in a database.",
+      "formType": "jdbc",
+      "templateFolder": "logging",
+      "formats": {
+        "xml": {
+          "file": "logging/jdbc.hbs",
+          "sha256": "1090ef4c8a422826119eb000d91ea9dd659f26d384f06aa75ecde89f9773f704"
+        },
+        "javaConfig": {
+          "file": "logging/jdbc-java.hbs",
+          "sha256": "63c593064fdf42203b559fc99a8b6885a2d8ae35448a423e04b804dec3d80312"
+        },
+        "yaml": {
+          "file": "logging/jdbc-yaml.hbs",
+          "sha256": "a2e5c21805f32e9a4decd8fdb34d921b5d52e938b2fa95fb02971f8e6fd286fc"
+        }
+      },
+      "defaultFileName": {
+        "xml": "log4j2-jdbc",
+        "javaConfig": "EgovLog4j2JdbcConfig"
+      },
+      "fields": [
+        "rdoConnectionType",
+        "txtAppenderName",
+        "txtConfigPackage",
+        "txtConnectionFactoryClass",
+        "txtConnectionFactoryMethod",
+        "txtDriver",
+        "txtPasswd",
+        "txtQuery",
+        "txtTableName",
+        "txtUrl",
+        "txtUser"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtAppenderName": "jdbc",
+        "txtTableName": "LOG",
+        "rdoConnectionType": "DriverManager",
+        "txtDriver": "com.mysql.cj.jdbc.Driver",
+        "txtUrl": "jdbc:mysql://localhost:3306/log",
+        "txtUser": "log",
+        "txtConnectionFactoryClass": "org.egovframe.rte.fdl.logging.db.EgovConnectionFactory",
+        "txtConnectionFactoryMethod": "getDatabaseConnection",
+        "txtPasswd": "log01",
+        "txtQuery": "INSERT INTO LOG (DATE, LOGGER, LEVEL, MESSAGE) VALUES ('%d{yyyy-MM-dd HH:mm:ss}', '%C', '%p', '%m')"
+      },
+      "enums": {
+        "rdoConnectionType": [
+          "DriverManager",
+          "ConnectionFactory"
+        ]
+      },
+      "excluded": [
+        {
+          "format": "properties",
+          "file": "templates/config/logging/jdbc-properties.hbs",
+          "reason": "upstream 의 jdbc-properties.hbs 는 이름과 달리 XML 내용이라(log4j2 properties 형식이 아님) 제공하지 않는다"
+        }
+      ],
+      "note": "Initializr 웹뷰 폼은 비밀번호 필드를 txtPasswrd(오타)로 보내지만 템플릿은 txtPasswd 를 참조한다 — MCP 는 템플릿이 참조하는 txtPasswd 를 쓴다. txtQuery 는 JavaConfig(log4j 1.x JDBCAppender) 전용"
+    },
+    {
+      "id": "property",
+      "category": "property",
+      "displayName": "Property > New Property",
+      "description": "Creates a property configuration that allows external management of information such as system environment variables.",
+      "formType": "property",
+      "templateFolder": "property",
+      "formats": {
+        "xml": {
+          "file": "property/property.hbs",
+          "sha256": "38b2089716742323f473c168c18d2a1f6c0ee1c581aaba2b77485419066963ce"
+        },
+        "javaConfig": {
+          "file": "property/property-java.hbs",
+          "sha256": "f1432619cd2ae37684ff5cbf29125636f861b2219c05716ef6a4ef8ad7517d76"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-properties",
+        "javaConfig": "EgovPropertiesConfig"
+      },
+      "fields": [
+        "cboEncoding",
+        "rdoType",
+        "txtConfigPackage",
+        "txtKey",
+        "txtPropertyFile",
+        "txtPropertyServiceName",
+        "txtValue"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtPropertyServiceName": "propertiesService",
+        "rdoType": "Internal Properties",
+        "txtKey": "pageUnit",
+        "txtValue": "20",
+        "cboEncoding": "UTF-8",
+        "txtPropertyFile": "classpath*:/egovframework/egovProps/conf/config.properties"
+      },
+      "enums": {
+        "rdoType": [
+          "Internal Properties",
+          "External File"
+        ]
+      }
+    },
+    {
+      "id": "scheduling-bean-job",
+      "category": "scheduling",
+      "displayName": "Scheduling > New Detail Bean Job",
+      "description": "Creates a job (job detail) that encapsulates the information required to execute a task.",
+      "formType": "beanJob",
+      "templateFolder": "scheduling",
+      "formats": {
+        "xml": {
+          "file": "scheduling/beanJob.hbs",
+          "sha256": "6ec73dc33a73d646853b5f066b9af221f4441fb1a358ff6c1272cea67cb4917c"
+        },
+        "javaConfig": {
+          "file": "scheduling/beanJob-java.hbs",
+          "sha256": "9119d1b5e279bc924ed742938fbb0105abc55affd9ef784e2fc8595460efe5f8"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-scheduling-jobDetail",
+        "javaConfig": "EgovSchedulingJobDetailConfig"
+      },
+      "fields": [
+        "chkProperty",
+        "txtConfigPackage",
+        "txtJobName",
+        "txtPropertyName",
+        "txtPropertyValue",
+        "txtServiceClass"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtJobName": "jobDetail",
+        "txtServiceClass": "egovframework.example.schedule.JobService",
+        "chkProperty": true,
+        "txtPropertyName": "paramSampleJob",
+        "txtPropertyValue": "SampleJobValue"
+      }
+    },
+    {
+      "id": "scheduling-method-job",
+      "category": "scheduling",
+      "displayName": "Scheduling > New Method Invoking Job",
+      "description": "Creates a job (job detail) that periodically invokes a method of a specific bean object.",
+      "formType": "methodJob",
+      "templateFolder": "scheduling",
+      "formats": {
+        "xml": {
+          "file": "scheduling/methodJob.hbs",
+          "sha256": "84831845aab6c094711bb186cadba205465eeca957ed8c27a3a443c23a927941"
+        },
+        "javaConfig": {
+          "file": "scheduling/methodJob-java.hbs",
+          "sha256": "375cbebbb7fd92e3edba7008cfc3ada44c22809ca0b41366c506c7243d8df1a9"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-scheduling-methodInvokingJobDetail",
+        "javaConfig": "EgovSchedulingMethodInvokingJobDetailConfig"
+      },
+      "fields": [
+        "cboConcurrent",
+        "chkProperty",
+        "txtConfigPackage",
+        "txtJobName",
+        "txtPropertyName",
+        "txtPropertyValue",
+        "txtServiceClass",
+        "txtServiceMethod",
+        "txtServiceName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtJobName": "methodInvokingJobDetail",
+        "txtServiceName": "jobService",
+        "txtServiceMethod": "executeSample",
+        "cboConcurrent": "false",
+        "txtServiceClass": "egovframework.example.schedule.JobService",
+        "chkProperty": true,
+        "txtPropertyName": "paramSampleJob",
+        "txtPropertyValue": "SampleJobValue"
+      }
+    },
+    {
+      "id": "scheduling-simple-trigger",
+      "category": "scheduling",
+      "displayName": "Scheduling > New Simple Trigger",
+      "description": "Creates a trigger for simple scheduling that executes tasks based on specific times, repeat counts, delays, and so on.",
+      "formType": "simpleTrigger",
+      "templateFolder": "scheduling",
+      "formats": {
+        "xml": {
+          "file": "scheduling/simpleTrigger.hbs",
+          "sha256": "018907800abed1dff17e99d5869cefb44d11c84a60136ef2284eb9a20b5be061"
+        },
+        "javaConfig": {
+          "file": "scheduling/simpleTrigger-java.hbs",
+          "sha256": "fc41aa12fb11ee9d462cfa6aec737021f18e72d8ad23117488adb3cdf62e1b45"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-scheduling-simpleTrigger",
+        "javaConfig": "EgovSchedulingSimpleTriggerConfig"
+      },
+      "fields": [
+        "cboJobDetailType",
+        "txtConfigPackage",
+        "txtJobName",
+        "txtRepeatInterval",
+        "txtStartDelay",
+        "txtTriggerName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtTriggerName": "simpleTrigger",
+        "txtJobName": "jobDetail",
+        "cboJobDetailType": "JobDetailFactoryBean",
+        "txtStartDelay": "2000",
+        "txtRepeatInterval": "10000"
+      },
+      "enums": {
+        "cboJobDetailType": [
+          "JobDetailFactoryBean",
+          "MethodInvokingJobDetailFactoryBean"
+        ]
+      }
+    },
+    {
+      "id": "scheduling-cron-trigger",
+      "category": "scheduling",
+      "displayName": "Scheduling > New Cron Trigger",
+      "description": "Creates a trigger that executes tasks at specific times, days, and months based on a cron expression.",
+      "formType": "cronTrigger",
+      "templateFolder": "scheduling",
+      "formats": {
+        "xml": {
+          "file": "scheduling/cronTrigger.hbs",
+          "sha256": "075fe523423bceee0c46c88ebbe31df613c5b3c72365f6fe5619a36c9af3f6a8"
+        },
+        "javaConfig": {
+          "file": "scheduling/cronTrigger-java.hbs",
+          "sha256": "d2a226f8f619b272ac34deaa0f4b2d6c0d978395689dfe7e8ab13b521bfb341e"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-scheduling-cronTrigger",
+        "javaConfig": "EgovSchedulingCronTriggerConfig"
+      },
+      "fields": [
+        "cboJobDetailType",
+        "txtConfigPackage",
+        "txtCronExpression",
+        "txtJobName",
+        "txtTriggerName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtTriggerName": "cronTrigger",
+        "txtJobName": "jobDetail",
+        "cboJobDetailType": "JobDetailFactoryBean",
+        "txtCronExpression": "*/10 * * * * ?"
+      },
+      "enums": {
+        "cboJobDetailType": [
+          "JobDetailFactoryBean",
+          "MethodInvokingJobDetailFactoryBean"
+        ]
+      }
+    },
+    {
+      "id": "scheduling-scheduler",
+      "category": "scheduling",
+      "displayName": "Scheduling > New Scheduler",
+      "description": "Creates a scheduler configuration that registers jobs and triggers to start scheduled tasks.",
+      "formType": "scheduler",
+      "templateFolder": "scheduling",
+      "formats": {
+        "xml": {
+          "file": "scheduling/scheduler.hbs",
+          "sha256": "f973e1cab635bb07b184e312742617f59e7251a361617dd8de712abd7450595d"
+        },
+        "javaConfig": {
+          "file": "scheduling/scheduler-java.hbs",
+          "sha256": "a3a8d66848ae4abc66756f4492967b113391b368a949dd849e0a990433b2a06f"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-scheduling-scheduler",
+        "javaConfig": "EgovSchedulingSchedulerConfig"
+      },
+      "fields": [
+        "cboTriggerType",
+        "txtConfigPackage",
+        "txtSchedulerName",
+        "txtTriggerName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtSchedulerName": "scheduler",
+        "txtTriggerName": "simpleTrigger",
+        "cboTriggerType": "SimpleTriggerFactoryBean"
+      },
+      "enums": {
+        "cboTriggerType": [
+          "SimpleTriggerFactoryBean",
+          "CronTriggerFactoryBean"
+        ]
+      }
+    },
+    {
+      "id": "transaction-datasource",
+      "category": "transaction",
+      "displayName": "Transaction > New Datasource Transaction",
+      "description": "Creates a configuration for declaratively managing transactions on a datasource using AOP or annotations.",
+      "formType": "datasource",
+      "templateFolder": "transaction",
+      "formats": {
+        "xml": {
+          "file": "transaction/datasource.hbs",
+          "sha256": "7021543c005e5bcbf323f51718e107837da158d1b5e85f75b28f9c618b4c907b"
+        },
+        "javaConfig": {
+          "file": "transaction/datasource-java.hbs",
+          "sha256": "f9fc480c52939d2d6ceb9d652f7789179507b301b4bc1d0094a9a833051bbe8b"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-transaction",
+        "javaConfig": "EgovTransactionConfig"
+      },
+      "fields": [
+        "chkAnnotationTransaction",
+        "chkAopConfigTransaction",
+        "chkReadOnly",
+        "cmbIsolation",
+        "cmbPropagation",
+        "txtAdviceName",
+        "txtConfigPackage",
+        "txtDataSourceName",
+        "txtMethodName",
+        "txtNoRollbackFor",
+        "txtPointCutExpression",
+        "txtPointCutName",
+        "txtRollbackFor",
+        "txtTimeout",
+        "txtTransactionName",
+        "txtTransactionTemplateName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtTransactionName": "txManager",
+        "txtDataSourceName": "dataSource",
+        "chkAopConfigTransaction": true,
+        "chkAnnotationTransaction": true,
+        "txtPointCutName": "requiredTx",
+        "txtPointCutExpression": "execution(* egovframework.example..*Impl.*(..)) || execution(* org.egovframe.rte.fdl.excel.impl.*Impl.*(..))",
+        "txtAdviceName": "txAdvice",
+        "txtMethodName": "*",
+        "chkReadOnly": false,
+        "txtRollbackFor": "Exception",
+        "txtNoRollbackFor": "RuntimeException",
+        "txtTimeout": "20",
+        "cmbPropagation": "REQUIRED",
+        "cmbIsolation": "DEFAULT",
+        "txtTransactionTemplateName": "transactionTemplate"
+      }
+    },
+    {
+      "id": "transaction-jpa",
+      "category": "transaction",
+      "displayName": "Transaction > New JPA Transaction",
+      "description": "Creates a configuration for managing transactions in a JPA environment.",
+      "formType": "jpa",
+      "templateFolder": "transaction",
+      "formats": {
+        "xml": {
+          "file": "transaction/jpa.hbs",
+          "sha256": "090a8b67624a2afcd7fd1fd7e364ed5973c9807e9ae5d994ed8e77944fdfa778"
+        },
+        "javaConfig": {
+          "file": "transaction/jpa-java.hbs",
+          "sha256": "47527d76c027820154b65130832ccda346dbf008a873060f6007d189db3be7b3"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-transaction-jpa",
+        "javaConfig": "EgovTransactionJpaConfig"
+      },
+      "fields": [
+        "chkAnnotationTransaction",
+        "chkAopConfigTransaction",
+        "chkReadOnly",
+        "cmbDialectName",
+        "cmbIsolation",
+        "cmbPropagation",
+        "txtAdviceName",
+        "txtConfigPackage",
+        "txtDataSourceName",
+        "txtEntityManagerFactory",
+        "txtMethodName",
+        "txtNoRollbackFor",
+        "txtPackagesToScan",
+        "txtPointCutExpression",
+        "txtPointCutName",
+        "txtRollbackFor",
+        "txtSpringDataJpaRepositoriesPackage",
+        "txtTimeout",
+        "txtTransactionName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtTransactionName": "transactionManager",
+        "txtEntityManagerFactory": "entityManagerFactory",
+        "txtPackagesToScan": "egovframework.example.sample.domain",
+        "cmbDialectName": "org.hibernate.dialect.H2Dialect",
+        "txtSpringDataJpaRepositoriesPackage": "egovframework.example.sample.repository",
+        "txtDataSourceName": "dataSource",
+        "chkAopConfigTransaction": true,
+        "chkAnnotationTransaction": true,
+        "txtPointCutName": "requiredTx",
+        "txtPointCutExpression": "execution(* egovframework.example..*Impl.*(..)) || execution(* org.egovframe.rte.fdl.excel.impl.*Impl.*(..))",
+        "txtAdviceName": "txAdvice",
+        "txtMethodName": "*",
+        "chkReadOnly": false,
+        "txtRollbackFor": "Exception",
+        "txtNoRollbackFor": "RuntimeException",
+        "txtTimeout": "20",
+        "cmbPropagation": "REQUIRED",
+        "cmbIsolation": "DEFAULT"
+      }
+    },
+    {
+      "id": "transaction-jta",
+      "category": "transaction",
+      "displayName": "Transaction > New JTA Transaction",
+      "description": "Creates a configuration for managing distributed transactions across multiple resources based on JTA.",
+      "formType": "jta",
+      "templateFolder": "transaction",
+      "formats": {
+        "xml": {
+          "file": "transaction/jta.hbs",
+          "sha256": "349c4bbf4ed12e9a52a89875507f4955065acb5a10240cadebf0d5ed0f7a6438"
+        },
+        "javaConfig": {
+          "file": "transaction/jta-java.hbs",
+          "sha256": "a237977d1f37639eef425142830cc6307dbabd75c47c0f3a88bddd87a78c560a"
+        }
+      },
+      "defaultFileName": {
+        "xml": "context-transaction-jta",
+        "javaConfig": "EgovTransactionJtaConfig"
+      },
+      "fields": [
+        "chkAnnotationTransaction",
+        "chkAopConfigTransaction",
+        "chkReadOnly",
+        "cmbIsolation",
+        "cmbPropagation",
+        "txtAdviceName",
+        "txtConfigPackage",
+        "txtGlobalTimeout",
+        "txtMethodName",
+        "txtNoRollbackFor",
+        "txtPointCutExpression",
+        "txtPointCutName",
+        "txtRollbackFor",
+        "txtTimeout",
+        "txtTransactionName"
+      ],
+      "defaults": {
+        "txtConfigPackage": "egovframework.example.config",
+        "txtTransactionName": "transactionManager",
+        "txtGlobalTimeout": "20",
+        "chkAopConfigTransaction": true,
+        "chkAnnotationTransaction": true,
+        "txtPointCutName": "requiredTx",
+        "txtPointCutExpression": "execution(* egovframework.example..*Impl.*(..)) || execution(* org.egovframe.rte.fdl.excel.impl.*Impl.*(..))",
+        "txtAdviceName": "txAdvice",
+        "txtMethodName": "*",
+        "chkReadOnly": false,
+        "txtRollbackFor": "Exception",
+        "txtNoRollbackFor": "RuntimeException",
+        "txtTimeout": "20",
+        "cmbPropagation": "REQUIRED",
+        "cmbIsolation": "DEFAULT"
+      }
+    }
+  ]
+}

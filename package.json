@@ -1,6 +1,6 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트·CRUD 스캐폴딩과 검증된 공통컴포넌트 완전 조립 MCP 서버",
   "license": "Apache-2.0",
   "type": "module",
@@ -16,7 +16,8 @@
     "test:components": "node test/components.mjs",
     "generate:catalog": "node scripts/generate-catalog.mjs",
     "generate:template-catalog": "node scripts/generate-template-catalog.mjs",
-    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:catalog-sync && npm run test:template-catalog && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade && npm run test:remove && npm run test:transaction && npm run test:allowed-roots && npm run test:explain && npm run test:ci && npm run test:build && npm run test:test && npm run test:pom && npm run test:crud && npm run test:handshake",
+    "generate:config-catalog": "node scripts/generate-config-catalog.mjs",
+    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:catalog-sync && npm run test:template-catalog && npm run test:config && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade && npm run test:remove && npm run test:transaction && npm run test:allowed-roots && npm run test:explain && npm run test:ci && npm run test:build && npm run test:test && npm run test:pom && npm run test:crud && npm run test:handshake",
     "test:ai": "node test/ai.mjs",
     "generate:ai-catalog": "node scripts/generate-ai-catalog.mjs",
     "test:ai-assembly": "node test/ai-assembly.mjs",
@@ -38,6 +39,7 @@
     "test:pom": "node test/pom.mjs",
     "test:catalog-sync": "node test/catalog-sync.mjs",
     "test:template-catalog": "node test/template-catalog.mjs",
+    "test:config": "node test/config.mjs",
     "test:catalog-sync-live": "node test/catalog-sync-live.mjs",
     "test:allowed-roots": "node test/allowed-roots.mjs",
     "test:handshake": "node test/handshake.mjs"
@@ -48,6 +50,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "adm-zip": "^0.6.1",
+    "handlebars": "^4.7.9",
     "zod": "^3.23.8"
   },
   "devDependencies": {

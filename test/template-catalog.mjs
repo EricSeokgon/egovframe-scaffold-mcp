@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   TEMPLATES,
+  loadConfigCatalog,
   diffProjects,
   loadTemplateCatalog,
   normalizeInitializrProjects,
@@ -113,7 +115,15 @@ const pinByPath = new Map(
   catalog.projects.filter((p) => p.mcp?.archive).map((p) => [p.mcp.archive.path, p.mcp.archive]),
 );
 const pointerText = (pin) => `version https://git-lfs.github.com/spec/v1\noid sha256:${pin.sha256}\nsize ${pin.bytes}\n`;
+const configFiles = new Map();
+for (const e of loadConfigCatalog().entries) for (const spec of Object.values(e.formats)) configFiles.set(spec.file, spec.sha256);
+const configText = new Map([...configFiles.keys()].map((f) => [f, readFileSync(new URL(`../catalog/config-templates/${f}`, import.meta.url), "utf8")]));
 const fakeFetch = (body, overrides = {}) => async (url) => {
+  if (url.endsWith(".hbs")) {
+    const f = [...configFiles.keys()].find((k) => url.endsWith(`/templates/config/${k}`));
+    if (f && f in overrides) { if (overrides[f] instanceof Error) throw overrides[f]; return overrides[f]; }
+    return f ? configText.get(f) : "";
+  }
   if (!url.endsWith(".zip")) return body;
   const pinPath = [...pinByPath.keys()].find((k) => url.endsWith(`/${k}`));
   if (pinPath && pinPath in overrides) {
@@ -198,6 +208,20 @@ check(() => assert.ok(notPointer.archiveDrift[0].error?.includes("LFS")));
 check(() => assert.deepEqual(parseLfsPointer(pointerText(firstPin)), { sha256: firstPin.sha256, bytes: firstPin.bytes }));
 check(() => assert.equal(parseLfsPointer("oid sha256:abc"), null));
 check(() => assert.equal(parseLfsPointer(""), null));
+
+// 동봉 설정 템플릿 대조 (v0.28)
+check(() => assert.equal(clean.configTemplates.checked, configFiles.size));
+check(() => assert.ok(clean.configTemplates.checked >= 49));
+check(() => assert.equal(clean.configTemplates.drift.length, 0));
+check(() => assert.match(clean.configTemplates.commit, /^[0-9a-f]{40}$/));
+const [firstCfg] = [...configFiles.keys()];
+const cfgDrift = await syncTemplateCatalog({}, { catalog: pinnedCatalog, fetchText: fakeFetch(identicalText, { [firstCfg]: "changed upstream" }) });
+check(() => assert.equal(cfgDrift.upToDate, false));
+check(() => assert.equal(cfgDrift.configTemplates.drift.length, 1));
+check(() => assert.equal(cfgDrift.configTemplates.drift[0].file, firstCfg));
+check(() => assert.ok(cfgDrift.warnings.some((w) => w.includes("generate:config-catalog"))));
+const cfgErr = await syncTemplateCatalog({}, { catalog: pinnedCatalog, fetchText: fakeFetch(identicalText, { [firstCfg]: new Error("nope") }) });
+check(() => assert.equal(cfgErr.configTemplates.drift[0].error, "nope"));
 
 // 잘못된 ref 는 네트워크 접근 전에 거부한다
 let touched = false;

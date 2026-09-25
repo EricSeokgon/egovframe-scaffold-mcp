@@ -1,0 +1,33 @@
+# File Appender 설정
+appender.{{txtAppenderName}}0.type = RollingFile
+appender.{{txtAppenderName}}0.name = {{txtAppenderName}}
+appender.{{txtAppenderName}}0.fileName = {{txtLogFileName}}
+# %d{yyyy-MM-dd-HH-mm-ss}
+appender.{{txtAppenderName}}0.filePattern = {{txtLogFileNamePattern}}
+appender.{{txtAppenderName}}0.layout.type = PatternLayout
+appender.{{txtAppenderName}}0.layout.pattern = {{txtConversionPattern}}
+# Time-based Rolling Policy
+appender.{{txtAppenderName}}0.policies.type = Policies
+appender.{{txtAppenderName}}0.policies.time.type = TimeBasedTriggeringPolicy
+appender.{{txtAppenderName}}0.policies.time.interval = {{txtInterval}}
+appender.{{txtAppenderName}}0.policies.time.modulate = {{cboModulate}}
+
+# Logger 설정
+logger.egovframework.name = egovframework
+logger.egovframework.level = DEBUG
+logger.egovframework.additivity = false
+logger.egovframework.appenderRef.{{txtAppenderName}}_0.ref = {{txtAppenderName}}
+
+logger.org-egovframe.name = org.egovframe
+logger.org-egovframe.level = DEBUG
+logger.org-egovframe.additivity = false
+logger.org-egovframe.appenderRef.{{txtAppenderName}}_0.ref = {{txtAppenderName}}
+
+logger.org-springframework.name = org.springframework
+logger.org-springframework.level = DEBUG
+logger.org-springframework.additivity = false
+logger.org-springframework.appenderRef.{{txtAppenderName}}_0.ref = {{txtAppenderName}}
+
+# Root Logger 설정
+rootLogger.level = INFO
+rootLogger.appenderRef.{{txtAppenderName}}_0.ref = {{txtAppenderName}}

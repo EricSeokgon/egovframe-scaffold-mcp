@@ -20,6 +20,7 @@ import { upgradeProject } from "./upgrade.js";
 import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
+import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
 
 /** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
 export const SERVER_VERSION: string = (() => {
@@ -158,6 +159,8 @@ export function buildServer(): McpServer {
           ? [`- 미커버 목록: ${result.uncovered.map((project) => `${project.id}(${project.category})`).join(", ")}`]
           : []),
         `- zip 조달 템플릿 지문: ${result.archivesChecked}종 대조, 차이 ${result.archiveDrift.length}건`,
+        `- 동봉 설정 템플릿: ${result.configTemplates.checked}개 대조(commit ${result.configTemplates.commit.slice(0, 12)}), 차이 ${result.configTemplates.drift.length}건`,
+        ...result.configTemplates.drift.map((d) => (d.error ? `  - ${d.file}: 확인 실패 (${d.error})` : `  - ${d.file}: ${d.pinnedSha256.slice(0, 12)}… → ${d.upstreamSha256}`)),
         ...result.archiveDrift.map((d) =>
           d.error
             ? `  - ${d.template}: 확인 실패 (${d.error})`
@@ -660,6 +663,61 @@ export function buildServer(): McpServer {
   );
 
   // ── 리소스·프롬프트 확장 (v0.18.0) ─────────────────────
+  // ── 설정 파일 생성 도구 (v0.28.0) ────────────────────────
+  server.tool(
+    "generate_egovframe_config",
+    "공식 eGovFrame Initializr 설정 템플릿(21종, 오프라인 동봉)으로 Spring 설정 파일을 생성합니다 — datasource(DBCP/C3P0/JDBC·JNDI), transaction(datasource/JPA/JTA), cache(Ehcache), logging(log4j2 console/file/rolling/time-rolling/jdbc), scheduling(Quartz job/trigger/scheduler), idGeneration(sequence/table/uuid), property. " +
+      "형식은 xml(Spring XML)·javaConfig(@Configuration 클래스)·yaml·properties(logging 만). 필드를 생략하면 Initializr 웹뷰 폼과 같은 기본값을 쓰고, 기존 파일이 있으면 덮어쓰지 않고 거부합니다. " +
+      "템플릿별 필드·기본값·선택지는 리소스 egovframe://catalog/config-templates 에서 확인하거나 dryRun 결과의 context 로 볼 수 있습니다.",
+    {
+      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
+      configId: z.enum(loadConfigCatalog().entries.map((e) => e.id) as [string, ...string[]]).describe("설정 템플릿 id (예: datasource, transaction-datasource, logging-rolling-file, scheduling-cron-trigger)"),
+      format: z.enum(CONFIG_FORMATS).default("xml").describe("xml | javaConfig | yaml | properties (yaml·properties 는 logging 계열만)"),
+      fields: z.record(z.union([z.string(), z.boolean()])).optional().describe("템플릿 변수 덮어쓰기 (예: { txtDatasourceName: 'dataSource', rdoType: 'DBCP', txtUrl: 'jdbc:mysql://…', txtConfigPackage: 'kr.go.sample.config' }). 템플릿에 없는 필드는 거부"),
+      fileName: z.string().optional().describe("파일명(확장자 제외) 또는 JavaConfig 클래스명. 미지정 시 Initializr 기본값(예: context-datasource, EgovDataSourceConfig)"),
+      outputDir: z.string().optional().describe("프로젝트 상대 출력 디렉터리. 미지정 시 xml→src/main/resources/egovframework/spring(logging 은 src/main/resources), javaConfig→src/main/java/<패키지>"),
+      dryRun: z.boolean().default(false).describe("true면 파일을 쓰지 않고 내용·경로·컨텍스트만 반환"),
+    },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = generateConfig({
+        projectDir: args.projectDir,
+        configId: args.configId,
+        format: args.format,
+        fields: args.fields,
+        fileName: args.fileName,
+        outputDir: args.outputDir,
+        dryRun: args.dryRun,
+      });
+      const head = r.dryRun ? `🔍 설정 미리보기(dryRun): ${r.path}` : `✅ 설정 파일 생성: ${r.path}`;
+      const lang = r.format === "javaConfig" ? "java" : r.format;
+      const text = [
+        head,
+        `- 템플릿: ${r.configId} (${r.format})`,
+        `- 덮어쓴 필드: ${r.overridden.length ? r.overridden.join(", ") : "없음(기본값)"}`,
+        `- 컨텍스트: ${JSON.stringify(r.context)}`,
+        "",
+        `\`\`\`${lang}`,
+        r.content.trimEnd(),
+        "\`\`\`",
+        "",
+        "다음 단계: 템플릿 본문 주석의 의존성(pom.xml/gradle)을 프로젝트에 추가하고, XML 은 web.xml/애플리케이션 컨텍스트 로딩 경로에 포함하세요.",
+      ].join("\n");
+      return { content: [{ type: "text", text }] };
+    },
+  );
+
+  server.resource(
+    "config-templates-catalog",
+    "egovframe://catalog/config-templates",
+    { mimeType: "application/json", description: "설정 템플릿 카탈로그 — id·형식·필드·기본값·선택지 (generate_egovframe_config 용)" },
+    async (uri) => {
+      const catalog = loadConfigCatalog();
+      const text = JSON.stringify({ source: catalog.source, outputDirs: catalog.outputDirs, templates: describeConfigTemplates() }, null, 2);
+      return { contents: [{ uri: uri.href, mimeType: "application/json", text }] };
+    },
+  );
+
   server.resource(
     "ai-catalog",
     "egovframe://catalog/ai-components",

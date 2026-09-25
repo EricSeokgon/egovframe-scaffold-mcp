@@ -1,0 +1,23 @@
+package {{txtConfigPackage}};
+
+import jakarta.sql.DataSource;
+
+import org.egovframe.rte.fdl.idgnr.impl.EgovSequenceIdGnrServiceImpl;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class {{txtFileName}} {
+
+    @Bean(name = "{{txtIdServiceName}}", destroyMethod = "destroy")
+    public EgovSequenceIdGnrServiceImpl {{txtIdServiceName}}(@Qualifier("{{txtDatasourceName}}") DataSource dataSource) {
+        EgovSequenceIdGnrServiceImpl egovSequenceIdGnrService = new EgovSequenceIdGnrServiceImpl();
+        egovSequenceIdGnrService.setDataSource(dataSource);
+        egovSequenceIdGnrService.setQuery("{{txtQuery}}");
+        {{#if (eq rdoIdType "BigDecimal")}}
+        egovSequenceIdGnrService.setUseBigDecimals(true);
+        {{/if}}
+        return egovSequenceIdGnrService;
+    }
+}

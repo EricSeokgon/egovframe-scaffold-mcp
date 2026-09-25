@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+						http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+						http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+	<bean id="userTransaction" class="com.atomikos.icatch.jta.UserTransactionImp">
+		<property name="transactionTimeout" value="{{txtGlobalTimeout}}"></property>
+	</bean>
+
+	<bean id="atomikosTransactionManager" class="com.atomikos.icatch.jta.UserTransactionManager"
+		init-method="init" destroy-method="close">
+		<property name="forceShutdown" value="false"></property>
+	</bean>
+
+	<bean id="{{txtTransactionName}}" class="org.springframework.transaction.jta.JtaTransactionManager">
+		<property name="userTransaction" ref="userTransaction"></property>
+		<property name="transactionManager" ref="atomikosTransactionManager"></property>
+	</bean>
+	
+	{{#if chkAopConfigTransaction}}
+	<!-- AOP 설정 - 트랜잭션 관리 및 포인트컷 설정 -->
+	<tx:advice id="{{txtAdviceName}}" transaction-manager="{{txtTransactionName}}">
+		<tx:attributes>
+			<tx:method name="{{txtMethodName}}"
+				{{#if chkReadOnly}}read-only="{{chkReadOnly}}"{{/if}}
+				{{#if (trim txtRollbackFor)}}rollback-for="{{txtRollbackFor}}"{{/if}}
+				{{#if (trim txtNoRollbackFor)}}no-rollback-for="{{txtNoRollbackFor}}"{{/if}}
+				{{#if (trim txtTimeout)}}timeout="{{txtTimeout}}"{{/if}}
+				propagation="{{cmbPropagation}}"
+				isolation="{{cmbIsolation}}" />
+		</tx:attributes>
+	</tx:advice>
+
+	<aop:config proxy-target-class="true">
+		<aop:pointcut id="{{txtPointCutName}}" expression="{{txtPointCutExpression}}" />
+		<aop:advisor advice-ref="{{txtAdviceName}}" pointcut-ref="{{txtPointCutName}}" />
+	</aop:config>
+	{{/if}}
+
+	{{#if chkAnnotationTransaction}}
+	<tx:annotation-driven transaction-manager="{{txtTransactionName}}" proxy-target-class="true" />
+	{{/if}}
+
+</beans>

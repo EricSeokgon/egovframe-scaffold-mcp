@@ -1,0 +1,33 @@
+package {{txtConfigPackage}};
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.quartz.CronTriggerFactoryBean;
+import org.springframework.scheduling.quartz.JobDetailFactoryBean;
+import org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean;
+
+/**
+ * Cron Trigger Configuration for Quartz Scheduler
+ * Spring Framework 6.x compatible
+ * 
+ * Requirements:
+ * - Spring Framework 6.x
+ * - Quartz Scheduler 2.3.2+
+ * - JDK 17+
+ */
+@Configuration
+public class {{txtFileName}} {
+
+    /**
+     * CronTrigger 설정
+     * Cron 표현식을 사용하여 복잡한 스케줄링
+     */
+    @Bean(name = "{{txtTriggerName}}")
+    public CronTriggerFactoryBean {{txtTriggerName}}(@Qualifier("{{txtJobName}}") {{#if (eq cboJobDetailType "MethodInvokingJobDetailFactoryBean")}}MethodInvokingJobDetailFactoryBean{{else}}JobDetailFactoryBean{{/if}} jobDetail) {
+        CronTriggerFactoryBean trigger = new CronTriggerFactoryBean();
+        trigger.setJobDetail(jobDetail.getObject());
+        trigger.setCronExpression("{{txtCronExpression}}");
+        return trigger;
+    }
+}

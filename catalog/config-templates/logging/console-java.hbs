@@ -1,0 +1,38 @@
+package {{txtConfigPackage}};
+
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class {{txtFileName}} {
+
+    @Bean
+    public ConsoleAppender {{txtAppenderName}}() {
+        PatternLayout layout = new PatternLayout();
+        layout.setConversionPattern("{{txtConversionPattern}}");
+
+        ConsoleAppender consoleAppender = new ConsoleAppender();
+        consoleAppender.setLayout(layout);
+        return consoleAppender;
+    }
+
+    @Bean
+    public Logger springLogger() {
+        Logger logger = Logger.getLogger("org.springframework");
+        logger.setAdditivity(false);
+        logger.setLevel(org.apache.log4j.Level.DEBUG);
+        logger.addAppender({{txtAppenderName}}());
+        return logger;
+    }
+
+    @Bean
+    public Logger rootLogger() {
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(org.apache.log4j.Level.OFF);
+        rootLogger.addAppender({{txtAppenderName}}());
+        return rootLogger;
+    }
+}

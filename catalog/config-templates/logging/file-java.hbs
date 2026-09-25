@@ -1,0 +1,46 @@
+package {{txtConfigPackage}};
+
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class {{txtFileName}} {
+
+    @Bean(name = "{{txtAppenderName}}")
+    public FileAppender {{txtAppenderName}}() {
+        FileAppender fileAppender = new FileAppender();
+
+        // Set the file path
+        fileAppender.setFile("{{txtLogFileName}}");
+
+        // Set whether to append to the file
+        fileAppender.setAppend({{cboAppend}});
+
+        // Set the layout for the appender
+        PatternLayout layout = new PatternLayout();
+        layout.setConversionPattern("{{txtConversionPattern}}");
+        fileAppender.setLayout(layout);
+
+        return fileAppender;
+    }
+
+    @Bean
+    public Logger springLogger() {
+        Logger logger = Logger.getLogger("org.springframework");
+        logger.setAdditivity(false);
+        logger.setLevel(org.apache.log4j.Level.DEBUG);
+        logger.addAppender({{txtAppenderName}}());
+        return logger;
+    }
+
+    @Bean
+    public Logger rootLogger() {
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(org.apache.log4j.Level.OFF);
+        rootLogger.addAppender({{txtAppenderName}}());
+        return rootLogger;
+    }
+}
