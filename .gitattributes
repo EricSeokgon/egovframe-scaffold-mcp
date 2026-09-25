@@ -1,0 +1,9 @@
+# 동봉한 upstream 템플릿은 sha256 을 고정해 검증하므로 바이트를 그대로 유지한다(Windows autocrlf 변환 금지).
+catalog/config-templates/** -text
+*.hbs -text
+# 소스·테스트·카탈로그 JSON 은 항상 LF 로 저장한다.
+*.ts text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf

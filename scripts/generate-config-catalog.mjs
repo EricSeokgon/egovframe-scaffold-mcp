@@ -35,7 +35,8 @@ export const CONFIG_SOURCE = {
 /** 조사 시점의 Initializr commit. 갱신 절차: docs/design-config-generation.md */
 export const DEFAULT_COMMIT = "bc1864133ef3143118d33afb7ce43f5b8f433d5a";
 
-const sha256 = (s) => createHash("sha256").update(s).digest("hex");
+// 지문은 LF 기준 — Windows 체크아웃(CRLF)에서도 같은 파일로 인정된다(src/config-generator.ts templateSha256 과 동일).
+const sha256 = (s) => createHash("sha256").update(String(s).replace(/\r\n/g, "\n")).digest("hex");
 const FORMATS = [
   ["xml", "templateFile"],
   ["javaConfig", "javaConfigTemplate"],
