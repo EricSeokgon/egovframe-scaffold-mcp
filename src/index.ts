@@ -15,6 +15,7 @@
  *   upgrade.ts     3-way 업그레이드        explain.ts     컴포넌트 설명
  *   guide.ts       가이드 문서 조회·검색   ci-config.ts   CI 워크플로 생성
  *   template-catalog.ts  공식 템플릿 통합 카탈로그·upstream 대조
+ *   config-generator.ts  설정 파일 생성(Initializr 템플릿 동봉)
  *   crud.ts · catalog-sync.ts · build-runner.ts · test-runner.ts
  *   file-transaction.ts · allowed-roots.ts · shared.ts
  */
@@ -62,6 +63,8 @@ export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerR
 export { reportDirFor, resolveTestArgs, validateTestFilter, locateInStack, parseJUnitXml, snapshotReports, readJUnitReports, summarizeReports, runTests } from "./test-runner.js";
 export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRunResult, ParsedReport } from "./test-runner.js";
 export { loadTemplateCatalog, syncTemplateCatalog, diffProjects, normalizeInitializrProjects, parseLfsPointer } from "./template-catalog.js";
+export { CONFIG_FORMATS, CONFIG_EXTENSIONS, loadConfigCatalog, getConfigTemplate, describeConfigTemplates, validateConfigFields, buildConfigContext, renderConfig, resolveFileName, defaultOutputDir, generateConfig } from "./config-generator.js";
+export type { ConfigFormat, ConfigTemplateEntry, ConfigCatalog, GenerateConfigOptions, GenerateConfigResult, ConfigFieldValidation } from "./config-generator.js";
 export type {
   TemplateCatalog,
   UnifiedProject,
@@ -73,6 +76,7 @@ export type {
   TemplateSyncResult,
   TemplateArchivePin,
   TemplateArchiveDrift,
+  ConfigTemplateDrift,
 } from "./template-catalog.js";
 
 /**

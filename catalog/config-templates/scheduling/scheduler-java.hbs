@@ -1,0 +1,32 @@
+package {{txtConfigPackage}};
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.quartz.CronTriggerFactoryBean;
+import org.springframework.scheduling.quartz.SchedulerFactoryBean;
+import org.springframework.scheduling.quartz.SimpleTriggerFactoryBean;
+
+/**
+ * Scheduler Factory Configuration for Quartz Scheduler
+ * Spring Framework 6.x compatible
+ * 
+ * Requirements:
+ * - Spring Framework 6.x
+ * - Quartz Scheduler 2.3.2+
+ * - JDK 17+
+ */
+@Configuration
+public class {{txtFileName}} {
+
+    /**
+     * Scheduler 설정
+     * Trigger를 등록하여 스케줄러 실행
+     */
+    @Bean(name = "{{txtSchedulerName}}")
+    public SchedulerFactoryBean {{txtSchedulerName}}(@Qualifier("{{txtTriggerName}}") {{cboTriggerType}} triggerBean) {
+        SchedulerFactoryBean schedulerFactory = new SchedulerFactoryBean();
+        schedulerFactory.setTriggers(triggerBean.getObject());
+        return schedulerFactory;
+    }
+}

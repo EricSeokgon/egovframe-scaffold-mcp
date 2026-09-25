@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xml>
+<Configuration>
+    <Appenders>
+        <JDBC name="{{txtAppenderName}}" tableName="{{txtTableName}}">
+            {{#if (eq rdoConnectionType "ConnectionFactory")}}
+            <!-- ConnectionFactory 설정 -->
+            <ConnectionFactory 
+                class="{{txtConnectionFactoryClass}}"
+                method="{{txtConnectionFactoryMethod}}" />
+            {{else}}
+            <DriverManager
+                driverClassName="{{txtDriver}}"
+                connectionString="{{txtUrl}}"
+                userName="{{txtUser}}"
+                password="{{txtPasswd}}">
+                <!-- 필요 시 추가 연결 속성 설정 -->
+                <!-- 예: <Property name="useSSL" value="false" /> -->
+            </DriverManager>
+            {{/if}}
+            <Column name="reg_dt" isEventTimestamp="true" />
+            <Column name="level" pattern="%p" />
+            <Column name="logger" pattern="%c" />
+            <Column name="message" pattern="%m" />
+            <Column name="exception" pattern="%ex{full}" />
+            <!--
+              <Filters>
+                <ThresholdFilter level="INFO" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <RegexFilter regex=".*Exception.*" onMatch="NEUTRAL" onMismatch="DENY"/>
+              </Filters>
+            -->
+        </JDBC>
+    </Appenders>
+    <Loggers>
+        <Logger name="egovframework" level="DEBUG" additivity="false">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Logger>
+        <Logger name="org.egovframe" level="DEBUG" additivity="false">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Logger>
+        <Logger name="org.springframework" level="DEBUG" additivity="false">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Logger>
+        <Root level="INFO">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Root>
+    </Loggers>
+</Configuration>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xml>
+<Configuration>
+    <Appenders>
+        <File name="{{txtAppenderName}}" fileName="{{txtLogFileName}}" append="{{cboAppend}}">
+           <PatternLayout pattern="{{txtConversionPattern}}" />
+        </File>
+    </Appenders>
+    <Loggers>
+        <Logger name="egovframework" level="DEBUG" additivity="false">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Logger>
+        <Logger name="org.egovframe" level="DEBUG" additivity="false">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Logger>
+        <Logger name="org.springframework" level="DEBUG" additivity="false">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Logger>
+        <Root level="INFO">
+            <AppenderRef ref="{{txtAppenderName}}" />
+        </Root>
+    </Loggers>
+</Configuration>

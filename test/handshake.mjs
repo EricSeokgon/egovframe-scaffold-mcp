@@ -16,6 +16,7 @@ const REQUIRED_TOOLS = [
   "generate_egovframe_crud",
   "build_egovframe_project",
   "test_egovframe_project",
+  "generate_egovframe_config",
 ];
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "ignore"] });

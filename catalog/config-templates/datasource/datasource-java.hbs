@@ -1,0 +1,201 @@
+{{#*inline "c3p0"}}
+package {{txtConfigPackage}};
+
+import com.mchange.v2.c3p0.ComboPooledDataSource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import javax.sql.DataSource;
+import java.beans.PropertyVetoException;
+
+/**
+ * C3P0 DataSource Configuration
+ * Spring Framework 6.x, Jakarta EE 9 호환
+ */
+@Configuration
+public class {{txtFileName}} {
+
+  @Bean(name = "{{txtDatasourceName}}", destroyMethod = "close")
+  public DataSource {{txtDatasourceName}}(
+      @Value("{{txtDriver}}") String driverClassName,
+      @Value("{{txtUrl}}") String url,
+      @Value("{{txtUser}}") String username,
+      @Value("{{txtPasswd}}") String password) throws PropertyVetoException {
+
+    ComboPooledDataSource dataSource = new ComboPooledDataSource();
+    dataSource.setDriverClass(driverClassName);
+    dataSource.setJdbcUrl(url);
+    dataSource.setUser(username);
+
+    if (password != null && !password.isEmpty()) {
+      dataSource.setPassword(password);
+    }
+
+    dataSource.setInitialPoolSize(3);
+    dataSource.setMinPoolSize(3);
+    dataSource.setMaxPoolSize(50);
+    dataSource.setIdleConnectionTestPeriod(200);
+    dataSource.setAcquireIncrement(1);
+    dataSource.setMaxStatements(0);
+    dataSource.setNumHelperThreads(3);
+
+    return dataSource;
+  }
+
+  /*
+   * 다음 라이브러리 추가 필요
+   * Spring Framework 6.x, Jakarta EE 9 호환
+   * 
+   * === Maven pom.xml ===
+   * <dependency>
+   *   <groupId>com.mchange</groupId>
+   *   <artifactId>c3p0</artifactId>
+   *   <version>0.10.1</version>
+   * </dependency>
+   * 
+   * === Gradle ===
+   * implementation 'com.mchange:c3p0:0.10.1'
+   */
+}
+{{/inline}}
+{{#*inline "dbcp"}}
+package {{txtConfigPackage}};
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * DBCP2 DataSource Configuration
+ * Spring Framework 6.x, Jakarta EE 9 호환
+ */
+@Configuration
+public class {{txtFileName}} {
+
+  @Bean(name = "{{txtDatasourceName}}", destroyMethod = "close")
+  public BasicDataSource {{txtDatasourceName}}(
+      @Value("{{txtDriver}}") String driverClassName,
+      @Value("{{txtUrl}}") String url,
+      @Value("{{txtUser}}") String username,
+      @Value("{{txtPasswd}}") String password) {
+
+    BasicDataSource dataSource = new BasicDataSource();
+    dataSource.setDriverClassName(driverClassName);
+    dataSource.setUrl(url);
+    dataSource.setUsername(username);
+
+    if (!password.isEmpty()) {
+      dataSource.setPassword(password);
+    }
+
+    dataSource.setDefaultAutoCommit(false);
+    /*
+     * preparedStatement 풀링 여부
+     * dataSource.setPoolPreparedStatements(true);
+     * dataSource.setMaxOpenPreparedStatements(50);
+     */
+
+    return dataSource;
+  }
+
+  /*
+   * 다음 라이브러리 추가 필요
+   * Spring Framework 6.x, Jakarta EE 9 호환
+   * 
+   * === Maven pom.xml ===
+   * <dependency>
+   *   <groupId>org.apache.commons</groupId>
+   *   <artifactId>commons-dbcp2</artifactId>
+   *   <version>2.13.0</version>
+   * </dependency>
+   * 
+   * === Gradle ===
+   * implementation 'org.apache.commons:commons-dbcp2:2.13.0'
+   */
+}
+{{/inline}}
+{{#*inline "jdbc"}}
+package {{txtConfigPackage}};
+
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import javax.sql.DataSource;
+
+/**
+ * JDBC DataSource Configuration
+ * Spring Framework 6.x, Jakarta EE 9 호환
+ */
+@Configuration
+public class {{txtFileName}} {
+
+  @Bean(name = "{{txtDatasourceName}}")
+  public DataSource {{txtDatasourceName}}(
+      @Value("{{txtDriver}}") String driverClassName,
+      @Value("{{txtUrl}}") String url,
+      @Value("{{txtUser}}") String username,
+      @Value("{{txtPasswd}}") String password) {
+
+    DriverManagerDataSource dataSource = new DriverManagerDataSource();
+    dataSource.setDriverClassName(driverClassName);
+    dataSource.setUrl(url);
+    dataSource.setUsername(username);
+
+    if (password != null && !password.isEmpty()) {
+      dataSource.setPassword(password);
+    }
+
+    return dataSource;
+  }
+
+  /*
+   * 다음 JDBC Driver 라이브러리 추가 필요
+   * Spring Framework 6.x, Jakarta EE 9 호환
+   * 
+   * === Maven pom.xml ===
+   * <dependency>
+   *   <groupId>com.mysql</groupId>
+   *   <artifactId>mysql-connector-j</artifactId>
+   *   <version>8.4.0</version>
+   * </dependency>
+   * <dependency>
+   *   <groupId>org.mariadb.jdbc</groupId>
+   *   <artifactId>mariadb-java-client</artifactId>
+   *   <version>3.4.0</version>
+   * </dependency>
+   * <dependency>
+   *   <groupId>org.postgresql</groupId>
+   *   <artifactId>postgresql</artifactId>
+   *   <version>42.7.3</version>
+   * </dependency>
+   * <dependency>
+   *   <groupId>cubrid</groupId>
+   *   <artifactId>cubrid-jdbc</artifactId>
+   *   <version>10.2.0.8797</version>
+   * </dependency>
+   * <dependency>
+   *   <groupId>com.altibase</groupId>
+   *   <artifactId>altibase-jdbc</artifactId>
+   *   <version>7.1.0.9.0</version>
+   * </dependency>
+   * 
+   * === Gradle ===
+   * implementation 'com.mysql:mysql-connector-j:8.4.0'
+   * implementation 'org.mariadb.jdbc:mariadb-java-client:3.4.0'
+   * implementation 'org.postgresql:postgresql:42.7.3'
+   * implementation 'cubrid:cubrid-jdbc:10.2.0.8797'
+   * implementation 'com.altibase:altibase-jdbc:7.1.0.9.0'
+   */
+}
+{{/inline}}
+{{#if (eq rdoType "C3P0")}}
+{{> c3p0}}
+{{else if (eq rdoType "DBCP")}}
+{{> dbcp}}
+{{else}}
+{{> jdbc}}
+{{/if}}

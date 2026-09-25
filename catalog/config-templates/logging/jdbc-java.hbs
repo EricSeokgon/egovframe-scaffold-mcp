@@ -1,0 +1,43 @@
+package {{txtConfigPackage}};
+
+import org.apache.log4j.jdbc.JDBCAppender;
+import org.apache.log4j.Logger;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class {{txtFileName}} {
+
+    @Bean(name = "{{txtAppenderName}}")
+    public JDBCAppender {{txtAppenderName}}() {
+        JDBCAppender jdbcAppender = new JDBCAppender();
+
+        // Set the JDBC connection details
+        jdbcAppender.setDriver("{{txtDriver}}");
+        jdbcAppender.setURL("{{txtUrl}}");
+        jdbcAppender.setUser("{{txtUser}}");
+        jdbcAppender.setPassword("{{txtPasswd}}");
+
+        // Set the SQL query to be executed
+        jdbcAppender.setSql("{{txtQuery}}");
+
+        return jdbcAppender;
+    }
+
+    @Bean
+    public Logger springLogger() {
+        Logger logger = Logger.getLogger("org.springframework");
+        logger.setAdditivity(false);
+        logger.setLevel(org.apache.log4j.Level.DEBUG);
+        logger.addAppender({{txtAppenderName}}());
+        return logger;
+    }
+
+    @Bean
+    public Logger rootLogger() {
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(org.apache.log4j.Level.OFF);
+        rootLogger.addAppender({{txtAppenderName}}());
+        return rootLogger;
+    }
+}

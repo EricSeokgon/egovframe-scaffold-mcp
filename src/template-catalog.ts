@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
+import { loadConfigCatalog } from "./config-generator.js";
 
 /** 통합 템플릿 카탈로그 동기화 제한 시간(ms) */
 export const TEMPLATE_CATALOG_TIMEOUT_MS = 30_000;
@@ -107,7 +108,17 @@ export interface TemplateSyncResult {
   archivesChecked: number;
   /** 고정 지문과 upstream LFS 포인터가 다른 zip */
   archiveDrift: TemplateArchiveDrift[];
+  /** 동봉 설정 템플릿(Initializr templates/config) 대조 결과 */
+  configTemplates: { checked: number; commit: string; drift: ConfigTemplateDrift[] };
   warnings: string[];
+}
+
+/** 동봉한 설정 템플릿 파일이 upstream 과 달라진 항목 */
+export interface ConfigTemplateDrift {
+  file: string;
+  pinnedSha256: string;
+  upstreamSha256: string | null;
+  error?: string;
 }
 
 export interface TemplateSyncOptions {
@@ -258,6 +269,26 @@ export async function syncTemplateCatalog(
     }),
   );
   archiveDrift.sort((a, b) => a.template.localeCompare(b.template));
+
+  // 동봉 설정 템플릿: upstream 의 같은 경로 파일 sha256 과 대조한다(파일당 수 KB).
+  const configCatalog = loadConfigCatalog();
+  const configFiles = new Map<string, string>();
+  for (const e of configCatalog.entries) for (const spec of Object.values(e.formats)) configFiles.set(spec.file, spec.sha256);
+  const configDrift: ConfigTemplateDrift[] = [];
+  await Promise.all(
+    [...configFiles.entries()].map(async ([file, pinned]) => {
+      const url = `https://raw.githubusercontent.com/${configCatalog.source.repository}/${ref}/${configCatalog.source.templateDir}/${file}`;
+      try {
+        const upstreamSha = createHash("sha256").update(await fetchText(url, TEMPLATE_CATALOG_TIMEOUT_MS), "utf8").digest("hex");
+        if (upstreamSha !== pinned) configDrift.push({ file, pinnedSha256: pinned, upstreamSha256: upstreamSha });
+      } catch (error) {
+        configDrift.push({ file, pinnedSha256: pinned, upstreamSha256: null, error: (error as Error).message });
+      }
+    }),
+  );
+  configDrift.sort((a, b) => a.file.localeCompare(b.file));
+  if (configDrift.length > 0)
+    warnings.push("동봉 설정 템플릿이 upstream 과 다릅니다 — 생성은 동봉본으로 계속 동작합니다. 변경 내용을 검토한 뒤 generate:config-catalog --commit <sha> 로 갱신하세요");
   if (archiveDrift.length > 0)
     warnings.push(
       "zip 조달 템플릿의 upstream 지문이 고정값과 다릅니다 — 고정 commit 의 zip 은 계속 받을 수 있으므로 생성은 동작합니다. 새 zip 을 검토한 뒤 src/project.ts 의 INITIALIZR_COMMIT·sha256·bytes 를 갱신하세요",
@@ -269,7 +300,7 @@ export async function syncTemplateCatalog(
     requestedRef: ref,
     pinnedSha256: source.sha256,
     upstreamSha256,
-    upToDate: drift.length === 0 && source.sha256 === upstreamSha256 && archiveDrift.length === 0,
+    upToDate: drift.length === 0 && source.sha256 === upstreamSha256 && archiveDrift.length === 0 && configDrift.length === 0,
     pinnedProjects: catalog.projects.length,
     upstreamProjects: upstream.length,
     drift,
@@ -277,6 +308,7 @@ export async function syncTemplateCatalog(
     uncovered,
     archivesChecked: pins.size,
     archiveDrift,
+    configTemplates: { checked: configFiles.size, commit: configCatalog.source.commit, drift: configDrift },
     warnings,
   };
 }

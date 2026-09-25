@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean name="{{txtPropertyServiceName}}" class="org.egovframe.rte.fdl.property.impl.EgovPropertyServiceImpl" destroy-method="destroy">
+
+        {{#if (eq rdoType "Internal Properties")}}         
+        <property name="properties">
+            <map>
+                <entry key="{{txtKey}}" value="{{txtValue}}"/>
+            </map>
+        </property>	
+        {{/if}}      		
+        
+        {{#if (eq rdoType "External File")}}
+        <property name="extFileName">
+            <set>
+                <!-- MAP을 이용해서 encoding 정보를 입력하는 방법 -->
+                <map>
+                    <entry key="encoding" value="{{cboEncoding}}"/>
+                    <entry key="filename" value="{{txtPropertyFile}}"/>
+                </map>
+                <!-- 단일 값 입력 방법 : 필요시 아래와 같은 방식으로 단일 값 추가 -->
+                <!-- <value>{{txtPropertyFile}}</value> -->
+            </set>
+        </property>	
+        {{/if}}
+      
+    </bean>    
+    
+</beans>
