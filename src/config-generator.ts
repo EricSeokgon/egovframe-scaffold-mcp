@@ -63,6 +63,14 @@ hbs.registerHelper("or", (...args: unknown[]) => args.slice(0, -1).some((v) => !
 
 const compiled = new Map<string, HandlebarsTemplateDelegate>();
 
+/**
+ * 동봉 템플릿의 지문은 upstream 원문(LF) 기준이다. Windows 의 core.autocrlf 가 체크아웃 시 CRLF 로 바꿔도
+ * 같은 파일로 인정하도록 줄바꿈을 LF 로 정규화한 뒤 해시한다(.gitattributes 로 변환을 막지만 이중 방어).
+ */
+export function templateSha256(text: string): string {
+  return createHash("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
+}
+
 /** 동봉 템플릿을 읽어 고정 sha256 과 대조한 뒤 컴파일한다(패키지 변조·손상 감지). */
 function compileTemplate(entry: ConfigTemplateEntry, format: ConfigFormat): HandlebarsTemplateDelegate {
   const spec = entry.formats[format];
@@ -78,8 +86,8 @@ function compileTemplate(entry: ConfigTemplateEntry, format: ConfigFormat): Hand
   const key = `${entry.id}:${format}`;
   let fn = compiled.get(key);
   if (!fn) {
-    const text = fs.readFileSync(new URL(spec.file, TEMPLATE_DIR_URL), "utf8");
-    const actual = createHash("sha256").update(text).digest("hex");
+    const text = fs.readFileSync(new URL(spec.file, TEMPLATE_DIR_URL), "utf8").replace(/\r\n/g, "\n");
+    const actual = templateSha256(text);
     if (actual !== spec.sha256)
       throw new Error(`동봉 템플릿 지문이 카탈로그와 다릅니다: ${spec.file} (${actual.slice(0, 12)}… / ${spec.sha256.slice(0, 12)}…)`);
     fn = hbs.compile(text, { noEscape: true, strict: false });

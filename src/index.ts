@@ -63,7 +63,7 @@ export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerR
 export { reportDirFor, resolveTestArgs, validateTestFilter, locateInStack, parseJUnitXml, snapshotReports, readJUnitReports, summarizeReports, runTests } from "./test-runner.js";
 export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRunResult, ParsedReport } from "./test-runner.js";
 export { loadTemplateCatalog, syncTemplateCatalog, diffProjects, normalizeInitializrProjects, parseLfsPointer } from "./template-catalog.js";
-export { CONFIG_FORMATS, CONFIG_EXTENSIONS, loadConfigCatalog, getConfigTemplate, describeConfigTemplates, validateConfigFields, buildConfigContext, renderConfig, resolveFileName, defaultOutputDir, generateConfig } from "./config-generator.js";
+export { CONFIG_FORMATS, CONFIG_EXTENSIONS, loadConfigCatalog, getConfigTemplate, describeConfigTemplates, validateConfigFields, buildConfigContext, renderConfig, resolveFileName, defaultOutputDir, generateConfig, templateSha256 } from "./config-generator.js";
 export type { ConfigFormat, ConfigTemplateEntry, ConfigCatalog, GenerateConfigOptions, GenerateConfigResult, ConfigFieldValidation } from "./config-generator.js";
 export type {
   TemplateCatalog,

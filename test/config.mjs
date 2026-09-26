@@ -10,8 +10,8 @@ import {
   resolveFileName,
   defaultOutputDir,
   generateConfig,
+  templateSha256,
 } from "../dist/index.js";
-import { createHash } from "node:crypto";
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync, symlinkSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -42,8 +42,9 @@ for (const e of catalog.entries) {
   for (const [format, spec] of Object.entries(e.formats)) {
     const p = path.join(ROOT, "catalog", "config-templates", spec.file);
     assert(existsSync(p), `동봉 파일 존재: ${spec.file}`);
-    const actual = createHash("sha256").update(readFileSync(p, "utf8")).digest("hex");
+    const actual = templateSha256(readFileSync(p, "utf8"));
     assert(actual === spec.sha256, `동봉 파일 지문 일치: ${spec.file}`);
+    assert(templateSha256(readFileSync(p, "utf8").replace(/\r\n/g, "\n").replace(/\n/g, "\r\n")) === spec.sha256, `CRLF 체크아웃에서도 지문 일치: ${spec.file}`);
     files++;
   }
   for (const [field, allowed] of Object.entries(e.enums ?? {})) {

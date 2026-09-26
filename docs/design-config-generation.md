@@ -9,7 +9,7 @@
 | 항목 | 결정 | 이유 |
 |---|---|---|
 | 템플릿 조달 | **패키지에 동봉**(`catalog/config-templates/`, 49파일 약 256KB) | 설정 생성은 폐쇄망에서도 써야 한다. 파일이 작고 Apache-2.0 이라 동봉이 가능하며, `NOTICE.md` 로 출처를 밝힌다 |
-| 고정 | Initializr commit + 파일별 sha256 (`catalog/config-templates.json`) | 렌더링 전에 동봉 파일의 지문을 대조해 패키지 변조·손상을 감지한다. `sync_egovframe_templates` 가 upstream 의 같은 경로 파일과 대조해 drift 를 보고한다 |
+| 고정 | Initializr commit + 파일별 sha256 (`catalog/config-templates.json`) | 렌더링 전에 동봉 파일의 지문을 대조해 패키지 변조·손상을 감지한다. `sync_egovframe_templates` 가 upstream 의 같은 경로 파일과 대조해 drift 를 보고한다. 지문은 **줄바꿈을 LF 로 정규화한 뒤** 계산한다 — Windows 의 `core.autocrlf` 가 체크아웃 시 CRLF 로 바꿔도 같은 파일로 인정하기 위해서다. `.gitattributes` 로 변환 자체도 막는다(`catalog/config-templates/** -text`) |
 | 렌더러 | `handlebars` 런타임 의존성 추가, Initializr 와 같은 헬퍼(`eq`·`ne`·`capitalize`·`trim`·`or`) 등록 | 템플릿이 inline partial·`else if`·서브표현식을 쓰므로 자체 구현은 위험하다. `noEscape` 로 XML 특수문자를 그대로 둔다(Initializr 와 동일) |
 | 입력 체계 | Initializr 폼의 필드명(`txtDatasourceName`, `rdoType` …)과 **기본값을 그대로** 사용 | IDE 와 대화형 도구의 경험을 맞추고, 필드를 생략해도 Initializr 와 같은 결과가 나온다 |
 | 큐레이션 | `catalog/config-mapping.json` — MCP id, 기본값, 기본 파일명, 선택지, 제외 형식 | 생성기는 매핑에 없는 upstream 항목, 기본값 없는 템플릿 변수, upstream 에 없는 매핑을 만나면 실패한다 |

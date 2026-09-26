@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
-import { loadConfigCatalog } from "./config-generator.js";
+import { loadConfigCatalog, templateSha256 } from "./config-generator.js";
 
 /** 통합 템플릿 카탈로그 동기화 제한 시간(ms) */
 export const TEMPLATE_CATALOG_TIMEOUT_MS = 30_000;
@@ -279,7 +279,7 @@ export async function syncTemplateCatalog(
     [...configFiles.entries()].map(async ([file, pinned]) => {
       const url = `https://raw.githubusercontent.com/${configCatalog.source.repository}/${ref}/${configCatalog.source.templateDir}/${file}`;
       try {
-        const upstreamSha = createHash("sha256").update(await fetchText(url, TEMPLATE_CATALOG_TIMEOUT_MS), "utf8").digest("hex");
+        const upstreamSha = templateSha256(await fetchText(url, TEMPLATE_CATALOG_TIMEOUT_MS));
         if (upstreamSha !== pinned) configDrift.push({ file, pinnedSha256: pinned, upstreamSha256: upstreamSha });
       } catch (error) {
         configDrift.push({ file, pinnedSha256: pinned, upstreamSha256: null, error: (error as Error).message });
