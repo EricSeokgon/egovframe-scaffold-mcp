@@ -21,6 +21,7 @@ import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
+import { loadMigrationRules, migrateProject, renderMigrationMarkdown } from "./migrate.js";
 
 /** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
 export const SERVER_VERSION: string = (() => {
@@ -555,6 +556,22 @@ export function buildServer(): McpServer {
       return { content: [{ type: "text", text: lines.join("\n") }] };
     },
   );
+  // ── 5.x 전환 진단 도구 (v0.29.0, 1단계 읽기 전용) ──────
+  server.tool(
+    "migrate_egovframe_project",
+    "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단합니다. RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리를 보고하며, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요)을 표시합니다. 규칙은 egovframe-runtime 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다. 디스크를 변경하지 않는 읽기 전용입니다.",
+    {
+      projectDir: z.string().describe("진단할 프로젝트 디렉터리(절대경로 권장)"),
+      target: z.enum(["5.x"]).default("5.x").describe("전환 목표 (현재 5.x 만 지원)"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식. markdown=사람이 읽는 요약, json=항목 배열 그대로"),
+    },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = migrateProject({ projectDir: args.projectDir, target: args.target });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationMarkdown(r);
+      return { content: [{ type: "text", text }] };
+    },
+  );
   // ── 문서 검색 도구 (v0.15.0) ───────────────────────────
   server.tool(
     "search_egovframe_docs",
@@ -714,6 +731,17 @@ export function buildServer(): McpServer {
     async (uri) => {
       const catalog = loadConfigCatalog();
       const text = JSON.stringify({ source: catalog.source, outputDirs: catalog.outputDirs, templates: describeConfigTemplates() }, null, 2);
+      return { contents: [{ uri: uri.href, mimeType: "application/json", text }] };
+    },
+  );
+
+  server.resource(
+    "migration-rules",
+    "egovframe://catalog/migration-rules",
+    { mimeType: "application/json", description: "3.x/4.x → 5.x 전환 규칙 — RTE 좌표 대응표·패키지 변경·제거 클래스·javax→jakarta·라이브러리 (migrate_egovframe_project 용; 5.x 클래스 전체 목록은 제외)" },
+    async (uri) => {
+      const { evidence, ...rest } = loadMigrationRules();
+      const text = JSON.stringify({ ...rest, evidence: { classes: evidence.classes } }, null, 2);
       return { contents: [{ uri: uri.href, mimeType: "application/json", text }] };
     },
   );

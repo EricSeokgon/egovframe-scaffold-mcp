@@ -1,0 +1,794 @@
+{
+  "comment": "3.x/4.x → 5.x 전환 규칙의 큐레이션(사람이 편집). scripts/generate-migration-rules.mjs 가 egovframe-runtime 태그의 실제 소스 트리와 대조해 catalog/migration-rules.json 을 만든다. 클래스 이동·제거는 스크립트가 트리 비교로 도출하고, 이 파일은 제거 항목의 대체·사유와 좌표·라이브러리·Jakarta 규칙을 제공한다. 제거 클래스에 사유가 없으면 생성기가 실패한다.",
+  "runtime": {
+    "repository": "eGovFramework/egovframe-runtime",
+    "fromTag": "v3.10.0",
+    "midTag": "v4.3.0-Final",
+    "toTag": "v5.0.2-Final",
+    "toVersion": "5.0.2",
+    "fromGroupId": "egovframework.rte",
+    "midGroupId": "org.egovframe.rte",
+    "toGroupId": "org.egovframe.rte",
+    "fromPackagePrefix": "egovframework.rte.",
+    "toPackagePrefix": "org.egovframe.rte."
+  },
+  "target": {
+    "runtimeVersion": "5.0.2",
+    "java": 17,
+    "spring": "6.x",
+    "jakartaEE": "9+ (Servlet 5.0/6.0)",
+    "repositoryUrl": "https://maven.egovframe.go.kr/maven/",
+    "legacyRepositoryUrls": [
+      "http://maven.egovframe.go.kr/maven/",
+      "http://maven.egovframe.kr:8080/maven/",
+      "http://www.egovframe.go.kr/maven/",
+      "http://maven.egovframe.go.kr/maven",
+      "http://www.egovframe.go.kr/maven"
+    ],
+    "parents": [
+      {
+        "kind": "web",
+        "groupId": "org.egovframe.web",
+        "artifactId": "egovframe-web-config-parent",
+        "version": "5.0.1",
+        "evidence": "Initializr egovframe-web 템플릿 pom(5.0.0), egovframe-web-sample v5.0.1"
+      },
+      {
+        "kind": "boot",
+        "groupId": "org.egovframe.boot",
+        "artifactId": "egovframe-boot-starter-parent",
+        "version": "5.0.1",
+        "evidence": "Initializr egovframe-boot-web 템플릿 pom(5.0.0)"
+      }
+    ],
+    "versionProperties": {
+      "legacy": [
+        "egovframework.rte.version",
+        "org.egovframe.rte.version",
+        "egovframe.rte.version"
+      ],
+      "note": "5.x 공식 템플릿은 parent 가 RTE 버전을 관리하므로 의존성에 <version> 을 두지 않는다. parent 를 쓰지 않으면 <org.egovframe.rte.version>5.0.2</org.egovframe.rte.version> 를 두고 각 의존성에 ${org.egovframe.rte.version} 을 쓴다."
+    },
+    "webXml": {
+      "legacyNamespaces": [
+        "http://java.sun.com/xml/ns/j2ee",
+        "http://java.sun.com/xml/ns/javaee",
+        "http://xmlns.jcp.org/xml/ns/javaee"
+      ],
+      "namespace": "https://jakarta.ee/xml/ns/jakartaee",
+      "version": "5.0",
+      "schemaLocation": "https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd",
+      "evidence": "Initializr egovframe-web 템플릿 src/main/webapp/WEB-INF/web.xml"
+    }
+  },
+  "modules": {
+    "comment": "3.10.0 RTE 모듈 → 5.0.2 artifactId. layer/module 은 소스 트리 디렉터리명에서 온다. 생성기가 fromTag 에 egovframework.rte.<module>, toTag 에 org.egovframe.rte.<module> 디렉터리와 pom artifactId 가 있는지 확인한다.",
+    "removedModules": [
+      {
+        "module": "spring-modules-validation",
+        "fromArtifactId": "spring-modules-validation",
+        "reason": "5.x 실행환경에서 제외됨(Presentation/spring-modules-validation 이 v5.0.2-Final 트리에 없음). Commons Validator 기반 검증은 jakarta.validation(hibernate-validator)으로 옮긴다. 5.x 템플릿은 jakarta.validation-api + hibernate-validator 를 사용."
+      }
+    ]
+  },
+  "removedClasses": [
+    {
+      "match": "org.egovframe.rte.fdl.access.bean.AccessDataSourceFactoryBean",
+      "replacement": "org.egovframe.rte.fdl.access.bean.DataSourceFactoryBean",
+      "reason": "5.x 에서 클래스명 변경"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.access.config.*",
+      "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
+      "reason": "egov-access XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-access:config> 설정을 EgovAccessConfiguration(Java Config)으로 옮긴다."
+    },
+    {
+      "match": "org.egovframe.rte.fdl.cmmn.AbstractServiceImpl",
+      "replacement": "org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl",
+      "reason": "5.x 에서 제거. 서비스 구현 상위 클래스는 EgovAbstractServiceImpl 만 남음"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.cmmn.exception.manager.AbsExceptionHandleManager",
+      "replacement": "org.egovframe.rte.fdl.cmmn.exception.manager.DefaultExceptionHandleManager",
+      "reason": "5.x 에서 추상 관리자 제거. DefaultExceptionHandleManager 를 사용(상속 코드는 ExceptionHandleManager 인터페이스 구현으로 조정)"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.cmmn.trace.manager.AbsTraceHandleManager",
+      "replacement": "org.egovframe.rte.fdl.cmmn.trace.manager.DefaultTraceHandleManager",
+      "reason": "5.x 에서 추상 관리자 제거. DefaultTraceHandleManager 를 사용"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.cryptography.config.EgovCryptoConfigBeanDefinitionParser",
+      "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
+      "reason": "egov-crypto XML 네임스페이스가 5.x 에서 제거됨. <egov-crypto:config> 설정을 EgovCryptoConfiguration(Java Config)으로 옮긴다."
+    },
+    {
+      "match": "org.egovframe.rte.fdl.cryptography.config.EgovCryptoNameHandler",
+      "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
+      "reason": "egov-crypto XML 네임스페이스가 5.x 에서 제거됨. <egov-crypto:config> 설정을 EgovCryptoConfiguration(Java Config)으로 옮긴다."
+    },
+    {
+      "match": "org.egovframe.rte.fdl.idgnr.impl.EgovSequenceIdGnrService",
+      "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovSequenceIdGnrServiceImpl",
+      "reason": "5.x 에서 비-Impl 별칭 클래스 제거"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrService",
+      "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl",
+      "reason": "5.x 에서 비-Impl 별칭 클래스 제거"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.idgnr.impl.EgovUUIdGnrService",
+      "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovUUIdGnrServiceImpl",
+      "reason": "5.x 에서 비-Impl 별칭 클래스 제거"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.security.config.*",
+      "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+      "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨."
+    },
+    {
+      "match": "org.egovframe.rte.fdl.security.intercept.CsrfAccessDeniedHandler",
+      "replacement": "org.egovframe.rte.fdl.security.bean.EgovAccessDeniedHandler",
+      "reason": "5.x 에서 EgovAccessDeniedHandler 로 대체"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.security.intercept.LookupAttributesMethodReplacer",
+      "replacement": null,
+      "reason": "5.x 에서 제거(XML 네임스페이스 내부용). 대체 없음 — Java Config 의 EgovSecurityConfig 로 구성"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.xml.EgovConcreteDOMFactory",
+      "replacement": "org.egovframe.rte.fdl.xml.EgovDOMValidatorService",
+      "reason": "5.x 에서 팩터리 클래스 제거. 검증 서비스 클래스를 직접 사용"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.xml.EgovConcreteSAXFactory",
+      "replacement": "org.egovframe.rte.fdl.xml.EgovSAXValidatorService",
+      "reason": "5.x 에서 팩터리 클래스 제거. 검증 서비스 클래스를 직접 사용"
+    },
+    {
+      "match": "org.egovframe.rte.fdl.xml.abstractXMLFactoryService",
+      "replacement": "org.egovframe.rte.fdl.xml.EgovAbstractXMLFactoryService",
+      "reason": "5.x 에서 클래스명 변경(대소문자 포함)"
+    },
+    {
+      "match": "org.egovframe.rte.psl.dataaccess.mapper.Mapper",
+      "replacement": "org.egovframe.rte.psl.dataaccess.mapper.EgovMapper",
+      "reason": "5.x 에서 @Mapper → @EgovMapper 로 이름 변경(MyBatis 의 org.apache.ibatis.annotations.Mapper 와 충돌 회피). MapperConfigurer 의 annotationClass 도 함께 바꾼다."
+    },
+    {
+      "match": "org.egovframe.rte.ptl.mvc.bind.*",
+      "replacement": null,
+      "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체"
+    },
+    {
+      "match": "org.egovframe.rte.ptl.mvc.handler.SimpleUrlAnnotationHandlerMapping",
+      "replacement": null,
+      "reason": "5.x 에서 제거. Spring MVC 기본 RequestMappingHandlerMapping(@RequestMapping) 사용"
+    },
+    {
+      "match": "org.egovframe.rte.ptl.mvc.validation.RteFieldChecks",
+      "replacement": null,
+      "reason": "5.x 에서 제거(spring-modules-validation/Commons Validator 의존). jakarta.validation 제약 애너테이션과 hibernate-validator 로 옮긴다"
+    }
+  ],
+  "jakarta": {
+    "comment": "Spring 6 / Jakarta EE 9+ 에서 이름이 바뀐 패키지만 나열한다. JDK 에 포함된 javax.* (javax.sql, javax.xml.parsers, javax.crypto, javax.naming, javax.net, javax.swing, javax.imageio, javax.management, javax.security.*, javax.script, javax.annotation.processing, javax.transaction.xa 등)는 대상이 아니다.",
+    "packages": [
+      {
+        "from": "javax.servlet",
+        "to": "jakarta.servlet"
+      },
+      {
+        "from": "javax.servlet.jsp",
+        "to": "jakarta.servlet.jsp"
+      },
+      {
+        "from": "javax.validation",
+        "to": "jakarta.validation"
+      },
+      {
+        "from": "javax.persistence",
+        "to": "jakarta.persistence"
+      },
+      {
+        "from": "javax.annotation",
+        "to": "jakarta.annotation",
+        "exclude": [
+          "javax.annotation.processing"
+        ]
+      },
+      {
+        "from": "javax.inject",
+        "to": "jakarta.inject"
+      },
+      {
+        "from": "javax.transaction",
+        "to": "jakarta.transaction",
+        "exclude": [
+          "javax.transaction.xa"
+        ]
+      },
+      {
+        "from": "javax.el",
+        "to": "jakarta.el"
+      },
+      {
+        "from": "javax.websocket",
+        "to": "jakarta.websocket"
+      },
+      {
+        "from": "javax.ws.rs",
+        "to": "jakarta.ws.rs"
+      },
+      {
+        "from": "javax.jms",
+        "to": "jakarta.jms"
+      },
+      {
+        "from": "javax.mail",
+        "to": "jakarta.mail"
+      },
+      {
+        "from": "javax.activation",
+        "to": "jakarta.activation"
+      },
+      {
+        "from": "javax.xml.bind",
+        "to": "jakarta.xml.bind"
+      },
+      {
+        "from": "javax.xml.ws",
+        "to": "jakarta.xml.ws"
+      },
+      {
+        "from": "javax.xml.soap",
+        "to": "jakarta.xml.soap"
+      },
+      {
+        "from": "javax.jws",
+        "to": "jakarta.jws"
+      },
+      {
+        "from": "javax.json",
+        "to": "jakarta.json"
+      },
+      {
+        "from": "javax.faces",
+        "to": "jakarta.faces"
+      },
+      {
+        "from": "javax.ejb",
+        "to": "jakarta.ejb"
+      },
+      {
+        "from": "javax.enterprise",
+        "to": "jakarta.enterprise"
+      },
+      {
+        "from": "javax.interceptor",
+        "to": "jakarta.interceptor"
+      },
+      {
+        "from": "javax.decorator",
+        "to": "jakarta.decorator"
+      },
+      {
+        "from": "javax.batch",
+        "to": "jakarta.batch"
+      },
+      {
+        "from": "javax.security.auth.message",
+        "to": "jakarta.security.auth.message"
+      },
+      {
+        "from": "javax.security.enterprise",
+        "to": "jakarta.security.enterprise"
+      },
+      {
+        "from": "javax.security.jacc",
+        "to": "jakarta.security.jacc"
+      },
+      {
+        "from": "javax.resource",
+        "to": "jakarta.resource"
+      }
+    ],
+    "artifacts": [
+      {
+        "from": {
+          "groupId": "javax.servlet",
+          "artifactId": "javax.servlet-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet",
+          "artifactId": "jakarta.servlet-api"
+        },
+        "toVersion": "6.0.0",
+        "scope": "provided",
+        "note": "5.x 템플릿에서는 parent 가 버전을 관리"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet",
+          "artifactId": "servlet-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet",
+          "artifactId": "jakarta.servlet-api"
+        },
+        "toVersion": "6.0.0",
+        "scope": "provided"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp",
+          "artifactId": "javax.servlet.jsp-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp",
+          "artifactId": "jakarta.servlet.jsp-api"
+        },
+        "toVersion": "3.1.1",
+        "scope": "provided"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp",
+          "artifactId": "jsp-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp",
+          "artifactId": "jakarta.servlet.jsp-api"
+        },
+        "toVersion": "3.1.1",
+        "scope": "provided"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet",
+          "artifactId": "jstl"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0",
+        "also": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl",
+          "version": "3.0.1"
+        },
+        "note": "JSTL 은 API + 구현(glassfish) 두 개가 필요. JSP 의 taglib uri(http://java.sun.com/jsp/jstl/core)는 JSTL 3.0 에서도 그대로 동작"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp.jstl",
+          "artifactId": "javax.servlet.jsp.jstl-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0",
+        "also": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl",
+          "version": "3.0.1"
+        }
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp.jstl",
+          "artifactId": "jstl-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0",
+        "also": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl",
+          "version": "3.0.1"
+        }
+      },
+      {
+        "from": {
+          "groupId": "org.apache.taglibs",
+          "artifactId": "taglibs-standard-impl"
+        },
+        "to": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl"
+        },
+        "toVersion": "3.0.1",
+        "note": "Apache taglibs-standard 1.2.x 는 javax JSTL 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체"
+      },
+      {
+        "from": {
+          "groupId": "org.apache.taglibs",
+          "artifactId": "taglibs-standard-spec"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0"
+      },
+      {
+        "from": {
+          "groupId": "taglibs",
+          "artifactId": "standard"
+        },
+        "to": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl"
+        },
+        "toVersion": "3.0.1",
+        "note": "JSTL 1.1 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체"
+      },
+      {
+        "from": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "javax.servlet.jsp.jstl"
+        },
+        "to": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl"
+        },
+        "toVersion": "3.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.validation",
+          "artifactId": "validation-api"
+        },
+        "to": {
+          "groupId": "jakarta.validation",
+          "artifactId": "jakarta.validation-api"
+        },
+        "toVersion": "3.0.2",
+        "note": "hibernate-validator 는 8.x 이상"
+      },
+      {
+        "from": {
+          "groupId": "javax.annotation",
+          "artifactId": "javax.annotation-api"
+        },
+        "to": {
+          "groupId": "jakarta.annotation",
+          "artifactId": "jakarta.annotation-api"
+        },
+        "toVersion": "2.1.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.annotation",
+          "artifactId": "jsr250-api"
+        },
+        "to": {
+          "groupId": "jakarta.annotation",
+          "artifactId": "jakarta.annotation-api"
+        },
+        "toVersion": "2.1.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.inject",
+          "artifactId": "javax.inject"
+        },
+        "to": {
+          "groupId": "jakarta.inject",
+          "artifactId": "jakarta.inject-api"
+        },
+        "toVersion": "2.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.persistence",
+          "artifactId": "javax.persistence-api"
+        },
+        "to": {
+          "groupId": "jakarta.persistence",
+          "artifactId": "jakarta.persistence-api"
+        },
+        "toVersion": "3.1.0"
+      },
+      {
+        "from": {
+          "groupId": "org.hibernate.javax.persistence",
+          "artifactId": "hibernate-jpa-2.1-api"
+        },
+        "to": {
+          "groupId": "jakarta.persistence",
+          "artifactId": "jakarta.persistence-api"
+        },
+        "toVersion": "3.1.0"
+      },
+      {
+        "from": {
+          "groupId": "javax.transaction",
+          "artifactId": "javax.transaction-api"
+        },
+        "to": {
+          "groupId": "jakarta.transaction",
+          "artifactId": "jakarta.transaction-api"
+        },
+        "toVersion": "2.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.transaction",
+          "artifactId": "jta"
+        },
+        "to": {
+          "groupId": "jakarta.transaction",
+          "artifactId": "jakarta.transaction-api"
+        },
+        "toVersion": "2.0.1"
+      },
+      {
+        "from": {
+          "groupId": "org.glassfish",
+          "artifactId": "javax.json"
+        },
+        "to": {
+          "groupId": "org.glassfish",
+          "artifactId": "jakarta.json"
+        },
+        "toVersion": "2.0.1",
+        "note": "5.x 템플릿은 org.eclipse:yasson + org.glassfish:jakarta.json"
+      },
+      {
+        "from": {
+          "groupId": "javax.json",
+          "artifactId": "javax.json-api"
+        },
+        "to": {
+          "groupId": "jakarta.json",
+          "artifactId": "jakarta.json-api"
+        },
+        "toVersion": "2.1.3"
+      },
+      {
+        "from": {
+          "groupId": "javax.xml.bind",
+          "artifactId": "jaxb-api"
+        },
+        "to": {
+          "groupId": "jakarta.xml.bind",
+          "artifactId": "jakarta.xml.bind-api"
+        },
+        "toVersion": "4.0.2",
+        "also": {
+          "groupId": "org.glassfish.jaxb",
+          "artifactId": "jaxb-runtime",
+          "version": "4.0.5"
+        }
+      },
+      {
+        "from": {
+          "groupId": "javax.mail",
+          "artifactId": "mail"
+        },
+        "to": {
+          "groupId": "jakarta.mail",
+          "artifactId": "jakarta.mail-api"
+        },
+        "toVersion": "2.1.3",
+        "also": {
+          "groupId": "org.eclipse.angus",
+          "artifactId": "angus-mail",
+          "version": "2.0.3"
+        }
+      },
+      {
+        "from": {
+          "groupId": "com.sun.mail",
+          "artifactId": "javax.mail"
+        },
+        "to": {
+          "groupId": "jakarta.mail",
+          "artifactId": "jakarta.mail-api"
+        },
+        "toVersion": "2.1.3",
+        "also": {
+          "groupId": "org.eclipse.angus",
+          "artifactId": "angus-mail",
+          "version": "2.0.3"
+        }
+      },
+      {
+        "from": {
+          "groupId": "javax.el",
+          "artifactId": "javax.el-api"
+        },
+        "to": {
+          "groupId": "jakarta.el",
+          "artifactId": "jakarta.el-api"
+        },
+        "toVersion": "5.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.websocket",
+          "artifactId": "javax.websocket-api"
+        },
+        "to": {
+          "groupId": "jakarta.websocket",
+          "artifactId": "jakarta.websocket-api"
+        },
+        "toVersion": "2.1.1"
+      }
+    ]
+  },
+  "libraries": {
+    "comment": "자동 좌표 치환으로 끝나지 않고 코드·설정 손질이 필요한 라이브러리. 항목별 사유를 그대로 보고한다.",
+    "manual": [
+      {
+        "match": {
+          "groupId": "commons-dbcp",
+          "artifactId": "commons-dbcp"
+        },
+        "replacement": "org.apache.commons:commons-dbcp2",
+        "reason": "DBCP 1.x 는 Java 17·Jakarta 환경에서 유지보수 종료. commons-dbcp2 로 바꾸고 BasicDataSource 패키지(org.apache.commons.dbcp2)와 속성명(maxActive→maxTotal, maxWait→maxWaitMillis)을 수정"
+      },
+      {
+        "match": {
+          "groupId": "log4j",
+          "artifactId": "log4j"
+        },
+        "replacement": "org.apache.logging.log4j:log4j-core (또는 logback)",
+        "reason": "Log4j 1.x 는 EOL(보안 취약). log4j2 또는 5.x 템플릿 기본인 logback 으로 옮기고 log4j.xml 설정을 변환"
+      },
+      {
+        "match": {
+          "groupId": "commons-fileupload",
+          "artifactId": "commons-fileupload"
+        },
+        "replacement": "Servlet 3.0+ multipart(StandardServletMultipartResolver) 또는 org.apache.commons:commons-fileupload2-jakarta-servlet6",
+        "reason": "commons-fileupload 1.x 는 javax.servlet 에 묶여 있어 Jakarta 에서 동작하지 않음. CommonsMultipartResolver 는 Spring 6 에서 제거됨"
+      },
+      {
+        "match": {
+          "groupId": "org.apache.tiles",
+          "artifactId": "tiles-*"
+        },
+        "replacement": null,
+        "reason": "Apache Tiles 는 종료된 프로젝트로 Jakarta 버전이 없고 Spring 6 에서 Tiles 지원이 제거됨. JSP include/레이아웃 태그 또는 Thymeleaf 로 대체"
+      },
+      {
+        "match": {
+          "groupId": "org.springframework",
+          "artifactId": "spring-*",
+          "versionBelow": "6.0.0"
+        },
+        "replacement": "Spring 6.x (5.x parent 가 관리)",
+        "reason": "명시 버전이 6 미만. 5.x 템플릿처럼 parent 에 버전 관리를 맡기거나 6.x 로 올린다"
+      },
+      {
+        "match": {
+          "groupId": "org.springframework.security",
+          "artifactId": "spring-security-*",
+          "versionBelow": "6.0.0"
+        },
+        "replacement": "Spring Security 6.x",
+        "reason": "Spring Security 6 에서 WebSecurityConfigurerAdapter·antMatchers 제거. SecurityFilterChain bean 방식으로 재작성"
+      },
+      {
+        "match": {
+          "groupId": "org.hibernate",
+          "artifactId": "hibernate-validator",
+          "versionBelow": "8.0.0"
+        },
+        "replacement": "org.hibernate.validator:hibernate-validator 8.x",
+        "reason": "8.x 부터 jakarta.validation 을 구현. groupId 도 org.hibernate.validator 로 바뀜"
+      },
+      {
+        "match": {
+          "groupId": "org.hibernate.validator",
+          "artifactId": "hibernate-validator",
+          "versionBelow": "8.0.0"
+        },
+        "replacement": "org.hibernate.validator:hibernate-validator 8.x",
+        "reason": "8.x 부터 jakarta.validation 을 구현"
+      },
+      {
+        "match": {
+          "groupId": "org.hibernate",
+          "artifactId": "hibernate-core",
+          "versionBelow": "6.0.0"
+        },
+        "replacement": "org.hibernate.orm:hibernate-core 6.x",
+        "reason": "Hibernate 6 부터 jakarta.persistence 를 구현하며 groupId 가 org.hibernate.orm 으로 바뀜"
+      },
+      {
+        "match": {
+          "groupId": "org.mybatis",
+          "artifactId": "mybatis-spring",
+          "versionBelow": "3.0.0"
+        },
+        "replacement": "org.mybatis:mybatis-spring 3.x",
+        "reason": "mybatis-spring 3.x 가 Spring 6 대상"
+      },
+      {
+        "match": {
+          "groupId": "org.apache.poi",
+          "artifactId": "poi*",
+          "versionBelow": "5.0.0"
+        },
+        "replacement": "org.apache.poi:poi 5.x",
+        "reason": "fdl.excel 5.x 가 POI 5 를 사용. 3.x 시절 POI 3.x 는 API 가 다름(HSSF/XSSF 공통화)"
+      },
+      {
+        "match": {
+          "groupId": "egovframework.rte",
+          "artifactId": "spring-modules-validation"
+        },
+        "replacement": "jakarta.validation:jakarta.validation-api + org.hibernate.validator:hibernate-validator",
+        "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용"
+      },
+      {
+        "match": {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "spring-modules-validation"
+        },
+        "replacement": "jakarta.validation:jakarta.validation-api + org.hibernate.validator:hibernate-validator",
+        "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용"
+      },
+      {
+        "match": {
+          "groupId": "junit",
+          "artifactId": "junit"
+        },
+        "replacement": "org.junit.jupiter:junit-jupiter",
+        "reason": "5.x 템플릿은 JUnit 5(Jupiter)·spring-test 6 을 사용. JUnit 4 는 vintage 엔진 없이는 실행되지 않음"
+      }
+    ]
+  },
+  "xmlNamespaces": {
+    "comment": "Spring XML 설정에서 5.x 에 없는 커스텀 네임스페이스. spring.handlers 가 v4.3.0-Final 까지 있고 v5.0.2-Final 에는 없다.",
+    "removed": [
+      {
+        "uri": "http://maven.egovframe.go.kr/schema/egov-access",
+        "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
+        "reason": "5.x 에서 egov-access 네임스페이스 제거. Java Config 로 전환"
+      },
+      {
+        "uri": "http://maven.egovframe.go.kr/schema/egov-crypto",
+        "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
+        "reason": "5.x 에서 egov-crypto 네임스페이스 제거. Java Config 로 전환"
+      },
+      {
+        "uri": "http://maven.egovframe.go.kr/schema/egov-security",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "5.x 에서 egov-security 네임스페이스 제거. Java Config 로 전환"
+      },
+      {
+        "uri": "http://www.springmodules.org/validation/bean/validator",
+        "replacement": "jakarta.validation",
+        "reason": "spring-modules-validation 이 5.x 실행환경에서 제외됨"
+      }
+    ]
+  },
+  "build": {
+    "javaRelease": 17,
+    "javaProperties": [
+      "maven.compiler.source",
+      "maven.compiler.target",
+      "maven.compiler.release",
+      "java.version"
+    ],
+    "springVersionProperties": [
+      "spring.maven.artifact.version",
+      "spring.maven.version",
+      "spring.version",
+      "spring-framework.version",
+      "org.springframework-version",
+      "springframework.version"
+    ],
+    "springMinimum": "6.0.0"
+  }
+}
