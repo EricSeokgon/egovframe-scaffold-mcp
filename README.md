@@ -13,7 +13,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 
 현재 v0.28.1은 **도구 23종, 공식 템플릿 22종, 설정 템플릿 21종, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
-## 진행 현황 (2026-09-13)
+## 진행 현황 (2026-09-26)
 
 - **소스 기준**: v0.28.1(`package.json`), 도구 23종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목.
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
@@ -26,6 +26,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - **v0.26.0 추가**: `sync_egovframe_templates` + `catalog/templates.json` — 그동안 Initializr(프로젝트 22종 zip 카탈로그)·MCP(`TEMPLATES` 10종 저장소 조달)·Development(`wizards.xml` 설정 마법사)에 흩어져 있던 "어떤 공식 프로젝트가 있는가"를 하나의 스키마로 합쳤습니다. 매핑은 `catalog/template-mapping.json` 에서 큐레이션하고(자동 추론 없음), upstream 과의 추가·삭제·변경과 MCP 커버리지 격차(현재 22종 중 9종 대응)를 도구로 조회합니다. 오프라인 148단언(`npm run test:template-catalog`).
 - **v0.27.0 추가**: 공식 템플릿 커버리지 10 → **22종**(Initializr 22종 기준 대응 9 → 21종). 단독 저장소가 없는 배치 6종·빈 골격(`web`·`boot-web`)·모바일 2종·MSA 포털 2종을 Initializr 의 zip(Git LFS)으로 조달하며, commit 과 sha256·크기를 고정해 내려받은 바이트를 검증합니다. `sync_egovframe_templates` 가 zip 지문의 upstream 변화도 함께 보고합니다(설계: [docs/design-initializr-zip-templates.md](docs/design-initializr-zip-templates.md)).
 - **v0.28.0 추가**: `generate_egovframe_config` — 공식 Initializr 설정 템플릿 21종(datasource·transaction·cache·logging·scheduling·idGeneration·property)을 패키지에 동봉해 **오프라인**으로 Spring 설정 파일을 생성합니다. xml·javaConfig·yaml·properties 형식, Initializr 폼과 같은 필드명·기본값, 기존 파일 보호. 리소스 `egovframe://catalog/config-templates` 로 필드·기본값·선택지를 조회할 수 있고, `sync_egovframe_templates` 가 동봉 템플릿의 upstream 변화를 보고합니다(설계: [docs/design-config-generation.md](docs/design-config-generation.md)).
+- **다음 계획**: v0.29 `migrate_egovframe_project` 1단계(5.x/Jakarta 전환 진단, 읽기 전용) → v0.30 전환 적용 + `check_egovframe_dependencies` → v0.31 네트워크 진단·영문 README·MCP Registry. 범위·검증 기준·선행 조사는 [다음 버전 기획](#다음-버전-기획-v029v031) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 제공 도구
@@ -257,9 +258,77 @@ v0.28.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 | **v0.26 완료** | IDE·Initializr·MCP 공통 카탈로그 | Initializr `templates-projects.json`(22종), MCP `TEMPLATES`(10종), Development `wizards.xml`(8카테고리)을 `schemaVersion: 1` 단일 스키마 `catalog/templates.json` 으로 통합. 변환기(`fromInitializr`·`fromMcpTemplates`)와 큐레이션 매핑(`catalog/template-mapping.json`), upstream 대조 도구 `sync_egovframe_templates` 로 커버리지 격차를 수작업 비교 없이 확인 |
 | **v0.27 완료** | 공식 템플릿 커버리지 확대 (10 → **22종**) | 통합 카탈로그가 계산한 미커버 13종 중 12종을 Initializr zip(Git LFS) 조달로 추가. commit·sha256·크기 고정과 다운로드 검증, pom 자리표시자 치환, 템플릿별 `globals.properties` 경로 대응, `sync_egovframe_templates` 의 zip 지문 drift 보고 |
 | **v0.28 완료** | `generate_egovframe_config` | Initializr 설정 템플릿 21종(Handlebars)을 commit·sha256 고정으로 동봉해 오프라인 생성. xml·javaConfig·yaml·properties, Initializr 폼과 같은 필드·기본값, 선택지·파일명·패키지 검증, 기존 파일 거부, `sync_egovframe_templates` 의 동봉 템플릿 drift 보고 |
-| **v0.29 후보** | `migrate_egovframe_namespace` | 3.x→4.x import·XML bean·빌드 좌표 전환. dryRun·백업·원자적 거부와 자동 변환 불가 API 보고 |
-| **v0.30 후보** | `check_egovframe_dependencies` + `security_patch_advisor` | 폐쇄망 최소 버전 규칙과 선택적 CVE 조회, CSRF·보안 설정·공식 패치 기준 점검 |
-| **v0.31+ 후보** | 접근성·배포·AI 컨텍스트 | 영문 응답/README, Homebrew·MCP Registry, `generate_agents_md`, 네트워크 진단(프록시·IPv6 안내) |
+| **v0.29 계획** | `migrate_egovframe_project` (1단계: 진단) | 3.x/4.x 프로젝트를 5.x(Jakarta) 기준으로 스캔해 Maven 좌표·패키지·`javax→jakarta`·XML bean 전환 계획을 **읽기 전용**으로 보고. 상세: [다음 버전 기획](#다음-버전-기획-v029v031) |
+| **v0.30 계획** | `migrate_egovframe_project` (2단계: 적용) + `check_egovframe_dependencies` | 계획을 transaction 으로 적용(백업·dryRun 기본·수동 항목 보고), RTE·Spring·공통컴포넌트 버전을 최소 기준·선택적 취약점 DB 와 대조 |
+| **v0.31 계획** | 운영 편의 | `diagnose_egovframe_network`(프록시·IPv6·차단 호스트 진단), 영문 README, MCP Registry 등록, `generate_agents_md` |
+
+## 다음 버전 기획 (v0.29–v0.31)
+
+v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행합니다. 각 항목은 "완료 정의"를 만족해야 릴리스합니다. 기획 시점(2026-09-26)의 조사 근거는 맨 아래 "선행 조사 결과"에 있습니다.
+
+### v0.29.0 — `migrate_egovframe_project` 1단계: 전환 진단 (읽기 전용)
+
+**목표**: 표준프레임워크 3.x/4.x 로 만든 기존 프로젝트를 5.x(Jakarta EE 9+, Spring 6) 기준으로 옮기기 위해 무엇을 바꿔야 하는지 파일·라인 단위로 보고합니다. 이 단계는 파일을 쓰지 않습니다. 진단 결과가 정확해야 2단계 자동 적용을 믿을 수 있으므로, 진단을 먼저 릴리스해 실제 프로젝트에서 검증합니다.
+
+**범위 (포함)**
+- Maven 좌표: `egovframework.rte:egovframework.rte.<layer>.<module>` → `org.egovframe.rte:egovframe-rte-<layer>-<module>` 대응표, RTE 버전 속성, 저장소 URL(`https://maven.egovframe.go.kr/maven/`) 유무, parent(`org.egovframe.web:egovframe-web-config-parent`, `org.egovframe.boot:egovframe-boot-starter-parent`) 사용 여부
+- 자바 소스·XML: `egovframework.rte.*` import·bean class → `org.egovframe.rte.*`
+- Jakarta 전환: `javax.servlet`·`javax.servlet.jsp`·`javax.validation`·`javax.persistence`·`javax.annotation`(Spring 6 에서 바뀐 것만) → `jakarta.*` 사용처 목록. `javax.sql`·`javax.xml` 등 JDK 내장 패키지는 대상에서 제외
+- JSP/TLD: `web.xml` 스키마 버전, JSTL 좌표(`jakarta.servlet.jsp.jstl`)
+- 자동 변환 불가 항목 보고: 3.x 에서 제거·변경된 RTE API(대응표에 `manual` 로 표시된 것), Spring 4→6 에서 사라진 클래스, `commons-dbcp`(1.x)·`log4j 1.x` 같은 교체 필요 라이브러리
+
+**범위 (제외)**: 파일 수정, 빌드 실행, 공통컴포넌트 소스 자체의 버전 갱신(이는 `upgrade_egovframe_project` 영역)
+
+**설계 요점**
+- 규칙은 코드가 아니라 데이터로 둡니다: `catalog/migration-rules.json`(schemaVersion 1) 에 좌표 대응표·패키지 대응표·javax→jakarta 목록·수동 항목을 담고, 생성 스크립트가 공식 저장소(5.x 템플릿 pom, `egovframe-common-components` 5.x 패키지 트리)에서 근거를 대조합니다. 규칙 정합 테스트(`test:migration-rules`)가 대응표의 목적지 좌표·패키지가 실제 5.x 자산에 존재하는지 검증합니다.
+- 도구 `migrate_egovframe_project(projectDir, target="5.x", format="json|markdown")` 은 `diagnose_egovframe_project` 의 스캔 결과(빌드 도구·RTE 버전·설치 컴포넌트)를 재사용하고, 항목마다 `{file, line, kind, from, to, auto|manual, reason}` 을 돌려줍니다. Markdown 요약(`generate_egovframe_report` 형식)도 제공합니다.
+- 허용 root·읽기 전용 보장은 기존 도구와 동일합니다.
+
+**검증 기준**
+- 오프라인 픽스처: 3.10 스타일 pom·`egovframework.rte` import·`javax.servlet` 사용·XML bean 이 섞인 프로젝트로 항목 분류(auto/manual)·라인 위치·대응 좌표를 단언
+- 실제 프로젝트: 공식 5.x `web-sample` 을 대상으로 "전환 항목 0건"(거짓 양성 없음) 확인
+- 규칙 정합: 대응표의 모든 `to` 좌표가 `https://maven.egovframe.go.kr/maven/` 또는 Maven Central 메타데이터에 존재(네트워크 테스트, CI)
+
+**완료 정의**: 도구 24종, 픽스처·규칙 정합 테스트 통과, 설계 문서 `docs/design-migration.md`(대응표 출처·수동 항목 근거·2단계 계획 포함)
+
+### v0.30.0 — 전환 적용 + 의존성 점검
+
+**`migrate_egovframe_project` 2단계 (적용)**
+- 1단계 보고서의 `auto` 항목만 적용합니다: pom 좌표 치환, import·bean class 치환, `javax→jakarta` 치환. `manual` 항목은 결과에 그대로 남겨 사람이 처리하게 합니다.
+- `dryRun` 기본값 `true`, 적용 시 `ProjectFileTransaction` 으로 파일·백업(`migration-backup/`)·보고서(`migration-plan.json`)를 하나의 transaction 으로 반영하고, 중간 실패 시 작업 전 상태로 복구합니다. 사용자 수정 여부와 무관하게 원본을 백업합니다(업그레이드 도구와 같은 원칙).
+- 적용 후 `build_egovframe_project(goal=compile)` 을 권장 다음 단계로 안내하고, 컴파일 오류가 있으면 `manual` 항목과 연결해 보여 줍니다.
+- 검증: 픽스처 프로젝트를 변환한 뒤 JDK 17 로 `mvn compile` 통과(CI 통합 테스트), 적용 중 fault-injection rollback
+
+**`check_egovframe_dependencies(projectDir, offline=true)`**
+- 프로젝트의 RTE·Spring·공통컴포넌트·주요 라이브러리 버전을 `catalog/dependency-baseline.json`(공식 5.x 템플릿에서 추출한 기준 버전)과 대조해 `outdated`·`unknown`·`ok` 로 분류합니다. 폐쇄망을 고려해 기본은 오프라인이며, `offline=false` 일 때만 OSV(`https://api.osv.dev`) 로 알려진 취약점을 조회합니다.
+- 보안 설정 점검(구 `security_patch_advisor`)은 이 도구의 `checks` 항목으로 흡수합니다: CSRF 필터·`sec.security` 컴포넌트 설치 여부·`web.xml` 보안 헤더 필터 유무 등 존재 여부만 판정하고, 판정 근거(파일·라인)를 함께 돌려줍니다.
+
+**완료 정의**: 도구 25종, 픽스처 변환 후 `mvn compile` 통과, 기준 버전 파일 생성 스크립트와 정합 테스트
+
+### v0.31.0 — 운영 편의
+
+- **`diagnose_egovframe_network`**: 도구가 쓰는 호스트(`codeload.github.com`·`raw.githubusercontent.com`·`media.githubusercontent.com`·`maven.egovframe.go.kr`·`registry.npmjs.org`)에 대한 접속 가능 여부·소요 시간·오류 종류(DNS·타임아웃·TLS·프록시 인증)를 보고하고, 환경변수 처방(`HTTPS_PROXY`+`NODE_USE_ENV_PROXY=1`, `NODE_OPTIONS=--dns-result-order=ipv4first`)을 안내합니다. 2026-09-21 새 노트북에서 `codeload.github.com` 접속 타임아웃으로 `test:templates` 가 실패했던 경험이 근거입니다. 기존 다운로드 경로가 실패할 때도 같은 처방을 오류 메시지에 붙입니다.
+- **영문 README** 와 도구 설명의 영문 병기(응답 언어는 한국어 유지, `EGOVFRAME_LANG=en` 옵션 검토)
+- **MCP Registry 등록** 과 `server.json` 메타데이터, Homebrew 탭은 후순위
+- **`generate_agents_md`**: 프로젝트 진단 결과로 AI 코딩 도구용 `AGENTS.md`(빌드·테스트 명령, 설치 컴포넌트, 금지 사항)를 생성
+
+### 릴리스 절차 (매 버전 공통)
+
+1. `main` 최신화 후 기능 브랜치 생성 → 패치 적용(`git am`) 또는 직접 커밋
+2. `npm ci && npm run prepublishOnly` 로컬 통과(Windows 클론은 `core.autocrlf` 무관하게 통과해야 함)
+3. 푸시 → PR → CI 7개(ubuntu·windows × Node 18/20/22 + integration) 전부 통과 → squash 병합
+4. `main` 에서 `node -p "require('./package.json').version"` 으로 버전 확인 **후** 태그(`vX.Y.Z`)를 `main` 커밋에 생성·푸시
+5. `npm publish` → `npm view egovframe-scaffold-mcp dist-tags.latest` 로 확인
+
+태그는 반드시 병합된 `main` 커밋에 답니다. 병합 전 커밋이나 로컬 병합 커밋에 태그가 달리면 지우고 다시 답니다(v0.25.2·v0.28.0·v0.28.1 에서 각각 한 번씩 겪었습니다).
+
+### 선행 조사 결과 (2026-09-26)
+
+- 공식 템플릿은 이미 **5.x** 입니다: `egovframe-web-sample` 은 `org.egovframe.web:egovframe-web-config-parent:5.0.1`, `egovframe-template-simple-backend` 는 `org.egovframe.boot:egovframe-boot-starter-parent:5.0.1`(프로젝트 5.0.2, Java 17). 의존성은 `jakarta.servlet`·`jakarta.validation`·`jakarta.json` 이고 일부 라이브러리는 `jakarta` classifier 를 씁니다. 따라서 전환 도구의 목적지는 "4.x" 가 아니라 **5.x(Jakarta)** 로 잡습니다.
+- 5.x 실행환경 좌표는 `org.egovframe.rte:egovframe-rte-<layer>-<module>`(예: `egovframe-rte-ptl-mvc`, `egovframe-rte-psl-dataaccess`, `egovframe-rte-fdl-idgnr`, `egovframe-rte-fdl-property`)이며, 저장소는 Maven Central 과 `https://maven.egovframe.go.kr/maven/` 두 곳입니다. 3.x 의 `egovframework.rte:egovframework.rte.<layer>.<module>` 과 이름 규칙이 달라 대응표가 필요합니다.
+- `egovframe-docs` 저장소에는 3.x→4.x/5.x 전환 가이드 문서가 없습니다(2026-09-26 기준). 대응표는 공식 5.x pom 과 `egovframe-common-components` 5.x 패키지 트리에서 도출해야 하며, 그 도출 스크립트와 근거를 `docs/design-migration.md` 에 남깁니다.
+- `diagnose_egovframe_project` 는 RTE 버전을 pom 문자열 패턴으로 추정합니다. 전환 진단은 여기에 좌표 기반 판정(`egovframework.rte` groupId 존재 = 3.x 계열)을 더해 정확도를 올립니다.
+- Initializr upstream 에서 발견한 문제 3건(v0.28.0 변경 이력 참조)은 별도 이슈로 제출할 후보입니다.
 
 로드맵 근거:
 
