@@ -65,6 +65,8 @@ export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRun
 export { loadTemplateCatalog, syncTemplateCatalog, diffProjects, normalizeInitializrProjects, parseLfsPointer } from "./template-catalog.js";
 export { CONFIG_FORMATS, CONFIG_EXTENSIONS, loadConfigCatalog, getConfigTemplate, describeConfigTemplates, validateConfigFields, buildConfigContext, renderConfig, resolveFileName, defaultOutputDir, generateConfig, templateSha256 } from "./config-generator.js";
 export type { ConfigFormat, ConfigTemplateEntry, ConfigCatalog, GenerateConfigOptions, GenerateConfigResult, ConfigFieldValidation } from "./config-generator.js";
+export { loadMigrationRules, migrateProject, renderMigrationMarkdown, classifyRteToken, classifyJavaxPackage, versionBelow } from "./migrate.js";
+export type { MigrationRules, MigrationItem, MigrationKind, MigrationAction, MigrateResult, MigrateOptions, SourceEra } from "./migrate.js";
 export type {
   TemplateCatalog,
   UnifiedProject,

@@ -1,0 +1,1873 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/generate-migration-rules.mjs",
+  "surveyedAt": "2026-09-27",
+  "source": {
+    "repository": "eGovFramework/egovframe-runtime",
+    "fromTag": "v3.10.0",
+    "fromCommit": "a4b35d692ab1289d3f28b82afa43ed12a29497cb",
+    "midTag": "v4.3.0-Final",
+    "midCommit": "7db5b2f81e19424710e7ae3a08a19a729c0bbf04",
+    "toTag": "v5.0.2-Final",
+    "toCommit": "8f47a567ec4a8d3969f423c195115648cf562ae0",
+    "samples": {
+      "web": "eGovFramework/egovframe-vscode-initializr templates(egovframe-web)·egovframe-web-sample v5.0.x",
+      "boot": "eGovFramework/egovframe-vscode-initializr templates(egovframe-boot-web)",
+      "legacy": "eGovFramework/egovframe-common-components v3.10.0 pom.xml·web.xml, egovframe-web-sample v4.3.0 pom.xml"
+    }
+  },
+  "target": {
+    "runtimeVersion": "5.0.2",
+    "java": 17,
+    "spring": "6.x",
+    "jakartaEE": "9+ (Servlet 5.0/6.0)",
+    "repositoryUrl": "https://maven.egovframe.go.kr/maven/",
+    "legacyRepositoryUrls": [
+      "http://maven.egovframe.go.kr/maven/",
+      "http://maven.egovframe.kr:8080/maven/",
+      "http://www.egovframe.go.kr/maven/",
+      "http://maven.egovframe.go.kr/maven",
+      "http://www.egovframe.go.kr/maven"
+    ],
+    "parents": [
+      {
+        "kind": "web",
+        "groupId": "org.egovframe.web",
+        "artifactId": "egovframe-web-config-parent",
+        "version": "5.0.1",
+        "evidence": "Initializr egovframe-web 템플릿 pom(5.0.0), egovframe-web-sample v5.0.1"
+      },
+      {
+        "kind": "boot",
+        "groupId": "org.egovframe.boot",
+        "artifactId": "egovframe-boot-starter-parent",
+        "version": "5.0.1",
+        "evidence": "Initializr egovframe-boot-web 템플릿 pom(5.0.0)"
+      }
+    ],
+    "versionProperties": {
+      "legacy": [
+        "egovframework.rte.version",
+        "org.egovframe.rte.version",
+        "egovframe.rte.version"
+      ],
+      "note": "5.x 공식 템플릿은 parent 가 RTE 버전을 관리하므로 의존성에 <version> 을 두지 않는다. parent 를 쓰지 않으면 <org.egovframe.rte.version>5.0.2</org.egovframe.rte.version> 를 두고 각 의존성에 ${org.egovframe.rte.version} 을 쓴다."
+    },
+    "webXml": {
+      "legacyNamespaces": [
+        "http://java.sun.com/xml/ns/j2ee",
+        "http://java.sun.com/xml/ns/javaee",
+        "http://xmlns.jcp.org/xml/ns/javaee"
+      ],
+      "namespace": "https://jakarta.ee/xml/ns/jakartaee",
+      "version": "5.0",
+      "schemaLocation": "https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd",
+      "evidence": "Initializr egovframe-web 템플릿 src/main/webapp/WEB-INF/web.xml"
+    }
+  },
+  "coordinates": [
+    {
+      "module": "bat.core",
+      "layer": "Batch",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.bat.core",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.bat.core",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-bat-core"
+      }
+    },
+    {
+      "module": "fdl.access",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.access",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.access",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-access"
+      }
+    },
+    {
+      "module": "fdl.cmmn",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.cmmn",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.cmmn",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-cmmn"
+      }
+    },
+    {
+      "module": "fdl.crypto",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.crypto",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.crypto",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-crypto"
+      }
+    },
+    {
+      "module": "fdl.excel",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.excel",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.excel",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-excel"
+      }
+    },
+    {
+      "module": "fdl.filehandling",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.filehandling",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.filehandling",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-filehandling"
+      }
+    },
+    {
+      "module": "fdl.idgnr",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.idgnr",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.idgnr",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-idgnr"
+      }
+    },
+    {
+      "module": "fdl.logging",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.logging",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.logging",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-logging"
+      }
+    },
+    {
+      "module": "fdl.property",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.property",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.property",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-property"
+      }
+    },
+    {
+      "module": "fdl.security",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.security",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.security",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-security"
+      }
+    },
+    {
+      "module": "fdl.string",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.string",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.string",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-string"
+      }
+    },
+    {
+      "module": "fdl.xml",
+      "layer": "Foundation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.fdl.xml",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.fdl.xml",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-xml"
+      }
+    },
+    {
+      "module": "itl.integration",
+      "layer": "Integration",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.itl.integration",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.itl.integration",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-itl-integration"
+      }
+    },
+    {
+      "module": "itl.webservice",
+      "layer": "Integration",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.itl.webservice",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.itl.webservice",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-itl-webservice"
+      }
+    },
+    {
+      "module": "psl.data.jpa",
+      "layer": "Persistence",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.psl.data.jpa",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.psl.data.jpa",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-psl-data-jpa"
+      }
+    },
+    {
+      "module": "psl.data.mongodb",
+      "layer": "Persistence",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.psl.data.mongodb",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.psl.data.mongodb",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-psl-data-mongodb"
+      }
+    },
+    {
+      "module": "psl.dataaccess",
+      "layer": "Persistence",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.psl.dataaccess",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.psl.dataaccess",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-psl-dataaccess"
+      }
+    },
+    {
+      "module": "ptl.mvc",
+      "layer": "Presentation",
+      "from": [
+        {
+          "groupId": "egovframework.rte",
+          "artifactId": "egovframework.rte.ptl.mvc",
+          "era": "3.x"
+        },
+        {
+          "groupId": "org.egovframe.rte",
+          "artifactId": "org.egovframe.rte.ptl.mvc",
+          "era": "4.x"
+        }
+      ],
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-ptl-mvc"
+      }
+    }
+  ],
+  "removedModules": [
+    {
+      "module": "spring-modules-validation",
+      "fromArtifactId": "spring-modules-validation",
+      "reason": "5.x 실행환경에서 제외됨(Presentation/spring-modules-validation 이 v5.0.2-Final 트리에 없음). Commons Validator 기반 검증은 jakarta.validation(hibernate-validator)으로 옮긴다. 5.x 템플릿은 jakarta.validation-api + hibernate-validator 를 사용."
+    }
+  ],
+  "newModules": [
+    {
+      "module": "fdl.reactive",
+      "layer": "Foundation",
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-fdl-reactive"
+      }
+    },
+    {
+      "module": "psl.reactive.cassandra",
+      "layer": "Persistence",
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-psl-reactive-cassandra"
+      }
+    },
+    {
+      "module": "psl.reactive.mongodb",
+      "layer": "Persistence",
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-psl-reactive-mongodb"
+      }
+    },
+    {
+      "module": "psl.reactive.r2dbc",
+      "layer": "Persistence",
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-psl-reactive-r2dbc"
+      }
+    },
+    {
+      "module": "psl.reactive.redis",
+      "layer": "Persistence",
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-psl-reactive-redis"
+      }
+    },
+    {
+      "module": "ptl.reactive",
+      "layer": "Presentation",
+      "to": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "egovframe-rte-ptl-reactive"
+      }
+    }
+  ],
+  "packages": {
+    "prefix": {
+      "from": "egovframework.rte.",
+      "to": "org.egovframe.rte."
+    },
+    "renames": [
+      {
+        "from": "org.egovframe.rte.fdl.cryptography.",
+        "to": "org.egovframe.rte.fdl.crypto.",
+        "classes": 15
+      },
+      {
+        "from": "org.egovframe.rte.fdl.security.config.internal.",
+        "to": "org.egovframe.rte.fdl.security.bean.",
+        "classes": 5
+      },
+      {
+        "from": "org.egovframe.rte.fdl.security.intercept.",
+        "to": "org.egovframe.rte.fdl.security.bean.",
+        "classes": 3
+      },
+      {
+        "from": "org.egovframe.rte.fdl.security.securedobject.",
+        "to": "org.egovframe.rte.fdl.security.secureobject.",
+        "classes": 4
+      }
+    ],
+    "moves": [],
+    "removed": [
+      {
+        "class": "org.egovframe.rte.fdl.access.bean.AccessDataSourceFactoryBean",
+        "legacyClass": "egovframework.rte.fdl.access.bean.AccessDataSourceFactoryBean",
+        "replacement": "org.egovframe.rte.fdl.access.bean.DataSourceFactoryBean",
+        "reason": "5.x 에서 클래스명 변경",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.access.config.EgovAccessConfigBeanDefinitionParser",
+        "legacyClass": "egovframework.rte.fdl.access.config.EgovAccessConfigBeanDefinitionParser",
+        "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
+        "reason": "egov-access XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-access:config> 설정을 EgovAccessConfiguration(Java Config)으로 옮긴다.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.access.config.EgovAccessConfigNameHandler",
+        "legacyClass": "egovframework.rte.fdl.access.config.EgovAccessConfigNameHandler",
+        "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
+        "reason": "egov-access XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-access:config> 설정을 EgovAccessConfiguration(Java Config)으로 옮긴다.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.cmmn.AbstractServiceImpl",
+        "legacyClass": "egovframework.rte.fdl.cmmn.AbstractServiceImpl",
+        "replacement": "org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl",
+        "reason": "5.x 에서 제거. 서비스 구현 상위 클래스는 EgovAbstractServiceImpl 만 남음",
+        "presentIn4x": false
+      },
+      {
+        "class": "org.egovframe.rte.fdl.cmmn.exception.manager.AbsExceptionHandleManager",
+        "legacyClass": "egovframework.rte.fdl.cmmn.exception.manager.AbsExceptionHandleManager",
+        "replacement": "org.egovframe.rte.fdl.cmmn.exception.manager.DefaultExceptionHandleManager",
+        "reason": "5.x 에서 추상 관리자 제거. DefaultExceptionHandleManager 를 사용(상속 코드는 ExceptionHandleManager 인터페이스 구현으로 조정)",
+        "presentIn4x": false
+      },
+      {
+        "class": "org.egovframe.rte.fdl.cmmn.trace.manager.AbsTraceHandleManager",
+        "legacyClass": "egovframework.rte.fdl.cmmn.trace.manager.AbsTraceHandleManager",
+        "replacement": "org.egovframe.rte.fdl.cmmn.trace.manager.DefaultTraceHandleManager",
+        "reason": "5.x 에서 추상 관리자 제거. DefaultTraceHandleManager 를 사용",
+        "presentIn4x": false
+      },
+      {
+        "class": "org.egovframe.rte.fdl.cryptography.config.EgovCryptoConfigBeanDefinitionParser",
+        "legacyClass": "egovframework.rte.fdl.cryptography.config.EgovCryptoConfigBeanDefinitionParser",
+        "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
+        "reason": "egov-crypto XML 네임스페이스가 5.x 에서 제거됨. <egov-crypto:config> 설정을 EgovCryptoConfiguration(Java Config)으로 옮긴다.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.cryptography.config.EgovCryptoNameHandler",
+        "legacyClass": "egovframework.rte.fdl.cryptography.config.EgovCryptoNameHandler",
+        "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
+        "reason": "egov-crypto XML 네임스페이스가 5.x 에서 제거됨. <egov-crypto:config> 설정을 EgovCryptoConfiguration(Java Config)으로 옮긴다.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.idgnr.impl.EgovSequenceIdGnrService",
+        "legacyClass": "egovframework.rte.fdl.idgnr.impl.EgovSequenceIdGnrService",
+        "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovSequenceIdGnrServiceImpl",
+        "reason": "5.x 에서 비-Impl 별칭 클래스 제거",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrService",
+        "legacyClass": "egovframework.rte.fdl.idgnr.impl.EgovTableIdGnrService",
+        "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl",
+        "reason": "5.x 에서 비-Impl 별칭 클래스 제거",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.idgnr.impl.EgovUUIdGnrService",
+        "legacyClass": "egovframework.rte.fdl.idgnr.impl.EgovUUIdGnrService",
+        "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovUUIdGnrServiceImpl",
+        "reason": "5.x 에서 비-Impl 별칭 클래스 제거",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.EgovSecurityConfigBeanDefinitionParser",
+        "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityConfigBeanDefinitionParser",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.EgovSecurityConfigInitializerBeanDefinitionParser",
+        "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityConfigInitializerBeanDefinitionParser",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.EgovSecurityConfigShare",
+        "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityConfigShare",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.EgovSecurityHttp",
+        "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityHttp",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.EgovSecurityNameHandler",
+        "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityNameHandler",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.EgovSecuritySecuredObjectConfigBeanDefinitionParser",
+        "legacyClass": "egovframework.rte.fdl.security.config.EgovSecuritySecuredObjectConfigBeanDefinitionParser",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.SecuredObjectConfig",
+        "legacyClass": "egovframework.rte.fdl.security.config.SecuredObjectConfig",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.SecurityConfig",
+        "legacyClass": "egovframework.rte.fdl.security.config.SecurityConfig",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.SecurityConfigInitializer",
+        "legacyClass": "egovframework.rte.fdl.security.config.SecurityConfigInitializer",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.internal.CsrfAccessDeniedUrlFactoryBean",
+        "legacyClass": "egovframework.rte.fdl.security.config.internal.CsrfAccessDeniedUrlFactoryBean",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.internal.EgovSessionInformationExpiredStrategy",
+        "legacyClass": "egovframework.rte.fdl.security.config.internal.EgovSessionInformationExpiredStrategy",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.internal.ErrorIfMaximumExceededFactoryBean",
+        "legacyClass": "egovframework.rte.fdl.security.config.internal.ErrorIfMaximumExceededFactoryBean",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.internal.ExpiredUrlFactoryBean",
+        "legacyClass": "egovframework.rte.fdl.security.config.internal.ExpiredUrlFactoryBean",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.internal.LoginFormUrlFactoryBean",
+        "legacyClass": "egovframework.rte.fdl.security.config.internal.LoginFormUrlFactoryBean",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.config.internal.MaximumSessionsFactoryBean",
+        "legacyClass": "egovframework.rte.fdl.security.config.internal.MaximumSessionsFactoryBean",
+        "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+        "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.intercept.CsrfAccessDeniedHandler",
+        "legacyClass": "egovframework.rte.fdl.security.intercept.CsrfAccessDeniedHandler",
+        "replacement": "org.egovframe.rte.fdl.security.bean.EgovAccessDeniedHandler",
+        "reason": "5.x 에서 EgovAccessDeniedHandler 로 대체",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.security.intercept.LookupAttributesMethodReplacer",
+        "legacyClass": "egovframework.rte.fdl.security.intercept.LookupAttributesMethodReplacer",
+        "replacement": null,
+        "reason": "5.x 에서 제거(XML 네임스페이스 내부용). 대체 없음 — Java Config 의 EgovSecurityConfig 로 구성",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.xml.EgovConcreteDOMFactory",
+        "legacyClass": "egovframework.rte.fdl.xml.EgovConcreteDOMFactory",
+        "replacement": "org.egovframe.rte.fdl.xml.EgovDOMValidatorService",
+        "reason": "5.x 에서 팩터리 클래스 제거. 검증 서비스 클래스를 직접 사용",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.xml.EgovConcreteSAXFactory",
+        "legacyClass": "egovframework.rte.fdl.xml.EgovConcreteSAXFactory",
+        "replacement": "org.egovframe.rte.fdl.xml.EgovSAXValidatorService",
+        "reason": "5.x 에서 팩터리 클래스 제거. 검증 서비스 클래스를 직접 사용",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.fdl.xml.abstractXMLFactoryService",
+        "legacyClass": "egovframework.rte.fdl.xml.abstractXMLFactoryService",
+        "replacement": "org.egovframe.rte.fdl.xml.EgovAbstractXMLFactoryService",
+        "reason": "5.x 에서 클래스명 변경(대소문자 포함)",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.psl.dataaccess.mapper.Mapper",
+        "legacyClass": "egovframework.rte.psl.dataaccess.mapper.Mapper",
+        "replacement": "org.egovframe.rte.psl.dataaccess.mapper.EgovMapper",
+        "reason": "5.x 에서 @Mapper → @EgovMapper 로 이름 변경(MyBatis 의 org.apache.ibatis.annotations.Mapper 와 충돌 회피). MapperConfigurer 의 annotationClass 도 함께 바꾼다.",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.ptl.mvc.bind.AnnotationCommandMapArgumentResolver",
+        "legacyClass": "egovframework.rte.ptl.mvc.bind.AnnotationCommandMapArgumentResolver",
+        "replacement": null,
+        "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.ptl.mvc.bind.CommandMapArgumentResolver",
+        "legacyClass": "egovframework.rte.ptl.mvc.bind.CommandMapArgumentResolver",
+        "replacement": null,
+        "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.ptl.mvc.bind.annotation.CommandMap",
+        "legacyClass": "egovframework.rte.ptl.mvc.bind.annotation.CommandMap",
+        "replacement": null,
+        "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.ptl.mvc.bind.annotation.EgovRequestMappingHandlerAdapter",
+        "legacyClass": "egovframework.rte.ptl.mvc.bind.annotation.EgovRequestMappingHandlerAdapter",
+        "replacement": null,
+        "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.ptl.mvc.handler.SimpleUrlAnnotationHandlerMapping",
+        "legacyClass": "egovframework.rte.ptl.mvc.handler.SimpleUrlAnnotationHandlerMapping",
+        "replacement": null,
+        "reason": "5.x 에서 제거. Spring MVC 기본 RequestMappingHandlerMapping(@RequestMapping) 사용",
+        "presentIn4x": true
+      },
+      {
+        "class": "org.egovframe.rte.ptl.mvc.validation.RteFieldChecks",
+        "legacyClass": "egovframework.rte.ptl.mvc.validation.RteFieldChecks",
+        "replacement": null,
+        "reason": "5.x 에서 제거(spring-modules-validation/Commons Validator 의존). jakarta.validation 제약 애너테이션과 hibernate-validator 로 옮긴다",
+        "presentIn4x": true
+      }
+    ]
+  },
+  "jakarta": {
+    "packages": [
+      {
+        "from": "javax.servlet",
+        "to": "jakarta.servlet"
+      },
+      {
+        "from": "javax.servlet.jsp",
+        "to": "jakarta.servlet.jsp"
+      },
+      {
+        "from": "javax.validation",
+        "to": "jakarta.validation"
+      },
+      {
+        "from": "javax.persistence",
+        "to": "jakarta.persistence"
+      },
+      {
+        "from": "javax.annotation",
+        "to": "jakarta.annotation",
+        "exclude": [
+          "javax.annotation.processing"
+        ]
+      },
+      {
+        "from": "javax.inject",
+        "to": "jakarta.inject"
+      },
+      {
+        "from": "javax.transaction",
+        "to": "jakarta.transaction",
+        "exclude": [
+          "javax.transaction.xa"
+        ]
+      },
+      {
+        "from": "javax.el",
+        "to": "jakarta.el"
+      },
+      {
+        "from": "javax.websocket",
+        "to": "jakarta.websocket"
+      },
+      {
+        "from": "javax.ws.rs",
+        "to": "jakarta.ws.rs"
+      },
+      {
+        "from": "javax.jms",
+        "to": "jakarta.jms"
+      },
+      {
+        "from": "javax.mail",
+        "to": "jakarta.mail"
+      },
+      {
+        "from": "javax.activation",
+        "to": "jakarta.activation"
+      },
+      {
+        "from": "javax.xml.bind",
+        "to": "jakarta.xml.bind"
+      },
+      {
+        "from": "javax.xml.ws",
+        "to": "jakarta.xml.ws"
+      },
+      {
+        "from": "javax.xml.soap",
+        "to": "jakarta.xml.soap"
+      },
+      {
+        "from": "javax.jws",
+        "to": "jakarta.jws"
+      },
+      {
+        "from": "javax.json",
+        "to": "jakarta.json"
+      },
+      {
+        "from": "javax.faces",
+        "to": "jakarta.faces"
+      },
+      {
+        "from": "javax.ejb",
+        "to": "jakarta.ejb"
+      },
+      {
+        "from": "javax.enterprise",
+        "to": "jakarta.enterprise"
+      },
+      {
+        "from": "javax.interceptor",
+        "to": "jakarta.interceptor"
+      },
+      {
+        "from": "javax.decorator",
+        "to": "jakarta.decorator"
+      },
+      {
+        "from": "javax.batch",
+        "to": "jakarta.batch"
+      },
+      {
+        "from": "javax.security.auth.message",
+        "to": "jakarta.security.auth.message"
+      },
+      {
+        "from": "javax.security.enterprise",
+        "to": "jakarta.security.enterprise"
+      },
+      {
+        "from": "javax.security.jacc",
+        "to": "jakarta.security.jacc"
+      },
+      {
+        "from": "javax.resource",
+        "to": "jakarta.resource"
+      }
+    ],
+    "artifacts": [
+      {
+        "from": {
+          "groupId": "javax.servlet",
+          "artifactId": "javax.servlet-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet",
+          "artifactId": "jakarta.servlet-api"
+        },
+        "toVersion": "6.0.0",
+        "scope": "provided",
+        "note": "5.x 템플릿에서는 parent 가 버전을 관리"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet",
+          "artifactId": "servlet-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet",
+          "artifactId": "jakarta.servlet-api"
+        },
+        "toVersion": "6.0.0",
+        "scope": "provided"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp",
+          "artifactId": "javax.servlet.jsp-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp",
+          "artifactId": "jakarta.servlet.jsp-api"
+        },
+        "toVersion": "3.1.1",
+        "scope": "provided"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp",
+          "artifactId": "jsp-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp",
+          "artifactId": "jakarta.servlet.jsp-api"
+        },
+        "toVersion": "3.1.1",
+        "scope": "provided"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet",
+          "artifactId": "jstl"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0",
+        "also": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl",
+          "version": "3.0.1"
+        },
+        "note": "JSTL 은 API + 구현(glassfish) 두 개가 필요. JSP 의 taglib uri(http://java.sun.com/jsp/jstl/core)는 JSTL 3.0 에서도 그대로 동작"
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp.jstl",
+          "artifactId": "javax.servlet.jsp.jstl-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0",
+        "also": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl",
+          "version": "3.0.1"
+        }
+      },
+      {
+        "from": {
+          "groupId": "javax.servlet.jsp.jstl",
+          "artifactId": "jstl-api"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0",
+        "also": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl",
+          "version": "3.0.1"
+        }
+      },
+      {
+        "from": {
+          "groupId": "org.apache.taglibs",
+          "artifactId": "taglibs-standard-impl"
+        },
+        "to": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl"
+        },
+        "toVersion": "3.0.1",
+        "note": "Apache taglibs-standard 1.2.x 는 javax JSTL 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체"
+      },
+      {
+        "from": {
+          "groupId": "org.apache.taglibs",
+          "artifactId": "taglibs-standard-spec"
+        },
+        "to": {
+          "groupId": "jakarta.servlet.jsp.jstl",
+          "artifactId": "jakarta.servlet.jsp.jstl-api"
+        },
+        "toVersion": "3.0.0"
+      },
+      {
+        "from": {
+          "groupId": "taglibs",
+          "artifactId": "standard"
+        },
+        "to": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl"
+        },
+        "toVersion": "3.0.1",
+        "note": "JSTL 1.1 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체"
+      },
+      {
+        "from": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "javax.servlet.jsp.jstl"
+        },
+        "to": {
+          "groupId": "org.glassfish.web",
+          "artifactId": "jakarta.servlet.jsp.jstl"
+        },
+        "toVersion": "3.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.validation",
+          "artifactId": "validation-api"
+        },
+        "to": {
+          "groupId": "jakarta.validation",
+          "artifactId": "jakarta.validation-api"
+        },
+        "toVersion": "3.0.2",
+        "note": "hibernate-validator 는 8.x 이상"
+      },
+      {
+        "from": {
+          "groupId": "javax.annotation",
+          "artifactId": "javax.annotation-api"
+        },
+        "to": {
+          "groupId": "jakarta.annotation",
+          "artifactId": "jakarta.annotation-api"
+        },
+        "toVersion": "2.1.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.annotation",
+          "artifactId": "jsr250-api"
+        },
+        "to": {
+          "groupId": "jakarta.annotation",
+          "artifactId": "jakarta.annotation-api"
+        },
+        "toVersion": "2.1.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.inject",
+          "artifactId": "javax.inject"
+        },
+        "to": {
+          "groupId": "jakarta.inject",
+          "artifactId": "jakarta.inject-api"
+        },
+        "toVersion": "2.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.persistence",
+          "artifactId": "javax.persistence-api"
+        },
+        "to": {
+          "groupId": "jakarta.persistence",
+          "artifactId": "jakarta.persistence-api"
+        },
+        "toVersion": "3.1.0"
+      },
+      {
+        "from": {
+          "groupId": "org.hibernate.javax.persistence",
+          "artifactId": "hibernate-jpa-2.1-api"
+        },
+        "to": {
+          "groupId": "jakarta.persistence",
+          "artifactId": "jakarta.persistence-api"
+        },
+        "toVersion": "3.1.0"
+      },
+      {
+        "from": {
+          "groupId": "javax.transaction",
+          "artifactId": "javax.transaction-api"
+        },
+        "to": {
+          "groupId": "jakarta.transaction",
+          "artifactId": "jakarta.transaction-api"
+        },
+        "toVersion": "2.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.transaction",
+          "artifactId": "jta"
+        },
+        "to": {
+          "groupId": "jakarta.transaction",
+          "artifactId": "jakarta.transaction-api"
+        },
+        "toVersion": "2.0.1"
+      },
+      {
+        "from": {
+          "groupId": "org.glassfish",
+          "artifactId": "javax.json"
+        },
+        "to": {
+          "groupId": "org.glassfish",
+          "artifactId": "jakarta.json"
+        },
+        "toVersion": "2.0.1",
+        "note": "5.x 템플릿은 org.eclipse:yasson + org.glassfish:jakarta.json"
+      },
+      {
+        "from": {
+          "groupId": "javax.json",
+          "artifactId": "javax.json-api"
+        },
+        "to": {
+          "groupId": "jakarta.json",
+          "artifactId": "jakarta.json-api"
+        },
+        "toVersion": "2.1.3"
+      },
+      {
+        "from": {
+          "groupId": "javax.xml.bind",
+          "artifactId": "jaxb-api"
+        },
+        "to": {
+          "groupId": "jakarta.xml.bind",
+          "artifactId": "jakarta.xml.bind-api"
+        },
+        "toVersion": "4.0.2",
+        "also": {
+          "groupId": "org.glassfish.jaxb",
+          "artifactId": "jaxb-runtime",
+          "version": "4.0.5"
+        }
+      },
+      {
+        "from": {
+          "groupId": "javax.mail",
+          "artifactId": "mail"
+        },
+        "to": {
+          "groupId": "jakarta.mail",
+          "artifactId": "jakarta.mail-api"
+        },
+        "toVersion": "2.1.3",
+        "also": {
+          "groupId": "org.eclipse.angus",
+          "artifactId": "angus-mail",
+          "version": "2.0.3"
+        }
+      },
+      {
+        "from": {
+          "groupId": "com.sun.mail",
+          "artifactId": "javax.mail"
+        },
+        "to": {
+          "groupId": "jakarta.mail",
+          "artifactId": "jakarta.mail-api"
+        },
+        "toVersion": "2.1.3",
+        "also": {
+          "groupId": "org.eclipse.angus",
+          "artifactId": "angus-mail",
+          "version": "2.0.3"
+        }
+      },
+      {
+        "from": {
+          "groupId": "javax.el",
+          "artifactId": "javax.el-api"
+        },
+        "to": {
+          "groupId": "jakarta.el",
+          "artifactId": "jakarta.el-api"
+        },
+        "toVersion": "5.0.1"
+      },
+      {
+        "from": {
+          "groupId": "javax.websocket",
+          "artifactId": "javax.websocket-api"
+        },
+        "to": {
+          "groupId": "jakarta.websocket",
+          "artifactId": "jakarta.websocket-api"
+        },
+        "toVersion": "2.1.1"
+      }
+    ],
+    "note": "Spring 6 / Jakarta EE 9+ 에서 이름이 바뀐 패키지만 나열한다. JDK 에 포함된 javax.* (javax.sql, javax.xml.parsers, javax.crypto, javax.naming, javax.net, javax.swing, javax.imageio, javax.management, javax.security.*, javax.script, javax.annotation.processing, javax.transaction.xa 등)는 대상이 아니다."
+  },
+  "libraries": [
+    {
+      "match": {
+        "groupId": "commons-dbcp",
+        "artifactId": "commons-dbcp"
+      },
+      "replacement": "org.apache.commons:commons-dbcp2",
+      "reason": "DBCP 1.x 는 Java 17·Jakarta 환경에서 유지보수 종료. commons-dbcp2 로 바꾸고 BasicDataSource 패키지(org.apache.commons.dbcp2)와 속성명(maxActive→maxTotal, maxWait→maxWaitMillis)을 수정"
+    },
+    {
+      "match": {
+        "groupId": "log4j",
+        "artifactId": "log4j"
+      },
+      "replacement": "org.apache.logging.log4j:log4j-core (또는 logback)",
+      "reason": "Log4j 1.x 는 EOL(보안 취약). log4j2 또는 5.x 템플릿 기본인 logback 으로 옮기고 log4j.xml 설정을 변환"
+    },
+    {
+      "match": {
+        "groupId": "commons-fileupload",
+        "artifactId": "commons-fileupload"
+      },
+      "replacement": "Servlet 3.0+ multipart(StandardServletMultipartResolver) 또는 org.apache.commons:commons-fileupload2-jakarta-servlet6",
+      "reason": "commons-fileupload 1.x 는 javax.servlet 에 묶여 있어 Jakarta 에서 동작하지 않음. CommonsMultipartResolver 는 Spring 6 에서 제거됨"
+    },
+    {
+      "match": {
+        "groupId": "org.apache.tiles",
+        "artifactId": "tiles-*"
+      },
+      "replacement": null,
+      "reason": "Apache Tiles 는 종료된 프로젝트로 Jakarta 버전이 없고 Spring 6 에서 Tiles 지원이 제거됨. JSP include/레이아웃 태그 또는 Thymeleaf 로 대체"
+    },
+    {
+      "match": {
+        "groupId": "org.springframework",
+        "artifactId": "spring-*",
+        "versionBelow": "6.0.0"
+      },
+      "replacement": "Spring 6.x (5.x parent 가 관리)",
+      "reason": "명시 버전이 6 미만. 5.x 템플릿처럼 parent 에 버전 관리를 맡기거나 6.x 로 올린다"
+    },
+    {
+      "match": {
+        "groupId": "org.springframework.security",
+        "artifactId": "spring-security-*",
+        "versionBelow": "6.0.0"
+      },
+      "replacement": "Spring Security 6.x",
+      "reason": "Spring Security 6 에서 WebSecurityConfigurerAdapter·antMatchers 제거. SecurityFilterChain bean 방식으로 재작성"
+    },
+    {
+      "match": {
+        "groupId": "org.hibernate",
+        "artifactId": "hibernate-validator",
+        "versionBelow": "8.0.0"
+      },
+      "replacement": "org.hibernate.validator:hibernate-validator 8.x",
+      "reason": "8.x 부터 jakarta.validation 을 구현. groupId 도 org.hibernate.validator 로 바뀜"
+    },
+    {
+      "match": {
+        "groupId": "org.hibernate.validator",
+        "artifactId": "hibernate-validator",
+        "versionBelow": "8.0.0"
+      },
+      "replacement": "org.hibernate.validator:hibernate-validator 8.x",
+      "reason": "8.x 부터 jakarta.validation 을 구현"
+    },
+    {
+      "match": {
+        "groupId": "org.hibernate",
+        "artifactId": "hibernate-core",
+        "versionBelow": "6.0.0"
+      },
+      "replacement": "org.hibernate.orm:hibernate-core 6.x",
+      "reason": "Hibernate 6 부터 jakarta.persistence 를 구현하며 groupId 가 org.hibernate.orm 으로 바뀜"
+    },
+    {
+      "match": {
+        "groupId": "org.mybatis",
+        "artifactId": "mybatis-spring",
+        "versionBelow": "3.0.0"
+      },
+      "replacement": "org.mybatis:mybatis-spring 3.x",
+      "reason": "mybatis-spring 3.x 가 Spring 6 대상"
+    },
+    {
+      "match": {
+        "groupId": "org.apache.poi",
+        "artifactId": "poi*",
+        "versionBelow": "5.0.0"
+      },
+      "replacement": "org.apache.poi:poi 5.x",
+      "reason": "fdl.excel 5.x 가 POI 5 를 사용. 3.x 시절 POI 3.x 는 API 가 다름(HSSF/XSSF 공통화)"
+    },
+    {
+      "match": {
+        "groupId": "egovframework.rte",
+        "artifactId": "spring-modules-validation"
+      },
+      "replacement": "jakarta.validation:jakarta.validation-api + org.hibernate.validator:hibernate-validator",
+      "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용"
+    },
+    {
+      "match": {
+        "groupId": "org.egovframe.rte",
+        "artifactId": "spring-modules-validation"
+      },
+      "replacement": "jakarta.validation:jakarta.validation-api + org.hibernate.validator:hibernate-validator",
+      "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용"
+    },
+    {
+      "match": {
+        "groupId": "junit",
+        "artifactId": "junit"
+      },
+      "replacement": "org.junit.jupiter:junit-jupiter",
+      "reason": "5.x 템플릿은 JUnit 5(Jupiter)·spring-test 6 을 사용. JUnit 4 는 vintage 엔진 없이는 실행되지 않음"
+    }
+  ],
+  "xmlNamespaces": [
+    {
+      "uri": "http://maven.egovframe.go.kr/schema/egov-access",
+      "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
+      "reason": "5.x 에서 egov-access 네임스페이스 제거. Java Config 로 전환"
+    },
+    {
+      "uri": "http://maven.egovframe.go.kr/schema/egov-crypto",
+      "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
+      "reason": "5.x 에서 egov-crypto 네임스페이스 제거. Java Config 로 전환"
+    },
+    {
+      "uri": "http://maven.egovframe.go.kr/schema/egov-security",
+      "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+      "reason": "5.x 에서 egov-security 네임스페이스 제거. Java Config 로 전환"
+    },
+    {
+      "uri": "http://www.springmodules.org/validation/bean/validator",
+      "replacement": "jakarta.validation",
+      "reason": "spring-modules-validation 이 5.x 실행환경에서 제외됨"
+    }
+  ],
+  "build": {
+    "javaRelease": 17,
+    "javaProperties": [
+      "maven.compiler.source",
+      "maven.compiler.target",
+      "maven.compiler.release",
+      "java.version"
+    ],
+    "springVersionProperties": [
+      "spring.maven.artifact.version",
+      "spring.maven.version",
+      "spring.version",
+      "spring-framework.version",
+      "org.springframework-version",
+      "springframework.version"
+    ],
+    "springMinimum": "6.0.0"
+  },
+  "evidence": {
+    "classes": {
+      "from": 303,
+      "mid": 343,
+      "to": 331,
+      "direct": 238,
+      "relocated": 27,
+      "removed": 38
+    },
+    "packages5": [
+      "org.egovframe.rte",
+      "org.egovframe.rte.bat",
+      "org.egovframe.rte.bat.core",
+      "org.egovframe.rte.bat.core.event",
+      "org.egovframe.rte.bat.core.item",
+      "org.egovframe.rte.bat.core.item.composite",
+      "org.egovframe.rte.bat.core.item.composite.provider",
+      "org.egovframe.rte.bat.core.item.composite.reader",
+      "org.egovframe.rte.bat.core.item.database",
+      "org.egovframe.rte.bat.core.item.database.support",
+      "org.egovframe.rte.bat.core.item.file",
+      "org.egovframe.rte.bat.core.item.file.mapping",
+      "org.egovframe.rte.bat.core.item.file.transform",
+      "org.egovframe.rte.bat.core.job",
+      "org.egovframe.rte.bat.core.job.flow",
+      "org.egovframe.rte.bat.core.launch",
+      "org.egovframe.rte.bat.core.launch.support",
+      "org.egovframe.rte.bat.core.listener",
+      "org.egovframe.rte.bat.core.reflection",
+      "org.egovframe.rte.bat.core.step",
+      "org.egovframe.rte.bat.exception",
+      "org.egovframe.rte.bat.item",
+      "org.egovframe.rte.bat.support",
+      "org.egovframe.rte.fdl",
+      "org.egovframe.rte.fdl.access",
+      "org.egovframe.rte.fdl.access.bean",
+      "org.egovframe.rte.fdl.access.config",
+      "org.egovframe.rte.fdl.access.interceptor",
+      "org.egovframe.rte.fdl.access.service",
+      "org.egovframe.rte.fdl.access.service.impl",
+      "org.egovframe.rte.fdl.cmmn",
+      "org.egovframe.rte.fdl.cmmn.aspect",
+      "org.egovframe.rte.fdl.cmmn.exception",
+      "org.egovframe.rte.fdl.cmmn.exception.handler",
+      "org.egovframe.rte.fdl.cmmn.exception.manager",
+      "org.egovframe.rte.fdl.cmmn.trace",
+      "org.egovframe.rte.fdl.cmmn.trace.handler",
+      "org.egovframe.rte.fdl.cmmn.trace.manager",
+      "org.egovframe.rte.fdl.crypto",
+      "org.egovframe.rte.fdl.crypto.config",
+      "org.egovframe.rte.fdl.crypto.impl",
+      "org.egovframe.rte.fdl.crypto.impl.aria",
+      "org.egovframe.rte.fdl.excel",
+      "org.egovframe.rte.fdl.excel.impl",
+      "org.egovframe.rte.fdl.excel.util",
+      "org.egovframe.rte.fdl.filehandling",
+      "org.egovframe.rte.fdl.idgnr",
+      "org.egovframe.rte.fdl.idgnr.impl",
+      "org.egovframe.rte.fdl.idgnr.impl.strategy",
+      "org.egovframe.rte.fdl.logging",
+      "org.egovframe.rte.fdl.logging.db",
+      "org.egovframe.rte.fdl.logging.util",
+      "org.egovframe.rte.fdl.property",
+      "org.egovframe.rte.fdl.property.db",
+      "org.egovframe.rte.fdl.property.db.initializer",
+      "org.egovframe.rte.fdl.property.impl",
+      "org.egovframe.rte.fdl.reactive",
+      "org.egovframe.rte.fdl.reactive.idgnr",
+      "org.egovframe.rte.fdl.reactive.logging",
+      "org.egovframe.rte.fdl.security",
+      "org.egovframe.rte.fdl.security.bean",
+      "org.egovframe.rte.fdl.security.config",
+      "org.egovframe.rte.fdl.security.secureobject",
+      "org.egovframe.rte.fdl.security.secureobject.impl",
+      "org.egovframe.rte.fdl.security.userdetails",
+      "org.egovframe.rte.fdl.security.userdetails.hierarchicalroles",
+      "org.egovframe.rte.fdl.security.userdetails.jdbc",
+      "org.egovframe.rte.fdl.security.userdetails.util",
+      "org.egovframe.rte.fdl.string",
+      "org.egovframe.rte.fdl.xml",
+      "org.egovframe.rte.fdl.xml.error",
+      "org.egovframe.rte.fdl.xml.exception",
+      "org.egovframe.rte.fdl.xml.impl",
+      "org.egovframe.rte.itl",
+      "org.egovframe.rte.itl.integration",
+      "org.egovframe.rte.itl.integration.message",
+      "org.egovframe.rte.itl.integration.message.simple",
+      "org.egovframe.rte.itl.integration.message.typed",
+      "org.egovframe.rte.itl.integration.metadata",
+      "org.egovframe.rte.itl.integration.metadata.dao",
+      "org.egovframe.rte.itl.integration.metadata.dao.hibernate",
+      "org.egovframe.rte.itl.integration.monitor",
+      "org.egovframe.rte.itl.integration.support",
+      "org.egovframe.rte.itl.integration.type",
+      "org.egovframe.rte.itl.integration.type.support",
+      "org.egovframe.rte.itl.integration.util",
+      "org.egovframe.rte.itl.webservice",
+      "org.egovframe.rte.itl.webservice.data",
+      "org.egovframe.rte.itl.webservice.data.dao",
+      "org.egovframe.rte.itl.webservice.data.dao.hibernate",
+      "org.egovframe.rte.itl.webservice.service",
+      "org.egovframe.rte.itl.webservice.service.impl",
+      "org.egovframe.rte.psl",
+      "org.egovframe.rte.psl.data",
+      "org.egovframe.rte.psl.data.jpa",
+      "org.egovframe.rte.psl.data.jpa.repository",
+      "org.egovframe.rte.psl.data.mongodb",
+      "org.egovframe.rte.psl.data.mongodb.connect",
+      "org.egovframe.rte.psl.data.mongodb.repository",
+      "org.egovframe.rte.psl.dataaccess",
+      "org.egovframe.rte.psl.dataaccess.mapper",
+      "org.egovframe.rte.psl.dataaccess.typehandler",
+      "org.egovframe.rte.psl.dataaccess.util",
+      "org.egovframe.rte.psl.orm",
+      "org.egovframe.rte.psl.orm.ibatis",
+      "org.egovframe.rte.psl.orm.ibatis.support",
+      "org.egovframe.rte.psl.reactive",
+      "org.egovframe.rte.psl.reactive.cassandra",
+      "org.egovframe.rte.psl.reactive.cassandra.connect",
+      "org.egovframe.rte.psl.reactive.cassandra.repository",
+      "org.egovframe.rte.psl.reactive.mongodb",
+      "org.egovframe.rte.psl.reactive.mongodb.connect",
+      "org.egovframe.rte.psl.reactive.mongodb.repository",
+      "org.egovframe.rte.psl.reactive.r2dbc",
+      "org.egovframe.rte.psl.reactive.r2dbc.connect",
+      "org.egovframe.rte.psl.reactive.r2dbc.repository",
+      "org.egovframe.rte.psl.reactive.redis",
+      "org.egovframe.rte.psl.reactive.redis.connect",
+      "org.egovframe.rte.psl.reactive.redis.repository",
+      "org.egovframe.rte.ptl",
+      "org.egovframe.rte.ptl.mvc",
+      "org.egovframe.rte.ptl.mvc.bind",
+      "org.egovframe.rte.ptl.mvc.bind.exception",
+      "org.egovframe.rte.ptl.mvc.filter",
+      "org.egovframe.rte.ptl.mvc.tags",
+      "org.egovframe.rte.ptl.mvc.tags.ui",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination",
+      "org.egovframe.rte.ptl.mvc.validation",
+      "org.egovframe.rte.ptl.reactive",
+      "org.egovframe.rte.ptl.reactive.annotation",
+      "org.egovframe.rte.ptl.reactive.exception",
+      "org.egovframe.rte.ptl.reactive.validation"
+    ],
+    "classes5": [
+      "org.egovframe.rte.bat.core.event.EgovEventNoticeTrigger",
+      "org.egovframe.rte.bat.core.event.EventNoticeTrigger",
+      "org.egovframe.rte.bat.core.item.composite.EgovCompositeItemMapper",
+      "org.egovframe.rte.bat.core.item.composite.EgovItemsMapper",
+      "org.egovframe.rte.bat.core.item.composite.provider.EgovCompositeDataProvider",
+      "org.egovframe.rte.bat.core.item.composite.reader.EgovCompositeCursorReader",
+      "org.egovframe.rte.bat.core.item.composite.reader.EgovCompositeFileReader",
+      "org.egovframe.rte.bat.core.item.composite.reader.EgovCompositePagingReader",
+      "org.egovframe.rte.bat.core.item.database.EgovJdbcBatchItemWriter",
+      "org.egovframe.rte.bat.core.item.database.EgovMyBatisBatchItemWriter",
+      "org.egovframe.rte.bat.core.item.database.EgovMyBatisPagingItemReader",
+      "org.egovframe.rte.bat.core.item.database.support.EgovItemPreparedStatementSetter",
+      "org.egovframe.rte.bat.core.item.database.support.EgovMethodMapItemPreparedStatementSetter",
+      "org.egovframe.rte.bat.core.item.file.EgovByteReader",
+      "org.egovframe.rte.bat.core.item.file.EgovByteReaderFactory",
+      "org.egovframe.rte.bat.core.item.file.EgovFlatFileByteReader",
+      "org.egovframe.rte.bat.core.item.file.EgovIndexFileReader",
+      "org.egovframe.rte.bat.core.item.file.EgovIndexFileWriter",
+      "org.egovframe.rte.bat.core.item.file.EgovLineMapper",
+      "org.egovframe.rte.bat.core.item.file.EgovPartitionFlatFileItemWriter",
+      "org.egovframe.rte.bat.core.item.file.mapping.EgovByteLineMapper",
+      "org.egovframe.rte.bat.core.item.file.mapping.EgovDefaultLineMapper",
+      "org.egovframe.rte.bat.core.item.file.mapping.EgovObjectMapper",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovAbstractByteLineTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovAbstractLineTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovByteLineTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovDelimitedLineTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovEscapableDelimitedLineTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovFieldExtractor",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovFixedByteLengthTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovFixedByteTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovFixedLengthLineAggregator",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovFixedLengthTokenizer",
+      "org.egovframe.rte.bat.core.item.file.transform.EgovLineTokenizer",
+      "org.egovframe.rte.bat.core.job.flow.EgovDecider",
+      "org.egovframe.rte.bat.core.launch.support.EgovBatchRunner",
+      "org.egovframe.rte.bat.core.launch.support.EgovCommandLineRunner",
+      "org.egovframe.rte.bat.core.launch.support.EgovSchedulerJCRunner",
+      "org.egovframe.rte.bat.core.launch.support.EgovSchedulerRunner",
+      "org.egovframe.rte.bat.core.listener.EgovChunkPostProcessor",
+      "org.egovframe.rte.bat.core.listener.EgovChunkPreProcessor",
+      "org.egovframe.rte.bat.core.listener.EgovJobPostProcessor",
+      "org.egovframe.rte.bat.core.listener.EgovJobPreProcessor",
+      "org.egovframe.rte.bat.core.listener.EgovOutputFileListener",
+      "org.egovframe.rte.bat.core.listener.EgovStepPostProcessor",
+      "org.egovframe.rte.bat.core.listener.EgovStepPreProcessor",
+      "org.egovframe.rte.bat.core.reflection.EgovReflectionSupport",
+      "org.egovframe.rte.bat.core.step.ShellScriptSupport",
+      "org.egovframe.rte.bat.core.step.TaskletDeleteStep",
+      "org.egovframe.rte.bat.core.step.TaskletShellStep",
+      "org.egovframe.rte.bat.exception.EgovBatchException",
+      "org.egovframe.rte.bat.item.DefaultItemReader",
+      "org.egovframe.rte.bat.item.DefaultItemWriter",
+      "org.egovframe.rte.bat.support.EgovJobVariableListener",
+      "org.egovframe.rte.bat.support.EgovResourceVariable",
+      "org.egovframe.rte.bat.support.EgovStepVariableListener",
+      "org.egovframe.rte.fdl.access.bean.AuthorityMapFactoryBean",
+      "org.egovframe.rte.fdl.access.bean.AuthorityResourceMetadata",
+      "org.egovframe.rte.fdl.access.bean.AuthorityUserFactoryBean",
+      "org.egovframe.rte.fdl.access.bean.DataSourceFactoryBean",
+      "org.egovframe.rte.fdl.access.bean.ResourceMapFactoryBean",
+      "org.egovframe.rte.fdl.access.bean.RoleAndUrlFactoryBean",
+      "org.egovframe.rte.fdl.access.config.EgovAccessConfig",
+      "org.egovframe.rte.fdl.access.config.EgovAccessConfigReader",
+      "org.egovframe.rte.fdl.access.config.EgovAccessConfigShare",
+      "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
+      "org.egovframe.rte.fdl.access.config.EgovAccessHandlerMappingPostProcessor",
+      "org.egovframe.rte.fdl.access.interceptor.EgovAccessInterceptor",
+      "org.egovframe.rte.fdl.access.interceptor.EgovAccessUtil",
+      "org.egovframe.rte.fdl.access.service.EgovAccessService",
+      "org.egovframe.rte.fdl.access.service.EgovUserDetailsHelper",
+      "org.egovframe.rte.fdl.access.service.impl.EgovAccessDao",
+      "org.egovframe.rte.fdl.access.service.impl.EgovAccessServiceImpl",
+      "org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl",
+      "org.egovframe.rte.fdl.cmmn.aspect.ExceptionTransfer",
+      "org.egovframe.rte.fdl.cmmn.exception.BaseException",
+      "org.egovframe.rte.fdl.cmmn.exception.BaseRuntimeException",
+      "org.egovframe.rte.fdl.cmmn.exception.EgovBizException",
+      "org.egovframe.rte.fdl.cmmn.exception.FdlException",
+      "org.egovframe.rte.fdl.cmmn.exception.handler.ExceptionHandler",
+      "org.egovframe.rte.fdl.cmmn.exception.manager.AbstractExceptionHandleManager",
+      "org.egovframe.rte.fdl.cmmn.exception.manager.DefaultExceptionHandleManager",
+      "org.egovframe.rte.fdl.cmmn.exception.manager.ExceptionHandlerService",
+      "org.egovframe.rte.fdl.cmmn.trace.LeaveaTrace",
+      "org.egovframe.rte.fdl.cmmn.trace.handler.DefaultTraceHandler",
+      "org.egovframe.rte.fdl.cmmn.trace.handler.TraceHandler",
+      "org.egovframe.rte.fdl.cmmn.trace.manager.AbstractTraceHandleManager",
+      "org.egovframe.rte.fdl.cmmn.trace.manager.DefaultTraceHandleManager",
+      "org.egovframe.rte.fdl.cmmn.trace.manager.TraceHandlerService",
+      "org.egovframe.rte.fdl.crypto.EgovARIACryptoService",
+      "org.egovframe.rte.fdl.crypto.EgovCryptoService",
+      "org.egovframe.rte.fdl.crypto.EgovDigestService",
+      "org.egovframe.rte.fdl.crypto.EgovEnvCryptoService",
+      "org.egovframe.rte.fdl.crypto.EgovGeneralCryptoService",
+      "org.egovframe.rte.fdl.crypto.EgovPasswordEncoder",
+      "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfig",
+      "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfigReader",
+      "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
+      "org.egovframe.rte.fdl.crypto.impl.ARIACipher",
+      "org.egovframe.rte.fdl.crypto.impl.EgovARIACryptoServiceImpl",
+      "org.egovframe.rte.fdl.crypto.impl.EgovDigestServiceImpl",
+      "org.egovframe.rte.fdl.crypto.impl.EgovEnvCryptoServiceImpl",
+      "org.egovframe.rte.fdl.crypto.impl.EgovGeneralCryptoServiceImpl",
+      "org.egovframe.rte.fdl.crypto.impl.aria.ARIAEngine",
+      "org.egovframe.rte.fdl.crypto.impl.aria.AnsiX923Padding",
+      "org.egovframe.rte.fdl.crypto.impl.aria.CryptoPadding",
+      "org.egovframe.rte.fdl.excel.EgovExcelMapping",
+      "org.egovframe.rte.fdl.excel.EgovExcelService",
+      "org.egovframe.rte.fdl.excel.impl.EgovExcelServiceDAO",
+      "org.egovframe.rte.fdl.excel.impl.EgovExcelServiceImpl",
+      "org.egovframe.rte.fdl.excel.impl.EgovExcelServiceMapper",
+      "org.egovframe.rte.fdl.excel.util.AbstractExcelView",
+      "org.egovframe.rte.fdl.excel.util.AbstractPOIExcelView",
+      "org.egovframe.rte.fdl.excel.util.EgovExcelUtil",
+      "org.egovframe.rte.fdl.excel.util.FormulaInjectionSanitizer",
+      "org.egovframe.rte.fdl.filehandling.EgovFileUtil",
+      "org.egovframe.rte.fdl.idgnr.EgovIdGnrService",
+      "org.egovframe.rte.fdl.idgnr.EgovIdGnrStrategy",
+      "org.egovframe.rte.fdl.idgnr.impl.AbstractDataBlockIdGnrService",
+      "org.egovframe.rte.fdl.idgnr.impl.AbstractDataIdGnrService",
+      "org.egovframe.rte.fdl.idgnr.impl.AbstractIdGnrService",
+      "org.egovframe.rte.fdl.idgnr.impl.Base64",
+      "org.egovframe.rte.fdl.idgnr.impl.EgovSequenceIdGnrServiceImpl",
+      "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl",
+      "org.egovframe.rte.fdl.idgnr.impl.EgovUUIdGnrServiceImpl",
+      "org.egovframe.rte.fdl.idgnr.impl.strategy.EgovIdGnrStrategyImpl",
+      "org.egovframe.rte.fdl.logging.db.EgovConnectionFactory",
+      "org.egovframe.rte.fdl.logging.util.EgovJdkLogger",
+      "org.egovframe.rte.fdl.logging.util.EgovResourceReleaser",
+      "org.egovframe.rte.fdl.property.EgovPropertyService",
+      "org.egovframe.rte.fdl.property.db.DbPropertySource",
+      "org.egovframe.rte.fdl.property.db.DbPropertySourceDelegate",
+      "org.egovframe.rte.fdl.property.db.initializer.DBPropertySourceInitializer",
+      "org.egovframe.rte.fdl.property.impl.EgovPropertyServiceImpl",
+      "org.egovframe.rte.fdl.reactive.idgnr.EgovSequenceGenerator",
+      "org.egovframe.rte.fdl.reactive.logging.EgovMdcContextConfig",
+      "org.egovframe.rte.fdl.security.bean.AuthoritiesQueryFactoryBean",
+      "org.egovframe.rte.fdl.security.bean.DataSourceFactoryBean",
+      "org.egovframe.rte.fdl.security.bean.EgovAccessDeniedHandler",
+      "org.egovframe.rte.fdl.security.bean.EgovLoginFailHandler",
+      "org.egovframe.rte.fdl.security.bean.EgovReloadableFilterInvocationSecurityMetadataSource",
+      "org.egovframe.rte.fdl.security.bean.MapClassFactoryBean",
+      "org.egovframe.rte.fdl.security.bean.MethodResourcesMapFactoryBean",
+      "org.egovframe.rte.fdl.security.bean.RequestMatcherTypeFactoryBean",
+      "org.egovframe.rte.fdl.security.bean.UrlResourcesMapFactoryBean",
+      "org.egovframe.rte.fdl.security.bean.UsersQueryFactoryBean",
+      "org.egovframe.rte.fdl.security.config.EgovDaoAuthenticationProvider",
+      "org.egovframe.rte.fdl.security.config.EgovIdSaltSha256PasswordEncoder",
+      "org.egovframe.rte.fdl.security.config.EgovMultipleRoleAuthorizationManager",
+      "org.egovframe.rte.fdl.security.config.EgovSecurityConfig",
+      "org.egovframe.rte.fdl.security.config.EgovSecurityConfigReader",
+      "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
+      "org.egovframe.rte.fdl.security.config.EgovSecurityMetadataCache",
+      "org.egovframe.rte.fdl.security.secureobject.EgovSecuredObjectService",
+      "org.egovframe.rte.fdl.security.secureobject.impl.SecuredObjectDAO",
+      "org.egovframe.rte.fdl.security.secureobject.impl.SecuredObjectServiceImpl",
+      "org.egovframe.rte.fdl.security.secureobject.impl.SelfRegexRequestMatcher",
+      "org.egovframe.rte.fdl.security.userdetails.DefaultMapUserDetailsMapping",
+      "org.egovframe.rte.fdl.security.userdetails.EgovUserDetails",
+      "org.egovframe.rte.fdl.security.userdetails.hierarchicalroles.HierarchyStringsFactoryBean",
+      "org.egovframe.rte.fdl.security.userdetails.jdbc.EgovJdbcUserDetailsManager",
+      "org.egovframe.rte.fdl.security.userdetails.jdbc.EgovUsersByUsernameMapping",
+      "org.egovframe.rte.fdl.security.userdetails.util.CamelCaseUtil",
+      "org.egovframe.rte.fdl.security.userdetails.util.EgovUserDetailsHelper",
+      "org.egovframe.rte.fdl.string.EgovDateUtil",
+      "org.egovframe.rte.fdl.string.EgovNumericUtil",
+      "org.egovframe.rte.fdl.string.EgovObjectUtil",
+      "org.egovframe.rte.fdl.string.EgovStringUtil",
+      "org.egovframe.rte.fdl.xml.AbstractXMLUtility",
+      "org.egovframe.rte.fdl.xml.EgovAbstractXMLFactoryService",
+      "org.egovframe.rte.fdl.xml.EgovDOMValidatorService",
+      "org.egovframe.rte.fdl.xml.EgovSAXValidatorService",
+      "org.egovframe.rte.fdl.xml.SharedObject",
+      "org.egovframe.rte.fdl.xml.XmlConfig",
+      "org.egovframe.rte.fdl.xml.error.ErrorChecker",
+      "org.egovframe.rte.fdl.xml.exception.UnsupportedException",
+      "org.egovframe.rte.fdl.xml.exception.ValidatorException",
+      "org.egovframe.rte.fdl.xml.impl.ContentHandlerImpl",
+      "org.egovframe.rte.fdl.xml.impl.EgovDOMFactoryServiceImpl",
+      "org.egovframe.rte.fdl.xml.impl.EgovSAXFactoryServiceImpl",
+      "org.egovframe.rte.itl.integration.EgovIntegrationContext",
+      "org.egovframe.rte.itl.integration.EgovIntegrationException",
+      "org.egovframe.rte.itl.integration.EgovIntegrationMessage",
+      "org.egovframe.rte.itl.integration.EgovIntegrationMessageHeader",
+      "org.egovframe.rte.itl.integration.EgovIntegrationNoSuchServiceException",
+      "org.egovframe.rte.itl.integration.EgovIntegrationService",
+      "org.egovframe.rte.itl.integration.EgovIntegrationServiceCallback",
+      "org.egovframe.rte.itl.integration.EgovIntegrationServiceProvider",
+      "org.egovframe.rte.itl.integration.EgovIntegrationServiceResponse",
+      "org.egovframe.rte.itl.integration.message.simple.SimpleMessage",
+      "org.egovframe.rte.itl.integration.message.simple.SimpleMessageHeader",
+      "org.egovframe.rte.itl.integration.message.typed.TypedList",
+      "org.egovframe.rte.itl.integration.message.typed.TypedListIterator",
+      "org.egovframe.rte.itl.integration.message.typed.TypedMap",
+      "org.egovframe.rte.itl.integration.message.typed.TypedMessage",
+      "org.egovframe.rte.itl.integration.message.typed.TypedMessageHeader",
+      "org.egovframe.rte.itl.integration.metadata.IntegrationDefinition",
+      "org.egovframe.rte.itl.integration.metadata.OrganizationDefinition",
+      "org.egovframe.rte.itl.integration.metadata.RecordTypeDefinition",
+      "org.egovframe.rte.itl.integration.metadata.RecordTypeFieldDefinition",
+      "org.egovframe.rte.itl.integration.metadata.ServiceDefinition",
+      "org.egovframe.rte.itl.integration.metadata.SystemDefinition",
+      "org.egovframe.rte.itl.integration.metadata.dao.IntegrationDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.OrganizationDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.RecordTypeDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.ServiceDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.SystemDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.hibernate.HibernateIntegrationDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.hibernate.HibernateOrganizationDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.hibernate.HibernateRecordTypeDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.hibernate.HibernateServiceDefinitionDao",
+      "org.egovframe.rte.itl.integration.metadata.dao.hibernate.HibernateSystemDefinitionDao",
+      "org.egovframe.rte.itl.integration.monitor.EgovIntegrationServiceEvent",
+      "org.egovframe.rte.itl.integration.monitor.EgovIntegrationServiceMonitor",
+      "org.egovframe.rte.itl.integration.support.AbstractService",
+      "org.egovframe.rte.itl.integration.type.AbstractType",
+      "org.egovframe.rte.itl.integration.type.CircularInheritanceException",
+      "org.egovframe.rte.itl.integration.type.ListType",
+      "org.egovframe.rte.itl.integration.type.NoSuchRecordFieldException",
+      "org.egovframe.rte.itl.integration.type.NoSuchTypeException",
+      "org.egovframe.rte.itl.integration.type.PrimitiveType",
+      "org.egovframe.rte.itl.integration.type.RecordType",
+      "org.egovframe.rte.itl.integration.type.Type",
+      "org.egovframe.rte.itl.integration.type.TypeLoader",
+      "org.egovframe.rte.itl.integration.type.UnassignableValueException",
+      "org.egovframe.rte.itl.integration.type.support.PrimitiveTypeFactoryBean",
+      "org.egovframe.rte.itl.integration.type.support.TypeLoaderUsingMetadata",
+      "org.egovframe.rte.itl.integration.util.Validatable",
+      "org.egovframe.rte.itl.webservice.EgovWebService",
+      "org.egovframe.rte.itl.webservice.EgovWebServiceContext",
+      "org.egovframe.rte.itl.webservice.EgovWebServiceMessage",
+      "org.egovframe.rte.itl.webservice.EgovWebServiceMessageHeader",
+      "org.egovframe.rte.itl.webservice.EgovWebServiceServlet",
+      "org.egovframe.rte.itl.webservice.data.MappingInfo",
+      "org.egovframe.rte.itl.webservice.data.WebServiceClientDefinition",
+      "org.egovframe.rte.itl.webservice.data.WebServiceServerDefinition",
+      "org.egovframe.rte.itl.webservice.data.dao.WebServiceClientDefinitionDao",
+      "org.egovframe.rte.itl.webservice.data.dao.WebServiceServerDefinitionDao",
+      "org.egovframe.rte.itl.webservice.data.dao.hibernate.HibernateWebServiceClientDefinitionDao",
+      "org.egovframe.rte.itl.webservice.data.dao.hibernate.HibernateWebServiceServerDefinitionDao",
+      "org.egovframe.rte.itl.webservice.service.EgovWebServiceClassLoader",
+      "org.egovframe.rte.itl.webservice.service.EgovWebServiceClient",
+      "org.egovframe.rte.itl.webservice.service.MessageConverter",
+      "org.egovframe.rte.itl.webservice.service.ServiceBridge",
+      "org.egovframe.rte.itl.webservice.service.ServiceEndpointInfo",
+      "org.egovframe.rte.itl.webservice.service.ServiceEndpointInterfaceInfo",
+      "org.egovframe.rte.itl.webservice.service.ServiceParamInfo",
+      "org.egovframe.rte.itl.webservice.service.impl.EgovWebServiceClassLoaderFactoryBean",
+      "org.egovframe.rte.itl.webservice.service.impl.EgovWebServiceClassLoaderImpl",
+      "org.egovframe.rte.itl.webservice.service.impl.EgovWebServiceClientImpl",
+      "org.egovframe.rte.itl.webservice.service.impl.MessageConverterImpl",
+      "org.egovframe.rte.itl.webservice.service.impl.ServiceBridgeImpl",
+      "org.egovframe.rte.itl.webservice.service.impl.ServiceEndpointInfoImpl",
+      "org.egovframe.rte.itl.webservice.service.impl.ServiceEndpointInterfaceInfoImpl",
+      "org.egovframe.rte.itl.webservice.service.impl.ServiceParamInfoImpl",
+      "org.egovframe.rte.psl.data.jpa.repository.EgovJpaRepository",
+      "org.egovframe.rte.psl.data.mongodb.connect.EgovMongodbConnectionFactory",
+      "org.egovframe.rte.psl.data.mongodb.repository.EgovMongoDbRepository",
+      "org.egovframe.rte.psl.dataaccess.EgovAbstractDAO",
+      "org.egovframe.rte.psl.dataaccess.EgovAbstractMapper",
+      "org.egovframe.rte.psl.dataaccess.mapper.EgovMapper",
+      "org.egovframe.rte.psl.dataaccess.mapper.MapperConfigurer",
+      "org.egovframe.rte.psl.dataaccess.typehandler.CalendarMapperTypeHandler",
+      "org.egovframe.rte.psl.dataaccess.typehandler.CalendarTypeHandler",
+      "org.egovframe.rte.psl.dataaccess.typehandler.StringTimestampTypeHandler",
+      "org.egovframe.rte.psl.dataaccess.util.CamelUtil",
+      "org.egovframe.rte.psl.dataaccess.util.EgovMap",
+      "org.egovframe.rte.psl.orm.ObjectOptimisticLockingFailureException",
+      "org.egovframe.rte.psl.orm.ObjectRetrievalFailureException",
+      "org.egovframe.rte.psl.orm.ibatis.SqlMapClientCallback",
+      "org.egovframe.rte.psl.orm.ibatis.SqlMapClientFactoryBean",
+      "org.egovframe.rte.psl.orm.ibatis.SqlMapClientOperations",
+      "org.egovframe.rte.psl.orm.ibatis.SqlMapClientTemplate",
+      "org.egovframe.rte.psl.orm.ibatis.support.AbstractLobTypeHandler",
+      "org.egovframe.rte.psl.orm.ibatis.support.BlobByteArrayTypeHandler",
+      "org.egovframe.rte.psl.orm.ibatis.support.BlobSerializableTypeHandler",
+      "org.egovframe.rte.psl.orm.ibatis.support.ClobStringTypeHandler",
+      "org.egovframe.rte.psl.orm.ibatis.support.SqlMapClientDaoSupport",
+      "org.egovframe.rte.psl.reactive.cassandra.connect.EgovCassandraConfiguration",
+      "org.egovframe.rte.psl.reactive.cassandra.repository.EgovCassandraRepository",
+      "org.egovframe.rte.psl.reactive.mongodb.connect.EgovReactiveMongoDbConnectionFactory",
+      "org.egovframe.rte.psl.reactive.mongodb.repository.EgovReactiveMongoDbRepository",
+      "org.egovframe.rte.psl.reactive.r2dbc.connect.EgovR2dbcConnectionFactory",
+      "org.egovframe.rte.psl.reactive.r2dbc.repository.EgovR2dbcRepository",
+      "org.egovframe.rte.psl.reactive.redis.connect.EgovRedisConfiguration",
+      "org.egovframe.rte.psl.reactive.redis.repository.EgovRedisRepository",
+      "org.egovframe.rte.ptl.mvc.bind.exception.AbstractAnnotationExceptionHandler",
+      "org.egovframe.rte.ptl.mvc.filter.HTMLTagFilter",
+      "org.egovframe.rte.ptl.mvc.filter.HTMLTagFilterRequestWrapper",
+      "org.egovframe.rte.ptl.mvc.tags.ui.PaginationTag",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination.AbstractKrdsPaginationRenderer",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination.AbstractPaginationRenderer",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination.DefaultPaginationManager",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination.DefaultPaginationRenderer",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination.PaginationInfo",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination.PaginationManager",
+      "org.egovframe.rte.ptl.mvc.tags.ui.pagination.PaginationRenderer",
+      "org.egovframe.rte.ptl.mvc.validation.RteGenericValidator",
+      "org.egovframe.rte.ptl.reactive.annotation.EgovController",
+      "org.egovframe.rte.ptl.reactive.annotation.EgovRepository",
+      "org.egovframe.rte.ptl.reactive.annotation.EgovRestController",
+      "org.egovframe.rte.ptl.reactive.annotation.EgovService",
+      "org.egovframe.rte.ptl.reactive.exception.EgovAbstractService",
+      "org.egovframe.rte.ptl.reactive.exception.EgovErrorCode",
+      "org.egovframe.rte.ptl.reactive.exception.EgovException",
+      "org.egovframe.rte.ptl.reactive.exception.EgovExceptionHandler",
+      "org.egovframe.rte.ptl.reactive.exception.EgovExceptionResponse",
+      "org.egovframe.rte.ptl.reactive.exception.EgovServiceException",
+      "org.egovframe.rte.ptl.reactive.validation.EgovCnCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovCnCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovCrnCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovCrnCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovEmailCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovEmailCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovEnglishCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovEnglishCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovIPCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovIPCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovKoreanCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovKoreanCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovMobilePhoneCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovMobilePhoneCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovNullCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovNullCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovPhoneCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovPhoneCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovPwdCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovPwdCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovRrnCheck",
+      "org.egovframe.rte.ptl.reactive.validation.EgovRrnCheckValidation",
+      "org.egovframe.rte.ptl.reactive.validation.EgovValidation"
+    ]
+  }
+}

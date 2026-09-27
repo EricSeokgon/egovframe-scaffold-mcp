@@ -86,6 +86,8 @@ jobs:
 
       - name: Catalog pin and archive verification (official v5.0.6)
         run: npm run test:catalog-sync-live
+      - name: Migration rules exist in Maven repositories (eGovFrame repo, Central)
+        run: npm run test:migration-rules-live
 
       - name: AI assembly test (downloads egovframe-ai-rag)
         run: npm run test:ai-assembly
