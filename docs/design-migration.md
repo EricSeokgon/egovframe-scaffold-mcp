@@ -1,4 +1,4 @@
-# 5.x 전환 진단 설계 (v0.29.0) — `migrate_egovframe_project` 1단계
+# 5.x 전환 설계 (v0.29.0 진단 · v0.30.0 적용) — `migrate_egovframe_project`
 
 ## 배경
 
@@ -76,9 +76,16 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 3. `npm run test:migration-rules && npm run test:migrate`, 네트워크가 되면 `npm run test:migration-rules-live`.
 4. 이 문서의 근거 표와 README 변경 이력을 갱신한다.
 
-## 2단계(v0.30.0) 계획
+## 2단계(v0.30.0): 적용
 
-- 1단계 결과의 `auto` 항목만 적용: pom/gradle 좌표·버전 속성·저장소 URL 치환, import·bean class·`javax→jakarta` 치환, web.xml 스키마 교체, Java 릴리스 17. `manual` 은 결과에 그대로 남긴다.
-- `dryRun` 기본 `true`. 적용은 `ProjectFileTransaction` 으로 파일·백업(`migration-backup/`)·계획(`migration-plan.json`)을 한 transaction 에 넣고 실패 시 원복. 적용 전에 1단계를 다시 돌려 계획과 현재 디스크가 같은지 확인한다.
-- 좌표 치환 시 parent 를 도입하지는 않는다(프로젝트 구조 결정이므로 `manual` 권고 유지). 대신 `<version>` 이 있던 RTE 의존성은 `${org.egovframe.rte.version}` 속성으로 모은다.
-- 검증: 픽스처를 변환한 뒤 JDK 17 로 `mvn compile`(CI 통합), fault-injection rollback, 적용 후 1단계 재실행 시 `auto` 0건.
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 편집의 출처 | 1단계 스캔이 auto 항목마다 **원문 오프셋 기준 편집**(`edits: [{start, end, replacement}]`)을 붙인다. 적용은 이 편집을 파일별로 뒤에서부터 반영할 뿐, 텍스트를 다시 해석하지 않는다 | 진단이 본 것과 적용이 바꾸는 것이 같은 근거를 갖는다. dryRun 미리보기와 실제 적용이 같은 편집 목록을 쓴다 |
+| 편집 종류 | 토큰 치환(패키지 접두어·이름 변경·이동·`javax→jakarta`·저장소 URL), pom 블록 안 `groupId`/`artifactId`/`version` 텍스트 치환, RTE 버전 속성 이름·값 치환(`<egovframework.rte.version>` → `<org.egovframe.rte.version>5.0.2</…>`, 참조 `${…}` 도 함께), Jakarta 구현 좌표 삽입(JSTL 의 glassfish — 치환 결과에 이미 있으면 생략), web.xml 여는 태그 재작성, Java 버전 값 치환, gradle 문자열 치환 | 요소 이름·들여쓰기·주석은 건드리지 않는다. `<source>${java.version}</source>` 처럼 속성 참조는 속성 쪽 항목이 담당한다 |
+| 겹침 | 같은 파일의 편집을 오프셋 내림차순으로 적용하고 겹치는 편집은 건너뛰어 `conflicts` 에 보고 | 정상적으로는 겹침이 없다(토큰 판정이 한 줄에서 같은 from 을 한 항목으로 묶는다) |
+| dryRun | 기본 `true`. 파일별 변경 줄 미리보기(전/후)만 돌려주고 디스크는 그대로 | 다른 쓰기 도구와 같은 원칙 |
+| transaction | `withFileTransaction`: 파일별로 `migration-backup/<시각>-<uuid>/<원래 경로>` 에 원본을 먼저 쓰고 파일을 치환, `migration-plan.json`(항목 전체·적용 파일) 기록. 쓰기 전에 진단 때 읽은 내용과 현재 파일이 같은지 재검증 | 중간 실패 시 작업 전 상태로 복구(fault-injection 테스트로 확인). 백업 디렉터리는 이후 스캔에서 제외한다 |
+| 적용 후 | 재진단해 `remaining` 요약을 돌려준다(auto 는 0 이어야 함). 다음 단계로 `build_egovframe_project(goal="compile")` 안내 | manual 항목은 결과에 그대로 남는다 |
+| parent | 도입하지 않는다(프로젝트 구조 결정이므로 `manual` 권고 유지). `<version>` 이 있던 RTE 의존성은 `${org.egovframe.rte.version}` 속성으로 모은다 | |
+
+검증: `test:migrate` 132단언(편집 원문 일치, dryRun 무기록, fault-injection 롤백, 적용 후 파일 내용·백업·계획·재적용 무기록·manual 불변), `test:migrate-integration`(CI): 3.10 좌표·javax 픽스처를 적용한 뒤 JDK 17 로 `mvn compile` 통과, 실제 공통컴포넌트 v3.10.0 자산(pom·web.xml·소스 12파일) 적용 → auto 48항목·86곳, 재진단 auto 0.

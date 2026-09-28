@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedBy": "scripts/generate-migration-rules.mjs",
-  "surveyedAt": "2026-09-27",
+  "surveyedAt": "2026-09-28",
   "source": {
     "repository": "eGovFramework/egovframe-runtime",
     "fromTag": "v3.10.0",
@@ -937,7 +937,7 @@
           "groupId": "jakarta.servlet.jsp",
           "artifactId": "jakarta.servlet.jsp-api"
         },
-        "toVersion": "3.1.1",
+        "toVersion": "4.0.0",
         "scope": "provided"
       },
       {
@@ -949,7 +949,7 @@
           "groupId": "jakarta.servlet.jsp",
           "artifactId": "jakarta.servlet.jsp-api"
         },
-        "toVersion": "3.1.1",
+        "toVersion": "4.0.0",
         "scope": "provided"
       },
       {
@@ -961,7 +961,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0",
+        "toVersion": "3.0.2",
         "also": {
           "groupId": "org.glassfish.web",
           "artifactId": "jakarta.servlet.jsp.jstl",
@@ -978,7 +978,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0",
+        "toVersion": "3.0.2",
         "also": {
           "groupId": "org.glassfish.web",
           "artifactId": "jakarta.servlet.jsp.jstl",
@@ -994,7 +994,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0",
+        "toVersion": "3.0.2",
         "also": {
           "groupId": "org.glassfish.web",
           "artifactId": "jakarta.servlet.jsp.jstl",
@@ -1022,7 +1022,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0"
+        "toVersion": "3.0.2"
       },
       {
         "from": {
@@ -1056,7 +1056,7 @@
           "groupId": "jakarta.validation",
           "artifactId": "jakarta.validation-api"
         },
-        "toVersion": "3.0.2",
+        "toVersion": "3.1.1",
         "note": "hibernate-validator 는 8.x 이상"
       },
       {
@@ -1068,7 +1068,7 @@
           "groupId": "jakarta.annotation",
           "artifactId": "jakarta.annotation-api"
         },
-        "toVersion": "2.1.1"
+        "toVersion": "3.0.0"
       },
       {
         "from": {
@@ -1079,7 +1079,7 @@
           "groupId": "jakarta.annotation",
           "artifactId": "jakarta.annotation-api"
         },
-        "toVersion": "2.1.1"
+        "toVersion": "3.0.0"
       },
       {
         "from": {
@@ -1227,7 +1227,7 @@
           "groupId": "jakarta.websocket",
           "artifactId": "jakarta.websocket-api"
         },
-        "toVersion": "2.1.1"
+        "toVersion": "2.2.0"
       }
     ],
     "note": "Spring 6 / Jakarta EE 9+ 에서 이름이 바뀐 패키지만 나열한다. JDK 에 포함된 javax.* (javax.sql, javax.xml.parsers, javax.crypto, javax.naming, javax.net, javax.swing, javax.imageio, javax.management, javax.security.*, javax.script, javax.annotation.processing, javax.transaction.xa 등)는 대상이 아니다."

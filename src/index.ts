@@ -65,8 +65,10 @@ export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRun
 export { loadTemplateCatalog, syncTemplateCatalog, diffProjects, normalizeInitializrProjects, parseLfsPointer } from "./template-catalog.js";
 export { CONFIG_FORMATS, CONFIG_EXTENSIONS, loadConfigCatalog, getConfigTemplate, describeConfigTemplates, validateConfigFields, buildConfigContext, renderConfig, resolveFileName, defaultOutputDir, generateConfig, templateSha256 } from "./config-generator.js";
 export type { ConfigFormat, ConfigTemplateEntry, ConfigCatalog, GenerateConfigOptions, GenerateConfigResult, ConfigFieldValidation } from "./config-generator.js";
-export { loadMigrationRules, migrateProject, renderMigrationMarkdown, classifyRteToken, classifyJavaxPackage, versionBelow } from "./migrate.js";
-export type { MigrationRules, MigrationItem, MigrationKind, MigrationAction, MigrateResult, MigrateOptions, SourceEra } from "./migrate.js";
+export { RTE_VERSION_PROPERTY, loadMigrationRules, migrateProject, renderMigrationMarkdown, classifyRteToken, classifyJavaxPackage, versionBelow, applyTextEdits, applyMigration, renderMigrationApplyMarkdown } from "./migrate.js";
+export type { MigrationRules, MigrationItem, MigrationKind, MigrationAction, MigrateResult, MigrateOptions, SourceEra, TextEdit, ApplyOptions, ApplyFilePlan, MigrateApplyResult } from "./migrate.js";
+export { loadDependencyBaseline, classifyDependency, checkDependencies, renderDependencyMarkdown, defaultOsvQuery } from "./dependencies.js";
+export type { DependencyBaseline, BaselineManaged, DependencyStatus, DependencyFinding, SecurityCheck, Vulnerability, ParentInfo, CheckDependenciesResult, CheckDependenciesOptions, OsvQuery } from "./dependencies.js";
 export type {
   TemplateCatalog,
   UnifiedProject,

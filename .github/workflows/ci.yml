@@ -88,6 +88,10 @@ jobs:
         run: npm run test:catalog-sync-live
       - name: Migration rules exist in Maven repositories (eGovFrame repo, Central)
         run: npm run test:migration-rules-live
+      - name: Migration apply then JDK 17 Maven compile
+        run: npm run test:migrate-integration
+      - name: Dependency check with OSV lookup
+        run: npm run test:dependencies-live
 
       - name: AI assembly test (downloads egovframe-ai-rag)
         run: npm run test:ai-assembly

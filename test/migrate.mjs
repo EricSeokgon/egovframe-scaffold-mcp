@@ -1,8 +1,8 @@
 // node test/migrate.mjs — 5.x 전환 진단 (오프라인 픽스처)
 // 3.10 스타일 프로젝트(pom·java·xml·jsp·web.xml)에서 항목 분류(auto/manual)·라인·대응 좌표를 단언하고,
 // 5.x 스타일 프로젝트에서는 항목 0건(거짓 양성 없음)을 단언한다. 진단 전후 디스크가 바뀌지 않는지도 확인한다.
-import { migrateProject, renderMigrationMarkdown, classifyRteToken, classifyJavaxPackage, versionBelow, loadMigrationRules } from "../dist/index.js";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, statSync, readFileSync } from "node:fs";
+import { migrateProject, renderMigrationMarkdown, classifyRteToken, classifyJavaxPackage, versionBelow, loadMigrationRules, applyTextEdits, applyMigration, renderMigrationApplyMarkdown } from "../dist/index.js";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, statSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -203,7 +203,7 @@ one(r, (i) => i.kind === "library" && i.from.startsWith("org.apache.tiles:tiles-
 assert(!r.items.some((i) => i.from.startsWith("org.mybatis:mybatis:")), "mybatis 3.5 는 항목 아님");
 one(r, (i) => i.kind === "spring-version" && i.action === "manual" && i.from.includes("4.3.25.RELEASE"), "Spring 4.3 속성 → manual");
 const jr = find(r, (i) => i.kind === "java-release" && i.file === "pom.xml");
-assert(jr.length === 3 && jr.some((i) => i.from.includes("java.version")) && jr.some((i) => i.from === "<target>1.8</target>") && jr.some((i) => i.from === "<source>${java.version}</source>"), `Java 1.8 → 17 (속성·source·target) (got ${jr.length})`);
+assert(jr.length === 2 && jr.some((i) => i.from.includes("java.version")) && jr.some((i) => i.from === "<target>1.8</target>") && !jr.some((i) => i.from.includes("<source>")), `Java 1.8 → 17 (속성·target; <source>\${속성}</source> 은 속성 항목이 담당) (got ${jr.length})`);
 one(r, (i) => i.kind === "parent" && i.action === "manual" && i.file === "pom.xml", "5.x parent 권고");
 
 // gradle
@@ -313,6 +313,87 @@ try { migrateProject({ projectDir: legacy, target: "6.x" }); } catch { threw = t
 assert(threw, "지원하지 않는 target → 예외");
 const rj = JSON.parse(JSON.stringify(r));
 assert(Array.isArray(rj.items) && rj.rules.toTag === "v5.0.2-Final" && typeof rj.summary.byKind === "object", "JSON 직렬화 가능한 결과");
+
+
+// ── 2단계: 적용 ────────────────────────────────────────
+{
+  const t = applyTextEdits("abcdef", [{ start: 1, end: 2, replacement: "XX" }, { start: 4, end: 5, replacement: "" }, { start: 6, end: 6, replacement: "+" }]);
+  assert(t.text === "aXXcdf+" && t.applied === 3 && t.skipped.length === 0, "applyTextEdits: 치환·삭제·삽입을 뒤에서부터 적용");
+  const o = applyTextEdits("abcdef", [{ start: 1, end: 4, replacement: "1" }, { start: 2, end: 3, replacement: "2" }]);
+  assert(o.applied === 1 && o.skipped.length === 1 && o.text === "ab2def", "applyTextEdits: 겹치는 편집은 하나만 적용하고 나머지는 skipped");
+  const bad = applyTextEdits("abc", [{ start: 2, end: 9, replacement: "x" }]);
+  assert(bad.applied === 0 && bad.skipped.length === 1, "applyTextEdits: 범위 밖 편집 거부");
+}
+// 모든 auto 항목에 edits 가 있고, edits 가 가리키는 원문이 from 과 일치하는지(토큰 종류)
+{
+  const texts = new Map();
+  const readRel = (f) => texts.get(f) ?? (texts.set(f, readFileSync(path.join(legacy, f), "utf8")), texts.get(f));
+  const autos = r.items.filter((i) => i.action === "auto");
+  assert(autos.every((i) => Array.isArray(i.edits) && i.edits.length > 0), "auto 항목은 모두 edits 를 가진다");
+  assert(r.items.filter((i) => i.action === "manual").every((i) => !i.edits), "manual 항목은 edits 가 없다");
+  const tokenKinds = new Set(["package", "package-renamed", "class-moved", "jakarta-package", "repository"]);
+  let mismatched = 0;
+  for (const i of autos) if (tokenKinds.has(i.kind)) for (const e of i.edits) if (readRel(i.file).slice(e.start, e.end) !== i.from) mismatched++;
+  assert(mismatched === 0, `토큰 편집의 원문 구간이 from 과 일치 (불일치 ${mismatched})`);
+  const inserts = autos.filter((i) => i.kind === "jakarta-artifact" && i.edits.some((e) => e.start === e.end));
+  assert(inserts.length === 1 && inserts[0].from.startsWith("javax.servlet:jstl"), "JSTL 은 구현 의존성 삽입 편집을 하나 가진다");
+}
+// dryRun: 미리보기만, 디스크 불변
+const dry = await applyMigration({ projectDir: legacy });
+assert(dry.mode === "apply" && dry.dryRun === true && dry.applied.items === r.summary.auto && dry.skippedManual === r.summary.manual, `dryRun 계획: auto ${dry.applied.items}항목 전부, manual ${dry.skippedManual} 유지`);
+assert(dry.conflicts.length === 0, "겹치는 편집 없음");
+assert(dry.files.length === new Set(r.items.filter((i) => i.action === "auto").map((i) => i.file)).size && dry.files.every((f) => f.preview.length > 0), `파일별 계획 ${dry.files.length}개 + 미리보기`);
+assert(JSON.stringify([...snapshot(legacy)]) === JSON.stringify([...before]), "dryRun 후 디스크 불변");
+assert(!existsSync(path.join(legacy, "migration-backup")), "dryRun 은 백업을 만들지 않음");
+const dryMd = renderMigrationApplyMarkdown(dry);
+assert(dryMd.includes("적용 계획(dryRun)") && dryMd.includes("## 파일별 변경 미리보기") && dryMd.includes("dryRun=false"), "dryRun Markdown");
+
+// fault injection: 파일을 쓴 뒤 실패 → 전부 원복, 백업 디렉터리도 남지 않음
+let txErr = null;
+try { await applyMigration({ projectDir: legacy, dryRun: false, faultInjection: "after-files" }); } catch (e) { txErr = e; }
+assert(txErr && /fault injection/.test(txErr.message) && /롤백했습니다/.test(txErr.message), "fault injection → TransactionError + 롤백 보고");
+assert(JSON.stringify([...snapshot(legacy)]) === JSON.stringify([...before]), "롤백 후 디스크 불변(내용·mtime)");
+assert(!existsSync(path.join(legacy, "migration-backup")), "롤백 후 백업 디렉터리 없음");
+
+// 실제 적용
+const applied = await applyMigration({ projectDir: legacy, dryRun: false });
+assert(applied.dryRun === false && applied.applied.items === dry.applied.items && applied.applied.files === dry.files.length, "적용 수가 dryRun 계획과 일치");
+assert(applied.remaining && applied.remaining.auto === 0 && applied.remaining.manual === r.summary.manual, `적용 후 재진단 auto 0 · manual ${applied.remaining?.manual} 유지`);
+assert(applied.backupDir && existsSync(applied.backupDir) && existsSync(applied.planPath), "백업 디렉터리·migration-plan.json 생성");
+const plan = JSON.parse(readFileSync(applied.planPath, "utf8"));
+assert(plan.tool === "migrate_egovframe_project" && plan.items.length === r.items.length && plan.files.length === applied.applied.files && !plan.items.some((i) => i.edits), "계획 파일: 항목 전체(edits 제외)·파일 목록");
+for (const f of applied.files) {
+  const backup = path.join(applied.backupDir, f.file);
+  const original = readFileSync(path.join(legacy, f.file), "utf8");
+  assert(existsSync(backup) && readFileSync(backup, "utf8") !== original && before.has(f.file), `백업 원본 존재·현재 파일과 다름: ${f.file}`);
+}
+const pomAfter = readFileSync(path.join(legacy, "pom.xml"), "utf8");
+assert(pomAfter.includes("<org.egovframe.rte.version>5.0.2</org.egovframe.rte.version>") && !pomAfter.includes("egovframework.rte.version"), "RTE 버전 속성 이름·값 치환, 레거시 속성 참조 0건");
+assert(pomAfter.includes("<artifactId>egovframe-rte-ptl-mvc</artifactId>") && pomAfter.includes("<version>${org.egovframe.rte.version}</version>"), "좌표 + ${속성} 참조 치환");
+assert(/<artifactId>egovframe-rte-psl-dataaccess<\/artifactId><version>5\.0\.2<\/version>/.test(pomAfter), "리터럴 버전 → 5.0.2");
+assert(pomAfter.includes("<url>https://maven.egovframe.go.kr/maven/</url>") && !pomAfter.includes("http://maven.egovframe"), "저장소 URL https");
+assert(pomAfter.includes("<groupId>jakarta.servlet</groupId><artifactId>jakarta.servlet-api</artifactId><version>6.0.0</version><scope>provided</scope>"), "servlet-api → jakarta 6.0.0, scope 보존");
+assert(pomAfter.includes("<artifactId>jakarta.servlet.jsp.jstl-api</artifactId><version>3.0.2</version>") && (pomAfter.match(/<artifactId>jakarta\.servlet\.jsp\.jstl<\/artifactId>/g) ?? []).length === 1 && pomAfter.includes("<groupId>org.glassfish.web</groupId>"), "JSTL API 치환 + glassfish 구현 1회 삽입");
+assert(pomAfter.includes("<java.version>17</java.version>") && pomAfter.includes("<target>17</target>") && pomAfter.includes("<source>${java.version}</source>"), "Java 17 (속성·target; ${속성} 참조는 그대로)");
+assert(pomAfter.includes("<artifactId>egovframework.rte.fdl.nosuch</artifactId>") && pomAfter.includes("spring-modules-validation") && pomAfter.includes("commons-dbcp") && pomAfter.includes("4.3.25.RELEASE"), "manual 항목(미지 모듈·제거 모듈·라이브러리·Spring 속성)은 그대로");
+const svcAfter = readFileSync(path.join(legacy, svc), "utf8");
+assert(svcAfter.includes("import jakarta.annotation.Resource;") && svcAfter.includes("import javax.sql.DataSource;") && svcAfter.includes("import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;") && svcAfter.includes("import org.egovframe.rte.fdl.cmmn.exception.*;") && svcAfter.includes("import org.egovframe.rte.fdl.crypto.EgovPasswordEncoder;"), "java: jakarta·접두어·와일드카드·패키지 이름 변경 치환, javax.sql 유지");
+const mapperAfter = readFileSync(path.join(legacy, mapper), "utf8");
+assert(mapperAfter.includes("import egovframework.rte.psl.dataaccess.mapper.Mapper;") && mapperAfter.includes("import egovframework.rte.fdl.cmmn.AbstractServiceImpl;"), "제거 클래스(manual) import 는 건드리지 않음");
+const ctxAfter = readFileSync(path.join(legacy, ctxXml), "utf8");
+assert(ctxAfter.includes('class="org.egovframe.rte.fdl.cmmn.trace.LeaveaTrace"') && ctxAfter.includes('value="egovframework.rte.psl.dataaccess.mapper.Mapper"') && ctxAfter.includes("org.egovframe.rte.fdl.security.secureobject.impl.SecuredObjectDAO") && ctxAfter.includes('xmlns:egov-security="http://maven.egovframe.go.kr/schema/egov-security"'), "XML: bean class 치환, 제거 클래스·네임스페이스 유지");
+const wxAfter = readFileSync(path.join(legacy, wx), "utf8");
+assert(wxAfter.includes('version="5.0" xmlns="https://jakarta.ee/xml/ns/jakartaee"') && wxAfter.includes("org.egovframe.rte.ptl.mvc.filter.HTMLTagFilter"), "web.xml 스키마·filter-class 치환");
+const gradleAfter = readFileSync(path.join(legacy, "build.gradle"), "utf8");
+assert(gradleAfter.includes("'org.egovframe.rte:egovframe-rte-fdl-property:5.0.2'") && gradleAfter.includes('"jakarta.inject:jakarta.inject-api:2.0.1"') && gradleAfter.includes("https://maven.egovframe.go.kr/maven/") && gradleAfter.includes("sourceCompatibility = 17") && gradleAfter.includes("commons-dbcp:commons-dbcp:1.4"), "gradle 치환(좌표·jakarta·저장소·Java), manual 유지");
+const jspAfter = readFileSync(path.join(legacy, "src/main/webapp/WEB-INF/jsp/sample.jsp"), "utf8");
+assert(jspAfter.includes("jakarta.servlet.http.HttpSession") && jspAfter.includes("http://java.sun.com/jsp/jstl/core"), "JSP import 치환, JSTL uri 유지");
+assert(readFileSync(path.join(legacy, "target/classes/Generated.java"), "utf8").includes("javax.servlet.Filter"), "target/ 은 건드리지 않음");
+// 두 번째 적용: 바꿀 것이 없으면 아무것도 쓰지 않음
+const again = await applyMigration({ projectDir: legacy, dryRun: false });
+assert(again.applied.items === 0 && again.files.length === 0 && again.backupDir === undefined, "재적용 시 auto 0 → 무기록");
+const afterMd = renderMigrationApplyMarkdown(applied);
+assert(afterMd.includes("적용 결과") && afterMd.includes("## 남은 수동 항목") && afterMd.includes("build_egovframe_project"), "적용 Markdown");
 
 rmSync(legacy, { recursive: true, force: true });
 rmSync(modern, { recursive: true, force: true });

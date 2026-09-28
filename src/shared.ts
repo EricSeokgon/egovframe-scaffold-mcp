@@ -5,14 +5,14 @@ import { createHash } from "node:crypto";
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
 
 /** 제한 시간이 적용된 fetch. AbortError를 사람이 읽을 수 있는 메시지로 바꾼다. */
-export async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+export async function fetchWithTimeout(url: string, timeoutMs: number, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { signal: controller.signal });
+    return await fetch(url, { ...init, signal: controller.signal });
   } catch (e) {
     if (e instanceof Error && e.name === "AbortError")
-      throw new Error(`템플릿 다운로드 시간 초과(${timeoutMs}ms): ${url}`);
+      throw new Error(`요청 시간 초과(${timeoutMs}ms): ${url}`);
     throw e;
   } finally {
     clearTimeout(timer);

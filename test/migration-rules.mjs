@@ -9,6 +9,7 @@ function assert(cond, msg) { n++; if (!cond) { console.error("FAIL:", msg); proc
 
 const rules = loadMigrationRules();
 const mapping = JSON.parse(readFileSync(new URL("../catalog/migration-mapping.json", import.meta.url), "utf8"));
+const baseline = JSON.parse(readFileSync(new URL("../catalog/dependency-baseline.json", import.meta.url), "utf8"));
 const classes5 = new Set(rules.evidence.classes5);
 const packages5 = new Set(rules.evidence.packages5);
 
@@ -96,6 +97,8 @@ for (const a of rules.jakarta.artifacts) {
   ak.add(k);
   assert(/^(jakarta\.|org\.glassfish|org\.eclipse)/.test(a.to.groupId) && /^\d+\.\d+/.test(a.toVersion), `artifact 목적지 형식: ${k} → ${a.to.groupId}:${a.to.artifactId}:${a.toVersion}`);
   assert(versionBelow(a.toVersion, "2.0.0") === false, `Jakarta 좌표 버전은 2.x 이상(네임스페이스 전환 이후): ${k}`);
+  const managed = baseline.managed.find((m) => m.groupId === a.to.groupId && m.artifactId === a.to.artifactId);
+  if (managed) assert(versionBelow(a.toVersion, managed.version) === false, `Jakarta 목적지 버전이 공식 parent 기준 이상: ${a.to.artifactId} ${a.toVersion} ≥ ${managed.version}`);
 }
 for (const must of ["javax.servlet:javax.servlet-api", "javax.servlet:servlet-api", "javax.servlet:jstl", "javax.servlet.jsp.jstl:jstl-api", "javax.validation:validation-api", "javax.annotation:javax.annotation-api", "javax.inject:javax.inject", "org.glassfish:javax.json"])
   assert(ak.has(must), `Jakarta artifact 포함: ${must}`);

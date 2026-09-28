@@ -21,7 +21,8 @@ import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
-import { loadMigrationRules, migrateProject, renderMigrationMarkdown } from "./migrate.js";
+import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown } from "./migrate.js";
+import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
 
 /** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
 export const SERVER_VERSION: string = (() => {
@@ -559,16 +560,39 @@ export function buildServer(): McpServer {
   // ── 5.x 전환 진단 도구 (v0.29.0, 1단계 읽기 전용) ──────
   server.tool(
     "migrate_egovframe_project",
-    "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단합니다. RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리를 보고하며, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요)을 표시합니다. 규칙은 egovframe-runtime 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다. 디스크를 변경하지 않는 읽기 전용입니다.",
+    "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단하고(1단계), apply=true 이면 auto 항목을 실제로 치환합니다(2단계). 진단: RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요). 적용: apply=true 는 dryRun=true(기본)면 파일별 변경 미리보기만 돌려주고, dryRun=false 면 auto 항목을 하나의 transaction 으로 치환하며 원본을 migration-backup/<시각>/ 에 보관하고 migration-plan.json 을 남깁니다(중간 실패 시 작업 전 상태로 복구). manual 항목은 건드리지 않고 결과에 남깁니다. 규칙은 egovframe-runtime 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다.",
     {
-      projectDir: z.string().describe("진단할 프로젝트 디렉터리(절대경로 권장)"),
+      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
       target: z.enum(["5.x"]).default("5.x").describe("전환 목표 (현재 5.x 만 지원)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식. markdown=사람이 읽는 요약, json=항목 배열 그대로"),
+      apply: z.boolean().default(false).describe("true 면 2단계(적용). false(기본)면 진단만"),
+      dryRun: z.boolean().default(true).describe("apply=true 일 때만 의미. true(기본)면 파일별 변경 미리보기만, false 면 실제로 치환(백업 생성)"),
     },
     async (args) => {
       enforceAllowedRoots(args);
+      if (args.apply) {
+        const r = await applyMigration({ projectDir: args.projectDir, target: args.target, dryRun: args.dryRun });
+        const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationApplyMarkdown(r);
+        return { content: [{ type: "text", text }] };
+      }
       const r = migrateProject({ projectDir: args.projectDir, target: args.target });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationMarkdown(r);
+      return { content: [{ type: "text", text }] };
+    },
+  );
+  // ── 의존성 점검 도구 (v0.30.0, 읽기 전용) ──────────────
+  server.tool(
+    "check_egovframe_dependencies",
+    "프로젝트의 Maven/Gradle 의존성을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x 등)/기준 없음 으로 분류하고, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다.",
+    {
+      projectDir: z.string().describe("점검할 프로젝트 디렉터리(절대경로 권장)"),
+      offline: z.boolean().default(true).describe("true(기본)면 네트워크 없이 기준 대조만, false 면 OSV 취약점 조회 추가"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
+    },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await checkDependencies({ projectDir: args.projectDir, offline: args.offline });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDependencyMarkdown(r);
       return { content: [{ type: "text", text }] };
     },
   );
@@ -744,6 +768,13 @@ export function buildServer(): McpServer {
       const text = JSON.stringify({ ...rest, evidence: { classes: evidence.classes } }, null, 2);
       return { contents: [{ uri: uri.href, mimeType: "application/json", text }] };
     },
+  );
+
+  server.resource(
+    "dependency-baseline",
+    "egovframe://catalog/dependency-baseline",
+    { mimeType: "application/json", description: "의존성 기준 버전 — 공식 5.x parent 의 properties·dependencyManagement (check_egovframe_dependencies 용)" },
+    async (uri) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(loadDependencyBaseline(), null, 2) }] }),
   );
 
   server.resource(

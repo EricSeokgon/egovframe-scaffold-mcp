@@ -330,7 +330,7 @@
           "groupId": "jakarta.servlet.jsp",
           "artifactId": "jakarta.servlet.jsp-api"
         },
-        "toVersion": "3.1.1",
+        "toVersion": "4.0.0",
         "scope": "provided"
       },
       {
@@ -342,7 +342,7 @@
           "groupId": "jakarta.servlet.jsp",
           "artifactId": "jakarta.servlet.jsp-api"
         },
-        "toVersion": "3.1.1",
+        "toVersion": "4.0.0",
         "scope": "provided"
       },
       {
@@ -354,7 +354,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0",
+        "toVersion": "3.0.2",
         "also": {
           "groupId": "org.glassfish.web",
           "artifactId": "jakarta.servlet.jsp.jstl",
@@ -371,7 +371,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0",
+        "toVersion": "3.0.2",
         "also": {
           "groupId": "org.glassfish.web",
           "artifactId": "jakarta.servlet.jsp.jstl",
@@ -387,7 +387,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0",
+        "toVersion": "3.0.2",
         "also": {
           "groupId": "org.glassfish.web",
           "artifactId": "jakarta.servlet.jsp.jstl",
@@ -415,7 +415,7 @@
           "groupId": "jakarta.servlet.jsp.jstl",
           "artifactId": "jakarta.servlet.jsp.jstl-api"
         },
-        "toVersion": "3.0.0"
+        "toVersion": "3.0.2"
       },
       {
         "from": {
@@ -449,7 +449,7 @@
           "groupId": "jakarta.validation",
           "artifactId": "jakarta.validation-api"
         },
-        "toVersion": "3.0.2",
+        "toVersion": "3.1.1",
         "note": "hibernate-validator 는 8.x 이상"
       },
       {
@@ -461,7 +461,7 @@
           "groupId": "jakarta.annotation",
           "artifactId": "jakarta.annotation-api"
         },
-        "toVersion": "2.1.1"
+        "toVersion": "3.0.0"
       },
       {
         "from": {
@@ -472,7 +472,7 @@
           "groupId": "jakarta.annotation",
           "artifactId": "jakarta.annotation-api"
         },
-        "toVersion": "2.1.1"
+        "toVersion": "3.0.0"
       },
       {
         "from": {
@@ -620,7 +620,7 @@
           "groupId": "jakarta.websocket",
           "artifactId": "jakarta.websocket-api"
         },
-        "toVersion": "2.1.1"
+        "toVersion": "2.2.0"
       }
     ]
   },

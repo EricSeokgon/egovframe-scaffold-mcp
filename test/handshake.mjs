@@ -18,6 +18,7 @@ const REQUIRED_TOOLS = [
   "test_egovframe_project",
   "generate_egovframe_config",
   "migrate_egovframe_project",
+  "check_egovframe_dependencies",
 ];
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "ignore"] });
