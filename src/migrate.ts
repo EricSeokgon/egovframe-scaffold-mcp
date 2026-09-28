@@ -4,7 +4,9 @@
 // action="auto" 는 2단계(v0.30) 에서 기계적으로 치환할 수 있는 것, "manual" 은 사람이 코드를 고쳐야 하는 것이다.
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { randomUUID } from "node:crypto";
 import { diagnoseProject } from "./diagnose.js";
+import { withFileTransaction } from "./file-transaction.js";
 
 // ── 규칙 ──────────────────────────────────────────────
 export interface MigrationCoordinate { module: string; layer: string; from: { groupId: string; artifactId: string; era: string }[]; to: { groupId: string; artifactId: string } }
@@ -51,7 +53,9 @@ export type MigrationKind =
   | "jakarta-artifact" | "library" | "java-release" | "spring-version"
   | "package" | "package-renamed" | "class-moved" | "class-removed" | "class-unknown"
   | "jakarta-package" | "web-xml" | "xml-namespace";
-export interface MigrationItem { file: string; line: number; kind: MigrationKind; from: string; to: string | null; action: MigrationAction; reason: string }
+/** 파일 원문 오프셋 기준 치환(2단계 적용용). start==end 이면 삽입. */
+export interface TextEdit { start: number; end: number; replacement: string }
+export interface MigrationItem { file: string; line: number; kind: MigrationKind; from: string; to: string | null; action: MigrationAction; reason: string; edits?: TextEdit[] }
 export type SourceEra = "3.x" | "4.x" | "5.x" | "unknown";
 export interface MigrateResult {
   projectDir: string;
@@ -68,9 +72,11 @@ export interface MigrateResult {
 export interface MigrateOptions { projectDir: string; target?: "5.x"; maxFiles?: number }
 
 // ── 유틸 ──────────────────────────────────────────────
-const SKIP_DIRS = new Set([".git", ".svn", ".hg", "target", "build", "node_modules", ".idea", ".settings", ".gradle", "bin", "out", "dist", ".mvn"]);
+const SKIP_DIRS = new Set([".git", ".svn", ".hg", "target", "build", "node_modules", ".idea", ".settings", ".gradle", "bin", "out", "dist", ".mvn", "migration-backup", "upgrade-backup", "remove-backup"]);
 const TEXT_EXT = new Set([".java", ".xml", ".jsp", ".jspx", ".jspf", ".tag", ".tagx", ".gradle", ".kts", ".properties", ".yml", ".yaml"]);
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
+/** 5.x 관례의 RTE 버전 속성명(parent 를 쓰지 않을 때) */
+export const RTE_VERSION_PROPERTY = "org.egovframe.rte.version";
 
 /** 버전 문자열을 숫자 배열로 비교 — a < b 이면 true. 숫자로 시작하지 않으면 비교 불가(null). */
 export function versionBelow(a: string, b: string): boolean | null {
@@ -84,7 +90,7 @@ export function versionBelow(a: string, b: string): boolean | null {
   return false;
 }
 
-const lineAt = (text: string, offset: number): number => { let n = 1; for (let i = 0; i < offset && i < text.length; i++) if (text.charCodeAt(i) === 10) n++; return n; };
+export const lineAt = (text: string, offset: number): number => { let n = 1; for (let i = 0; i < offset && i < text.length; i++) if (text.charCodeAt(i) === 10) n++; return n; };
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const globMatch = (pattern: string, value: string) => new RegExp(`^${pattern.split("*").map(escapeRe).join(".*")}$`).test(value);
 
@@ -184,25 +190,37 @@ const JAVAX_TOKEN_RE = /\bjavax(?:\.[a-z_][a-z0-9_]*)+/g;
 
 function scanTextLines(rel: string, text: string, rules: MigrationRules, push: (i: MigrationItem) => void, opts: { rte: boolean; javax: boolean }) {
   const lines = text.split("\n");
+  let offset = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const seen = new Set<string>();
+    const seen = new Map<string, MigrationItem>();
     if (opts.rte && (line.includes("egovframework.rte") || line.includes("org.egovframe.rte"))) {
       for (const m of line.matchAll(RTE_TOKEN_RE)) {
         const c = classifyRteToken(m[0], rules);
-        if (!c || seen.has(c.from)) continue;
-        seen.add(c.from);
-        push({ file: rel, line: i + 1, ...c });
+        if (!c) continue;
+        const start = offset + (m.index ?? 0);
+        const edit: TextEdit | null = c.action === "auto" && c.to ? { start, end: start + c.from.length, replacement: c.to } : null;
+        const prev = seen.get(c.from);
+        if (prev) { if (edit) (prev.edits ??= []).push(edit); continue; } // 같은 줄의 반복 참조는 한 항목에 편집만 추가
+        const item: MigrationItem = { file: rel, line: i + 1, ...c, ...(edit ? { edits: [edit] } : {}) };
+        seen.set(c.from, item);
+        push(item);
       }
     }
     if (opts.javax && line.includes("javax.")) {
       for (const m of line.matchAll(JAVAX_TOKEN_RE)) {
         const to = classifyJavaxPackage(m[0], rules);
-        if (!to || seen.has(m[0])) continue;
-        seen.add(m[0]);
-        push({ file: rel, line: i + 1, kind: "jakarta-package", from: m[0], to, action: "auto", reason: "Jakarta EE 9+ 패키지 이름 변경(Spring 6)" });
+        if (!to) continue;
+        const start = offset + (m.index ?? 0);
+        const edit: TextEdit = { start, end: start + m[0].length, replacement: to };
+        const prev = seen.get(m[0]);
+        if (prev) { (prev.edits ??= []).push(edit); continue; }
+        const item: MigrationItem = { file: rel, line: i + 1, kind: "jakarta-package", from: m[0], to, action: "auto", reason: "Jakarta EE 9+ 패키지 이름 변경(Spring 6)", edits: [edit] };
+        seen.set(m[0], item);
+        push(item);
       }
     }
+    offset += line.length + 1;
   }
 }
 
@@ -213,8 +231,14 @@ function scanWebXml(rel: string, text: string, rules: MigrationRules, push: (i: 
   const line = lineAt(text, open.index ?? 0);
   const ns = open[0].match(/\sxmlns="([^"]+)"/)?.[1];
   const ver = open[0].match(/\sversion="([^"]+)"/)?.[1];
-  if (ns && w.legacyNamespaces.includes(ns))
-    push({ file: rel, line, kind: "web-xml", from: `xmlns="${ns}"${ver ? ` version="${ver}"` : ""}`, to: `xmlns="${w.namespace}" version="${w.version}" (schemaLocation: ${w.schemaLocation})`, action: "auto", reason: "Servlet 5.0+(Jakarta) web.xml 스키마" });
+  if (ns && w.legacyNamespaces.includes(ns)) {
+    // 여는 태그 전체를 다시 쓴다: xmlns·version 교체, schemaLocation 이 있으면 교체·없으면 추가하지 않음(xsi 선언이 없을 수 있음)
+    let tag = open[0].replace(/(\s)xmlns="[^"]+"/, `$1xmlns="${w.namespace}"`);
+    tag = ver ? tag.replace(/(\s)version="[^"]+"/, `$1version="${w.version}"`) : tag.replace(/<web-app\b/, `<web-app version="${w.version}"`);
+    if (/\sxsi:schemaLocation="[^"]*"/.test(tag)) tag = tag.replace(/(\s)xsi:schemaLocation="[^"]*"/, `$1xsi:schemaLocation="${w.schemaLocation}"`);
+    const start = open.index ?? 0;
+    push({ file: rel, line, kind: "web-xml", from: `xmlns="${ns}"${ver ? ` version="${ver}"` : ""}`, to: `xmlns="${w.namespace}" version="${w.version}" (schemaLocation: ${w.schemaLocation})`, action: "auto", reason: "Servlet 5.0+(Jakarta) web.xml 스키마", edits: [{ start, end: start + open[0].length, replacement: tag }] });
+  }
   else if (!ns && /<!DOCTYPE web-app/i.test(text))
     push({ file: rel, line, kind: "web-xml", from: "DOCTYPE web-app (Servlet 2.3 DTD)", to: `xmlns="${w.namespace}" version="${w.version}"`, action: "manual", reason: "DTD 기반 web.xml 은 스키마 기반으로 다시 작성" });
 }
@@ -234,31 +258,39 @@ function scanSpringXmlNamespaces(rel: string, text: string, rules: MigrationRule
   }
 }
 
-interface PomDep { groupId: string; artifactId: string; version: string | null; line: number; scope: string | null }
-function parsePomProperties(text: string): Map<string, string> {
+export interface PomSpan { start: number; end: number }
+export interface PomDep { groupId: string; artifactId: string; version: string | null; line: number; scope: string | null; block: PomSpan; gSpan: PomSpan; aSpan: PomSpan; vSpan: PomSpan | null; indent: string }
+export function parsePomProperties(text: string): Map<string, string> {
   const props = new Map<string, string>();
   const block = text.match(/<properties>([\s\S]*?)<\/properties>/);
   if (block) for (const m of block[1].matchAll(/<([\w.\-]+)>\s*([^<]*?)\s*<\/\1>/g)) props.set(m[1], m[2]);
   return props;
 }
-function resolveProp(v: string | null, props: Map<string, string>): string | null {
+export function resolveProp(v: string | null, props: Map<string, string>): string | null {
   if (v == null) return null;
   let out = v;
   for (let i = 0; i < 5 && /\$\{[\w.\-]+\}/.test(out); i++) out = out.replace(/\$\{([\w.\-]+)\}/g, (_, k) => props.get(k) ?? `\${${k}}`);
   return out;
 }
-function parsePomDeps(text: string): PomDep[] {
+export function parsePomDeps(text: string): PomDep[] {
   const deps: PomDep[] = [];
   for (const m of text.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
     const body = m[1];
-    const g = body.match(/<groupId>\s*([^<\s]+)\s*<\/groupId>/)?.[1];
-    const aM = body.match(/<artifactId>\s*([^<\s]+)\s*<\/artifactId>/);
-    if (!g || !aM) continue;
+    const base = (m.index ?? 0) + "<dependency>".length;
+    const gM = body.match(/<groupId>(\s*)([^<\s]+)(\s*)<\/groupId>/);
+    const aM = body.match(/<artifactId>(\s*)([^<\s]+)(\s*)<\/artifactId>/);
+    if (!gM || !aM) continue;
+    const vM = body.match(/<version>(\s*)([^<\s]+)(\s*)<\/version>/);
+    const span = (mm: RegExpMatchArray, tag: string): PomSpan => { const st = base + (mm.index ?? 0) + tag.length + 2 + mm[1].length; return { start: st, end: st + mm[2].length }; };
+    const lineStart = text.lastIndexOf("\n", m.index ?? 0) + 1;
     deps.push({
-      groupId: g, artifactId: aM[1],
-      version: body.match(/<version>\s*([^<\s]+)\s*<\/version>/)?.[1] ?? null,
+      groupId: gM[2], artifactId: aM[2],
+      version: vM?.[2] ?? null,
       scope: body.match(/<scope>\s*([^<\s]+)\s*<\/scope>/)?.[1] ?? null,
-      line: lineAt(text, (m.index ?? 0) + (aM.index ?? 0)),
+      line: lineAt(text, base + (aM.index ?? 0)),
+      block: { start: m.index ?? 0, end: (m.index ?? 0) + m[0].length },
+      gSpan: span(gM, "groupId"), aSpan: span(aM, "artifactId"), vSpan: vM ? span(vM, "version") : null,
+      indent: text.slice(lineStart, m.index ?? 0).match(/^[ \t]*$/) ? text.slice(lineStart, m.index ?? 0) : "",
     });
   }
   return deps;
@@ -278,23 +310,29 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
   }
 
   // RTE 버전 속성
+  const legacyVersionKeys = new Set<string>();
   for (const key of t.versionProperties.legacy) {
     const m = text.match(new RegExp(`<${escapeRe(key)}>\\s*([^<\\s]+)\\s*</${escapeRe(key)}>`));
     if (!m) continue;
     const below = versionBelow(m[1], t.runtimeVersion);
     if (below === false) continue;
+    legacyVersionKeys.add(key);
+    const start = m.index ?? 0;
     push({
-      file: rel, line: lineAt(text, m.index ?? 0), kind: "rte-version", from: `<${key}>${m[1]}</${key}>`,
-      to: `<org.egovframe.rte.version>${t.runtimeVersion}</org.egovframe.rte.version> (또는 parent 관리)`, action: "auto",
+      file: rel, line: lineAt(text, start), kind: "rte-version", from: `<${key}>${m[1]}</${key}>`,
+      to: `<${RTE_VERSION_PROPERTY}>${t.runtimeVersion}</${RTE_VERSION_PROPERTY}> (또는 parent 관리)`, action: "auto",
       reason: t.versionProperties.note,
+      edits: [{ start, end: start + m[0].length, replacement: `<${RTE_VERSION_PROPERTY}>${t.runtimeVersion}</${RTE_VERSION_PROPERTY}>` }],
     });
   }
 
   // 저장소 URL
   for (const url of t.legacyRepositoryUrls) {
     const re = new RegExp(`<url>\\s*${escapeRe(url)}\\s*</url>`, "g");
-    for (const m of text.matchAll(re))
-      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: "표준프레임워크 Maven 저장소는 HTTPS 주소만 유효" });
+    for (const m of text.matchAll(re)) {
+      const start = (m.index ?? 0) + m[0].indexOf(url);
+      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: "표준프레임워크 Maven 저장소는 HTTPS 주소만 유효", edits: [{ start, end: start + url.length, replacement: t.repositoryUrl }] });
+    }
   }
 
   // Java 릴리스
@@ -303,14 +341,19 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     if (!m) continue;
     const v = resolveProp(m[1], props) ?? m[1];
     const num = v.startsWith("1.") ? Number(v.slice(2)) : Number.parseInt(v, 10);
-    if (Number.isFinite(num) && num < rules.build.javaRelease)
-      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${key}>${m[1]}</${key}>`, to: `${rules.build.javaRelease}`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상` });
+    if (Number.isFinite(num) && num < rules.build.javaRelease) {
+      const vs = (m.index ?? 0) + m[0].indexOf(m[1], key.length + 2);
+      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${key}>${m[1]}</${key}>`, to: `<${key}>${rules.build.javaRelease}</${key}>`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, edits: [{ start: vs, end: vs + m[1].length, replacement: String(rules.build.javaRelease) }] });
+    }
   }
   for (const m of text.matchAll(/<(source|target|release)>\s*([^<\s]+)\s*<\/\1>/g)) {
-    const v = resolveProp(m[2], props) ?? m[2];
+    if (/^\$\{/.test(m[2])) continue; // 속성 참조는 속성 쪽 항목이 담당
+    const v = m[2];
     const num = v.startsWith("1.") ? Number(v.slice(2)) : Number.parseInt(v, 10);
-    if (Number.isFinite(num) && num < rules.build.javaRelease && /maven-compiler-plugin/.test(text))
-      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${m[1]}>${m[2]}</${m[1]}>`, to: `<release>${rules.build.javaRelease}</release>`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상` });
+    if (Number.isFinite(num) && num < rules.build.javaRelease && /maven-compiler-plugin/.test(text)) {
+      const vs = (m.index ?? 0) + m[0].indexOf(m[2], m[1].length + 2);
+      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${m[1]}>${m[2]}</${m[1]}>`, to: `<${m[1]}>${rules.build.javaRelease}</${m[1]}>`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, edits: [{ start: vs, end: vs + m[2].length, replacement: String(rules.build.javaRelease) }] });
+    }
   }
 
   // Spring 버전 속성
@@ -322,24 +365,37 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
   }
 
   // 의존성
-  for (const d of parsePomDeps(text)) {
+  const deps = parsePomDeps(text);
+  // 치환 뒤 pom 에 존재하게 될 좌표(기존 + Jakarta 치환 결과) — 구현 좌표(also) 중복 삽입을 막는다
+  const resulting = new Set(deps.map((x) => { const jk = ix.jakartaArtifacts.get(`${x.groupId}:${x.artifactId}`); return jk ? `${jk.to.groupId}:${jk.to.artifactId}` : `${x.groupId}:${x.artifactId}`; }));
+  for (const d of deps) {
     const key = `${d.groupId}:${d.artifactId}`;
     const ver = resolveProp(d.version, props);
     const verText = d.version ? `:${d.version}` : "";
 
+    // RTE 의존성의 <version> 치환: 리터럴 → 5.0.2, ${레거시 속성} → ${org.egovframe.rte.version}(속성도 함께 바뀜), 그 외 속성은 그대로
+    const rteVersionEdit = (): TextEdit[] => {
+      if (!d.vSpan || !d.version) return [];
+      const ref = d.version.match(/^\$\{([\w.\-]+)\}$/)?.[1];
+      if (ref) return legacyVersionKeys.has(ref) && ref !== RTE_VERSION_PROPERTY ? [{ start: d.vSpan.start, end: d.vSpan.end, replacement: `\${${RTE_VERSION_PROPERTY}}` }] : [];
+      return [{ start: d.vSpan.start, end: d.vSpan.end, replacement: t.runtimeVersion }];
+    };
     const coord = ix.coordByFrom.get(key);
     if (coord) {
       ctx.hasRte = true;
       const era = coord.from.find((f) => `${f.groupId}:${f.artifactId}` === key)?.era as SourceEra | undefined;
       if (era) ctx.eras.add(era);
-      push({ file: rel, line: d.line, kind: "coordinate", from: `${key}${verText}`, to: `${coord.to.groupId}:${coord.to.artifactId}${d.version ? `:${t.runtimeVersion}` : ""}`, action: "auto", reason: `5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})` });
+      push({
+        file: rel, line: d.line, kind: "coordinate", from: `${key}${verText}`, to: `${coord.to.groupId}:${coord.to.artifactId}${d.version ? `:${t.runtimeVersion}` : ""}`, action: "auto", reason: `5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})`,
+        edits: [{ start: d.gSpan.start, end: d.gSpan.end, replacement: coord.to.groupId }, { start: d.aSpan.start, end: d.aSpan.end, replacement: coord.to.artifactId }, ...rteVersionEdit()],
+      });
       continue;
     }
     if (ix.toArtifacts.has(key)) {
       ctx.hasRte = true;
       ctx.eras.add("5.x");
       if (ver && versionBelow(ver, t.runtimeVersion) === true)
-        push({ file: rel, line: d.line, kind: "rte-version", from: `${key}${verText}`, to: `${key}:${t.runtimeVersion}`, action: "auto", reason: `RTE ${t.runtimeVersion} 기준` });
+        push({ file: rel, line: d.line, kind: "rte-version", from: `${key}${verText}`, to: `${key}:${t.runtimeVersion}`, action: "auto", reason: `RTE ${t.runtimeVersion} 기준`, edits: rteVersionEdit() });
       continue;
     }
     const removedModule = rules.removedModules.find((m) => m.fromArtifactId === d.artifactId && /^(egovframework\.rte|org\.egovframe\.rte)$/.test(d.groupId));
@@ -356,7 +412,20 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     const jk = ix.jakartaArtifacts.get(key);
     if (jk) {
       const also = jk.also ? ` + ${jk.also.groupId}:${jk.also.artifactId}:${jk.also.version}` : "";
-      push({ file: rel, line: d.line, kind: "jakarta-artifact", from: `${key}${verText}`, to: `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}${also}`, action: "auto", reason: jk.note ?? "Jakarta EE 9+ 좌표" });
+      const edits: TextEdit[] = [
+        { start: d.gSpan.start, end: d.gSpan.end, replacement: jk.to.groupId },
+        { start: d.aSpan.start, end: d.aSpan.end, replacement: jk.to.artifactId },
+      ];
+      if (d.vSpan) edits.push({ start: d.vSpan.start, end: d.vSpan.end, replacement: jk.toVersion });
+      // 구현 좌표(JSTL 의 glassfish 등)가 pom 에 없으면 바로 뒤에 형제 <dependency> 를 삽입
+      if (jk.also && !resulting.has(`${jk.also.groupId}:${jk.also.artifactId}`)) {
+        resulting.add(`${jk.also.groupId}:${jk.also.artifactId}`);
+        const ind = d.indent;
+        const inner = ind ? `${ind}    ` : "    ";
+        const scope = d.scope ? `\n${inner}<scope>${d.scope}</scope>` : "";
+        edits.push({ start: d.block.end, end: d.block.end, replacement: `\n${ind}<dependency>\n${inner}<groupId>${jk.also.groupId}</groupId>\n${inner}<artifactId>${jk.also.artifactId}</artifactId>\n${inner}<version>${jk.also.version}</version>${scope}\n${ind}</dependency>` });
+      }
+      push({ file: rel, line: d.line, kind: "jakarta-artifact", from: `${key}${verText}`, to: `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}${also}`, action: "auto", reason: jk.note ?? "Jakarta EE 9+ 좌표", edits });
       continue;
     }
     for (const lib of rules.libraries) {
@@ -378,18 +447,21 @@ function scanGradle(rel: string, text: string, rules: MigrationRules, push: (i: 
   for (const m of text.matchAll(/["']([\w.\-]+):([\w.\-]+)(?::([^"':\s]+))?["']/g)) {
     const key = `${m[1]}:${m[2]}`;
     const line = lineAt(text, m.index ?? 0);
+    const inner = { start: (m.index ?? 0) + 1, end: (m.index ?? 0) + m[0].length - 1 };
     const coord = ix.coordByFrom.get(key);
     if (coord) {
       ctx.hasRte = true;
       const era = coord.from.find((f) => `${f.groupId}:${f.artifactId}` === key)?.era as SourceEra | undefined;
       if (era) ctx.eras.add(era);
-      push({ file: rel, line, kind: "coordinate", from: m[0].slice(1, -1), to: `${coord.to.groupId}:${coord.to.artifactId}:${t.runtimeVersion}`, action: "auto", reason: `5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})` });
+      const to = `${coord.to.groupId}:${coord.to.artifactId}:${t.runtimeVersion}`;
+      push({ file: rel, line, kind: "coordinate", from: m[0].slice(1, -1), to, action: "auto", reason: `5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})`, edits: [{ ...inner, replacement: to }] });
       continue;
     }
     if (ix.toArtifacts.has(key)) { ctx.hasRte = true; ctx.eras.add("5.x"); continue; }
     const jk = ix.jakartaArtifacts.get(key);
     if (jk) {
-      push({ file: rel, line, kind: "jakarta-artifact", from: m[0].slice(1, -1), to: `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}`, action: "auto", reason: jk.note ?? "Jakarta EE 9+ 좌표" });
+      const to = `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}`;
+      push({ file: rel, line, kind: "jakarta-artifact", from: m[0].slice(1, -1), to, action: "auto", reason: jk.note ?? "Jakarta EE 9+ 좌표", edits: [{ ...inner, replacement: to }] });
       continue;
     }
     for (const lib of rules.libraries) {
@@ -406,7 +478,7 @@ function scanGradle(rel: string, text: string, rules: MigrationRules, push: (i: 
       const line = lineAt(text, idx);
       if (!reportedRepoLines.has(line)) {
         reportedRepoLines.add(line);
-        push({ file: rel, line, kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: "표준프레임워크 Maven 저장소는 HTTPS 주소만 유효" });
+        push({ file: rel, line, kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: "표준프레임워크 Maven 저장소는 HTTPS 주소만 유효", edits: [{ start: idx, end: idx + url.length, replacement: t.repositoryUrl }] });
       }
       idx = text.indexOf(url, idx + url.length);
     }
@@ -414,12 +486,14 @@ function scanGradle(rel: string, text: string, rules: MigrationRules, push: (i: 
   const src = text.match(/sourceCompatibility\s*=?\s*["']?(?:JavaVersion\.VERSION_)?(1_8|1\.8|[0-9]+)/);
   if (src) {
     const num = src[1].startsWith("1") && src[1].length === 3 ? 8 : Number.parseInt(src[1], 10);
-    if (Number.isFinite(num) && num < rules.build.javaRelease)
-      push({ file: rel, line: lineAt(text, src.index ?? 0), kind: "java-release", from: src[0], to: `${rules.build.javaRelease}`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상` });
+    if (Number.isFinite(num) && num < rules.build.javaRelease) {
+      const vs = (src.index ?? 0) + src[0].length - src[1].length;
+      push({ file: rel, line: lineAt(text, src.index ?? 0), kind: "java-release", from: src[0], to: `${rules.build.javaRelease}`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, edits: [{ start: vs, end: vs + src[1].length, replacement: String(rules.build.javaRelease) }] });
+    }
   }
 }
 
-function walk(root: string, maxFiles: number): string[] {
+export function walkProjectFiles(root: string, maxFiles: number): string[] {
   const out: string[] = [];
   const stack = [root];
   while (stack.length && out.length < maxFiles) {
@@ -447,7 +521,7 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
   const dir = path.resolve(opts.projectDir);
   const diag = diagnoseProject({ projectDir: dir }); // 존재·빌드 도구·RTE 버전
   const maxFiles = opts.maxFiles ?? 20_000;
-  const files = walk(dir, maxFiles);
+  const files = walkProjectFiles(dir, maxFiles);
   const items: MigrationItem[] = [];
   const notes: string[] = [];
   const ctx = { eras: new Set<SourceEra>(), hasRte: false, has5xParent: false };
@@ -544,5 +618,148 @@ export function renderMigrationMarkdown(r: MigrateResult): string {
   section("수동 전환 항목", "manual");
   section("자동 치환 가능 항목", "auto");
   L.push(``, `---`, `자동 항목은 2단계(\`migrate_egovframe_project\` apply, v0.30) 에서 치환하고, 수동 항목은 사유에 따라 코드를 고칩니다. 이 진단은 파일을 수정하지 않았습니다.`);
+  return L.join("\n");
+}
+
+// ── 2단계: 적용 (v0.30.0) ─────────────────────────────
+export interface ApplyFilePlan { file: string; items: number; edits: number; preview: { line: number; before: string; after: string }[] }
+export interface MigrateApplyResult extends MigrateResult {
+  mode: "apply";
+  dryRun: boolean;
+  /** 적용(또는 dryRun 이면 적용 예정)한 auto 항목·편집·파일 수 */
+  applied: { items: number; edits: number; files: number };
+  /** 남겨 둔 manual 항목 수 */
+  skippedManual: number;
+  files: ApplyFilePlan[];
+  /** 겹치는 편집 때문에 건너뛴 항목(파일:라인) — 정상적으로는 없다 */
+  conflicts: string[];
+  backupDir?: string;
+  planPath?: string;
+  /** 적용 후 다시 진단한 요약(dryRun 이면 없음). auto 는 0 이어야 한다 */
+  remaining?: MigrateResult["summary"];
+}
+export interface ApplyOptions extends MigrateOptions { dryRun?: boolean; faultInjection?: "after-files" }
+
+/** 파일 하나에 편집을 적용한다. 겹치는 편집은 뒤(오프셋 큰) 것부터 적용하며, 겹치면 건너뛰고 conflicts 에 기록. */
+export function applyTextEdits(text: string, edits: TextEdit[]): { text: string; applied: number; skipped: TextEdit[] } {
+  const sorted = [...edits].sort((a, b) => b.start - a.start || b.end - a.end);
+  let out = text;
+  let minStart = Number.POSITIVE_INFINITY;
+  let applied = 0;
+  const skipped: TextEdit[] = [];
+  for (const e of sorted) {
+    if (e.start < 0 || e.end > text.length || e.start > e.end || e.end > minStart) { skipped.push(e); continue; }
+    out = out.slice(0, e.start) + e.replacement + out.slice(e.end);
+    minStart = e.start;
+    applied++;
+  }
+  return { text: out, applied, skipped };
+}
+
+function previewDiff(before: string, after: string, cap = 60): ApplyFilePlan["preview"] {
+  const a = before.split("\n"), b = after.split("\n");
+  const out: ApplyFilePlan["preview"] = [];
+  // 삽입으로 줄 수가 달라질 수 있어 앞에서부터 맞춰 보고, 어긋나면 나머지를 통째로 보고하지 않고 앞 구간만 비교한다
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n && out.length < cap; i++) if (a[i] !== b[i]) out.push({ line: i + 1, before: a[i].trimEnd(), after: b[i].trimEnd() });
+  if (b.length > a.length && out.length < cap) out.push({ line: a.length + 1, before: "", after: `(+${b.length - a.length}줄 삽입)` });
+  return out;
+}
+
+/** 1단계 진단의 auto 항목을 파일에 적용한다. dryRun(기본 true)이면 계획만 돌려주고, 적용 시 transaction 으로 백업·계획 파일과 함께 기록한다. */
+export async function applyMigration(opts: ApplyOptions): Promise<MigrateApplyResult> {
+  const dryRun = opts.dryRun ?? true;
+  const r = migrateProject(opts);
+  const dir = r.projectDir;
+  const byFile = new Map<string, MigrationItem[]>();
+  for (const i of r.items) if (i.action === "auto" && i.edits?.length) (byFile.get(i.file) ?? byFile.set(i.file, []).get(i.file)!).push(i);
+  const skippedManual = r.items.filter((i) => i.action === "manual").length;
+
+  const files: ApplyFilePlan[] = [];
+  const conflicts: string[] = [];
+  const newTexts = new Map<string, { before: string; after: string }>();
+  let appliedItems = 0, appliedEdits = 0;
+  for (const [file, items] of [...byFile].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const abs = path.join(dir, file);
+    const before = fs.readFileSync(abs, "utf8");
+    const edits = items.flatMap((i) => i.edits ?? []);
+    const { text, applied, skipped } = applyTextEdits(before, edits);
+    for (const sk of skipped) {
+      const owner = items.find((i) => i.edits?.includes(sk));
+      conflicts.push(`${file}:${owner?.line ?? "?"} ${owner?.from ?? ""}`);
+    }
+    if (text === before) continue;
+    const itemsApplied = items.filter((i) => !(i.edits ?? []).some((e) => skipped.includes(e))).length;
+    appliedItems += itemsApplied;
+    appliedEdits += applied;
+    newTexts.set(file, { before, after: text });
+    files.push({ file, items: itemsApplied, edits: applied, preview: previewDiff(before, text) });
+  }
+
+  const base: MigrateApplyResult = {
+    ...r, mode: "apply", dryRun, applied: { items: appliedItems, edits: appliedEdits, files: files.length }, skippedManual, files, conflicts,
+  };
+  if (dryRun || files.length === 0) return base;
+
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupRelDir = path.join("migration-backup", `${ts}-${randomUUID()}`);
+  const planRel = path.join(backupRelDir, "migration-plan.json");
+  await withFileTransaction(dir, "5.x 전환 적용", (tx) => {
+    for (const [file, { before }] of newTexts) {
+      const current = tx.readFile(file);
+      if (current === null || current.toString("utf8") !== before) throw new Error(`진단 이후 파일이 변경되어 적용을 중단합니다: ${file}`);
+    }
+    for (const [file, { before, after }] of newTexts) {
+      tx.writeFile(path.join(backupRelDir, file), before, { mustNotExist: true });
+      tx.writeFile(file, after);
+    }
+    const plan = {
+      createdAt: new Date().toISOString(),
+      tool: "migrate_egovframe_project",
+      target: r.target,
+      rules: r.rules,
+      applied: base.applied,
+      files: files.map((f) => ({ file: f.file, items: f.items, edits: f.edits })),
+      items: r.items.map(({ edits: _e, ...rest }) => rest),
+    };
+    tx.writeFile(planRel, `${JSON.stringify(plan, null, 2)}\n`, { mustNotExist: true });
+    if (opts.faultInjection === "after-files") throw new Error("migration fault injection: after-files");
+  });
+
+  const after = migrateProject(opts);
+  return { ...base, backupDir: path.join(dir, backupRelDir), planPath: path.join(dir, planRel), remaining: after.summary };
+}
+
+/** 적용 결과를 Markdown 으로 렌더링한다. */
+export function renderMigrationApplyMarkdown(r: MigrateApplyResult): string {
+  const L: string[] = [];
+  L.push(`# 표준프레임워크 5.x 전환 ${r.dryRun ? "적용 계획(dryRun)" : "적용 결과"}`, ``);
+  L.push(`- 경로: ${r.projectDir}`);
+  L.push(`- 현재 RTE ${r.rteVersion ?? "미검출"} (${r.sourceEra} 좌표) → 목표 ${r.rules.runtimeVersion}`);
+  L.push(`- 진단 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual}) → ${r.dryRun ? "적용 예정" : "적용"} ${r.applied.items}항목 · 편집 ${r.applied.edits}곳 · 파일 ${r.applied.files}개 · 수동 항목 ${r.skippedManual}건은 그대로 둠`);
+  if (r.conflicts.length) L.push(`- ⚠️ 겹치는 편집으로 건너뜀 ${r.conflicts.length}건: ${r.conflicts.slice(0, 5).join(", ")}${r.conflicts.length > 5 ? " …" : ""}`);
+  if (!r.dryRun && r.backupDir) L.push(`- 백업: ${r.backupDir} (원본 파일 + migration-plan.json)`);
+  if (r.remaining) L.push(`- 적용 후 재진단: 자동 ${r.remaining.auto} · 수동 ${r.remaining.manual}`);
+  for (const n of r.notes) L.push(`- ${n}`);
+  if (r.files.length) {
+    L.push(``, `## 파일별 변경${r.dryRun ? " 미리보기" : ""}`);
+    for (const f of r.files) {
+      L.push(``, `### ${f.file} — ${f.items}항목 · ${f.edits}곳`, ``);
+      for (const p of f.preview.slice(0, 20)) {
+        if (p.before) L.push(`- L${p.line}: \`${p.before.trim()}\``, `  → \`${p.after.trim()}\``);
+        else L.push(`- L${p.line}: ${p.after}`);
+      }
+      if (f.preview.length > 20) L.push(`- … 외 ${f.preview.length - 20}줄`);
+    }
+  }
+  const manual = r.items.filter((i) => i.action === "manual");
+  if (manual.length) {
+    L.push(``, `## 남은 수동 항목 (${manual.length})`, ``);
+    for (const i of manual.slice(0, 50)) L.push(`- ${i.file}:L${i.line} [${KIND_LABEL[i.kind]}] \`${i.from}\`${i.to ? ` → \`${i.to}\`` : ""} — ${i.reason}`);
+    if (manual.length > 50) L.push(`- … 외 ${manual.length - 50}건`);
+  }
+  L.push(``, `---`, r.dryRun
+    ? `적용하려면 dryRun=false 로 다시 호출하세요. 적용 시 원본은 migration-backup/ 에 보관되고, 실패하면 작업 전 상태로 되돌립니다.`
+    : `다음 단계: build_egovframe_project(goal="compile") 로 컴파일을 확인하고, 오류가 나면 위 수동 항목부터 처리하세요.`);
   return L.join("\n");
 }

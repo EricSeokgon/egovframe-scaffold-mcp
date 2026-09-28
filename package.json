@@ -1,6 +1,6 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트·CRUD 스캐폴딩과 검증된 공통컴포넌트 완전 조립 MCP 서버",
   "license": "Apache-2.0",
   "type": "module",
@@ -18,7 +18,8 @@
     "generate:template-catalog": "node scripts/generate-template-catalog.mjs",
     "generate:config-catalog": "node scripts/generate-config-catalog.mjs",
     "generate:migration-rules": "node scripts/generate-migration-rules.mjs",
-    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:catalog-sync && npm run test:template-catalog && npm run test:config && npm run test:migration-rules && npm run test:migrate && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade && npm run test:remove && npm run test:transaction && npm run test:allowed-roots && npm run test:explain && npm run test:ci && npm run test:build && npm run test:test && npm run test:pom && npm run test:crud && npm run test:handshake",
+    "generate:dependency-baseline": "node scripts/generate-dependency-baseline.mjs",
+    "prepublishOnly": "npm run build && npm run test:catalog && npm run test:catalog-sync && npm run test:template-catalog && npm run test:config && npm run test:migration-rules && npm run test:migrate && npm run test:dependencies && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:upgrade && npm run test:remove && npm run test:transaction && npm run test:allowed-roots && npm run test:explain && npm run test:ci && npm run test:build && npm run test:test && npm run test:pom && npm run test:crud && npm run test:handshake",
     "test:ai": "node test/ai.mjs",
     "generate:ai-catalog": "node scripts/generate-ai-catalog.mjs",
     "test:ai-assembly": "node test/ai-assembly.mjs",
@@ -46,6 +47,9 @@
     "test:migrate": "node test/migrate.mjs",
     "test:migration-rules": "node test/migration-rules.mjs",
     "test:migration-rules-live": "node test/migration-rules-live.mjs",
+    "test:migrate-integration": "node test/migrate-integration.mjs",
+    "test:dependencies": "node test/dependencies.mjs",
+    "test:dependencies-live": "node test/dependencies-live.mjs",
     "test:handshake": "node test/handshake.mjs"
   },
   "engines": {
