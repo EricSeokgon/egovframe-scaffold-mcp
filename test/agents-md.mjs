@@ -23,7 +23,8 @@ write(root, ".egovframe-components.json", JSON.stringify({ schemaVersion: 3, sou
 mkdirSync(path.join(root, "upgrade-backup"), { recursive: true });
 
 const facts = collectAgentsFacts(root);
-assert(facts.buildSystem === "maven" && facts.wrapper === true && facts.commands.compile.endsWith("mvnw -B -e compile") && facts.commands.package.includes("-DskipTests"), `maven + 래퍼 명령 (${facts.commands.compile})`);
+// 래퍼 명령은 플랫폼에 따라 ./mvnw(POSIX) 또는 mvnw.cmd(Windows)
+assert(facts.buildSystem === "maven" && facts.wrapper === true && /^(\.\/mvnw|mvnw\.cmd) -B -e compile$/.test(facts.commands.compile) && facts.commands.package.includes("-DskipTests"), `maven + 래퍼 명령 (${facts.commands.compile})`);
 assert(facts.rteVersion === "5.0.2" && facts.sourceEra === "5.x" && facts.parent === "org.egovframe.web:egovframe-web-config-parent:5.0.1" && facts.database === "mysql", "RTE·era·parent·DbType");
 assert(JSON.stringify(facts.basePackages) === JSON.stringify(["egovframework.com", "kr.go"]), `기본 패키지 (${facts.basePackages})`);
 assert(facts.components.map((c) => `${c.id}:${c.managed}`).sort().join() === "bbs:false,cmm:true", `컴포넌트·매니페스트 관리 여부 (${facts.components.map((c) => `${c.id}:${c.managed}`)})`);
@@ -31,7 +32,7 @@ assert(facts.configDirs.includes("src/main/resources/egovframework/spring") && f
 assert(facts.migration && facts.migration.auto === 0 && facts.migration.manual === 0 && facts.manifest && facts.backupDirs.join() === "upgrade-backup", "5.x 전환 0건, 매니페스트, 백업 디렉터리 감지");
 
 const md = renderAgentsMd(facts, { projectName: "demo", lang: "ko", date: "2026-09-30" });
-assert(md.startsWith("# AGENTS.md — demo") && md.includes("## 빌드·테스트 명령") && md.includes("./mvnw -B -e compile   # 컴파일") && md.includes("| cmm |") && md.includes("매니페스트 관리") && md.includes("5.x 기준을 만족") && md.includes("upgrade-backup") && md.includes("_생성: 2026-09-30"), "한국어 렌더링");
+assert(md.startsWith("# AGENTS.md — demo") && md.includes("## 빌드·테스트 명령") && md.includes(`${facts.commands.compile}   # 컴파일`) && md.includes("| cmm |") && md.includes("매니페스트 관리") && md.includes("5.x 기준을 만족") && md.includes("upgrade-backup") && md.includes("_생성: 2026-09-30"), "한국어 렌더링");
 assert(md.includes("`org.egovframe.rte.*`(실행환경)와 `jakarta.*` 네임스페이스만") , "5.x 프로젝트 규칙: jakarta 만 사용");
 const en = renderAgentsMd(facts, { projectName: "demo", lang: "en", date: "2026-09-30" });
 assert(en.includes("## Build and test commands") && en.includes("Already on the 5.x baseline") && en.includes("manifest-managed") && !en.includes("컴파일"), "영어 렌더링");
