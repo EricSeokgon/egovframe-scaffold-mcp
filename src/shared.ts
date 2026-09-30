@@ -1,5 +1,6 @@
 // 공용 헬퍼 — 다운로드 타임아웃·fetch·해시.
 import { createHash } from "node:crypto";
+import { networkHint } from "./network.js";
 
 /** 템플릿 다운로드 제한 시간(ms) — 무응답 시 무한 대기를 방지한다. */
 export const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -11,9 +12,14 @@ export async function fetchWithTimeout(url: string, timeoutMs: number, init: Req
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (e) {
+    // 실패 원인(프록시 미설정·IPv6·TLS·DNS)에 맞는 한 줄 처방을 붙인다 (v0.31)
+    const hint = networkHint(e, url);
     if (e instanceof Error && e.name === "AbortError")
-      throw new Error(`요청 시간 초과(${timeoutMs}ms): ${url}`);
-    throw e;
+      throw new Error(`요청 시간 초과(${timeoutMs}ms): ${url}\n${hint}`);
+    const msg = e instanceof Error ? e.message : String(e);
+    const wrapped = new Error(`${msg}\n${hint}`);
+    (wrapped as Error & { cause?: unknown }).cause = e;
+    throw wrapped;
   } finally {
     clearTimeout(timer);
   }

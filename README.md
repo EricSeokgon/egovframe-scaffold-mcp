@@ -3,6 +3,8 @@
 [![CI](https://github.com/EricSeokgon/egovframe-scaffold-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/EricSeokgon/egovframe-scaffold-mcp/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/egovframe-scaffold-mcp)](https://www.npmjs.com/package/egovframe-scaffold-mcp)
 
+**English summary: [README.en.md](README.en.md)** · 도구 설명을 영문으로 받으려면 `EGOVFRAME_LANG=en`
+
 전자정부 표준프레임워크(eGovFrame) 프로젝트 스캐폴딩·조립·진단을 제공하는 **MCP(Model Context Protocol) 서버** — 커뮤니티 PoC
 
 > [eGovFramework/egovframe-common-components#1120](https://github.com/eGovFramework/egovframe-common-components/issues/1120) 제안의 개념 증명(Proof of Concept) 구현입니다.
@@ -11,11 +13,11 @@
 Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대화 중 즉시** 표준프레임워크
 프로젝트를 만들고 공통컴포넌트·AI 계층을 조립할 수 있습니다. 기존 프로젝트 진단, 리포트, 안전한 upstream 재동기화도 지원합니다.
 
-현재 v0.30.0은 **도구 25종, 공식 템플릿 22종, 설정 템플릿 21종, 5.x 전환 규칙(RTE 18모듈·클래스 331종 근거)과 적용, 의존성 기준(공식 parent 관리 좌표 139종+계열 7종), 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
+현재 v0.31.0은 **도구 27종, 공식 템플릿 22종, 설정 템플릿 21종, 5.x 전환 규칙(RTE 18모듈·클래스 331종 근거)과 적용, 의존성 기준(공식 parent 관리 좌표 139종+계열 7종), 네트워크 진단·AGENTS.md 생성, 공통컴포넌트 카탈로그 190항목(리프 176종+그룹 14종)**을 제공합니다.
 
-## 진행 현황 (2026-09-28)
+## 진행 현황 (2026-09-30)
 
-- **소스 기준**: v0.30.0(`package.json`), 도구 25종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목.
+- **소스 기준**: v0.31.0(`package.json`), 도구 27종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목.
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
@@ -28,7 +30,8 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - **v0.28.0 추가**: `generate_egovframe_config` — 공식 Initializr 설정 템플릿 21종(datasource·transaction·cache·logging·scheduling·idGeneration·property)을 패키지에 동봉해 **오프라인**으로 Spring 설정 파일을 생성합니다. xml·javaConfig·yaml·properties 형식, Initializr 폼과 같은 필드명·기본값, 기존 파일 보호. 리소스 `egovframe://catalog/config-templates` 로 필드·기본값·선택지를 조회할 수 있고, `sync_egovframe_templates` 가 동봉 템플릿의 upstream 변화를 보고합니다(설계: [docs/design-config-generation.md](docs/design-config-generation.md)).
 - **v0.29.0 추가**: `migrate_egovframe_project` 1단계 — 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 기준으로 스캔해 RTE Maven 좌표·패키지·제거/이동 클래스·`javax→jakarta`·web.xml 스키마·제거된 `egov-*` XML 네임스페이스·교체 필요 라이브러리를 파일·라인 단위로 보고합니다(**읽기 전용**, auto/manual 구분). 규칙은 `egovframe-runtime` 태그(v3.10.0·v4.3.0-Final·v5.0.2-Final) 소스 트리 비교로 생성한 `catalog/migration-rules.json` 에 두고, 목적지 좌표 61건이 실제 Maven 저장소에 있음을 CI 에서 확인합니다. 공식 5.x 템플릿 2종에서 항목 0건(설계: [docs/design-migration.md](docs/design-migration.md)).
 - **v0.30.0 추가**: `migrate_egovframe_project` 2단계(`apply=true`) — 진단의 auto 항목을 하나의 transaction 으로 실제 치환합니다(dryRun 기본, 원본 `migration-backup/` 보관, `migration-plan.json`, 실패 시 복구). 3.10 좌표·javax 픽스처를 적용한 뒤 JDK 17 `mvn compile` 통과를 CI 에서 확인합니다. `check_egovframe_dependencies` — 공식 5.x parent 2종에서 추출한 기준(관리 좌표 139종 + BOM 계열 7종, `catalog/dependency-baseline.json`)과 의존성을 대조해 기준 충족/미만/parent 관리/전환 대상/교체 필요/기준 없음으로 분류하고, 보안 설정(sec.security·CSRF·XSS 필터·보안 헤더·HTTPS 저장소) 존재 여부를 근거와 함께 보고합니다. 기본 오프라인, `offline=false` 면 OSV 취약점 조회(설계: [docs/design-dependency-check.md](docs/design-dependency-check.md)).
-- **다음 계획**: v0.31 네트워크 진단·영문 README·MCP Registry·`generate_agents_md`. 범위·검증 기준은 [다음 버전 기획](#다음-버전-기획-v029v031) 참조.
+- **v0.31.0 추가**: 운영 편의 — `diagnose_egovframe_network`(도구가 쓰는 호스트 7종에 DNS·HEAD 프로브, 실패 종류 분류, HTTPS_PROXY+NODE_USE_ENV_PROXY·IPv4 우선·사내 CA 처방을 bash/cmd/PowerShell 명령으로), 모든 다운로드 실패 메시지에 같은 처방 한 줄 부착, `generate_agents_md`(진단 결과로 AI 코딩 도구용 AGENTS.md, ko/en), 영문 README(`README.en.md`)와 `EGOVFRAME_LANG=en` 영문 도구 설명, MCP Registry 메타데이터(`server.json`·`mcpName`). 기획 3개 버전(v0.29–v0.31)이 모두 완료됐습니다.
+- **다음 계획**: v0.32 이후는 [로드맵](#로드맵)의 후보(Homebrew 탭, Boot BOM 전체 기준, 전환 2단계의 컴파일 오류↔수동 항목 연결 등)에서 고릅니다.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 제공 도구
@@ -60,6 +63,8 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 | `generate_egovframe_config` | 공식 Initializr 설정 템플릿 21종으로 Spring 설정 파일 생성(오프라인 동봉) — datasource(DBCP/C3P0/JDBC·JNDI)·transaction(datasource/JPA/JTA)·cache·logging(log4j2 5종)·scheduling(Quartz 5종)·idGeneration(3종)·property, xml/javaConfig/yaml/properties, Initializr 폼과 같은 필드·기본값, 기존 파일 거부, dryRun |
 | `migrate_egovframe_project` | 3.x/4.x 프로젝트의 5.x(Jakarta EE 9+·Spring 6·Java 17) 전환 — **진단**(기본, 읽기 전용): RTE Maven 좌표(`egovframework.rte:egovframework.rte.*`·`org.egovframe.rte:org.egovframe.rte.*` → `org.egovframe.rte:egovframe-rte-*`)·RTE 버전·저장소 URL·5.x parent, 패키지 접두어·이름 변경·제거 클래스(대체 안내), `javax→jakarta` 패키지·의존성 좌표, web.xml 스키마, 제거된 `egov-security/access/crypto` 네임스페이스, 교체 필요 라이브러리를 파일·라인 단위 `auto`/`manual` 항목으로 보고. **적용**(`apply=true`): auto 항목을 transaction 으로 치환, dryRun 기본, 원본 `migration-backup/` 보관·`migration-plan.json`, 실패 시 복구, 적용 후 재진단 |
 | `check_egovframe_dependencies` | 의존성 점검(읽기 전용) — 공식 5.x parent 기준(관리 좌표 139종 + Spring/Security/Boot 등 BOM 계열)과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE·javax)/교체 필요(DBCP 1.x·Log4j 1.x 등)/기준 없음 분류, 5.x parent·Java 버전 판정, 보안 설정 존재 점검(sec.security·CSRF·XSS 필터·보안 헤더·HTTPS 저장소, 파일·라인 근거). 기본 오프라인, `offline=false` 면 OSV 취약점 조회 |
+| `diagnose_egovframe_network` | 도구가 내려받는 호스트 7종(codeload·raw·media.githubusercontent, maven.egovframe.go.kr, repo1.maven.org, registry.npmjs.org, api.osv.dev)에 DNS 조회·HEAD 요청을 보내 도달 여부·소요 시간·실패 종류(DNS·타임아웃·TLS·프록시 인증·거부)를 보고하고, 환경에 맞는 처방(`HTTPS_PROXY`+`NODE_USE_ENV_PROXY=1`, `NODE_OPTIONS=--dns-result-order=ipv4first`, `NODE_EXTRA_CA_CERTS`)을 bash/cmd/PowerShell 명령으로 안내. 프로젝트 디렉터리 불필요, 파일 무기록 |
+| `generate_agents_md` | 프로젝트 진단 결과로 AI 코딩 도구용 `AGENTS.md` 생성 — 빌드·테스트 명령(래퍼 감지), RTE·5.x 전환 상태, DbType, 기본 패키지·설정 디렉터리, 설치 컴포넌트(매니페스트 여부), 규칙(좌표·백업 디렉터리·비밀 정보·의존성 기준), MCP 도구 목록. 기존 파일은 `overwrite` 없이는 거부, `dryRun`, ko/en, 파일명 변경(`CLAUDE.md` 등) |
 
 ### create_egovframe_project 파라미터
 
@@ -152,6 +157,17 @@ check_egovframe_dependencies(projectDir="/work/my-egov-app", offline=false)
 
 기준은 공식 5.x parent(`org.egovframe.web:egovframe-web-config-parent`·`org.egovframe.boot:egovframe-boot-starter-parent`)의 `properties`·`dependencyManagement` 에서 추출한 `catalog/dependency-baseline.json` 이며 리소스 `egovframe://catalog/dependency-baseline` 로 조회할 수 있습니다. 기준에 없는 좌표는 `unknown`(판단 보류)으로 두고 조치 목록에 넣지 않습니다. 보안 점검은 설정의 존재 여부와 근거만 보고합니다(설계: [의존성 점검 설계](docs/design-dependency-check.md)).
 
+### diagnose_egovframe_network / generate_agents_md
+
+```text
+diagnose_egovframe_network()                       # 호스트 7종 전부, 호스트당 10초
+diagnose_egovframe_network(hosts=["codeload.github.com"], timeoutMs=20000)
+generate_agents_md(projectDir="/work/my-egov-app", dryRun=true)   # 내용만
+generate_agents_md(projectDir="/work/my-egov-app", lang="en", fileName="CLAUDE.md", overwrite=true)
+```
+
+네트워크 진단은 프록시 URL 의 자격 증명을 가려서 보고하며, `NODE_TLS_REJECT_UNAUTHORIZED=0` 이 설정돼 있으면 경고합니다. 다운로드가 실패하는 다른 도구들도 오류 메시지 끝에 같은 분류와 한 줄 처방을 붙입니다(`[네트워크 timeout] … 자세한 진단: diagnose_egovframe_network`). `AGENTS.md` 의 사실 항목은 `diagnose_egovframe_project`·`migrate_egovframe_project`·빌드 도구 감지에서 오고, 규칙 항목은 이 서버의 도구가 지키는 원칙입니다.
+
 ### sync_egovframe_catalog / 컴포넌트 조립
 
 - 카탈로그는 common-components 공식 `v5.0.6` 태그와 commit `23d01889…`에 고정됩니다.
@@ -175,6 +191,8 @@ check_egovframe_dependencies(projectDir="/work/my-egov-app", offline=false)
   }
 }
 ```
+
+영문 도구 설명이 필요하면(응답은 한국어 그대로) `env` 에 `"EGOVFRAME_LANG": "en"` 을 추가합니다. 사내 프록시 환경에서 프로젝트 생성이 타임아웃되면 `"HTTPS_PROXY": "http://proxy:8080", "NODE_USE_ENV_PROXY": "1"` 을 같은 `env` 에 넣고, 원인 확인은 `diagnose_egovframe_network` 로 합니다.
 
 소스에서 직접 빌드하려면:
 
@@ -226,6 +244,18 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 **레시피** — 자주 쓰는 조합을 한 번에 조립합니다. 예: `apply_egovframe_recipe(recipeId="board-login", projectName="my-egov-app", outputDir="~/work")`. 목록은 `catalog/recipes.json`에서 관리하며 기여 환영합니다.
 
+### MCP Registry
+
+[MCP Registry](https://registry.modelcontextprotocol.io) 용 메타데이터는 저장소의 `server.json`(이름 `io.github.EricSeokgon/egovframe-scaffold-mcp`)과 `package.json` 의 `mcpName` 이며, `npm run test:registry` 가 두 파일의 이름·버전·npm 좌표 일치를 검사합니다. 등록은 npm 배포 뒤 저장소 루트에서:
+
+```bash
+mcp-publisher login github     # GitHub device flow — io.github.EricSeokgon/ 네임스페이스 권한
+mcp-publisher publish          # server.json 을 레지스트리에 게시
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.EricSeokgon/egovframe-scaffold-mcp"
+```
+
+버전을 올릴 때 `server.json` 의 `version`·`packages[0].version` 도 함께 올립니다(릴리스 절차 참조).
+
 ## 보안 설정 — 허용 root (선택)
 
 환경변수 `EGOVFRAME_ALLOWED_ROOTS`를 설정하면, 모든 도구의 디렉터리 인자(`outputDir`·`projectDir`)가 지정한 root 내부일 때만 실행됩니다. 미설정 시 기존과 동일하게 제한이 없습니다.
@@ -260,6 +290,10 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 - 전환 진단 레벨: 3.10 스타일 픽스처(pom·gradle·java·Spring XML·MyBatis XML·web.xml·JSP)에서 항목 종류·auto/manual·라인·대응 좌표를 단언하고, 5.x 스타일 픽스처에서 항목 0건과 진단 전후 디스크 불변을 확인 (`npm run test:migrate`, 87단언, 네트워크 불필요). 규칙 카탈로그는 스키마·좌표 규칙성·제거 클래스의 대체가 동봉된 5.x 소스 트리에 존재하는지·JDK 내장 `javax.*` 제외·큐레이션과 생성물 일치를 검증 (`npm run test:migration-rules`, 579단언, 네트워크 불필요). 목적지 좌표(RTE 5.x 24종·3.x 원본 18종·parent 2종·Jakarta 좌표)가 표준프레임워크 Maven 저장소와 Maven Central 에 실제로 존재하는지는 CI 통합 job 에서 확인 (`npm run test:migration-rules-live`, 61건, 네트워크 필요)
 - 전환 적용 레벨: 3.10 픽스처에 대해 auto 항목의 편집 원문 일치, dryRun 무기록, fault-injection 롤백(내용·mtime 불변), 적용 후 pom·java·XML·web.xml·gradle·JSP 내용, 백업·`migration-plan.json`, 재적용 무기록, manual 항목 불변을 단언 (`npm run test:migrate`, 132단언, 네트워크 불필요). 3.10 좌표·javax 픽스처를 적용한 뒤 JDK 17 로 `mvn compile` 통과는 CI 통합 job 에서 확인 (`npm run test:migrate-integration`, 네트워크·JDK·Maven 필요)
 - 의존성 점검 레벨: 기준 카탈로그 스키마·출처 sha256·RTE 5.x 모듈·BOM 계열, 분류 함수 12케이스, 3.10·5.x parent·gradle·빈 디렉터리 픽스처, OSV 모의 질의·매핑·실패 처리, 디스크 불변 (`npm run test:dependencies`, 68단언, 네트워크 불필요). 실제 OSV 조회는 CI 통합 job (`npm run test:dependencies-live`)
+- 네트워크 진단 레벨: 오류 분류 8종, 프로브·DNS 주입으로 7가지 시나리오(전부 도달, 405/404/407/503, 프록시+타임아웃, 프록시 없음+IPv6 혼재, TLS, DNS, 필터)의 처방·안내·자격 증명 가림·셸별 명령을 단언하고, `fetchWithTimeout` 실패 메시지에 처방이 붙는지 확인 (`npm run test:network`, 33단언, 네트워크 불필요). 실제 호스트 7종 프로브는 CI 통합 job (`npm run test:network-live`)
+- AGENTS.md 레벨: 5.x(매니페스트·래퍼·컴포넌트 2종·백업 디렉터리)와 3.x gradle 픽스처, 빈 디렉터리에서 사실 수집·ko/en 렌더링·dryRun 무기록·기존 파일 거부·overwrite·파일명 검증·staging 정리 (`npm run test:agents-md`, 22단언, 네트워크 불필요)
+- 레지스트리 메타데이터 레벨: `server.json` ↔ `package.json` 의 이름(`mcpName`)·버전·npm 좌표·스키마 URL·환경변수 문서화 정합 (`npm run test:registry`, 네트워크 불필요)
+- 프로토콜 레벨(추가): `EGOVFRAME_LANG=en` 으로 띄운 서버의 도구 27종 설명이 모두 영문이고 표에 빠진 도구가 없는지 확인 (`npm run test:handshake`)
 - 문서 검색 레벨: `search_egovframe_docs`의 키워드 매칭·점수 정렬·컴포넌트 매핑·빈질의/미존재어 처리 검증 (`npm run test:docs`, 네트워크 불필요)
 - 리포트 레벨: 픽스처로 `generate_egovframe_report`의 컴포넌트·테이블·가이드 링크 렌더링 검증 (`npm run test:report`, 네트워크 불필요)
 - 업그레이드 레벨: 3-way 판정 6분류(unchanged/update/user-modified/conflict/added/removed)·v1 보수모드·정상 적용/백업 계획·파일/매니페스트 fault-injection rollback·상위 symlink 경계 검증 (`npm run test:upgrade`, 네트워크 불필요)
@@ -280,7 +314,9 @@ Claude Desktop / Claude Code 설정 예 (`mcpServers`):
 
 ## 로드맵
 
-v0.30.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검을 완료했습니다.
+v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
+
+다음 후보(우선순위 미정): Homebrew 탭, Spring Boot BOM 전체를 의존성 기준에 포함, 전환 적용 후 컴파일 오류를 수동 항목과 연결, `check_egovframe_dependencies` 의 RTE 모듈 pom 전이 의존성 기준(mybatis 등), 공통컴포넌트 5.x 패키지 변화 대응표.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -295,7 +331,7 @@ v0.30.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 | **v0.28 완료** | `generate_egovframe_config` | Initializr 설정 템플릿 21종(Handlebars)을 commit·sha256 고정으로 동봉해 오프라인 생성. xml·javaConfig·yaml·properties, Initializr 폼과 같은 필드·기본값, 선택지·파일명·패키지 검증, 기존 파일 거부, `sync_egovframe_templates` 의 동봉 템플릿 drift 보고 |
 | **v0.29 완료** | `migrate_egovframe_project` (1단계: 진단) | 3.x/4.x 프로젝트를 5.x(Jakarta) 기준으로 스캔해 RTE 좌표·패키지·제거/이동 클래스·`javax→jakarta`·web.xml·XML 네임스페이스·라이브러리 전환 항목을 **읽기 전용**으로 auto/manual 구분 보고. 규칙은 `egovframe-runtime` 태그 3개 비교로 생성(`catalog/migration-rules.json`), 목적지 좌표는 CI 에서 실제 저장소와 대조 |
 | **v0.30 완료** | `migrate_egovframe_project` (2단계: 적용) + `check_egovframe_dependencies` | 진단의 auto 항목을 원문 오프셋 편집으로 transaction 적용(백업·dryRun 기본·계획 파일·실패 복구, 적용 후 JDK 17 `mvn compile` CI 검증), 공식 5.x parent 에서 추출한 기준(관리 좌표 139종 + BOM 계열 7종)과 의존성 대조·보안 설정 존재 점검·선택적 OSV 조회 |
-| **v0.31 계획** | 운영 편의 | `diagnose_egovframe_network`(프록시·IPv6·차단 호스트 진단), 영문 README, MCP Registry 등록, `generate_agents_md` |
+| **v0.31 완료** | 운영 편의 | `diagnose_egovframe_network`(호스트 7종 프로브·실패 분류·셸별 처방, 다운로드 오류 메시지에 처방 부착), `generate_agents_md`(ko/en), 영문 README 와 `EGOVFRAME_LANG=en` 도구 설명, MCP Registry `server.json`·`mcpName`·정합 테스트 |
 
 ## 다음 버전 기획 (v0.29–v0.31)
 
@@ -351,6 +387,8 @@ v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행�
 - **MCP Registry 등록** 과 `server.json` 메타데이터, Homebrew 탭은 후순위
 - **`generate_agents_md`**: 프로젝트 진단 결과로 AI 코딩 도구용 `AGENTS.md`(빌드·테스트 명령, 설치 컴포넌트, 금지 사항)를 생성
 
+**결과(2026-09-30) — 완료**: 도구 27종. 네트워크 진단은 호스트 7종(기획의 5종 + `repo1.maven.org`·`api.osv.dev`)을 실제로 프로브하고 실패를 8종으로 분류하며, Node 가 `--use-env-proxy` 를 지원하는지 런타임에서 감지해 `NODE_USE_ENV_PROXY=1` 처방을 냅니다. 기존 다운로드 경로(`fetchWithTimeout`)는 실패 시 같은 분류와 처방 한 줄을 오류에 붙입니다. 영문은 `README.en.md` 와 `EGOVFRAME_LANG=en` 도구 설명(27종 전부, handshake 테스트가 누락을 막음)으로 제공하고 응답은 한국어를 유지합니다. MCP Registry 는 `server.json`·`mcpName` 과 정합 테스트까지 준비했고 실제 게시(`mcp-publisher publish`)는 npm 배포 뒤 저장소 소유자가 실행합니다. Homebrew 탭은 후순위 그대로입니다.
+
 ### 릴리스 절차 (매 버전 공통)
 
 1. `main` 최신화 후 기능 브랜치 생성 → 패치 적용(`git am`) 또는 직접 커밋
@@ -358,6 +396,7 @@ v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행�
 3. 푸시 → PR → CI 7개(ubuntu·windows × Node 18/20/22 + integration) 전부 통과 → squash 병합
 4. `main` 에서 `node -p "require('./package.json').version"` 으로 버전 확인 **후** 태그(`vX.Y.Z`)를 `main` 커밋에 생성·푸시
 5. `npm publish` → `npm view egovframe-scaffold-mcp dist-tags.latest` 로 확인
+6. (v0.31+) `server.json` 의 두 `version` 이 새 버전과 같은지 `npm run test:registry` 로 확인했으므로, 필요하면 `mcp-publisher publish` 로 MCP Registry 갱신
 
 태그는 반드시 병합된 `main` 커밋에 답니다. 병합 전 커밋이나 로컬 병합 커밋에 태그가 달리면 지우고 다시 답니다(v0.25.2·v0.28.0·v0.28.1 에서 각각 한 번씩 겪었습니다).
 
@@ -381,6 +420,7 @@ v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행�
 
 ## 변경 이력
 
+- **0.31.0** — 운영 편의: 도구 25 → 27종. (1) `diagnose_egovframe_network` — 도구가 내려받는 호스트 7종에 DNS 조회와 HEAD 요청을 실제로 보내 도달 여부·소요 시간·실패 종류(DNS·타임아웃·TLS·프록시 인증·거부·재설정·도달 불가·HTTP 5xx)를 보고하고, 환경변수(`HTTPS_PROXY`·`NO_PROXY`·`NODE_USE_ENV_PROXY`·`NODE_OPTIONS`·`NODE_EXTRA_CA_CERTS`, 자격 증명 가림)와 Node 의 `--use-env-proxy` 지원 여부를 함께 보여 준 뒤 상황별 처방(프록시 사용·IPv4 우선·사내 CA·프록시 인증·DNS 허용 목록)을 bash/cmd/PowerShell 명령으로 안내합니다. `NODE_TLS_REJECT_UNAUTHORIZED=0` 은 경고합니다. 모든 다운로드 경로(`fetchWithTimeout`)가 실패할 때 같은 분류와 한 줄 처방을 오류 메시지에 붙입니다(2026-09-21 새 노트북의 `codeload` 타임아웃이 계기). (2) `generate_agents_md` — 진단 결과(빌드 도구·래퍼·RTE·5.x 전환 상태·DbType·기본 패키지·설정 디렉터리·설치 컴포넌트와 매니페스트 여부·백업 디렉터리)로 AI 코딩 도구용 `AGENTS.md` 를 만듭니다. 규칙 절은 이 서버의 도구가 지키는 원칙(좌표 체계·백업 디렉터리 미커밋·비밀 정보·parent 관리 좌표)을 옮긴 것이며, `dryRun`·`overwrite`·`fileName`(`CLAUDE.md` 등)·`lang`(ko/en)을 지원하고 transaction 으로 씁니다. (3) 영문 — `README.en.md` 와 `EGOVFRAME_LANG=en`(도구 설명 27종 영문, 응답은 한국어). (4) MCP Registry — `server.json`(`io.github.EricSeokgon/egovframe-scaffold-mcp`, npm 패키지·stdio·환경변수 2종 문서화)과 `package.json` `mcpName`, 정합 테스트 `test:registry`. `SERVER_VERSION` 을 `src/version.ts` 로 분리(순환 import 방지), `buildServer({lang})` 옵션 추가. 테스트: `test:network` 33단언·`test:agents-md` 22단언·`test:registry`, handshake 에 영문 설명 검증, CI 통합 job 에 `test:network-live`. 기존 25개 도구 하위 호환.
 - **0.30.0** — 5.x 전환 적용(2단계) + 의존성 점검: 도구 24 → 25종. (1) `migrate_egovframe_project` 에 `apply`·`dryRun` 파라미터를 추가해 1단계 진단이 `auto` 로 표시한 항목을 실제로 치환합니다. 진단이 항목마다 원문 오프셋 기준 편집(`edits`)을 붙이고 적용은 이를 파일별로 뒤에서부터 반영하므로 미리보기와 실제 적용이 같은 근거를 씁니다 — RTE 좌표(groupId/artifactId/version 텍스트), RTE 버전 속성 이름·값(`<org.egovframe.rte.version>5.0.2`)과 `${속성}` 참조, 패키지 접두어·이름 변경·이동, `javax→jakarta` 패키지와 의존성 좌표(JSTL 은 glassfish 구현을 치환 결과에 없을 때만 삽입), 저장소 URL, Java 17, web.xml 여는 태그(xmlns·version·schemaLocation), gradle 문자열. 요소 이름·들여쓰기·주석은 유지하고 `manual` 항목은 건드리지 않습니다. `dryRun`(기본)은 파일별 변경 줄 미리보기만 돌려주고, 적용은 `withFileTransaction` 으로 원본을 `migration-backup/<시각>-<id>/` 에 보관한 뒤 치환하며 `migration-plan.json` 을 남기고 중간 실패 시 작업 전 상태로 복구합니다(쓰기 전 진단 시점 내용과 재대조). 적용 후 재진단 요약(`remaining`, auto 0 기대)과 `build_egovframe_project(goal="compile")` 안내를 붙입니다. 백업 디렉터리는 이후 스캔에서 제외합니다. `<source>${java.version}</source>` 처럼 속성 참조는 속성 항목이 담당하도록 진단을 조정했습니다. (2) `check_egovframe_dependencies` — 공식 5.x parent 2종(`egovframe-web-config-parent`·`egovframe-boot-starter-parent` 5.0.1)의 pom 을 표준프레임워크 저장소에서 내려받아 `catalog/dependency-baseline.json`(관리 좌표 139종, BOM import·버전 속성에서 도출한 계열 기준 7종, sha256 기록)을 생성하고(`scripts/generate-dependency-baseline.mjs`), 프로젝트 의존성을 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE·javax 좌표)/교체 필요(전환 규칙의 라이브러리 목록)/기준 없음/버전 없음 으로 분류합니다. 5.x parent 사용·버전, Java 버전(parent 관리 인식), 보안 설정 존재 점검 5종(sec.security 컴포넌트·CSRF·XSS 필터·보안 응답 헤더·HTTPS 저장소, 파일·라인 근거)을 함께 보고하며, `offline=false` 면 OSV `querybatch` 로 버전이 확정된 의존성의 알려진 취약점을 붙입니다(실패는 `osvError` 로만 기록). 리소스 `egovframe://catalog/dependency-baseline` 추가. Jakarta 전환 규칙의 목적지 버전을 parent 기준 이상으로 맞췄고(`test:migration-rules` 가 이를 검사), `fetchWithTimeout` 이 요청 옵션을 받습니다. 테스트: `test:migrate` 87 → 132단언, `test:dependencies` 68단언, `test:migration-rules` 597단언, CI 통합 job 에 `test:migrate-integration`(적용 후 JDK 17 `mvn compile`)·`test:dependencies-live`(OSV) 추가. 설계: [docs/design-migration.md](docs/design-migration.md)(2단계 절), [docs/design-dependency-check.md](docs/design-dependency-check.md). 기존 24개 도구 하위 호환.
 - **0.29.0** — 5.x 전환 진단(1단계): `migrate_egovframe_project` 추가(도구 23 → 24). 표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮길 때 바꿔야 할 것을 파일·라인 단위로 보고합니다 — RTE Maven 좌표(`egovframework.rte:egovframework.rte.<module>`·4.x 의 `org.egovframe.rte:org.egovframe.rte.<module>` → `org.egovframe.rte:egovframe-rte-<module>`, 18모듈)와 RTE 버전 속성·저장소 URL(http → https)·5.x parent 권고, Java 17 미만 컴파일 설정, Spring 6 미만 속성, 패키지 접두어(`egovframework.rte.*` → `org.egovframe.rte.*`)와 5.x 에서 이름이 바뀐 패키지 4건(`fdl.cryptography`→`fdl.crypto`, `security.securedobject`→`security.secureobject`, `security.config.internal`/`security.intercept`→`security.bean`), 제거된 클래스 38종(`@Mapper`→`@EgovMapper`, `AbstractServiceImpl`→`EgovAbstractServiceImpl`, `@CommandMap`·`SimpleUrlAnnotationHandlerMapping`·`RteFieldChecks` 제거 등 — 대체와 사유 동반), 제거된 RTE 모듈 `spring-modules-validation`, `javax→jakarta` 패키지 28종(JDK 내장 `javax.sql`·`javax.xml.*`·`javax.crypto` 등은 제외)과 의존성 좌표 26종, web.xml 스키마, 5.x 에서 사라진 `egov-security/egov-access/egov-crypto` XML 네임스페이스, 교체 필요 라이브러리(DBCP 1.x·Log4j 1.x·commons-fileupload·Tiles·JUnit 4·구버전 Hibernate Validator 등). 항목마다 `auto`(2단계에서 기계 치환)·`manual`(코드 수정 필요)을 표시하고 markdown/json 으로 반환하며, 파일은 쓰지 않습니다. 규칙은 코드가 아닌 `catalog/migration-rules.json`(schemaVersion 1)에 두고, 생성기 `scripts/generate-migration-rules.mjs` 가 `egovframe-runtime` 의 v3.10.0·v4.3.0-Final·v5.0.2-Final 태그 소스 트리를 비교해 좌표·패키지 이동·제거를 도출하되 제거 클래스에 큐레이션(`catalog/migration-mapping.json`) 사유가 없으면 실패합니다. 리소스 `egovframe://catalog/migration-rules` 추가. 오프라인 `test:migrate` 87단언(3.10 픽스처·5.x 픽스처 0건·읽기 전용)·`test:migration-rules` 579단언, CI 통합 job 의 `test:migration-rules-live` 가 목적지 좌표 61건의 실제 저장소 존재를 확인합니다. 공식 5.x 템플릿 2종에서 거짓 양성 0건, 공식 공통컴포넌트 v3.10.0 자산에서 57건 검출을 확인했습니다(설계: [docs/design-migration.md](docs/design-migration.md)). 기존 23개 도구 하위 호환.
 - **0.28.1** — Windows 체크아웃 대응(npm 설치본 동작 변경 없음): `core.autocrlf` 가 켜진 Git 클론에서 동봉 설정 템플릿(`catalog/config-templates/*.hbs`)이 CRLF 로 체크아웃되어 렌더링 전 지문 대조가 실패하고 `generate_egovframe_config`·`test:config`·`test:template-catalog` 가 깨지던 문제를 고쳤습니다(PR #28). 지문을 줄바꿈 LF 정규화 기준으로 계산하도록 바꾸고(`templateSha256`, 생성기·렌더러·sync·테스트 공통), 카탈로그 지문을 그 기준으로 재생성했으며(템플릿 내용 불변), `.gitattributes` 로 해당 경로의 줄바꿈 변환을 막았습니다. `test:config` 에 CRLF 체크아웃 시뮬레이션 단언을 추가했습니다(506단언). npm 으로 설치한 0.28.0 은 tarball 이 LF 를 유지하므로 영향이 없었습니다.
