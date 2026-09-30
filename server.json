@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.EricSeokgon/egovframe-scaffold-mcp",
+  "description": "Scaffold, assemble, diagnose and migrate Korean eGovFrame (전자정부 표준프레임워크) projects: official templates, common components, CRUD/config generation, build/test, 5.x (Jakarta) migration and dependency checks.",
+  "repository": {
+    "url": "https://github.com/EricSeokgon/egovframe-scaffold-mcp",
+    "source": "github"
+  },
+  "version": "0.31.0",
+  "websiteUrl": "https://github.com/EricSeokgon/egovframe-scaffold-mcp#readme",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "egovframe-scaffold-mcp",
+      "version": "0.31.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "EGOVFRAME_ALLOWED_ROOTS",
+          "description": "Optional. Path-separator-delimited list of directories the write tools may touch (see README '보안 설정').",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "EGOVFRAME_LANG",
+          "description": "Optional. 'en' exposes English tool descriptions in tools/list (responses stay Korean).",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

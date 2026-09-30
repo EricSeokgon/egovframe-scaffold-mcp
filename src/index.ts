@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { buildServer } from "./server.js";
 
 // ── 공개 API — 모듈 분리 전과 동일한 표면을 유지한다 ──
-export { DOWNLOAD_TIMEOUT_MS, COMPONENTS_DOWNLOAD_TIMEOUT_MS } from "./shared.js";
+export { DOWNLOAD_TIMEOUT_MS, COMPONENTS_DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
 export { TEMPLATES, GLOBALS_PROPS_REL, DB_TYPES, INITIALIZR_REPO, INITIALIZR_COMMIT, archiveDownloadUrl, applyPomPlaceholders, isGlobalsPropertiesPath, customizePomCoordinates, createProject } from "./project.js";
 export type { CreateOptions, CreateResult, TemplateArchive, TemplateDefinition } from "./project.js";
 export { loadCatalog, resolveComponents, searchComponents } from "./catalog.js";
@@ -69,6 +69,12 @@ export { RTE_VERSION_PROPERTY, loadMigrationRules, migrateProject, renderMigrati
 export type { MigrationRules, MigrationItem, MigrationKind, MigrationAction, MigrateResult, MigrateOptions, SourceEra, TextEdit, ApplyOptions, ApplyFilePlan, MigrateApplyResult } from "./migrate.js";
 export { loadDependencyBaseline, classifyDependency, checkDependencies, renderDependencyMarkdown, defaultOsvQuery } from "./dependencies.js";
 export type { DependencyBaseline, BaselineManaged, DependencyStatus, DependencyFinding, SecurityCheck, Vulnerability, ParentInfo, CheckDependenciesResult, CheckDependenciesOptions, OsvQuery } from "./dependencies.js";
+export { NETWORK_HOSTS, classifyNetworkError, diagnoseNetwork, networkHint, renderNetworkMarkdown } from "./network.js";
+export type { NetworkHost, NetworkErrorKind, HostProbe, ProxyEnv, NetworkDiagnosis, NetworkOptions } from "./network.js";
+export { collectAgentsFacts, renderAgentsMd, generateAgentsMd } from "./agents-md.js";
+export type { AgentsLang, AgentsMdOptions, AgentsMdResult, AgentsFacts } from "./agents-md.js";
+export { LANG_ENV, TOOL_DESCRIPTIONS_EN, resolveToolLang, toolDescription } from "./i18n.js";
+export type { ToolLang } from "./i18n.js";
 export type {
   TemplateCatalog,
   UnifiedProject,

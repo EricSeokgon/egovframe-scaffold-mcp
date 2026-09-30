@@ -19,6 +19,8 @@ const REQUIRED_TOOLS = [
   "generate_egovframe_config",
   "migrate_egovframe_project",
   "check_egovframe_dependencies",
+  "diagnose_egovframe_network",
+  "generate_agents_md",
 ];
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "ignore"] });
@@ -79,6 +81,41 @@ if (process.platform !== "win32") {
   let linkInfo; try { linkInfo = JSON.parse(out.split("\n")[0]).result?.serverInfo; } catch { /* 응답 없음 */ }
   assert(linkInfo?.version === pkg.version, "bin symlink 로 실행해도 서버가 기동됨 (npx 경로)");
   rmSync(binDir, { recursive: true, force: true });
+}
+
+// ── EGOVFRAME_LANG=en: 도구 설명 영문 (v0.31) ─────────────
+{
+  const en = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, EGOVFRAME_LANG: "en" } });
+  const enResponses = new Map();
+  let enBuf = "";
+  const enDone = new Promise((resolve) => {
+    const timer = setTimeout(resolve, 15000);
+    en.stdout.on("data", (d) => {
+      enBuf += d.toString();
+      let nl;
+      while ((nl = enBuf.indexOf("\n")) >= 0) {
+        const line = enBuf.slice(0, nl).trim(); enBuf = enBuf.slice(nl + 1);
+        if (!line) continue;
+        try { const msg = JSON.parse(line); if (msg.id !== undefined) enResponses.set(msg.id, msg); } catch { /* 무시 */ }
+        if (enResponses.has(2)) { clearTimeout(timer); resolve(); }
+      }
+    });
+    en.on("close", () => { clearTimeout(timer); resolve(); });
+  });
+  const sendEn = (o) => en.stdin.write(JSON.stringify(o) + "\n");
+  sendEn({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "handshake-test", version: "0" } } });
+  sendEn({ jsonrpc: "2.0", method: "notifications/initialized" });
+  sendEn({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+  await enDone;
+  en.kill();
+  const enTools = enResponses.get(2)?.result?.tools ?? [];
+  const nonAscii = enTools.filter((t) => /[\u3131-\uD79D]/.test(t.description ?? ""));
+  assert(enTools.length === tools.length && nonAscii.length === 0, `EGOVFRAME_LANG=en → 도구 ${enTools.length}종 설명 전부 영문 (한글 포함 ${nonAscii.length})`);
+  const koHasKorean = tools.every((t) => /[\u3131-\uD79D]/.test(t.description ?? ""));
+  assert(koHasKorean, "기본(ko) 설명은 한국어");
+  const { TOOL_DESCRIPTIONS_EN } = await import("../dist/index.js");
+  assert(tools.every((t) => typeof TOOL_DESCRIPTIONS_EN[t.name] === "string" && TOOL_DESCRIPTIONS_EN[t.name].length > 40), "모든 도구에 영문 설명 존재");
+  assert(Object.keys(TOOL_DESCRIPTIONS_EN).every((k) => names.has(k)), "영문 설명 표에 없는 도구 이름 없음");
 }
 
 const { isMainModule } = await import("../dist/index.js");
