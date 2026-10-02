@@ -454,6 +454,13 @@ assert(mdC.includes("공통컴포넌트 재조립 권고") && mdC.includes("제�
   assert(errs.length === 2 && errs[0].symbol === "class Mapper" && errs[0].location === "package egovframework.rte.psl.dataaccess.mapper" && errs[1].symbol === undefined, "maven symbol/location 캡처, 다음 오류로 번지지 않음");
   const g = parseBuildErrors("gradle", "/p/A.java:3: error: cannot find symbol\n  symbol:   class Mapper\n  location: package x\n");
   assert(g[0].symbol === "class Mapper" && g[0].location === "package x", "gradle(javac) symbol/location 캡처");
+  // Windows 절대 경로(드라이브 문자): ':' 가 파일명 경계로 오인되어 ':\\work\\A.java' 로 잘리던 회귀(v0.33.1)
+  const w = parseBuildErrors("maven", "[ERROR] C:\\work\\proj\\src\\A.java:[3,41] cannot find symbol\n[ERROR]   symbol:   class Mapper\n[ERROR] D:\\x\\B.java:[5,1] package egovframework.rte.fdl.cmmn does not exist\n");
+  assert(w.length === 2 && w[0].file === "C:\\work\\proj\\src\\A.java" && w[0].line === 3 && w[0].symbol === "class Mapper" && w[1].file === "D:\\x\\B.java", `maven Windows 드라이브 경로 보존 (got ${w.map((e) => e.file).join(" | ")})`);
+  const wg = parseBuildErrors("gradle", "C:\\work\\A.java:3: error: cannot find symbol\n  symbol:   class Mapper\n");
+  assert(wg.length === 1 && wg[0].file === "C:\\work\\A.java" && wg[0].symbol === "class Mapper", `gradle Windows 드라이브 경로 보존 (got ${wg.map((e) => e.file).join(" | ")})`);
+  const posix = parseBuildErrors("maven", "[ERROR] Failed to execute goal on project x: Compilation failure: /p/A.java:[3,41] cannot find symbol\n");
+  assert(posix.length === 1 && posix[0].file === "/p/A.java", `메시지 안의 POSIX 경로도 그대로 (got ${posix.map((e) => e.file).join(" | ")})`);
 }
 // verifyMigration (가짜 runner)
 {
