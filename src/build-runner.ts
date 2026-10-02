@@ -127,7 +127,8 @@ export function parseBuildErrors(buildTool: BuildTool, output: string): BuildErr
   if (buildTool === "maven") {
     // 예) [ERROR] /abs/Foo.java:[12,5] cannot find symbol
     //     /abs/Foo.java:[12,5] cannot find symbol
-    const re = /(?:\[ERROR\]\s*)?([^\s\[][^:\n]*?\.(?:java|kt|xml)):\[(\d+)(?:,(\d+))?\]\s*(.+)/g;
+    //     [ERROR] C:\work\Foo.java:[12,5] cannot find symbol  (Windows 드라이브 문자는 경로의 일부)
+    const re = /(?:\[ERROR\]\s*)?((?:[A-Za-z]:)?[^\s\[:][^:\n]*?\.(?:java|kt|xml)):\[(\d+)(?:,(\d+))?\]\s*(.+)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(output)) !== null) {
       const key = `${m[1]}:${m[2]}:${m[3] ?? ""}`;
@@ -144,7 +145,8 @@ export function parseBuildErrors(buildTool: BuildTool, output: string): BuildErr
     }
   } else {
     // 예) /abs/Foo.java:12: error: cannot find symbol  (gradle/javac)
-    const re = /([^\s][^:\n]*?\.(?:java|kt)):(\d+):\s*(?:error:)?\s*(.+)/g;
+    //     C:\work\Foo.java:12: error: cannot find symbol
+    const re = /((?:[A-Za-z]:)?[^\s:][^:\n]*?\.(?:java|kt)):(\d+):\s*(?:error:)?\s*(.+)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(output)) !== null) {
       const key = `${m[1]}:${m[2]}`;
