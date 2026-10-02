@@ -14,7 +14,7 @@ const classes5 = new Set(rules.evidence.classes5);
 const packages5 = new Set(rules.evidence.packages5);
 
 // ── 스키마·출처 ───────────────────────────────────────
-assert(rules.schemaVersion === 1, "schemaVersion 1");
+assert(rules.schemaVersion === 2, "schemaVersion 2 (v0.33: packages.components 추가, 기존 필드 유지)");
 assert(/^\d{4}-\d{2}-\d{2}$/.test(rules.surveyedAt), "surveyedAt 날짜");
 assert(rules.source.repository === "eGovFramework/egovframe-runtime" && /^[0-9a-f]{40}$/.test(rules.source.fromCommit) && /^[0-9a-f]{40}$/.test(rules.source.toCommit), "출처 저장소·commit 고정");
 assert(rules.source.fromTag === mapping.runtime.fromTag && rules.source.toTag === mapping.runtime.toTag && rules.source.midTag === mapping.runtime.midTag, "태그가 매핑과 일치");
@@ -77,6 +77,24 @@ for (const rule of mapping.removedClasses) {
 // 자주 쓰는 5.x 클래스가 근거 트리에 있는지(웹 템플릿이 참조하는 것들)
 for (const c of ["org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl", "org.egovframe.rte.psl.dataaccess.mapper.EgovMapper", "org.egovframe.rte.psl.dataaccess.util.EgovMap", "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl", "org.egovframe.rte.ptl.mvc.tags.ui.pagination.PaginationInfo", "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration", "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration", "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration"])
   assert(classes5.has(c), `5.x 클래스 존재: ${c}`);
+
+// ── 공통컴포넌트 대응표 (v0.33) ──────────────────────
+{
+  const c = rules.packages.components;
+  const src = rules.source.components;
+  assert(c && src && src.repository === "eGovFramework/egovframe-common-components" && src.fromTag === mapping.components.fromTag && src.toTag === mapping.components.toTag && /^[0-9a-f]{40}$/.test(src.fromCommit) && /^[0-9a-f]{40}$/.test(src.toCommit), "공통컴포넌트 출처·태그·commit");
+  assert(c.prefix === "egovframework.com." && c.evidence.from >= 1000 && c.evidence.to >= 1000 && c.evidence.removed === c.removed.length && c.evidence.moved === c.moves.length, `공통컴포넌트 근거(${c.evidence.from}→${c.evidence.to}, 제거 ${c.evidence.removed}·이동 ${c.evidence.moved}·추가 ${c.evidence.added})`);
+  assert(c.removed.every((r) => r.class.startsWith(c.prefix) && typeof r.reason === "string" && r.reason.length >= 10 && (r.replacement === null || r.replacement.startsWith(c.prefix))), "제거 클래스 형식·사유");
+  assert(c.moves.every((m) => m.from.startsWith(c.prefix) && m.to.startsWith(c.prefix) && m.from !== m.to && m.from.split(".").pop() === m.to.split(".").pop()), "이동 클래스는 단순명이 같고 패키지만 다름");
+  const rmSet = new Set(c.removed.map((r) => r.class));
+  assert(rmSet.size === c.removed.length && !c.moves.some((m) => rmSet.has(m.from)), "제거·이동 목록 중복 없음");
+  for (const [k, v] of Object.entries(mapping.components.replacements)) {
+    const r = c.removed.find((x) => x.class === k);
+    assert(r && r.replacement === v.replacement && r.reason === v.reason, `큐레이션 대체 반영: ${k}`);
+  }
+  assert(rmSet.has("egovframework.com.cmm.util.EgovMybaitsUtil") && c.moves.some((m) => m.from === "egovframework.com.utl.sys.fsm.service.FileSystemUtils" && m.to === "egovframework.com.cmm.service.FileSystemUtils"), "조사 시점 대표 항목(EgovMybaitsUtil 제거, FileSystemUtils 이동)");
+  assert(!c.removed.some((r) => classes5.has(r.class)) && !rules.packages.removed.some((r) => rmSet.has(r.class)), "RTE 목록과 섞이지 않음");
+}
 
 // ── Jakarta ───────────────────────────────────────────
 assert(JSON.stringify(rules.jakarta.packages) === JSON.stringify(mapping.jakarta.packages) && JSON.stringify(rules.jakarta.artifacts) === JSON.stringify(mapping.jakarta.artifacts), "Jakarta 규칙이 매핑과 동일");

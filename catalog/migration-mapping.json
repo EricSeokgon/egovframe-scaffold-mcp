@@ -790,5 +790,19 @@
       "springframework.version"
     ],
     "springMinimum": "6.0.0"
+  },
+  "components": {
+    "comment": "공통컴포넌트 3.x→5.x 대응표 근거(v0.33). 생성기가 egovframe-common-components 의 fromTag·toTag src/main/java 트리를 비교해 egovframework.com.* 의 제거·이동 클래스를 도출한다. 공통컴포넌트는 upstream 에서 복사한 소스이므로 개별 사유 대신 공통 사유를 쓰고, 알려진 대체가 있는 것만 replacements 에 적는다.",
+    "repository": "eGovFramework/egovframe-common-components",
+    "fromTag": "v3.10.0",
+    "toTag": "v5.0.6",
+    "packagePrefix": "egovframework.com.",
+    "defaultReason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다.",
+    "replacements": {
+      "egovframework.com.cmm.util.EgovMybaitsUtil": {
+        "replacement": "egovframework.com.cmm.util.EgovMybatisUtil",
+        "reason": "v5.0.6 에서 오타 클래스명이 EgovMybatisUtil 로 바로잡힘(단순명이 달라 자동 이동 판정에서 빠지므로 수동 대응표)"
+      }
+    }
   }
 }

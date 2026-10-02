@@ -9,8 +9,12 @@
  *   트리 비교로 나온 제거 클래스에 큐레이션 사유가 없으면 실패한다 — 근거 없는 "manual" 을 막기 위해서다.
  *
  * 사용법:
- *   node scripts/generate-migration-rules.mjs --runtime-dir <egovframe-runtime clone>   # 오프라인(권장). blob:none 부분 클론이면 충분
+ *   node scripts/generate-migration-rules.mjs --runtime-dir <egovframe-runtime clone> --components-dir <egovframe-common-components clone>
+ *                                                                                        # 오프라인(권장). blob:none 부분 클론이면 충분
  *   node scripts/generate-migration-rules.mjs                                            # 임시 디렉터리에 부분 클론 후 생성
+ *
+ * v0.33: 두 번째 근거로 egovframe-common-components(v3.10.0 ↔ v5.0.6)를 비교해 egovframework.com.* 의 제거·이동 클래스를
+ *        packages.components 에 기록한다(schemaVersion 2, 기존 필드 유지).
  */
 import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
@@ -32,9 +36,11 @@ function readTree(dir, tag) {
   for (const rel of lines) {
     const seg = rel.split("/");
     if (seg.length >= 2 && seg[1] && /^(egovframework\.rte|org\.egovframe\.rte)\.|^spring-modules-validation$/.test(seg[1])) modules.set(seg[1], `${seg[0]}/${seg[1]}`);
-    const i = rel.indexOf("/src/main/java/");
+    // 모듈형(Foundation/<module>/src/main/java/…)과 루트형(src/main/java/…) 모두 처리
+    const marker = rel.startsWith("src/main/java/") ? "src/main/java/" : "/src/main/java/";
+    const i = rel.indexOf(marker);
     if (i < 0 || !rel.endsWith(".java")) continue;
-    const fq = rel.slice(i + "/src/main/java/".length, -".java".length).replace(/\//g, ".");
+    const fq = rel.slice(i + marker.length, -".java".length).replace(/\//g, ".");
     if (fq.endsWith(".package-info")) continue;
     classes.add(fq);
   }
@@ -65,6 +71,7 @@ function globToRe(glob) {
 async function main() {
   const argv = process.argv.slice(2);
   const rdIdx = argv.indexOf("--runtime-dir");
+  const cdIdx = argv.indexOf("--components-dir");
   const mapping = JSON.parse(fs.readFileSync(MAPPING_PATH, "utf8"));
   const rt = mapping.runtime;
 
@@ -78,6 +85,34 @@ async function main() {
   }
   for (const t of [rt.fromTag, rt.midTag, rt.toTag]) git(dir, ["rev-parse", "--verify", `${t}^{commit}`]);
   const commit = (t) => git(dir, ["rev-parse", `${t}^{commit}`]).trim();
+
+  // ── 공통컴포넌트 저장소 (v0.33) ───────────────────────
+  const cm = mapping.components;
+  let cdir = cdIdx >= 0 ? path.resolve(argv[cdIdx + 1]) : null;
+  if (!cdir) {
+    tmp = tmp ?? fs.mkdtempSync(path.join(os.tmpdir(), "egov-rt-"));
+    cdir = path.join(tmp, "cc");
+    console.error(`egovframe-common-components 부분 클론 중 → ${cdir}`);
+    execFileSync("git", ["clone", "-q", "--filter=blob:none", "--no-checkout", `https://github.com/${cm.repository}.git`, cdir], { stdio: "inherit", env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+  }
+  for (const t of [cm.fromTag, cm.toTag]) git(cdir, ["rev-parse", "--verify", `${t}^{commit}`]);
+  const ccommit = (t) => git(cdir, ["rev-parse", `${t}^{commit}`]).trim();
+  const ccFrom = readTree(cdir, cm.fromTag).classes;
+  const ccTo = readTree(cdir, cm.toTag).classes;
+  const ccBySimple = new Map();
+  for (const fq of ccTo) { const sname = simpleOf(fq); if (!ccBySimple.has(sname)) ccBySimple.set(sname, []); ccBySimple.get(sname).push(fq); }
+  const ccRemoved = [];
+  const ccMoved = [];
+  for (const fq of [...ccFrom].sort()) {
+    if (!fq.startsWith(cm.packagePrefix) || ccTo.has(fq)) continue;
+    const cands = ccBySimple.get(simpleOf(fq)) ?? [];
+    if (cands.length === 1) { ccMoved.push({ from: fq, to: cands[0] }); continue; }
+    const curated = cm.replacements[fq];
+    ccRemoved.push({ class: fq, replacement: curated?.replacement ?? null, reason: curated?.reason ?? cm.defaultReason, ...(cands.length > 1 ? { candidates: cands } : {}) });
+  }
+  for (const k of Object.keys(cm.replacements)) if (!ccRemoved.some((r) => r.class === k)) throw new Error(`components.replacements '${k}' 는 제거 클래스가 아닙니다(규칙이 낡았거나 오타)`);
+  for (const r of ccRemoved) if (r.replacement && !ccTo.has(r.replacement)) throw new Error(`components replacement 가 ${cm.toTag} 에 없습니다: ${r.replacement}`);
+  const ccAdded = [...ccTo].filter((fq) => fq.startsWith(cm.packagePrefix) && !ccFrom.has(fq)).length;
 
   const from = readTree(dir, rt.fromTag);
   const mid = readTree(dir, rt.midTag);
@@ -215,7 +250,7 @@ async function main() {
   }
 
   const rules = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedBy: "scripts/generate-migration-rules.mjs",
     surveyedAt: new Date().toISOString().slice(0, 10),
     source: {
@@ -223,6 +258,7 @@ async function main() {
       fromTag: rt.fromTag, fromCommit: commit(rt.fromTag),
       midTag: rt.midTag, midCommit: commit(rt.midTag),
       toTag: rt.toTag, toCommit: commit(rt.toTag),
+      components: { repository: cm.repository, fromTag: cm.fromTag, fromCommit: ccommit(cm.fromTag), toTag: cm.toTag, toCommit: ccommit(cm.toTag) },
       samples: {
         web: "eGovFramework/egovframe-vscode-initializr templates(egovframe-web)·egovframe-web-sample v5.0.x",
         boot: "eGovFramework/egovframe-vscode-initializr templates(egovframe-boot-web)",
@@ -238,6 +274,8 @@ async function main() {
       renames: packageRenames,
       moves: classMoves,
       removed: removed,
+      // 공통컴포넌트(egovframework.com.*) — 사용자 프로젝트에 복사된 3.x 소스가 참조할 수 있는 제거·이동 클래스
+      components: { prefix: cm.packagePrefix, removed: ccRemoved, moves: ccMoved, evidence: { from: [...ccFrom].filter((f) => f.startsWith(cm.packagePrefix)).length, to: [...ccTo].filter((f) => f.startsWith(cm.packagePrefix)).length, removed: ccRemoved.length, moved: ccMoved.length, added: ccAdded } },
     },
     jakarta: { packages: mapping.jakarta.packages, artifacts: mapping.jakarta.artifacts, note: mapping.jakarta.comment },
     libraries: mapping.libraries.manual,
@@ -252,7 +290,8 @@ async function main() {
   fs.writeFileSync(OUT_JSON, `${JSON.stringify(rules, null, 2)}\n`, "utf8");
   console.log(
     `migration-rules.json 생성: 모듈 ${coordinates.length}종(제거 ${rules.removedModules.length}, 신규 ${newModules.length}), ` +
-      `클래스 ${from.classes.size}→${to.classes.size} (그대로 ${direct.length}, 패키지 변경 ${packageRenames.length}건/${covered.size}클래스, 이동 ${classMoves.length}, 제거 ${removed.length})`,
+      `클래스 ${from.classes.size}→${to.classes.size} (그대로 ${direct.length}, 패키지 변경 ${packageRenames.length}건/${covered.size}클래스, 이동 ${classMoves.length}, 제거 ${removed.length}); ` +
+      `공통컴포넌트 ${cm.fromTag}→${cm.toTag} 제거 ${ccRemoved.length}·이동 ${ccMoved.length}·추가 ${ccAdded}`,
   );
   if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
 }

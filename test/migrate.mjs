@@ -1,7 +1,7 @@
 // node test/migrate.mjs — 5.x 전환 진단 (오프라인 픽스처)
 // 3.10 스타일 프로젝트(pom·java·xml·jsp·web.xml)에서 항목 분류(auto/manual)·라인·대응 좌표를 단언하고,
 // 5.x 스타일 프로젝트에서는 항목 0건(거짓 양성 없음)을 단언한다. 진단 전후 디스크가 바뀌지 않는지도 확인한다.
-import { migrateProject, renderMigrationMarkdown, classifyRteToken, classifyJavaxPackage, versionBelow, loadMigrationRules, applyTextEdits, applyMigration, renderMigrationApplyMarkdown } from "../dist/index.js";
+import { migrateProject, renderMigrationMarkdown, classifyRteToken, classifyComponentToken, classifyJavaxPackage, versionBelow, loadMigrationRules, applyTextEdits, applyMigration, renderMigrationApplyMarkdown, linkBuildError, verifyMigration, renderMigrationVerifyMarkdown, parseBuildErrors } from "../dist/index.js";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, statSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -394,6 +394,93 @@ const again = await applyMigration({ projectDir: legacy, dryRun: false });
 assert(again.applied.items === 0 && again.files.length === 0 && again.backupDir === undefined, "재적용 시 auto 0 → 무기록");
 const afterMd = renderMigrationApplyMarkdown(applied);
 assert(afterMd.includes("적용 결과") && afterMd.includes("## 남은 수동 항목") && afterMd.includes("build_egovframe_project"), "적용 Markdown");
+
+
+// ── 3단계: 공통컴포넌트 대응표·재조립 권고·검증 (v0.33) ──
+{
+  const c = rules.packages.components;
+  assert(c && c.prefix === "egovframework.com." && c.removed.length >= 50 && c.moves.length >= 4 && c.evidence.from > 1000, `공통컴포넌트 대응표(제거 ${c?.removed.length}·이동 ${c?.moves.length})`);
+  const rm = classifyComponentToken("egovframework.com.cmm.util.EgovMybaitsUtil", rules);
+  assert(rm?.kind === "component-class-removed" && rm.action === "manual" && rm.to === "egovframework.com.cmm.util.EgovMybatisUtil", "EgovMybaitsUtil → 수동 대응(오타 정정)");
+  const mv = classifyComponentToken("egovframework.com.utl.sys.fsm.service.FileSystemUtils", rules);
+  assert(mv?.kind === "component-class-moved" && mv.action === "auto" && mv.to === "egovframework.com.cmm.service.FileSystemUtils", "FileSystemUtils 이동 → 자동");
+  assert(classifyComponentToken("egovframework.com.cmm.MyOwnClass", rules) === null && classifyComponentToken("egovframework.com.cmm.service.EgovProperties", rules) === null, "대응표에 없는 공통컴포넌트·사용자 클래스는 보고하지 않음");
+  assert(classifyComponentToken("egovframework.rte.fdl.cmmn.X", rules) === null, "RTE 토큰은 컴포넌트 분류 대상 아님");
+}
+const comp = mkdtempSync(path.join(tmpdir(), "egovmigcomp-"));
+write(comp, "pom.xml", `<project><dependencies><dependency><groupId>egovframework.rte</groupId><artifactId>egovframework.rte.ptl.mvc</artifactId><version>3.10.0</version></dependency></dependencies></project>`);
+write(comp, "src/main/java/egovframework/com/cmm/EgovComUtil.java", "import javax.servlet.http.HttpServletRequest;\nimport egovframework.rte.fdl.cmmn.EgovAbstractServiceImpl;\nclass EgovComUtil {}\n");
+write(comp, "src/main/java/egovframework/com/cmm/Other.java", "import egovframework.com.utl.sys.fsm.service.FileSystemUtils;\nimport egovframework.com.cmm.util.EgovMybaitsUtil;\nclass Other {}\n");
+write(comp, "src/main/java/egovframework/example/App.java", "import egovframework.rte.fdl.cmmn.EgovAbstractServiceImpl;\nclass App {}\n");
+const rc = migrateProject({ projectDir: comp });
+const reasm = rc.items.filter((i) => i.kind === "component-reassemble");
+assert(reasm.length === 1 && reasm[0].file === "src/main/java/egovframework/com/cmm/" && reasm[0].from.startsWith("cmm") && reasm[0].action === "manual" && reasm[0].to.includes('add_egovframe_components(componentIds=["cmm"])'), "cmm 디렉터리에 3.x 항목 → 재조립 권고 1건");
+one(rc, (i) => i.kind === "component-class-removed" && i.from.endsWith("EgovMybaitsUtil") && i.action === "manual", "제거 공통컴포넌트 클래스 참조 → manual");
+one(rc, (i) => i.kind === "component-class-moved" && i.action === "auto" && i.edits?.length === 1, "이동 공통컴포넌트 클래스 → auto 편집");
+const rcSkip = migrateProject({ projectDir: comp, skipComponents: true });
+assert(rcSkip.items.filter((i) => i.file.startsWith("src/main/java/egovframework/com/cmm/") && i.action === "auto").length === 0 && rcSkip.items.filter((i) => i.file.startsWith("src/main/java/egovframework/com/cmm/") && i.action === "manual" && !i.edits).length >= 4 && rcSkip.notes.some((x) => x.includes("skipComponents")), "skipComponents: 컴포넌트 디렉터리 auto → manual, edits 제거");
+assert(rcSkip.items.find((i) => i.file === "src/main/java/egovframework/example/App.java").action === "auto", "skipComponents 는 컴포넌트 밖 항목에 영향 없음");
+const dryC = await applyMigration({ projectDir: comp, skipComponents: true });
+assert(dryC.files.every((f) => !f.file.startsWith("src/main/java/egovframework/com/cmm/")) && dryC.files.some((f) => f.file === "src/main/java/egovframework/example/App.java"), "skipComponents 적용 계획은 컴포넌트 밖 파일만");
+const mdC = renderMigrationMarkdown(rc);
+assert(mdC.includes("공통컴포넌트 재조립 권고") && mdC.includes("제거된 공통컴포넌트 클래스"), "Markdown 에 컴포넌트 항목 라벨");
+
+// linkBuildError (순수)
+{
+  const items = [
+    { file: "src/main/java/a/Svc.java", line: 3, kind: "class-removed", from: "egovframework.rte.psl.dataaccess.mapper.Mapper", to: "x", action: "manual", reason: "r" },
+    { file: "src/main/java/a/Svc.java", line: 10, kind: "package", from: "egovframework.rte.fdl.cmmn.EgovAbstractServiceImpl", to: "y", action: "auto", reason: "r" },
+    { file: "src/main/java/a/Svc.java", line: 20, kind: "xml-namespace", from: "http://x", to: "z", action: "manual", reason: "r" },
+    { file: "src/main/java/b/B.java", line: 1, kind: "class-removed", from: "egovframework.rte.ptl.mvc.bind.annotation.CommandMap", to: null, action: "manual", reason: "r" },
+  ];
+  const dir = "/proj";
+  const L = (e) => linkBuildError(e, items, rules, dir);
+  assert(L({ file: "/proj/src/main/java/a/Svc.java", line: 30, message: "cannot find symbol", symbol: "class Mapper", location: "package egovframework.rte.psl.dataaccess.mapper" }).itemIndex === 0, "symbol 일치 → 같은 파일의 수동 항목(라인 무관)");
+  assert(L({ file: "src/main/java/a/Svc.java", line: 30, message: "package egovframework.rte.psl.dataaccess.mapper does not exist" }).itemIndex === 0, "package does not exist → 패키지 접두 일치, 상대 경로 입력");
+  assert(L({ file: "/proj/src/main/java/a/Svc.java", line: 11, message: "cannot find symbol", symbol: "class EgovAbstractServiceImpl" }).itemIndex === 1, "자동 항목도 심볼이 맞으면 연결(수동 우선)");
+  const near = L({ file: "/proj/src/main/java/a/Svc.java", line: 22, message: "incompatible types" });
+  assert(near.itemIndex === 2 && near.how === "same-file-line", "심볼 없으면 ±3 라인의 수동 항목");
+  const rulesOnly = L({ file: "/proj/src/main/java/c/C.java", line: 5, message: "cannot find symbol", symbol: "class CommandMap" });
+  assert(rulesOnly.itemIndex === null && rulesOnly.how === "rules-symbol" && rulesOnly.note.includes("CommandMap"), "다른 파일의 제거 클래스 심볼 → 규칙으로 설명");
+  const comp2 = L({ file: "/proj/src/main/java/c/C.java", line: 5, message: "cannot find symbol", symbol: "class EgovMybaitsUtil" });
+  assert(comp2.how === "rules-symbol" && comp2.note.includes("EgovMybatisUtil"), "공통컴포넌트 제거 클래스 심볼도 규칙으로 설명");
+  const pkgOnly = L({ file: "/proj/src/main/java/c/C.java", line: 5, message: "package javax.servlet.http does not exist" });
+  assert(pkgOnly.how === "rules-symbol" && pkgOnly.note.includes("jakarta"), "javax 패키지 부재 → 적용 미완 안내");
+  assert(L({ file: "/proj/src/main/java/c/C.java", line: 5, message: "';' expected" }).how === "unlinked", "무관한 오류 → unlinked");
+}
+// parseBuildErrors 의 symbol/location 캡처
+{
+  const errs = parseBuildErrors("maven", "[ERROR] /p/A.java:[3,41] cannot find symbol\n[ERROR]   symbol:   class Mapper\n[ERROR]   location: package egovframework.rte.psl.dataaccess.mapper\n[ERROR] /p/A.java:[5,1] package egovframework.rte.fdl.cmmn does not exist\n");
+  assert(errs.length === 2 && errs[0].symbol === "class Mapper" && errs[0].location === "package egovframework.rte.psl.dataaccess.mapper" && errs[1].symbol === undefined, "maven symbol/location 캡처, 다음 오류로 번지지 않음");
+  const g = parseBuildErrors("gradle", "/p/A.java:3: error: cannot find symbol\n  symbol:   class Mapper\n  location: package x\n");
+  assert(g[0].symbol === "class Mapper" && g[0].location === "package x", "gradle(javac) symbol/location 캡처");
+}
+// verifyMigration (가짜 runner)
+{
+  const vproj = mkdtempSync(path.join(tmpdir(), "egovmigverify-"));
+  write(vproj, "pom.xml", `<project><dependencies><dependency><groupId>org.egovframe.rte</groupId><artifactId>egovframe-rte-ptl-mvc</artifactId></dependency></dependencies></project>`);
+  write(vproj, "src/main/java/a/Svc.java", "import egovframework.rte.psl.dataaccess.mapper.Mapper;\nimport egovframework.rte.fdl.cmmn.AbstractServiceImpl;\nclass Svc {}\n");
+  const abs = path.join(vproj, "src/main/java/a/Svc.java");
+  const runner = async (cmd, o) => { o.onData(`[ERROR] ${abs}:[1,45] cannot find symbol\n[ERROR]   symbol:   class Mapper\n[ERROR]   location: package egovframework.rte.psl.dataaccess.mapper\n[ERROR] ${abs}:[2,36] package egovframework.rte.fdl.cmmn does not exist\n[ERROR] ${abs}:[9,1] ';' expected\n`); return { exitCode: 1, timedOut: false }; };
+  const v = await verifyMigration({ projectDir: vproj, runner, platform: "linux" });
+  assert(v.mode === "verify" && v.build.ran && v.build.success === false && v.build.errors === 3 && v.build.command === "mvn -B -e compile", `verify: 빌드 실행·오류 3건 (${v.build.command})`);
+  assert(v.links.filter((l) => l.itemIndex !== null).length === 2 && v.unlinked.length === 1 && v.unlinked[0].line === 9, "오류 2건 연결, 1건 분류 불가");
+  assert(v.worklist.length === 3 && v.worklist[0].errors === 1 && v.worklist.filter((w) => w.errors === 0).length === 1 && v.worklist.every((w) => w.item.action === "manual" || w.errors > 0), "작업 목록: 연결된 항목 + 오류 없는 수동 항목(parent 권고)");
+  const vmd = renderMigrationVerifyMarkdown(v);
+  assert(vmd.includes("## 작업 목록 (오류 해결 수 순)") && vmd.includes("## 분류되지 않은 오류 (1)") && vmd.includes("';' expected") && !vmd.includes("자동 항목이 남아 있습니다"), `검증 Markdown (auto ${v.summary.auto}: 경고 없음)`);
+  write(vproj, "src/main/java/a/Auto.java", "import javax.servlet.http.HttpServletRequest;\nclass Auto {}\n");
+  const vAuto = await verifyMigration({ projectDir: vproj, runner, platform: "linux" });
+  assert(vAuto.summary.auto === 1 && renderMigrationVerifyMarkdown(vAuto).includes("자동 항목이 남아 있습니다"), "자동 항목이 남아 있으면 적용 먼저 하라는 경고");
+  const okRunner = async () => ({ exitCode: 0, timedOut: false });
+  const v2 = await verifyMigration({ projectDir: vproj, runner: okRunner, platform: "linux" });
+  assert(v2.build.success === true && v2.links.length === 0 && v2.worklist.length === v2.summary.manual, "컴파일 통과 시 작업 목록은 수동 항목만");
+  const nobuild = mkdtempSync(path.join(tmpdir(), "egovmignb-"));
+  const v3 = await verifyMigration({ projectDir: nobuild, runner: okRunner });
+  assert(v3.build.ran === false && v3.build.reason.includes("빌드 파일") && v3.worklist.length === 0, "빌드 파일 없으면 검증 건너뜀");
+  assert(JSON.parse(JSON.stringify(v)).links[0].error.file.length > 0, "JSON 직렬화");
+  rmSync(vproj, { recursive: true, force: true }); rmSync(nobuild, { recursive: true, force: true });
+}
+rmSync(comp, { recursive: true, force: true });
 
 rmSync(legacy, { recursive: true, force: true });
 rmSync(modern, { recursive: true, force: true });

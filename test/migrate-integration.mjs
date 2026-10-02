@@ -2,7 +2,7 @@
 // 3.10 좌표·javax 를 쓰는 작은 Maven 프로젝트를 만들고, migrate_egovframe_project 2단계(apply)로 치환한 뒤
 // JDK 17 로 `mvn compile` 이 통과하는지 확인한다. 치환 전 프로젝트는 Java 17 + Spring 6 환경에서 컴파일될 수 없으므로
 // (javax.servlet / egovframework.rte 3.10 이 Spring 4 기준) 통과 자체가 좌표·패키지·Jakarta 치환의 정합성 증거다.
-import { applyMigration, migrateProject } from "../dist/index.js";
+import { applyMigration, migrateProject, verifyMigration } from "../dist/index.js";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -146,6 +146,22 @@ try {
   }
   assert(!compiled.error && compiled.status === 0, "치환된 프로젝트 JDK 17 `mvn compile` 통과");
   assert(existsSync(path.join(root, "target/classes/egovframework/example/sample/service/impl/SampleServiceImpl.class")), "SampleServiceImpl.class 생성");
+
+  // ── 3단계 검증 (v0.33): 제거 클래스를 참조하는 파일을 추가하고 실제 mvn compile 오류를 수동 항목과 연결 ──
+  write(root, "src/main/java/egovframework/example/sample/LegacyMapper.java", `package egovframework.example.sample;
+
+import egovframework.rte.psl.dataaccess.mapper.Mapper;
+import egovframework.rte.fdl.cmmn.AbstractServiceImpl;
+
+@Mapper("legacyMapper")
+public interface LegacyMapper {}
+`);
+  const v = await verifyMigration({ projectDir: root, timeoutMs: 600_000 });
+  assert(v.build.ran && v.build.success === false && v.build.errors >= 2, `verify: 실제 컴파일 오류 ${v.build.errors}건`);
+  const linked = v.links.filter((l) => l.itemIndex !== null);
+  assert(linked.length === v.links.length && v.unlinked.length === 0, `오류 전부 수동 항목과 연결 (연결 ${linked.length}/${v.links.length})`);
+  const top = v.worklist.filter((w) => w.errors > 0);
+  assert(top.length === 2 && top.every((w) => w.item.kind === "class-removed" && w.item.file.endsWith("LegacyMapper.java")), `작업 목록: 제거 클래스 2건 (${top.map((w) => `${w.item.from.split(".").pop()}:${w.errors}`).join(", ")})`);
 } catch (error) {
   console.error(error instanceof Error ? error.stack ?? error.message : error);
   process.exitCode = 1;

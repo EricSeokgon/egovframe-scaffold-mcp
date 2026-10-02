@@ -14,6 +14,10 @@ export interface BuildError {
   line: number;
   column?: number;
   message: string;
+  /** javac 의 후속 줄 "symbol: class Foo" (v0.33, 있을 때만) */
+  symbol?: string;
+  /** javac 의 후속 줄 "location: package x.y" (v0.33, 있을 때만) */
+  location?: string;
 }
 
 export interface ResolvedCommand {
@@ -129,12 +133,14 @@ export function parseBuildErrors(buildTool: BuildTool, output: string): BuildErr
       const key = `${m[1]}:${m[2]}:${m[3] ?? ""}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      errors.push({
+      const err: BuildError = {
         file: m[1].trim(),
         line: Number(m[2]),
         column: m[3] ? Number(m[3]) : undefined,
         message: m[4].trim(),
-      });
+      };
+      attachJavacDetails(err, output.slice(m.index + m[0].length, m.index + m[0].length + 400));
+      errors.push(err);
     }
   } else {
     // 예) /abs/Foo.java:12: error: cannot find symbol  (gradle/javac)
@@ -144,10 +150,25 @@ export function parseBuildErrors(buildTool: BuildTool, output: string): BuildErr
       const key = `${m[1]}:${m[2]}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      errors.push({ file: m[1].trim(), line: Number(m[2]), message: m[3].trim() });
+      const err: BuildError = { file: m[1].trim(), line: Number(m[2]), message: m[3].trim() };
+      attachJavacDetails(err, output.slice(m.index + m[0].length, m.index + m[0].length + 400));
+      errors.push(err);
     }
   }
   return errors;
+}
+
+/** 오류 줄 바로 뒤의 javac 후속 줄에서 symbol:/location: 을 읽는다 (Maven 은 "[ERROR]   symbol:" 접두 포함). */
+function attachJavacDetails(err: BuildError, tail: string): void {
+  const lines = tail.split(/\r?\n/).slice(1, 4);
+  for (const raw of lines) {
+    const l = raw.replace(/^\s*\[ERROR\]\s*/, "").trim();
+    const sym = l.match(/^symbol:\s*(.+)$/);
+    const loc = l.match(/^location:\s*(.+)$/);
+    if (sym && !err.symbol) err.symbol = sym[1].trim();
+    else if (loc && !err.location) err.location = loc[1].trim();
+    else if (!sym && !loc && !/^(symbol|location)/.test(l) && l.length && !l.startsWith("[ERROR]") && /:\[\d+/.test(l)) break;
+  }
 }
 
 /** 출력이 maxLines를 넘으면 마지막 maxLines줄만 남긴다(응답·메모리 상한). */

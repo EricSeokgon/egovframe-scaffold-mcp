@@ -21,7 +21,7 @@ import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
-import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, type MigrateResult } from "./migrate.js";
+import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, renderMigrationVerifyMarkdown, verifyMigration, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
 import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network.js";
 import { generateAgentsMd } from "./agents-md.js";
@@ -553,21 +553,28 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 5.x 전환 진단 도구 (v0.29.0, 1단계 읽기 전용) ──────
   server.registerTool(
     "migrate_egovframe_project",
-    { title: t("migrate_egovframe_project"), description: d("migrate_egovframe_project", "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단하고(1단계), apply=true 이면 auto 항목을 실제로 치환합니다(2단계). 진단: RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요). 적용: apply=true 는 dryRun=true(기본)면 파일별 변경 미리보기만 돌려주고, dryRun=false 면 auto 항목을 하나의 transaction 으로 치환하며 원본을 migration-backup/<시각>/ 에 보관하고 migration-plan.json 을 남깁니다(중간 실패 시 작업 전 상태로 복구). manual 항목은 건드리지 않고 결과에 남깁니다. 규칙은 egovframe-runtime 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다."), inputSchema: {
+    { title: t("migrate_egovframe_project"), description: d("migrate_egovframe_project", "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단하고(1단계), apply=true 이면 auto 항목을 실제로 치환합니다(2단계). 진단: RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요). 적용: apply=true 는 dryRun=true(기본)면 파일별 변경 미리보기만 돌려주고, dryRun=false 면 auto 항목을 하나의 transaction 으로 치환하며 원본을 migration-backup/<시각>/ 에 보관하고 migration-plan.json 을 남깁니다(중간 실패 시 작업 전 상태로 복구). manual 항목은 건드리지 않고 결과에 남깁니다. verify=true 는 3단계(검증): 적용 뒤 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 \"이 항목을 처리하면 해결될 오류 수\" 순으로 작업 목록을 만듭니다. 3.x 공통컴포넌트 소스가 섞여 있으면 컴포넌트 단위 재조립 권고를 내고 skipComponents 로 치환에서 뺄 수 있습니다. 규칙은 egovframe-runtime·egovframe-common-components 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
       target: z.enum(["5.x"]).default("5.x").describe("전환 목표 (현재 5.x 만 지원)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식. markdown=사람이 읽는 요약, json=항목 배열 그대로"),
       apply: z.boolean().default(false).describe("true 면 2단계(적용). false(기본)면 진단만"),
       dryRun: z.boolean().default(true).describe("apply=true 일 때만 의미. true(기본)면 파일별 변경 미리보기만, false 면 실제로 치환(백업 생성)"),
+      verify: z.boolean().default(false).describe("true 면 3단계(검증): 진단 후 compile 을 실행해 컴파일 오류를 수동 항목과 연결한 작업 목록을 반환(apply 와 함께 쓰지 않음, 빌드 도구 필요)"),
+      skipComponents: z.boolean().default(false).describe("true 면 3.x 공통컴포넌트 디렉터리(재조립 권고 대상)의 자동 항목을 치환하지 않고 수동으로 남김"),
     }, outputSchema: OUTPUT_SCHEMAS.migrate_egovframe_project.shape, annotations: toolAnnotations("migrate_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
+      if (args.verify) {
+        const r = await verifyMigration({ projectDir: args.projectDir, target: args.target, skipComponents: args.skipComponents });
+        const text = args.format === "json" ? JSON.stringify(stripEdits(r), null, 2) : renderMigrationVerifyMarkdown(r);
+        return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
+      }
       if (args.apply) {
-        const r = await applyMigration({ projectDir: args.projectDir, target: args.target, dryRun: args.dryRun });
+        const r = await applyMigration({ projectDir: args.projectDir, target: args.target, dryRun: args.dryRun, skipComponents: args.skipComponents });
         const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationApplyMarkdown(r);
         return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
       }
-      const r = migrateProject({ projectDir: args.projectDir, target: args.target });
+      const r = migrateProject({ projectDir: args.projectDir, target: args.target, skipComponents: args.skipComponents });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
     },
