@@ -316,7 +316,7 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Eri
 
 v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
 
-다음 후보(우선순위 미정): Homebrew 탭, Spring Boot BOM 전체를 의존성 기준에 포함, 전환 적용 후 컴파일 오류를 수동 항목과 연결, `check_egovframe_dependencies` 의 RTE 모듈 pom 전이 의존성 기준(mybatis 등), 공통컴포넌트 5.x 패키지 변화 대응표.
+다음 세 버전(v0.32–v0.34)의 범위는 [다음 버전 기획](#다음-버전-기획-v032v034)에 있습니다. Homebrew 탭은 계속 후순위입니다.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -332,8 +332,68 @@ v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 | **v0.29 완료** | `migrate_egovframe_project` (1단계: 진단) | 3.x/4.x 프로젝트를 5.x(Jakarta) 기준으로 스캔해 RTE 좌표·패키지·제거/이동 클래스·`javax→jakarta`·web.xml·XML 네임스페이스·라이브러리 전환 항목을 **읽기 전용**으로 auto/manual 구분 보고. 규칙은 `egovframe-runtime` 태그 3개 비교로 생성(`catalog/migration-rules.json`), 목적지 좌표는 CI 에서 실제 저장소와 대조 |
 | **v0.30 완료** | `migrate_egovframe_project` (2단계: 적용) + `check_egovframe_dependencies` | 진단의 auto 항목을 원문 오프셋 편집으로 transaction 적용(백업·dryRun 기본·계획 파일·실패 복구, 적용 후 JDK 17 `mvn compile` CI 검증), 공식 5.x parent 에서 추출한 기준(관리 좌표 139종 + BOM 계열 7종)과 의존성 대조·보안 설정 존재 점검·선택적 OSV 조회 |
 | **v0.31 완료** | 운영 편의 | `diagnose_egovframe_network`(호스트 7종 프로브·실패 분류·셸별 처방, 다운로드 오류 메시지에 처방 부착), `generate_agents_md`(ko/en), 영문 README 와 `EGOVFRAME_LANG=en` 도구 설명, MCP Registry `server.json`·`mcpName`·정합 테스트 |
+| **v0.32 계획** | MCP 프로토콜 현대화 | `registerTool` 전환, 도구 27종에 `title`·annotations(readOnly/destructive/idempotent/openWorld), json 반환 도구 5종에 `outputSchema`+`structuredContent`, 테스트 플랫폼 중립 가드. 상세: [다음 버전 기획](#다음-버전-기획-v032v034) |
+| **v0.33 계획** | `migrate_egovframe_project` 3단계: 검증 | 적용 후 컴파일 오류를 수동 항목과 연결한 작업 목록(`verify`), 공통컴포넌트 3.x→5.x 클래스 대응표(제거 58·추가 52 근거)와 재조립 권고 |
+| **v0.34 계획** | 의존성 기준 완성 | Spring Boot BOM 전체·RTE 모듈 전이 의존성을 기준에 포함해 `unknown` 축소, 규칙·기준 카탈로그의 upstream drift 를 `sync_egovframe_templates` 로 보고 |
 
-## 다음 버전 기획 (v0.29–v0.31)
+## 다음 버전 기획 (v0.32–v0.34)
+
+v0.31.0 까지 끝난 상태(2026-10-02, 도구 27종, 테스트 약 1,100건)에서 다음 세 릴리스를 아래 순서로 진행합니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-02)"에 있습니다.
+
+### v0.32.0 — MCP 프로토콜 현대화 + 테스트 플랫폼 중립 가드
+
+**목표**: 도구의 "무엇을 하는가"를 설명문뿐 아니라 프로토콜 메타데이터로도 알려 MCP 클라이언트가 승인 UX(읽기 전용은 자동 허용, 파괴적 도구는 확인)와 구조화된 결과 처리를 할 수 있게 합니다. 외부 동작 변화는 없고, 기존 `text` 응답은 그대로 유지합니다.
+
+**범위 (포함)**
+- 등록 API: `server.tool(...)`(SDK 1.29 에서 deprecated) → `server.registerTool(name, { title, description, inputSchema, outputSchema?, annotations }, cb)` 로 27종 전환. `i18n` 의 설명 선택은 그대로 `description` 에 적용하고 `title` 도 ko/en 으로 둡니다.
+- annotations: 읽기 전용 도구 14종(`list_*`·`search_*`·`explain_*`·`get_*`·`diagnose_*`·`validate_*`·`generate_egovframe_report`·`check_egovframe_dependencies`·`migrate(apply=false)`·`sync_*`)에 `readOnlyHint: true`, 파일을 지우거나 덮어쓰는 도구(`remove_egovframe_components`·`upgrade_egovframe_project`·`migrate(apply)`·`generate_agents_md(overwrite)`)에 `destructiveHint: true`, 다시 실행해도 같은 결과인 도구에 `idempotentHint`, 네트워크를 쓰는 도구에 `openWorldHint: true`. `migrate_egovframe_project` 처럼 인자에 따라 성격이 바뀌는 도구는 보수적으로(파괴 가능) 표시하고 설명에 조건을 적습니다.
+- 구조화 출력: 이미 `format=json` 을 제공하는 5종(`diagnose_egovframe_project`·`migrate_egovframe_project`·`check_egovframe_dependencies`·`diagnose_egovframe_network`·`validate_egovframe_project`)에 zod `outputSchema` 를 선언하고 `structuredContent` 를 함께 돌려줍니다(`text` 는 유지). 스키마는 `src/*.ts` 의 결과 인터페이스에서 도출하며 테스트가 실제 결과를 스키마로 검증합니다.
+- 테스트 플랫폼 중립 가드: v0.30·v0.31 에서 두 번 연속 Windows gate 만 깨진 원인(테스트가 POSIX 경로·래퍼 이름을 가정)을 구조적으로 막습니다 — (a) `resolveCommand`·`walk`·경로 비교처럼 플랫폼 분기가 있는 함수는 `platform` 주입 옵션을 두고 테스트가 `win32`·`linux` 양쪽을 명시적으로 단언, (b) `scripts/check-test-portability.mjs` 가 `test/*.mjs` 에서 `"./mvnw"`·`endsWith("/…")`·`path.sep` 미정규화 `path.relative` 같은 패턴을 찾아 실패시키고 `prepublishOnly` 에 포함, (c) README 릴리스 절차 2단계에 "Windows 체크아웃에서 통과" 조건을 명문화.
+
+**범위 (제외)**: 도구 추가, 응답 본문 변경, SDK 메이저 업그레이드(1.x 유지)
+
+**검증 기준**: `test:handshake` 가 27종 전부 `title`·`annotations` 존재와 읽기 전용 도구의 `readOnlyHint` 를 단언, 구조화 출력 5종은 `structuredContent` 가 `outputSchema` 를 통과(오프라인 픽스처), 이식성 검사 스크립트가 현재 테스트에서 0건, Windows gate 3개 통과
+
+**완료 정의**: 도구 27종(변화 없음), deprecated API 사용 0건, 기획 전 조사한 Claude Desktop·VS Code 에서 읽기 전용 도구가 승인 없이 실행되는지 수동 확인 1회
+
+### v0.33.0 — `migrate_egovframe_project` 3단계: 검증 + 공통컴포넌트 대응표
+
+**목표**: 2단계 적용 뒤 남는 일(컴파일 오류 고치기)을 사람이 처음부터 찾지 않게 합니다. "컴파일 오류 N건 중 M건은 수동 항목 K 때문" 을 연결한 작업 목록을 돌려주고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 5.0.6 기준 대응표와 재조립 권고를 냅니다.
+
+**범위 (포함)**
+- `migrate_egovframe_project(mode="verify")`(또는 `apply=true, verify=true`): `build_egovframe_project(goal="compile")` 을 실행해 파일·라인 단위 오류를 받은 뒤, 각 오류를 (1) 같은 파일의 수동 항목 — 라인 근접·심볼 일치(`cannot find symbol … Mapper` ↔ `class-removed Mapper→EgovMapper`), (2) 규칙 카탈로그의 제거 클래스·제거 모듈 심볼, (3) 분류 불가 로 나누고, 수동 항목별로 "이 항목을 처리하면 해결될 오류" 수를 붙여 우선순위를 매깁니다. 빌드 도구가 없으면 verify 는 건너뛰고 이유를 적습니다.
+- 공통컴포넌트 3.x→5.x 대응표: `scripts/generate-migration-rules.mjs` 에 `egovframe-common-components` 저장소(v3.10.0 ↔ v5.0.6)를 두 번째 근거로 추가해 `egovframework.com.*` 의 제거 클래스(조사 시점 58종, 예: `cmm.util.EgovMybaitsUtil`, `sec.rnc.service.EgovSocketClient`, `ext.oauth.*`)·추가 52종·이름 변경 4종을 `packages.components` 로 기록합니다. 진단은 사용자 소스가 제거 클래스를 참조하면 `class-removed`(manual) 로 보고합니다.
+- 재조립 권고: 진단에서 `diagnose_egovframe_project` 가 감지한 공통컴포넌트 패키지가 3.x 소스(`egovframework.rte` import 또는 `javax.servlet`)이면 "`add_egovframe_components` 로 5.0.6 을 다시 조립하고 사용자 수정은 백업과 diff 로 옮기라" 는 항목을 컴포넌트 단위로 1건씩 내고, 2단계 적용은 그 디렉터리를 치환 대상에서 뺄 수 있는 옵션(`skipComponents`)을 둡니다.
+
+**범위 (제외)**: 컴파일 오류 자동 수정, 공통컴포넌트 소스의 3-way 병합(그건 `upgrade_egovframe_project` 가 매니페스트가 있을 때만 하는 일)
+
+**검증 기준**: 픽스처(2단계 적용 후 제거 클래스를 참조하는 java 2개)로 verify 가 오류 ↔ 수동 항목을 정확히 연결, CI 통합에서 실제 `mvn compile` 오류 파싱 경로 통과, 규칙 정합 테스트가 공통컴포넌트 대응표의 목적지가 v5.0.6 트리에 있는지 검증, 공식 5.x 템플릿에서 verify 오류 0건
+
+**완료 정의**: 도구 27종, `test:migrate` 에 verify 단언 추가, `docs/design-migration.md` 3단계 절, 규칙 카탈로그 schemaVersion 2(하위 호환 필드 유지)
+
+### v0.34.0 — 의존성 기준 완성 + 규칙 drift 감시
+
+**목표**: `check_egovframe_dependencies` 의 `unknown` 을 줄이고, 동봉 규칙·기준이 upstream 과 어긋나면 사람이 알게 합니다.
+
+**범위 (포함)**
+- Spring Boot BOM 전체: 생성기가 `spring-boot-starter-parent` → `spring-boot-dependencies` pom 을 Maven Central 에서 받아 `dependencyManagement`(약 300 좌표)와 그 안의 BOM import 를 한 단계 더 풀어 `catalog/dependency-baseline.json` 에 `managedBoot` 로 넣습니다(계열 규칙은 유지). Boot parent 프로젝트의 버전 없는 의존성은 `managed` 에 기준 버전을 함께 보입니다.
+- RTE 모듈 전이 의존성: `egovframe-runtime` v5.0.2 모듈 pom 18종의 `<dependencies>` 를 읽어 mybatis·mybatis-spring·poi·quartz 등 RTE 가 끌어오는 버전을 `managedRte` 로 기록하고, 프로젝트가 같은 좌표를 더 낮은 버전으로 명시하면 `outdated`(사유: RTE 전이 버전과 충돌 가능) 로 봅니다.
+- drift 감시: `sync_egovframe_templates` 에 `migrationRules`·`dependencyBaseline` 절을 추가해 (1) `egovframe-runtime` 최신 태그가 규칙의 `toTag` 보다 새로운지, (2) parent 2종의 최신 버전이 기준 `sources` 보다 새로운지, (3) parent pom sha256 이 바뀌었는지를 보고합니다(파일은 고치지 않음). 변화가 있으면 README 의 갱신 절차를 결과에 붙입니다.
+- `check_egovframe_dependencies` 결과에 "기준 출처"(parent 직접 / 계열 / Boot BOM / RTE 전이)를 항목마다 표시합니다.
+
+**범위 (제외)**: 자동 버전 올리기(파일 수정), 취약점 DB 동봉
+
+**검증 기준**: 공식 5.x `egovframe-boot-web` 템플릿에서 `unknown` 0건, 공식 공통컴포넌트 v3.10.0 pom 에서 `unknown` 18 → 5 이하, drift 테스트는 네트워크(CI 통합)와 오프라인 모의 양쪽, 기준 카탈로그 생성이 재현 가능(sha256 고정)
+
+**완료 정의**: 도구 27종, `test:dependencies` 확장, `docs/design-dependency-check.md` 갱신, 기준 파일 크기 200KB 이하 유지
+
+### 보류·운영 항목
+
+- **npm 0.31.0 배포**: 2026-10-02 현재 `main`·태그 `v0.31.0`(bf0a09c)은 준비됐지만 npm 최신은 0.30.0 입니다. `git checkout main && git pull --ff-only origin main && npm publish` 뒤 `mcp-publisher login github && mcp-publisher publish` 로 MCP Registry 에 첫 등록을 합니다(현재 레지스트리 검색 결과 0건).
+- **브랜치 보호**: #33 이 Windows gate 실패 상태로 병합됐습니다. `main` 규칙에 "Require status checks to pass"(gate 6 + integration)를 켜 두면 재발하지 않습니다.
+- Homebrew 탭, Initializr upstream 이슈 3건 제출은 계속 후순위입니다.
+
+## 이전 기획 (v0.29–v0.31, 완료)
 
 v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행합니다. 각 항목은 "완료 정의"를 만족해야 릴리스합니다. 기획 시점(2026-09-26)의 조사 근거는 맨 아래 "선행 조사 결과"에 있습니다. v0.29.0 은 2026-09-27 에 완료했으며 기획 원문은 기록으로 남기고 결과를 항목 아래에 적었습니다.
 
@@ -399,6 +459,13 @@ v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행�
 6. (v0.31+) `server.json` 의 두 `version` 이 새 버전과 같은지 `npm run test:registry` 로 확인했으므로, 필요하면 `mcp-publisher publish` 로 MCP Registry 갱신
 
 태그는 반드시 병합된 `main` 커밋에 답니다. 병합 전 커밋이나 로컬 병합 커밋에 태그가 달리면 지우고 다시 답니다(v0.25.2·v0.28.0·v0.28.1 에서 각각 한 번씩 겪었습니다).
+
+### 선행 조사 결과 (2026-10-02)
+
+- `@modelcontextprotocol/sdk` 설치 버전 1.29.0(최신 1.31.0)에서 `McpServer.tool()` 은 deprecated 이고 `registerTool()` 이 `title`·`inputSchema`·`outputSchema`·`annotations`(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)를 받습니다. 현재 서버는 `tool()` 27회 호출이며 annotations·outputSchema 를 쓰지 않습니다.
+- `egovframe-common-components` 는 v5.0.6 이 최신(카탈로그와 동일)이고, `src/main/java` 클래스 수는 v3.10.0 1,095 → v5.0.6 1,089, 제거 58·추가 52·단순명 기준 이름 변경 4 입니다. 패키지 구조(`egovframework.com.<domain>`)는 유지돼 대응표가 작습니다.
+- `egovframe-runtime` 최신 태그는 v5.0.2-Final(규칙 카탈로그와 동일), 공식 parent 는 web·boot 모두 5.0.1 로 기준 카탈로그와 동일합니다 — 2026-10-02 기준 drift 없음.
+- MCP Registry 에 `io.github.EricSeokgon/egovframe-scaffold-mcp` 검색 결과는 0건으로 아직 게시 전입니다.
 
 ### 선행 조사 결과 (2026-09-26)
 
