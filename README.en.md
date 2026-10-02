@@ -65,7 +65,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `build_egovframe_project` / `test_egovframe_project` | Run builds and tests; compiler errors and JUnit XML structured by file/line |
 | `diagnose_egovframe_project` / `generate_egovframe_report` | Scan any existing project; Markdown report |
 | `get_egovframe_guide` / `search_egovframe_docs` | Official guide documents (151 mappings) and offline keyword search |
-| `migrate_egovframe_project` | **5.x migration**: diagnose RTE coordinates, package/class renames and removals, javax→jakarta, web.xml, removed XML namespaces, libraries to replace (auto/manual with file:line); `apply=true` rewrites auto items in one transaction with backups |
+| `migrate_egovframe_project` | **5.x migration**: diagnose RTE coordinates, package/class renames and removals (runtime and common components), javax→jakarta, web.xml, removed XML namespaces, libraries to replace (auto/manual with file:line); `apply=true` rewrites auto items in one transaction with backups; `verify=true` compiles and links compiler errors to the remaining manual items as a prioritised worklist |
 | `check_egovframe_dependencies` | Compare dependencies with the official 5.x parent baseline (139 coordinates + BOM families): ok / outdated / parent-managed / legacy / replace / unknown; security-config presence checks; optional OSV lookup |
 | `diagnose_egovframe_network` | Probe the hosts the server downloads from, classify failures (DNS, timeout, TLS, proxy auth) and prescribe environment settings as bash/cmd/PowerShell commands |
 | `generate_agents_md` | `AGENTS.md` for AI coding tools: build/test commands, RTE and migration status, components, rules, available MCP tools (ko/en) |
@@ -84,7 +84,8 @@ Resources: `egovframe://catalog/components`, `…/components/{id}`, `…/templat
 ```text
 migrate_egovframe_project(projectDir="/work/legacy-app")                    # diagnose (read-only)
 migrate_egovframe_project(projectDir="/work/legacy-app", apply=true)        # preview the edits
-migrate_egovframe_project(projectDir="/work/legacy-app", apply=true, dryRun=false)  # apply, then build_egovframe_project(goal="compile")
+migrate_egovframe_project(projectDir="/work/legacy-app", apply=true, dryRun=false)  # apply
+migrate_egovframe_project(projectDir="/work/legacy-app", verify=true)              # compile and link errors to the remaining manual items
 ```
 
 Auto items (coordinates, package prefixes and renames, javax→jakarta packages and artifacts, repository URLs, Java 17, web.xml schema) are rewritten from the exact text offsets the diagnosis recorded; manual items (removed classes with their replacements, removed `egov-*` XML namespaces, libraries such as DBCP 1.x or Log4j 1.x, Spring < 6) stay in the report with reasons. Details: [docs/design-migration.md](docs/design-migration.md) (Korean).

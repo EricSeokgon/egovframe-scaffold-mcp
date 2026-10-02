@@ -7,13 +7,14 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { diagnoseProject } from "./diagnose.js";
 import { withFileTransaction } from "./file-transaction.js";
+import { detectBuildToolAt, runBuild, type BuildError, type Runner } from "./build-runner.js";
 
 // ── 규칙 ──────────────────────────────────────────────
 export interface MigrationCoordinate { module: string; layer: string; from: { groupId: string; artifactId: string; era: string }[]; to: { groupId: string; artifactId: string } }
 export interface MigrationRules {
   schemaVersion: number;
   surveyedAt: string;
-  source: { repository: string; fromTag: string; midTag: string; toTag: string; fromCommit: string; toCommit: string };
+  source: { repository: string; fromTag: string; midTag: string; toTag: string; fromCommit: string; toCommit: string; components?: { repository: string; fromTag: string; fromCommit: string; toTag: string; toCommit: string } };
   target: {
     runtimeVersion: string; java: number; spring: string; repositoryUrl: string; legacyRepositoryUrls: string[];
     parents: { kind: string; groupId: string; artifactId: string; version: string }[];
@@ -28,6 +29,8 @@ export interface MigrationRules {
     renames: { from: string; to: string; classes: number }[];
     moves: { from: string; to: string; legacyFrom: string }[];
     removed: { class: string; legacyClass: string; replacement: string | null; reason: string; presentIn4x: boolean }[];
+    /** 공통컴포넌트(egovframework.com.*) 3.x→5.x 대응표 (schemaVersion 2) */
+    components?: { prefix: string; removed: { class: string; replacement: string | null; reason: string; candidates?: string[] }[]; moves: { from: string; to: string }[]; evidence: Record<string, number> };
   };
   jakarta: {
     packages: { from: string; to: string; exclude?: string[] }[];
@@ -52,7 +55,8 @@ export type MigrationKind =
   | "coordinate" | "coordinate-unknown" | "rte-version" | "parent" | "repository" | "removed-module"
   | "jakarta-artifact" | "library" | "java-release" | "spring-version"
   | "package" | "package-renamed" | "class-moved" | "class-removed" | "class-unknown"
-  | "jakarta-package" | "web-xml" | "xml-namespace";
+  | "jakarta-package" | "web-xml" | "xml-namespace"
+  | "component-class-removed" | "component-class-moved" | "component-reassemble";
 /** 파일 원문 오프셋 기준 치환(2단계 적용용). start==end 이면 삽입. */
 export interface TextEdit { start: number; end: number; replacement: string }
 export interface MigrationItem { file: string; line: number; kind: MigrationKind; from: string; to: string | null; action: MigrationAction; reason: string; edits?: TextEdit[] }
@@ -69,7 +73,13 @@ export interface MigrateResult {
   summary: { auto: number; manual: number; files: number; byKind: Record<string, number> };
   notes: string[];
 }
-export interface MigrateOptions { projectDir: string; target?: "5.x"; maxFiles?: number }
+export interface MigrateOptions {
+  projectDir: string;
+  target?: "5.x";
+  maxFiles?: number;
+  /** true 면 3.x 공통컴포넌트 소스(진단이 재조립 대상으로 표시한 디렉터리)의 항목을 auto 치환 대상에서 제외(manual 로 남김) */
+  skipComponents?: boolean;
+}
 
 // ── 유틸 ──────────────────────────────────────────────
 const SKIP_DIRS = new Set([".git", ".svn", ".hg", "target", "build", "node_modules", ".idea", ".settings", ".gradle", "bin", "out", "dist", ".mvn", "migration-backup", "upgrade-backup", "remove-backup"]);
@@ -104,6 +114,9 @@ interface Index {
   jakartaPackages: MigrationRules["jakarta"]["packages"];
   classes5: Set<string>;
   packages5: Set<string>;
+  componentRemoved: Map<string, { class: string; replacement: string | null; reason: string }>;
+  componentMoves: Map<string, string>;
+  componentPrefix: string | null;
 }
 let indexCache: Index | null = null;
 function index(rules: MigrationRules): Index {
@@ -124,6 +137,9 @@ function index(rules: MigrationRules): Index {
     jakartaPackages: [...rules.jakarta.packages].sort((a, b) => b.from.length - a.from.length),
     classes5: new Set(rules.evidence.classes5),
     packages5: new Set(rules.evidence.packages5),
+    componentRemoved: new Map((rules.packages.components?.removed ?? []).map((r) => [r.class, r])),
+    componentMoves: new Map((rules.packages.components?.moves ?? []).map((m) => [m.from, m.to])),
+    componentPrefix: rules.packages.components?.prefix ?? null,
   };
   return indexCache;
 }
@@ -186,6 +202,22 @@ export function classifyJavaxPackage(pkg: string, rules: MigrationRules = loadMi
 
 // ── 스캐너 ────────────────────────────────────────────
 const RTE_TOKEN_RE = /\b(?:egovframework\.rte|org\.egovframe\.rte)(?:\.[A-Za-z_$][\w$]*)+\.?/g;
+const COMPONENT_TOKEN_RE = /\begovframework\.com(?:\.[A-Za-z_$][\w$]*)+/g;
+
+/** 공통컴포넌트(egovframework.com.*) 토큰을 대응표로 판정한다. 대응표에 없는 클래스는 사용자 코드일 수 있으므로 null(보고 안 함). */
+export function classifyComponentToken(token: string, rules: MigrationRules = loadMigrationRules()): Pick<MigrationItem, "kind" | "from" | "to" | "action" | "reason"> | null {
+  const ix = index(rules);
+  if (!ix.componentPrefix || !token.startsWith(ix.componentPrefix)) return null;
+  const segs = token.replace(/\.$/, "").split(".");
+  for (let n = segs.length; n >= 3; n--) {
+    const cand = segs.slice(0, n).join(".");
+    const rm = ix.componentRemoved.get(cand);
+    if (rm) return { kind: "component-class-removed", from: token, to: rm.replacement, action: "manual", reason: rm.reason };
+    const mv = ix.componentMoves.get(cand);
+    if (mv) return { kind: "component-class-moved", from: token, to: mv + token.slice(cand.length), action: "auto", reason: `공통컴포넌트 ${rules.source.components?.toTag ?? "5.x"} 에서 ${mv} 로 이동` };
+  }
+  return null;
+}
 const JAVAX_TOKEN_RE = /\bjavax(?:\.[a-z_][a-z0-9_]*)+/g;
 
 function scanTextLines(rel: string, text: string, rules: MigrationRules, push: (i: MigrationItem) => void, opts: { rte: boolean; javax: boolean }) {
@@ -202,6 +234,19 @@ function scanTextLines(rel: string, text: string, rules: MigrationRules, push: (
         const edit: TextEdit | null = c.action === "auto" && c.to ? { start, end: start + c.from.length, replacement: c.to } : null;
         const prev = seen.get(c.from);
         if (prev) { if (edit) (prev.edits ??= []).push(edit); continue; } // 같은 줄의 반복 참조는 한 항목에 편집만 추가
+        const item: MigrationItem = { file: rel, line: i + 1, ...c, ...(edit ? { edits: [edit] } : {}) };
+        seen.set(c.from, item);
+        push(item);
+      }
+    }
+    if (opts.rte && line.includes("egovframework.com")) {
+      for (const m of line.matchAll(COMPONENT_TOKEN_RE)) {
+        const c = classifyComponentToken(m[0], rules);
+        if (!c) continue;
+        const start = offset + (m.index ?? 0);
+        const edit: TextEdit | null = c.action === "auto" && c.to ? { start, end: start + c.from.length, replacement: c.to } : null;
+        const prev = seen.get(c.from);
+        if (prev) { if (edit) (prev.edits ??= []).push(edit); continue; }
         const item: MigrationItem = { file: rel, line: i + 1, ...c, ...(edit ? { edits: [edit] } : {}) };
         seen.set(c.from, item);
         push(item);
@@ -565,6 +610,31 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
     });
   }
 
+  // 3.x 공통컴포넌트 소스 재조립 권고: 감지된 컴포넌트 디렉터리 안에 전환 항목(접두어·javax)이 있으면 컴포넌트 단위로 1건
+  const componentDirs: string[] = [];
+  for (const c of diag.detectedComponents) {
+    const prefix = c.matchedPrefix.replace(/\/?$/, "/");
+    const inside = items.filter((i) => i.file.startsWith(prefix) && (i.kind === "package" || i.kind === "jakarta-package" || i.kind === "package-renamed" || i.kind === "class-removed"));
+    if (inside.length === 0) continue;
+    componentDirs.push(prefix);
+    push({
+      file: c.matchedPrefix, line: 1, kind: "component-reassemble", from: `${c.id} (3.x 소스, 전환 항목 ${inside.length}건)`,
+      to: `add_egovframe_components(componentIds=["${c.id}"]) 로 ${rules.source.components?.toTag ?? "5.x"} 재조립`, action: "manual",
+      reason: "공통컴포넌트는 upstream 에서 복사한 소스이고 5.x 에서 내용이 바뀌었다(클래스·매퍼·설정). 텍스트 치환보다 5.x 원본을 다시 조립하고 사용자 수정은 백업과 diff 로 옮기는 편이 안전하다. 치환을 원하면 skipComponents=false(기본)로 두면 된다.",
+    });
+  }
+  if (opts.skipComponents && componentDirs.length) {
+    let demoted = 0;
+    for (const i of items) {
+      if (i.action !== "auto" || !componentDirs.some((d) => i.file.startsWith(d))) continue;
+      i.action = "manual";
+      i.reason = `${i.reason} (skipComponents: 공통컴포넌트 디렉터리는 재조립 대상이라 치환하지 않음)`;
+      delete i.edits;
+      demoted++;
+    }
+    if (demoted) notes.push(`skipComponents: 공통컴포넌트 디렉터리 ${componentDirs.length}개의 자동 항목 ${demoted}건을 수동으로 돌렸습니다.`);
+  }
+
   items.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.kind.localeCompare(b.kind));
   const byKind: Record<string, number> = {};
   for (const i of items) byKind[i.kind] = (byKind[i.kind] ?? 0) + 1;
@@ -586,6 +656,7 @@ const KIND_LABEL: Record<MigrationKind, string> = {
   "removed-module": "제거된 RTE 모듈", "jakarta-artifact": "Jakarta 의존성 좌표", library: "교체 필요 라이브러리", "java-release": "Java 버전", "spring-version": "Spring 버전",
   package: "RTE 패키지 접두어", "package-renamed": "RTE 패키지 이름 변경", "class-moved": "RTE 클래스 이동", "class-removed": "제거된 RTE 클래스", "class-unknown": "확인 필요 클래스",
   "jakarta-package": "javax → jakarta 패키지", "web-xml": "web.xml 스키마", "xml-namespace": "제거된 XML 네임스페이스",
+  "component-class-removed": "제거된 공통컴포넌트 클래스", "component-class-moved": "이동한 공통컴포넌트 클래스", "component-reassemble": "공통컴포넌트 재조립 권고",
 };
 
 /** 진단 결과를 Markdown 으로 렌더링한다. */
@@ -761,5 +832,118 @@ export function renderMigrationApplyMarkdown(r: MigrateApplyResult): string {
   L.push(``, `---`, r.dryRun
     ? `적용하려면 dryRun=false 로 다시 호출하세요. 적용 시 원본은 migration-backup/ 에 보관되고, 실패하면 작업 전 상태로 되돌립니다.`
     : `다음 단계: build_egovframe_project(goal="compile") 로 컴파일을 확인하고, 오류가 나면 위 수동 항목부터 처리하세요.`);
+  return L.join("\n");
+}
+
+// ── 3단계: 검증 (v0.33.0) ─────────────────────────────
+export interface VerifyLink { error: BuildError; itemIndex: number | null; how: "same-file-symbol" | "same-file-line" | "rules-symbol" | "unlinked"; note?: string }
+export interface VerifyWorkItem { index: number; item: MigrationItem; errors: number }
+export interface MigrateVerifyResult extends MigrateResult {
+  mode: "verify";
+  build: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; timedOut?: boolean; reason?: string };
+  links: VerifyLink[];
+  /** 수동 항목별로 "처리하면 해결될 오류 수" 내림차순 */
+  worklist: VerifyWorkItem[];
+  unlinked: BuildError[];
+}
+export interface VerifyOptions extends MigrateOptions { timeoutMs?: number; runner?: Runner; platform?: NodeJS.Platform | string }
+
+const simpleName = (fq: string) => fq.replace(/\.$/, "").split(".").pop() ?? fq;
+const normRel = (dir: string, file: string) => {
+  const abs = path.isAbsolute(file) ? file : path.join(dir, file);
+  return path.relative(dir, abs).split(path.sep).join("/");
+};
+
+/** 컴파일 오류 하나를 진단 항목(수동 우선)과 연결한다(순수 함수, 테스트 대상). */
+export function linkBuildError(error: BuildError, items: MigrationItem[], rules: MigrationRules, projectDir: string): VerifyLink {
+  const file = normRel(projectDir, error.file);
+  const text = `${error.message} ${error.symbol ?? ""} ${error.location ?? ""}`;
+  const pkgMissing = text.match(/package ([\w.]+) does not exist/)?.[1] ?? null;
+  const symbolName = error.symbol?.match(/(?:class|interface|variable|method|enum)\s+([\w$]+)/)?.[1] ?? null;
+  const locationPkg = error.location?.match(/package ([\w.]+)/)?.[1] ?? null;
+  const candidates = items.map((it, index) => ({ it, index })).filter(({ it }) => it.file === file);
+  const manualFirst = [...candidates].sort((a, b) => (a.it.action === "manual" ? 0 : 1) - (b.it.action === "manual" ? 0 : 1));
+  // 1) 같은 파일 + 심볼 일치: 항목 from 의 단순명/패키지가 오류의 symbol·package·location 과 맞음
+  for (const { it, index } of manualFirst) {
+    const from = it.from.replace(/\.$/, "");
+    if (symbolName && simpleName(from) === symbolName) return { error, itemIndex: index, how: "same-file-symbol" };
+    if (pkgMissing && (from === pkgMissing || from.startsWith(`${pkgMissing}.`))) return { error, itemIndex: index, how: "same-file-symbol" };
+    if (locationPkg && from.startsWith(`${locationPkg}.`) && symbolName && from.endsWith(`.${symbolName}`)) return { error, itemIndex: index, how: "same-file-symbol" };
+  }
+  // 2) 같은 파일 + 라인 근접(±3) 의 수동 항목
+  const near = manualFirst.find(({ it }) => it.action === "manual" && Math.abs(it.line - error.line) <= 3);
+  if (near) return { error, itemIndex: near.index, how: "same-file-line" };
+  // 3) 규칙 카탈로그의 제거 클래스·모듈·네임스페이스 심볼 — 다른 파일(예: 상속한 부모)에 항목이 있을 수 있음
+  const ix = index(rules);
+  if (symbolName) {
+    for (const r of rules.packages.removed) if (simpleName(r.class) === symbolName) return { error, itemIndex: null, how: "rules-symbol", note: `${r.class} — ${r.reason}` };
+    for (const r of rules.packages.components?.removed ?? []) if (simpleName(r.class) === symbolName) return { error, itemIndex: null, how: "rules-symbol", note: `${r.class} — ${r.reason}` };
+  }
+  if (pkgMissing && (pkgMissing.startsWith(rules.packages.prefix.from) || pkgMissing.startsWith("javax."))) {
+    return { error, itemIndex: null, how: "rules-symbol", note: `패키지 ${pkgMissing} 는 5.x 에 없음 — 2단계 적용이 끝났는지 확인(${pkgMissing.startsWith("javax.") ? "jakarta" : rules.packages.prefix.to}*)` };
+  }
+  void ix;
+  return { error, itemIndex: null, how: "unlinked" };
+}
+
+/** 진단 → 컴파일 → 오류를 수동 항목과 연결한 작업 목록. 파일을 쓰지 않는다(빌드 산출물 target/·build/ 는 빌드 도구가 만든다). */
+export async function verifyMigration(opts: VerifyOptions): Promise<MigrateVerifyResult> {
+  const rules = loadMigrationRules();
+  const r = migrateProject(opts);
+  const dir = r.projectDir;
+  const base = { ...r, mode: "verify" as const };
+  if (!detectBuildToolAt(dir)) {
+    return { ...base, build: { ran: false, success: null, errors: 0, reason: "빌드 파일(pom.xml·build.gradle)이 없어 컴파일 검증을 건너뜀" }, links: [], worklist: [], unlinked: [] };
+  }
+  const b = await runBuild({ projectDir: dir, goal: "compile", timeoutMs: opts.timeoutMs ?? 300_000, runner: opts.runner, platform: opts.platform });
+  const errors = b.errors ?? [];
+  const links = errors.map((e) => linkBuildError(e, r.items, rules, dir));
+  const counts = new Map<number, number>();
+  for (const l of links) if (l.itemIndex !== null) counts.set(l.itemIndex, (counts.get(l.itemIndex) ?? 0) + 1);
+  const worklist: VerifyWorkItem[] = [...counts].map(([index, n]) => ({ index, item: r.items[index], errors: n })).sort((a, b) => b.errors - a.errors || a.item.file.localeCompare(b.item.file) || a.item.line - b.item.line);
+  // 오류와 연결되지 않은 수동 항목도 뒤에 붙인다(0건) — 작업 목록은 수동 항목 전체를 덮는다
+  r.items.forEach((it, index) => { if (it.action === "manual" && !counts.has(index)) worklist.push({ index, item: it, errors: 0 }); });
+  const unlinked = links.filter((l) => l.how === "unlinked").map((l) => l.error);
+  return {
+    ...base,
+    build: { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, errors: errors.length, timedOut: b.timedOut },
+    links, worklist, unlinked,
+  };
+}
+
+/** 검증 결과를 Markdown 으로 렌더링한다. */
+export function renderMigrationVerifyMarkdown(r: MigrateVerifyResult): string {
+  const L: string[] = [];
+  L.push(`# 표준프레임워크 5.x 전환 검증`, ``);
+  L.push(`- 경로: ${r.projectDir}`);
+  L.push(`- 진단: 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${r.summary.auto > 0 ? " — ⚠️ 자동 항목이 남아 있습니다. 먼저 apply=true, dryRun=false 로 적용하세요." : ""}`);
+  if (!r.build.ran) L.push(`- 컴파일: 건너뜀 — ${r.build.reason}`);
+  else L.push(`- 컴파일: ${r.build.success ? "✅ 통과" : `❌ 오류 ${r.build.errors}건`}${r.build.timedOut ? " (타임아웃)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`);
+  const linked = r.links.filter((l) => l.itemIndex !== null).length;
+  const byRules = r.links.filter((l) => l.how === "rules-symbol").length;
+  if (r.build.ran && r.build.errors > 0) L.push(`- 연결: 수동 항목과 연결 ${linked} · 규칙 심볼로 설명 ${byRules} · 분류 불가 ${r.unlinked.length}`);
+  for (const n of r.notes) L.push(`- ${n}`);
+  const withErrors = r.worklist.filter((w) => w.errors > 0);
+  if (withErrors.length) {
+    L.push(``, `## 작업 목록 (오류 해결 수 순)`, ``);
+    for (const w of withErrors) L.push(`- **${w.errors}건** ${w.item.file}:L${w.item.line} [${KIND_LABEL[w.item.kind]}] \`${w.item.from}\`${w.item.to ? ` → \`${w.item.to}\`` : ""}`, `  - ${w.item.reason}`);
+  }
+  const rulesOnly = r.links.filter((l) => l.how === "rules-symbol");
+  if (rulesOnly.length) {
+    L.push(``, `## 규칙으로 설명되는 오류 (${rulesOnly.length})`, ``);
+    for (const l of rulesOnly.slice(0, 30)) L.push(`- ${normRel(r.projectDir, l.error.file)}:L${l.error.line} ${l.error.message}${l.error.symbol ? ` (${l.error.symbol})` : ""} — ${l.note}`);
+  }
+  if (r.unlinked.length) {
+    L.push(``, `## 분류되지 않은 오류 (${r.unlinked.length})`, ``);
+    for (const e of r.unlinked.slice(0, 30)) L.push(`- ${normRel(r.projectDir, e.file)}:L${e.line} ${e.message}${e.symbol ? ` (${e.symbol})` : ""}`);
+    L.push(``, `전환 규칙과 무관한 오류일 수 있습니다(라이브러리 API 변경, 기존 결함). build_egovframe_project 의 로그를 함께 보세요.`);
+  }
+  const rest = r.worklist.filter((w) => w.errors === 0);
+  if (rest.length) {
+    L.push(``, `## 컴파일 오류와 연결되지 않은 수동 항목 (${rest.length})`, ``);
+    for (const w of rest.slice(0, 40)) L.push(`- ${w.item.file}:L${w.item.line} [${KIND_LABEL[w.item.kind]}] \`${w.item.from}\``);
+    if (rest.length > 40) L.push(`- … 외 ${rest.length - 40}건`);
+  }
+  if (r.build.ran && r.build.success && r.summary.manual === 0) L.push(``, `전환이 끝났습니다. test_egovframe_project 로 테스트까지 확인하세요.`);
   return L.join("\n");
 }

@@ -1,4 +1,4 @@
-# 5.x 전환 설계 (v0.29.0 진단 · v0.30.0 적용) — `migrate_egovframe_project`
+# 5.x 전환 설계 (v0.29.0 진단 · v0.30.0 적용 · v0.33.0 검증) — `migrate_egovframe_project`
 
 ## 배경
 
@@ -89,3 +89,17 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 | parent | 도입하지 않는다(프로젝트 구조 결정이므로 `manual` 권고 유지). `<version>` 이 있던 RTE 의존성은 `${org.egovframe.rte.version}` 속성으로 모은다 | |
 
 검증: `test:migrate` 132단언(편집 원문 일치, dryRun 무기록, fault-injection 롤백, 적용 후 파일 내용·백업·계획·재적용 무기록·manual 불변), `test:migrate-integration`(CI): 3.10 좌표·javax 픽스처를 적용한 뒤 JDK 17 로 `mvn compile` 통과, 실제 공통컴포넌트 v3.10.0 자산(pom·web.xml·소스 12파일) 적용 → auto 48항목·86곳, 재진단 auto 0.
+
+## 3단계(v0.33.0): 검증 + 공통컴포넌트 대응표
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 검증의 뜻 | `verify=true`: 진단 → `build_egovframe_project(goal=compile)` 실행 → 컴파일 오류를 진단 항목과 연결한 작업 목록 | 2단계 뒤 남는 일(수동 항목 처리)을 사람이 오류 로그에서 처음부터 찾지 않게 한다 |
+| 오류 파서 | `parseBuildErrors` 가 javac 의 후속 줄 `symbol:`·`location:` 을 `BuildError.symbol/location` 으로 붙인다(Maven 의 `[ERROR]` 접두 처리) | "cannot find symbol" 만으로는 무엇이 없는지 알 수 없다 |
+| 연결 순서 | ① 같은 파일 + 심볼 일치(항목 `from` 의 단순명 = `symbol`, 또는 `package X does not exist` 의 X 가 `from` 의 접두, 수동 항목 우선) → ② 같은 파일 + 라인 ±3 의 수동 항목 → ③ 규칙 카탈로그의 제거 클래스(RTE·공통컴포넌트) 심볼 또는 `egovframework.rte.*`/`javax.*` 패키지 부재(적용 미완 안내) → ④ unlinked | 심볼이 가장 확실하고, 라인 근접은 보조, 규칙 심볼은 "다른 파일의 상속·참조" 같은 간접 원인을 설명한다 |
+| 작업 목록 | 수동 항목별 "해결될 오류 수" 내림차순, 오류와 연결되지 않은 수동 항목도 0건으로 뒤에 붙임 | 목록이 수동 항목 전체를 덮어야 빠뜨리는 것이 없다 |
+| 공통컴포넌트 대응표 | 생성기가 `egovframe-common-components` v3.10.0 ↔ v5.0.6 트리를 비교해 `packages.components`(제거 54·이동 4·추가 52, 조사 시점) 기록. 제거는 공통 사유 + 알려진 대체(`EgovMybaitsUtil`→`EgovMybatisUtil`)만 큐레이션 | 공통컴포넌트는 upstream 복사본이라 RTE 처럼 항목별 사유를 요구하지 않는다. 대응표에 없는 `egovframework.com.*` 는 사용자 코드일 수 있어 보고하지 않는다 |
+| 재조립 권고 | 감지된 컴포넌트 디렉터리 안에 전환 항목(접두어·javax·이름 변경·제거)이 있으면 컴포넌트당 `component-reassemble`(manual) 1건. `skipComponents=true` 면 그 디렉터리의 auto 항목을 manual 로 돌리고 편집을 제거 | 5.x 공통컴포넌트는 내용이 바뀌었으므로 텍스트 치환보다 원본 재조립이 안전하다. 그래도 치환하고 싶은 사람은 기본값으로 둔다 |
+| 읽기 전용 | verify 는 파일을 쓰지 않는다(빌드 산출물은 빌드 도구의 것) | |
+
+검증: `test:migrate` 162단언(대응표 판정, 재조립 권고, skipComponents, `linkBuildError` 8케이스, javac 후속 줄 파싱, 가짜 runner verify 4케이스), `test:migration-rules` 605단언(공통컴포넌트 출처·근거·형식·큐레이션 반영), `test:migrate-integration`(CI): 적용 후 컴파일 통과 → 제거 클래스 참조 파일 추가 → 실제 `mvn compile` 오류 3건 전부 수동 항목 2건에 연결.

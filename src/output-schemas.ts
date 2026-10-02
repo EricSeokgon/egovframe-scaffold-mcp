@@ -50,8 +50,12 @@ export const MigrateOutput = loose({
   items: z.array(MigrationItem),
   summary: MigrateSummary,
   notes: z.array(z.string()),
-  // 2단계(apply) 전용 — 진단만 할 때는 없음
-  mode: z.literal("apply").optional(),
+  // 2단계(apply)·3단계(verify) 전용 — 진단만 할 때는 없음
+  mode: z.enum(["apply", "verify"]).optional(),
+  build: loose({ ran: z.boolean(), success: z.boolean().nullable(), errors: z.number().int() }).optional(),
+  links: z.array(loose({ error: loose({ file: z.string(), line: z.number().int(), message: z.string() }), itemIndex: z.number().int().nullable(), how: z.enum(["same-file-symbol", "same-file-line", "rules-symbol", "unlinked"]) })).optional(),
+  worklist: z.array(loose({ index: z.number().int(), item: MigrationItem, errors: z.number().int() })).optional(),
+  unlinked: z.array(loose({ file: z.string(), line: z.number().int(), message: z.string() })).optional(),
   dryRun: z.boolean().optional(),
   applied: loose({ items: z.number().int(), edits: z.number().int(), files: z.number().int() }).optional(),
   skippedManual: z.number().int().optional(),
