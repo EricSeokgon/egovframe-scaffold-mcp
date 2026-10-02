@@ -22,9 +22,12 @@ write(root, "src/main/webapp/WEB-INF/jsp/index.jsp", "<html/>");
 write(root, ".egovframe-components.json", JSON.stringify({ schemaVersion: 3, source: {}, components: { cmm: { installedAt: "x", files: [], sqlScripts: [] } } }));
 mkdirSync(path.join(root, "upgrade-backup"), { recursive: true });
 
-const facts = collectAgentsFacts(root);
-// 래퍼 명령은 플랫폼에 따라 ./mvnw(POSIX) 또는 mvnw.cmd(Windows)
-assert(facts.buildSystem === "maven" && facts.wrapper === true && /^(\.\/mvnw|mvnw\.cmd) -B -e compile$/.test(facts.commands.compile) && facts.commands.package.includes("-DskipTests"), `maven + 래퍼 명령 (${facts.commands.compile})`);
+// 플랫폼은 주입해서 양쪽을 모두 단언한다(실행 OS 에 의존하지 않음)
+const facts = collectAgentsFacts(root, { platform: "linux" });
+const factsWin = collectAgentsFacts(root, { platform: "win32" });
+assert(facts.buildSystem === "maven" && facts.wrapper === true && facts.commands.compile === "./mvnw -B -e compile" && facts.commands.package.includes("-DskipTests"), `maven + 래퍼 명령 linux (${facts.commands.compile})`); // portability: ok facts 는 platform:"linux" 주입
+assert(factsWin.wrapper === true && factsWin.commands.compile === "mvnw.cmd -B -e compile" && factsWin.commands.test === "mvnw.cmd -B -e test", `maven + 래퍼 명령 win32 (${factsWin.commands.compile})`);
+assert(renderAgentsMd(factsWin, { projectName: "demo", lang: "ko", date: "2026-09-30" }).includes("mvnw.cmd -B -e compile   # 컴파일"), "win32 렌더링에 mvnw.cmd");
 assert(facts.rteVersion === "5.0.2" && facts.sourceEra === "5.x" && facts.parent === "org.egovframe.web:egovframe-web-config-parent:5.0.1" && facts.database === "mysql", "RTE·era·parent·DbType");
 assert(JSON.stringify(facts.basePackages) === JSON.stringify(["egovframework.com", "kr.go"]), `기본 패키지 (${facts.basePackages})`);
 assert(facts.components.map((c) => `${c.id}:${c.managed}`).sort().join() === "bbs:false,cmm:true", `컴포넌트·매니페스트 관리 여부 (${facts.components.map((c) => `${c.id}:${c.managed}`)})`);
@@ -32,13 +35,13 @@ assert(facts.configDirs.includes("src/main/resources/egovframework/spring") && f
 assert(facts.migration && facts.migration.auto === 0 && facts.migration.manual === 0 && facts.manifest && facts.backupDirs.join() === "upgrade-backup", "5.x 전환 0건, 매니페스트, 백업 디렉터리 감지");
 
 const md = renderAgentsMd(facts, { projectName: "demo", lang: "ko", date: "2026-09-30" });
-assert(md.startsWith("# AGENTS.md — demo") && md.includes("## 빌드·테스트 명령") && md.includes(`${facts.commands.compile}   # 컴파일`) && md.includes("| cmm |") && md.includes("매니페스트 관리") && md.includes("5.x 기준을 만족") && md.includes("upgrade-backup") && md.includes("_생성: 2026-09-30"), "한국어 렌더링");
+assert(md.startsWith("# AGENTS.md — demo") && md.includes("## 빌드·테스트 명령") && md.includes("./mvnw -B -e compile   # 컴파일") && md.includes("| cmm |") && md.includes("매니페스트 관리") && md.includes("5.x 기준을 만족") && md.includes("upgrade-backup") && md.includes("_생성: 2026-09-30"), "한국어 렌더링"); // portability: ok facts 는 platform:"linux" 주입
 assert(md.includes("`org.egovframe.rte.*`(실행환경)와 `jakarta.*` 네임스페이스만") , "5.x 프로젝트 규칙: jakarta 만 사용");
 const en = renderAgentsMd(facts, { projectName: "demo", lang: "en", date: "2026-09-30" });
 assert(en.includes("## Build and test commands") && en.includes("Already on the 5.x baseline") && en.includes("manifest-managed") && !en.includes("컴파일"), "영어 렌더링");
 
 // 생성·거부·덮어쓰기·dryRun
-const r1 = await generateAgentsMd({ projectDir: root, dryRun: true });
+const r1 = await generateAgentsMd({ projectDir: root, dryRun: true, platform: "linux" });
 assert(r1.dryRun && !r1.written && !existsSync(path.join(root, "AGENTS.md")) && r1.content === renderAgentsMd(facts, { projectName: path.basename(root), lang: "ko", date: r1.content.match(/_생성: (\d{4}-\d{2}-\d{2})/)[1] }), "dryRun 무기록, 내용 동일");
 const r2 = await generateAgentsMd({ projectDir: root });
 assert(r2.written && !r2.overwritten && readFileSync(r2.filePath, "utf8") === r2.content && r2.fileName === "AGENTS.md", "AGENTS.md 생성");
@@ -60,8 +63,8 @@ assert(!readdirSync(root).some((f) => f.startsWith(".egovframe-write-txn")), "tr
 const legacy = mkdtempSync(path.join(tmpdir(), "egovagents3-"));
 write(legacy, "build.gradle", "dependencies { implementation 'egovframework.rte:egovframework.rte.ptl.mvc:3.10.0' }\n");
 write(legacy, "src/main/java/egovframework/example/App.java", "import javax.servlet.http.HttpServletRequest; class App {}");
-const f3 = collectAgentsFacts(legacy);
-assert(f3.buildSystem === "gradle" && f3.commands.compile.match(/gradle(\.bat)? --console=plain compileJava$/) && f3.sourceEra === "3.x" && f3.migration.auto >= 2 && f3.components.length === 0 && !f3.manifest, `gradle 3.x: era ${f3.sourceEra}, auto ${f3.migration.auto}`);
+const f3 = collectAgentsFacts(legacy, { platform: "linux" });
+assert(f3.buildSystem === "gradle" && f3.commands.compile === "gradle --console=plain compileJava" && collectAgentsFacts(legacy, { platform: "win32" }).commands.compile === "gradle.bat --console=plain compileJava" && f3.sourceEra === "3.x" && f3.migration.auto >= 2 && f3.components.length === 0 && !f3.manifest, `gradle 3.x: era ${f3.sourceEra}, auto ${f3.migration.auto}`);
 const md3 = renderAgentsMd(f3, { projectName: "legacy", lang: "ko" });
 assert(md3.includes("5.x 전환 대상") && md3.includes("migrate_egovframe_project(apply=true)") && md3.includes("감지된 공통컴포넌트가 없습니다") && md3.includes("5.x 에도 있는 API"), "3.x 프로젝트 안내");
 

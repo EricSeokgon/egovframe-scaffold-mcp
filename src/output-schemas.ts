@@ -1,0 +1,106 @@
+// 구조화 출력 스키마 (v0.32.0): format=json 을 제공하던 도구 5종의 결과를 MCP outputSchema 로 선언한다.
+// 스키마는 src/*.ts 의 결과 인터페이스를 따르며, 테스트가 실제 결과를 이 스키마로 검증해 어긋남을 잡는다.
+// 알 수 없는 키는 허용(passthrough)해 결과 인터페이스에 필드가 늘어도 깨지지 않게 하고, 핵심 필드만 엄격히 본다.
+import { z } from "zod";
+
+const loose = <T extends z.ZodRawShape>(shape: T) => z.object(shape).passthrough();
+
+export const DiagnoseOutput = loose({
+  projectDir: z.string(),
+  isEgovProject: z.boolean(),
+  buildSystem: z.enum(["maven", "gradle", "unknown"]),
+  egovVersion: z.string().nullable(),
+  database: z.string().nullable(),
+  detectedComponents: z.array(loose({ id: z.string(), name: z.string(), matchedPrefix: z.string() })),
+  aiLayer: z.boolean(),
+  hasManifest: z.boolean(),
+  issues: z.array(z.string()),
+  suggestions: z.array(z.string()),
+});
+
+export const ValidateOutput = loose({
+  projectDir: z.string(),
+  ok: z.boolean(),
+  manifestFound: z.boolean(),
+  components: z.array(loose({ id: z.string(), files: z.number().int(), missing: z.number().int(), missingSamples: z.array(z.string()) })),
+  dbType: z.string().nullable(),
+  dbScriptDirs: z.array(z.string()),
+  aiChecks: z.array(loose({ componentId: z.string(), file: z.string(), exists: z.boolean(), note: z.string() })),
+  warnings: z.array(z.string()),
+});
+
+const MigrationItem = loose({
+  file: z.string(),
+  line: z.number().int(),
+  kind: z.string(),
+  from: z.string(),
+  to: z.string().nullable(),
+  action: z.enum(["auto", "manual"]),
+  reason: z.string(),
+});
+const MigrateSummary = loose({ auto: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: z.record(z.number().int()) });
+export const MigrateOutput = loose({
+  projectDir: z.string(),
+  target: z.literal("5.x"),
+  rules: loose({ toTag: z.string(), surveyedAt: z.string(), runtimeVersion: z.string() }),
+  buildSystem: z.enum(["maven", "gradle", "unknown"]),
+  rteVersion: z.string().nullable(),
+  sourceEra: z.enum(["3.x", "4.x", "5.x", "unknown"]),
+  filesScanned: z.number().int(),
+  items: z.array(MigrationItem),
+  summary: MigrateSummary,
+  notes: z.array(z.string()),
+  // 2단계(apply) 전용 — 진단만 할 때는 없음
+  mode: z.literal("apply").optional(),
+  dryRun: z.boolean().optional(),
+  applied: loose({ items: z.number().int(), edits: z.number().int(), files: z.number().int() }).optional(),
+  skippedManual: z.number().int().optional(),
+  files: z.array(loose({ file: z.string(), items: z.number().int(), edits: z.number().int() })).optional(),
+  conflicts: z.array(z.string()).optional(),
+  backupDir: z.string().optional(),
+  planPath: z.string().optional(),
+  remaining: MigrateSummary.optional(),
+});
+
+const DependencyStatus = z.enum(["ok", "outdated", "managed", "legacy", "replace", "unknown", "unversioned"]);
+export const DependenciesOutput = loose({
+  projectDir: z.string(),
+  buildSystem: z.enum(["maven", "gradle", "unknown"]),
+  offline: z.boolean(),
+  baseline: loose({ surveyedAt: z.string(), rte: z.string(), springFramework: z.string().nullable(), springBoot: z.string().nullable(), java: z.number().int() }),
+  parent: loose({ groupId: z.string().nullable(), artifactId: z.string().nullable(), version: z.string().nullable(), kind: z.enum(["web", "boot", "other", "none"]), status: z.enum(["ok", "outdated", "n/a"]) }),
+  java: loose({ value: z.string().nullable(), status: z.enum(["ok", "outdated", "unknown"]) }),
+  findings: z.array(loose({ file: z.string(), line: z.number().int(), groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), resolvedVersion: z.string().nullable(), scope: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable() })),
+  summary: z.record(z.number().int()),
+  checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })),
+  vulnerabilities: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })).optional(),
+  osvError: z.string().optional(),
+  notes: z.array(z.string()),
+});
+
+const NetworkKind = z.enum(["ok", "dns", "timeout", "tls", "proxy-auth", "refused", "reset", "unreachable", "http", "other"]);
+export const NetworkOutput = loose({
+  node: z.string(),
+  platform: z.string(),
+  envProxySupported: z.boolean(),
+  env: loose({ httpsProxy: z.string().nullable(), httpProxy: z.string().nullable(), noProxy: z.string().nullable(), nodeUseEnvProxy: z.string().nullable(), nodeOptions: z.string().nullable(), nodeExtraCaCerts: z.string().nullable(), nodeTlsRejectUnauthorized: z.string().nullable() }),
+  hosts: z.array(loose({
+    host: z.string(), purpose: z.string(), tools: z.array(z.string()),
+    dns: loose({ ok: z.boolean(), ms: z.number(), addresses: z.array(loose({ address: z.string(), family: z.number().int() })), error: z.string().nullable() }),
+    http: loose({ kind: NetworkKind, status: z.number().int().nullable(), ms: z.number(), error: z.string().nullable() }),
+    ok: z.boolean(),
+  })),
+  summary: loose({ ok: z.number().int(), failed: z.number().int(), byKind: z.record(z.number().int()) }),
+  prescriptions: z.array(loose({ id: z.string(), title: z.string(), commands: z.array(loose({ shell: z.enum(["bash", "cmd", "powershell"]), command: z.string() })), reason: z.string() })),
+  notes: z.array(z.string()),
+});
+
+/** 도구 이름 → outputSchema (테스트·문서용 색인) */
+export const OUTPUT_SCHEMAS = {
+  diagnose_egovframe_project: DiagnoseOutput,
+  validate_egovframe_project: ValidateOutput,
+  migrate_egovframe_project: MigrateOutput,
+  check_egovframe_dependencies: DependenciesOutput,
+  diagnose_egovframe_network: NetworkOutput,
+} as const;
+export type StructuredToolName = keyof typeof OUTPUT_SCHEMAS;

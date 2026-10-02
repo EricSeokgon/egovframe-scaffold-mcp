@@ -75,7 +75,8 @@ Resources: `egovframe://catalog/components`, `…/components/{id}`, `…/templat
 ## How it stays trustworthy
 
 - **Pinned sources**: component catalog (official v5.0.6 tag, commit, archive sha256), Initializr zip templates (commit, sha256, size), config templates (commit, per-file sha256, CRLF-safe), migration rules derived from `egovframe-runtime` tags v3.10.0 / v4.3.0-Final / v5.0.2-Final, dependency baseline extracted from the official 5.x parent poms.
-- **Release gate**: `npm run prepublishOnly` runs the build and ~25 offline suites (over 1,000 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, and checks that every migration target coordinate exists in the Maven repositories.
+- **Release gate**: `npm run prepublishOnly` runs the build and ~25 offline suites (over 1,100 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, and checks that every migration target coordinate exists in the Maven repositories.
+- **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools also declare `outputSchema` and return `structuredContent`.
 - **Safety**: transactions with structured rollback reports, `dryRun` everywhere, allowed roots with realpath checks, zip-slip guards, process-tree kill on build timeouts.
 
 ## Migration to 5.x in two calls

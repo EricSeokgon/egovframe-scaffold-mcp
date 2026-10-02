@@ -134,7 +134,7 @@ assert(jc.path === "src/main/java/kr/go/sample/config/EgovTransactionJpaConfig.j
 const custom = generateConfig({ projectDir: proj, configId: "logging-console", format: "properties", outputDir: "src/main/resources/conf", fileName: "log4j2-dev" });
 assert(custom.path === "src/main/resources/conf/log4j2-dev.properties" && existsSync(custom.absolutePath), "outputDir·fileName 지정");
 rejects(() => generateConfig({ projectDir: proj, configId: "datasource", format: "xml", outputDir: "../outside" }), /프로젝트 내부의 상대 경로/, "상위 경로 outputDir 거부");
-rejects(() => generateConfig({ projectDir: proj, configId: "datasource", format: "xml", outputDir: "/etc" }), /프로젝트 내부의 상대 경로/, "절대 경로 outputDir 거부");
+rejects(() => generateConfig({ projectDir: proj, configId: "datasource", format: "xml", outputDir: "/etc" }), /프로젝트 내부의 상대 경로/, "절대 경로 outputDir 거부"); // portability: ok 절대 경로 거부 검증(win32 에서도 isAbsolute)
 rejects(() => generateConfig({ projectDir: proj, configId: "datasource", format: "xml", outputDir: "src/../../x" }), /프로젝트 내부의 상대 경로|프로젝트 밖/, "중간 .. 거부");
 rejects(() => generateConfig({ projectDir: proj, configId: "datasource", format: "javaConfig", fields: { txtConfigPackage: "Kr.Go" } }), /자바 패키지 형식/, "잘못된 패키지 거부");
 rejects(() => generateConfig({ projectDir: path.join(proj, "nope"), configId: "datasource", format: "xml" }), /프로젝트 디렉터리가 없습니다/, "없는 프로젝트 거부");

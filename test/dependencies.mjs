@@ -10,7 +10,7 @@ function assert(cond, msg) { n++; if (!cond) { console.error("FAIL:", msg); proc
 const write = (root, rel, text) => { mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); writeFileSync(path.join(root, rel), text, "utf8"); };
 function snapshot(root) {
   const out = [];
-  const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else out.push(`${path.relative(root, p)}:${statSync(p).mtimeMs}:${createHash("sha256").update(readFileSync(p)).digest("hex")}`); } };
+  const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else out.push(`${path.relative(root, p).split(path.sep).join("/")}:${statSync(p).mtimeMs}:${createHash("sha256").update(readFileSync(p)).digest("hex")}`); } };
   walk(root);
   return out.sort().join("\n");
 }

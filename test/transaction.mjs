@@ -59,7 +59,7 @@ const boundary = new ProjectFileTransaction(project, "boundary-test");
 assert.throws(() => boundary.writeFile(path.join(tmp, "absolute.txt"), "x"), /절대·빈 경로/, "절대경로를 거부해야 한다");
 assert.throws(() => boundary.writeFile("../outside.txt", "x"), /프로젝트 밖 경로/, "상대경로 이탈을 거부해야 한다");
 assert.throws(
-  () => boundary.writeFile(path.relative(project, path.join(boundary.stagingDir, "internal.txt")), "x"),
+  () => boundary.writeFile(path.relative(project, path.join(boundary.stagingDir, "internal.txt")), "x"), // portability: ok 상대 경로 입력(비교 아님)
   /staging 내부 경로/,
   "transaction 자체 staging 경로 쓰기를 거부해야 한다",
 );

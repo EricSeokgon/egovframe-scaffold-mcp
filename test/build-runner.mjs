@@ -38,7 +38,7 @@ assert(cMvnSys.command === "mvn" && !cMvnSys.usedWrapper, "래퍼 없으면 시�
 assert(cMvnSys.args.includes("compile") && cMvnSys.cwd === mv, "명령 인자·cwd 반영");
 const mvw = mkdir("br-mvnw-"); writeFileSync(path.join(mvw, "pom.xml"), "<project/>"); writeFileSync(path.join(mvw, "mvnw"), "#!/bin/sh");
 const cMvnW = resolveCommand(mvw, "maven", "compile", { platform: "linux" });
-assert(cMvnW.command === "./mvnw" && cMvnW.usedWrapper, "mvnw 있으면 래퍼 우선");
+assert(cMvnW.command === "./mvnw" && cMvnW.usedWrapper, "mvnw 있으면 래퍼 우선"); // portability: ok platform:"linux" 주입
 const cMvnWin = resolveCommand(mv, "maven", "compile", { platform: "win32" });
 assert(cMvnWin.command === "mvn.cmd", "win32 시스템 mvn.cmd");
 const mvwWin = mkdir("br-mvnw-win-"); writeFileSync(path.join(mvwWin, "pom.xml"), "<project/>"); writeFileSync(path.join(mvwWin, "mvnw.cmd"), "");

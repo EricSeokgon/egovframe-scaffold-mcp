@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const proj = "/tmp/scaffold-comp-test";
+const proj = "/tmp/scaffold-comp-test"; // portability: ok 네트워크 통합 테스트(CI ubuntu 전용)
 fs.rmSync(proj, { recursive: true, force: true });
 fs.mkdirSync(proj, { recursive: true });
 
@@ -63,7 +63,7 @@ assert.ok(
 assert.equal(r.sourceVerification.sha256.length, 64);
 
 // 2) 매니페스트 기록 뒤 실패해도 파일·매니페스트·신규 빈 디렉터리를 모두 롤백
-const rollbackProj = "/tmp/scaffold-comp-rollback-test";
+const rollbackProj = "/tmp/scaffold-comp-rollback-test"; // portability: ok 네트워크 통합 테스트(CI ubuntu 전용)
 fs.rmSync(rollbackProj, { recursive: true, force: true });
 fs.mkdirSync(rollbackProj, { recursive: true });
 fs.writeFileSync(path.join(rollbackProj, "sentinel.txt"), "preserve\n");
@@ -76,8 +76,8 @@ assert.deepEqual(fs.readdirSync(rollbackProj), ["sentinel.txt"], "호출 전 파
 assert.equal(fs.readFileSync(path.join(rollbackProj, "sentinel.txt"), "utf8"), "preserve\n", "기존 파일은 불변이어야 한다");
 
 // 3) 상위 symlink를 통한 프로젝트 밖 쓰기 거부
-const symlinkProj = "/tmp/scaffold-comp-symlink-test";
-const symlinkOutside = "/tmp/scaffold-comp-symlink-outside";
+const symlinkProj = "/tmp/scaffold-comp-symlink-test"; // portability: ok 네트워크 통합 테스트(CI ubuntu 전용)
+const symlinkOutside = "/tmp/scaffold-comp-symlink-outside"; // portability: ok 네트워크 통합 테스트(CI ubuntu 전용)
 fs.rmSync(symlinkProj, { recursive: true, force: true });
 fs.rmSync(symlinkOutside, { recursive: true, force: true });
 fs.mkdirSync(symlinkProj, { recursive: true });
@@ -98,7 +98,7 @@ await assert.rejects(() => addComponents({ projectDir: proj, components: ["bbs"]
 
 // 5) 없는 프로젝트 디렉터리 거부
 await assert.rejects(
-  () => addComponents({ projectDir: "/tmp/no-such-dir-xyz", components: ["bbs"] }),
+  () => addComponents({ projectDir: "/tmp/no-such-dir-xyz", components: ["bbs"] }), // portability: ok 존재하지 않는 경로의 거부 검증
   "존재하지 않는 프로젝트 디렉터리를 거부해야 한다",
 );
 
