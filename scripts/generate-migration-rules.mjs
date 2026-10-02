@@ -279,6 +279,7 @@ async function main() {
     },
     jakarta: { packages: mapping.jakarta.packages, artifacts: mapping.jakarta.artifacts, note: mapping.jakarta.comment },
     libraries: mapping.libraries.manual,
+    vendorCoordinates: mapping.vendorCoordinates?.groupIdPrefixes ?? [],
     xmlNamespaces: mapping.xmlNamespaces.removed,
     build: mapping.build,
     evidence: {

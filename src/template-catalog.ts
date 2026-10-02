@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { checkCatalogDrift, type CatalogDriftResult, type FetchStatusFn } from "./catalog-drift.js";
 import * as fs from "node:fs";
 import { loadConfigCatalog, templateSha256 } from "./config-generator.js";
 
@@ -110,6 +111,8 @@ export interface TemplateSyncResult {
   archiveDrift: TemplateArchiveDrift[];
   /** 동봉 설정 템플릿(Initializr templates/config) 대조 결과 */
   configTemplates: { checked: number; commit: string; drift: ConfigTemplateDrift[] };
+  /** 규칙·의존성 기준 카탈로그의 upstream drift (v0.34) — 템플릿 upToDate 와는 별도 판정 */
+  catalogs: CatalogDriftResult | null;
   warnings: string[];
 }
 
@@ -218,7 +221,7 @@ async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<str
  */
 export async function syncTemplateCatalog(
   options: TemplateSyncOptions = {},
-  deps: { fetchText?: (url: string, timeoutMs: number) => Promise<string>; catalog?: TemplateCatalog } = {},
+  deps: { fetchText?: (url: string, timeoutMs: number) => Promise<string>; fetchStatus?: FetchStatusFn; catalog?: TemplateCatalog; catalogDrift?: boolean } = {},
 ): Promise<TemplateSyncResult> {
   const catalog = deps.catalog ?? loadTemplateCatalog();
   const source = catalog.sources.initializr;
@@ -294,6 +297,9 @@ export async function syncTemplateCatalog(
       "zip 조달 템플릿의 upstream 지문이 고정값과 다릅니다 — 고정 commit 의 zip 은 계속 받을 수 있으므로 생성은 동작합니다. 새 zip 을 검토한 뒤 src/project.ts 의 INITIALIZR_COMMIT·sha256·bytes 를 갱신하세요",
     );
 
+  // 규칙·의존성 기준 카탈로그 drift(v0.34): 조회 실패는 항목별 error 로 남고 예외를 던지지 않는다
+  const catalogs = deps.catalogDrift === false ? null : await checkCatalogDrift({ fetchText: deps.fetchText, fetchStatus: deps.fetchStatus });
+
   return {
     repository: source.repository,
     path: source.path,
@@ -309,6 +315,7 @@ export async function syncTemplateCatalog(
     archivesChecked: pins.size,
     archiveDrift,
     configTemplates: { checked: configFiles.size, commit: configCatalog.source.commit, drift: configDrift },
+    catalogs,
     warnings,
   };
 }

@@ -37,6 +37,8 @@ export interface MigrationRules {
     artifacts: { from: { groupId: string; artifactId: string }; to: { groupId: string; artifactId: string }; toVersion: string; scope?: string; also?: { groupId: string; artifactId: string; version: string }; note?: string }[];
   };
   libraries: { match: { groupId: string; artifactId: string; versionBelow?: string }; replacement: string | null; reason: string }[];
+  /** 공개 저장소에 기준이 없는 국내 벤더·기관 배포 좌표(groupId 접두) — 의존성 점검이 vendor 로 분류 (v0.34) */
+  vendorCoordinates?: { groupIdPrefix: string; note: string }[];
   xmlNamespaces: { uri: string; replacement: string; reason: string }[];
   build: { javaRelease: number; javaProperties: string[]; springVersionProperties: string[]; springMinimum: string };
   evidence: { classes: Record<string, number>; packages5: string[]; classes5: string[] };

@@ -1658,6 +1658,100 @@
       },
       "replacement": "org.junit.jupiter:junit-jupiter",
       "reason": "5.x 템플릿은 JUnit 5(Jupiter)·spring-test 6 을 사용. JUnit 4 는 vintage 엔진 없이는 실행되지 않음"
+    },
+    {
+      "match": {
+        "groupId": "mysql",
+        "artifactId": "mysql-connector-java"
+      },
+      "replacement": "com.mysql:mysql-connector-j",
+      "reason": "MySQL Connector/J 는 8.0.31 부터 좌표가 com.mysql:mysql-connector-j 로 바뀜(옛 좌표는 갱신 중단). RTE 5.x psl-data-jpa 와 Spring Boot BOM 이 새 좌표를 관리"
+    },
+    {
+      "match": {
+        "groupId": "ojdbc",
+        "artifactId": "ojdbc"
+      },
+      "replacement": "com.oracle.database.jdbc:ojdbc11 (Java 17 이상, Maven Central)",
+      "reason": "ojdbc:ojdbc 는 3.x 시절 표준프레임워크 저장소에만 있던 좌표. Oracle 이 Maven Central 에 공개하는 com.oracle.database.jdbc:ojdbc11(또는 ojdbc17) 을 쓰며 Spring Boot BOM 이 버전을 관리"
+    },
+    {
+      "match": {
+        "groupId": "org.codehaus.jackson",
+        "artifactId": "*"
+      },
+      "replacement": "com.fasterxml.jackson.core:jackson-databind (Jackson 2.x)",
+      "reason": "Jackson 1.x(org.codehaus.jackson) 는 2013년 종료. Spring 6 은 Jackson 2.x 만 지원하며 패키지도 com.fasterxml.jackson 으로 바뀜(ObjectMapper import 수정)"
+    },
+    {
+      "match": {
+        "groupId": "xmlbeans",
+        "artifactId": "xbean"
+      },
+      "replacement": "org.apache.xmlbeans:xmlbeans (POI 5.x 가 전이로 가져옴)",
+      "reason": "xmlbeans:xbean 2.x 는 2006년 좌표. RTE 5.x fdl-excel 의 POI 5.4 가 org.apache.xmlbeans:xmlbeans 5.x 를 전이로 가져오므로 직접 선언은 제거"
+    },
+    {
+      "match": {
+        "groupId": "net.sf.ehcache",
+        "artifactId": "ehcache*"
+      },
+      "replacement": "org.ehcache:ehcache 3.x (JCache) 또는 Caffeine",
+      "reason": "Ehcache 2.x 는 종료됐고 Spring 6 에서 EhCacheCacheManager(spring-context-support) 지원이 제거됨. JCache(JSR-107) 기반 Ehcache 3 또는 Caffeine 으로 캐시 설정을 바꿈"
+    },
+    {
+      "match": {
+        "groupId": "org.apache.httpcomponents",
+        "artifactId": "httpclient"
+      },
+      "replacement": "org.apache.httpcomponents.client5:httpclient5 (Spring Boot BOM 관리)",
+      "reason": "Spring 6 의 HttpComponentsClientHttpRequestFactory·RestTemplate 연동은 HttpClient 5 만 지원. 코드가 HttpClient 4 API 를 직접 쓰면 패키지(org.apache.hc.client5)와 API 를 함께 옮김"
+    },
+    {
+      "match": {
+        "groupId": "org.antlr",
+        "artifactId": "antlr"
+      },
+      "replacement": null,
+      "reason": "ANTLR 3 는 3.x 의 spring-modules-validation 이 쓰던 전이 의존성. 5.x 에서 해당 모듈이 제거됐고(ptl-mvc 가 commons-validator 를 직접 사용) Hibernate 6 은 antlr4-runtime 을 전이로 가져오므로 직접 선언은 제거"
+    },
+    {
+      "match": {
+        "groupId": "org.springframework.social",
+        "artifactId": "*"
+      },
+      "replacement": "Spring Security OAuth2 Client(spring-security-oauth2-client) 또는 공통컴포넌트 5.x 의 소셜 로그인",
+      "reason": "Spring Social 은 2019년 종료(Spring 6 호환 버전 없음). 공통컴포넌트 5.x 도 Facebook 어댑터(FacebookSimpleSignInAdapter 등)를 제거했으므로 Spring Security OAuth2 Client 로 재구성"
+    }
+  ],
+  "vendorCoordinates": [
+    {
+      "groupIdPrefix": "altibase",
+      "note": "Altibase JDBC — 벤더 배포 jar. 표준프레임워크 저장소 또는 벤더 사이트의 DBMS 버전에 맞는 드라이버 사용"
+    },
+    {
+      "groupIdPrefix": "com.altibase",
+      "note": "Altibase JDBC — 벤더 배포 jar"
+    },
+    {
+      "groupIdPrefix": "com.tmax.tibero",
+      "note": "Tibero JDBC — 벤더 배포 jar. DBMS 버전에 맞는 드라이버 사용"
+    },
+    {
+      "groupIdPrefix": "cubrid",
+      "note": "CUBRID JDBC — 벤더 배포 jar(Maven Central 의 cubrid:cubrid-jdbc 는 구버전만 있음). DBMS 버전에 맞는 드라이버 사용"
+    },
+    {
+      "groupIdPrefix": "kr.go.gpki",
+      "note": "행정전자서명(GPKI) API — 기관 배포 jar. 표준 저장소에 없으며 배포본 버전을 따름"
+    },
+    {
+      "groupIdPrefix": "kr.go.mgov",
+      "note": "모바일 전자정부(mGov) API — 기관 배포 jar. 배포본 버전을 따름"
+    },
+    {
+      "groupIdPrefix": "kr.go",
+      "note": "정부 기관 배포 라이브러리 — 공개 저장소 기준 없음. 배포본 버전을 따름"
     }
   ],
   "xmlNamespaces": [

@@ -1,6 +1,8 @@
 // 의존성 점검 (check_egovframe_dependencies, v0.30.0 — 읽기 전용).
 // 프로젝트의 Maven/Gradle 의존성을 공식 5.x parent 가 관리하는 기준 버전(catalog/dependency-baseline.json)과 대조하고,
 // 보안 설정의 존재 여부를 파일·라인 근거와 함께 보고한다. 기본은 오프라인이며 offline=false 일 때만 OSV 로 알려진 취약점을 조회한다.
+// v0.34: 기준 출처를 parent 직접 → 계열(BOM import·버전 속성) → Spring Boot BOM 전체 → RTE 모듈 전이 순으로 넓혀 '기준 없음'을 줄이고,
+//        항목마다 basis 로 어느 기준과 대조했는지 적는다. Boot parent 프로젝트는 Boot BOM 을, 그 밖은 RTE 전이를 먼저 본다.
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { diagnoseProject } from "./diagnose.js";
@@ -19,7 +21,25 @@ export interface DependencyBaseline {
   properties: { web: Record<string, string>; boot: Record<string, string> };
   managed: BaselineManaged[];
   /** BOM import·버전 속성이 정하는 groupId 계열 기준(개별 artifact 가 managed 에 없어도 적용) */
-  families: { groupIdPrefix: string; version: string; via: string }[];
+  families: { groupIdPrefix: string; version: string; via: string; matchSubgroups?: boolean }[];
+  /** 달력형 릴리스 트레인 BOM(구성 artifact 버전이 달라 계열 규칙으로 쓰지 않음) — schemaVersion 2 */
+  releaseTrains?: { groupId: string; artifactId: string; version: string; sources: string[] }[];
+  /** Spring Boot BOM 전체(직접 항목 + import 한 단계) — schemaVersion 2 */
+  boot?: {
+    bom: { groupId: string; artifactId: string; version: string; url: string; sha256: string; direct: number; imports: number };
+    imports: { groupId: string; artifactId: string; version: string; url: string; sha256: string; members: number; unresolved?: number }[];
+    conflicts: number;
+    /** "groupId:artifactId" → version */
+    managed: Record<string, string>;
+  };
+  /** RTE 모듈 18종이 끌어오는 전이 의존성 — schemaVersion 2 */
+  rteTransitive?: {
+    version: string;
+    root: { artifactId: string; url: string; sha256: string };
+    modules: { artifactId: string; url: string; sha256: string; dependencies: number }[];
+    /** "groupId:artifactId" → { version, scope, via: 모듈 약칭(fdl-cmmn …) } */
+    managed: Record<string, { version: string; scope: string; via: string[] }>;
+  };
 }
 
 const BASELINE_URL = new URL("../catalog/dependency-baseline.json", import.meta.url);
@@ -29,7 +49,10 @@ export function loadDependencyBaseline(): DependencyBaseline {
   return cached;
 }
 
-export type DependencyStatus = "ok" | "outdated" | "managed" | "legacy" | "replace" | "unknown" | "unversioned";
+export type DependencyStatus = "ok" | "outdated" | "managed" | "legacy" | "replace" | "vendor" | "unknown" | "unversioned";
+/** 어느 기준과 대조했는지 (v0.34) */
+export type DependencyBasis = "parent" | "family" | "boot-bom" | "rte-transitive" | "migration-rules";
+export const BASIS_LABEL: Record<DependencyBasis, string> = { parent: "parent 직접", family: "계열", "boot-bom": "Boot BOM", "rte-transitive": "RTE 전이", "migration-rules": "전환 규칙" };
 export interface DependencyFinding {
   file: string; line: number;
   groupId: string; artifactId: string;
@@ -41,6 +64,8 @@ export interface DependencyFinding {
   status: DependencyStatus;
   /** 기준 버전(baseline 에 있을 때) */
   baseline: string | null;
+  /** 기준 출처(기준이 없으면 null) */
+  basis: DependencyBasis | null;
   note?: string;
 }
 export interface SecurityCheck { id: string; title: string; status: "ok" | "missing" | "n/a"; evidence: { file: string; line: number; text: string }[]; hint: string }
@@ -50,7 +75,7 @@ export interface CheckDependenciesResult {
   projectDir: string;
   buildSystem: "maven" | "gradle" | "unknown";
   offline: boolean;
-  baseline: { surveyedAt: string; rte: string; springFramework: string | null; springBoot: string | null; java: number };
+  baseline: { surveyedAt: string; rte: string; springFramework: string | null; springBoot: string | null; java: number; bootBom?: number; rteTransitive?: number };
   parent: ParentInfo;
   java: { value: string | null; status: "ok" | "outdated" | "unknown" };
   findings: DependencyFinding[];
@@ -76,16 +101,16 @@ const SKIP_SCOPES = new Set<string>(); // 모든 scope 를 본다(test 도 취�
 export function classifyDependency(
   dep: { groupId: string; artifactId: string; version: string | null; resolvedVersion: string | null },
   ctx: { baseline: DependencyBaseline; rules: MigrationRules; parentKind: ParentInfo["kind"] },
-): { status: DependencyStatus; baseline: string | null; note?: string } {
+): { status: DependencyStatus; baseline: string | null; basis: DependencyBasis | null; note?: string } {
   const key = `${dep.groupId}:${dep.artifactId}`;
   const { baseline, rules } = ctx;
   // 1) 3.x/4.x RTE 좌표·javax 좌표 → 전환 대상
   for (const c of rules.coordinates) if (c.from.some((f) => `${f.groupId}:${f.artifactId}` === key))
-    return { status: "legacy", baseline: `${c.to.groupId}:${c.to.artifactId}:${rules.target.runtimeVersion}`, note: `${rules.source.fromTag.replace(/^v/, "")} 계열 RTE 좌표 — migrate_egovframe_project 로 5.x 좌표로 전환` };
+    return { status: "legacy", baseline: `${c.to.groupId}:${c.to.artifactId}:${rules.target.runtimeVersion}`, basis: "migration-rules", note: `${rules.source.fromTag.replace(/^v/, "")} 계열 RTE 좌표 — migrate_egovframe_project 로 5.x 좌표로 전환` };
   if (rules.removedModules.some((m) => m.fromArtifactId === dep.artifactId && /^(egovframework\.rte|org\.egovframe\.rte)$/.test(dep.groupId)))
-    return { status: "replace", baseline: null, note: rules.removedModules.find((m) => m.fromArtifactId === dep.artifactId)!.reason };
+    return { status: "replace", baseline: null, basis: "migration-rules", note: rules.removedModules.find((m) => m.fromArtifactId === dep.artifactId)!.reason };
   const jk = rules.jakarta.artifacts.find((a) => `${a.from.groupId}:${a.from.artifactId}` === key);
-  if (jk) return { status: "legacy", baseline: `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}`, note: "javax 좌표 — Jakarta 좌표로 전환(migrate_egovframe_project)" };
+  if (jk) return { status: "legacy", baseline: `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}`, basis: "migration-rules", note: "javax 좌표 — Jakarta 좌표로 전환(migrate_egovframe_project)" };
   // 2) 교체 필요 라이브러리
   for (const lib of rules.libraries) {
     if (lib.match.groupId !== dep.groupId) continue;
@@ -95,22 +120,38 @@ export function classifyDependency(
       if (!dep.resolvedVersion) continue;
       if (versionBelow(dep.resolvedVersion, lib.match.versionBelow) !== true) continue;
     }
-    return { status: "replace", baseline: lib.replacement, note: lib.reason };
+    return { status: "replace", baseline: lib.replacement, basis: "migration-rules", note: lib.reason };
   }
-  // 3) 기준 목록(개별 좌표 → 계열)
+  // 3) 기준 목록: parent 직접 → 계열 → (Boot parent 면 Boot BOM → RTE 전이, 아니면 RTE 전이 → Boot BOM)
   const exact = baseline.managed.find((x) => x.groupId === dep.groupId && x.artifactId === dep.artifactId);
-  const family = exact ? null : [...baseline.families].filter((f) => dep.groupId === f.groupIdPrefix || dep.groupId.startsWith(`${f.groupIdPrefix}.`)).sort((a, b) => b.groupIdPrefix.length - a.groupIdPrefix.length)[0] ?? null;
-  const m = exact ?? (family ? { version: family.version } : null);
-  const familyNote = family ? `계열 기준: ${family.via}` : undefined;
-  if (!dep.version) {
-    if (ctx.parentKind === "web" || ctx.parentKind === "boot") return { status: "managed", baseline: m?.version ?? null, note: m ? undefined : (ctx.parentKind === "boot" ? "Spring Boot BOM 이 관리(기준 목록 밖)" : "parent 에 없는 좌표 — 버전 출처 확인") };
-    return { status: "unversioned", baseline: m?.version ?? null, note: "버전이 없고 5.x parent 도 없음 — dependencyManagement 또는 명시 버전 필요" };
+  // 계열은 groupId 가 정확히 같을 때 적용하고, matchSubgroups 인 계열(jackson)만 하위 groupId 도 받는다. schemaVersion 1 기준(필드 없음)은 예전처럼 접두 일치.
+  const family = exact ? null : [...baseline.families].filter((f) => dep.groupId === f.groupIdPrefix || ((f.matchSubgroups ?? baseline.schemaVersion < 2) && dep.groupId.startsWith(`${f.groupIdPrefix}.`))).sort((a, b) => b.groupIdPrefix.length - a.groupIdPrefix.length)[0] ?? null;
+  const bootV = baseline.boot?.managed[key];
+  const rte = baseline.rteTransitive?.managed[key];
+  let m: { version: string; basis: DependencyBasis; note?: string } | null = null;
+  if (exact) m = { version: exact.version, basis: "parent" };
+  else if (family) m = { version: family.version, basis: "family", note: `계열 기준: ${family.via}` };
+  else {
+    const boot = bootV ? { version: bootV, basis: "boot-bom" as const, note: `Spring Boot ${baseline.boot!.bom.version} BOM 기준` } : null;
+    const rt = rte ? { version: rte.version, basis: "rte-transitive" as const, note: `RTE ${baseline.rteTransitive!.version} ${rte.via.join("·")} 의 전이 버전` } : null;
+    m = ctx.parentKind === "boot" ? (boot ?? rt) : (rt ?? boot);
   }
-  if (!m) return { status: "unknown", baseline: null, note: "기준 목록(공식 5.x parent)에 없는 좌표 — 판단 보류" };
-  if (!dep.resolvedVersion) return { status: "unknown", baseline: m.version, note: `버전 속성을 풀지 못함: ${dep.version}` };
+  const withNote = (r: { status: DependencyStatus; baseline: string | null; basis: DependencyBasis | null }, note?: string) => (note ? { ...r, note } : r);
+  if (!dep.version) {
+    if (ctx.parentKind === "web" || ctx.parentKind === "boot")
+      return withNote({ status: "managed", baseline: m?.version ?? null, basis: m?.basis ?? null }, m ? (m.basis === "parent" ? undefined : m.note) : (ctx.parentKind === "boot" ? "Spring Boot BOM 에도 없는 좌표 — 버전 출처 확인" : "parent 에 없는 좌표 — 버전 출처 확인"));
+    return withNote({ status: "unversioned", baseline: m?.version ?? null, basis: m?.basis ?? null }, "버전이 없고 5.x parent 도 없음 — dependencyManagement 또는 명시 버전 필요");
+  }
+  if (!m) {
+    const vendor = (rules.vendorCoordinates ?? []).filter((v) => dep.groupId === v.groupIdPrefix || dep.groupId.startsWith(`${v.groupIdPrefix}.`)).sort((a, b) => b.groupIdPrefix.length - a.groupIdPrefix.length)[0];
+    if (vendor) return { status: "vendor", baseline: null, basis: null, note: vendor.note };
+    return { status: "unknown", baseline: null, basis: null, note: "기준 목록(공식 5.x parent·Spring Boot BOM·RTE 전이)에 없는 좌표 — 판단 보류" };
+  }
+  if (!dep.resolvedVersion) return withNote({ status: "unknown", baseline: m.version, basis: m.basis }, `버전 속성을 풀지 못함: ${dep.version}`);
   const below = versionBelow(dep.resolvedVersion, m.version);
-  if (below === null) return { status: "unknown", baseline: m.version, note: `버전을 비교할 수 없음: ${dep.resolvedVersion}` };
-  return below ? { status: "outdated", baseline: m.version, ...(familyNote ? { note: familyNote } : {}) } : { status: "ok", baseline: m.version, ...(familyNote ? { note: familyNote } : {}) };
+  if (below === null) return withNote({ status: "unknown", baseline: m.version, basis: m.basis }, `버전을 비교할 수 없음: ${dep.resolvedVersion}`);
+  if (below && m.basis === "rte-transitive") return { status: "outdated", baseline: m.version, basis: m.basis, note: `${m.note} — 명시 버전이 더 낮아 전이 버전과 충돌할 수 있음(Maven 은 가까운 선언을 택함)` };
+  return withNote({ status: below ? "outdated" : "ok", baseline: m.version, basis: m.basis }, m.note);
 }
 
 interface RawDep { file: string; line: number; groupId: string; artifactId: string; version: string | null; resolvedVersion: string | null; scope: string | null }
@@ -209,10 +250,10 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
     if (seen.has(key)) continue;
     seen.add(key);
     const c = classifyDependency(d, { baseline, rules, parentKind: parent.kind });
-    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, ...(c.note ? { note: c.note } : {}) });
+    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, basis: c.basis, ...(c.note ? { note: c.note } : {}) });
   }
   findings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
-  const summary: Record<DependencyStatus, number> = { ok: 0, outdated: 0, managed: 0, legacy: 0, replace: 0, unknown: 0, unversioned: 0 };
+  const summary: Record<DependencyStatus, number> = { ok: 0, outdated: 0, managed: 0, legacy: 0, replace: 0, vendor: 0, unknown: 0, unversioned: 0 };
   for (const f of findings) summary[f.status]++;
 
   // Java
@@ -241,7 +282,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
 
   const result: CheckDependenciesResult = {
     projectDir: dir, buildSystem: diag.buildSystem, offline,
-    baseline: { surveyedAt: baseline.surveyedAt, rte: baseline.rte.version, springFramework: baseline.spring.framework, springBoot: baseline.spring.boot, java: baseline.java },
+    baseline: { surveyedAt: baseline.surveyedAt, rte: baseline.rte.version, springFramework: baseline.spring.framework, springBoot: baseline.spring.boot, java: baseline.java, bootBom: baseline.boot ? Object.keys(baseline.boot.managed).length : 0, rteTransitive: baseline.rteTransitive ? Object.keys(baseline.rteTransitive.managed).length : 0 },
     parent, java: { value: javaValue, status: javaStatus }, findings, summary, checks, notes,
   };
 
@@ -266,24 +307,29 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   return result;
 }
 
-const STATUS_LABEL: Record<DependencyStatus, string> = { ok: "기준 충족", outdated: "기준 미만", managed: "parent 관리", legacy: "전환 대상", replace: "교체 필요", unknown: "기준 없음", unversioned: "버전 없음" };
+const STATUS_LABEL: Record<DependencyStatus, string> = { ok: "기준 충족", outdated: "기준 미만", managed: "parent 관리", legacy: "전환 대상", replace: "교체 필요", vendor: "벤더 배포", unknown: "기준 없음", unversioned: "버전 없음" };
 
 /** 점검 결과를 Markdown 으로 렌더링한다. */
 export function renderDependencyMarkdown(r: CheckDependenciesResult): string {
   const L: string[] = [];
   L.push(`# 의존성 점검`, ``);
   L.push(`- 경로: ${r.projectDir} · 빌드 ${r.buildSystem} · ${r.offline ? "오프라인" : "OSV 조회 포함"}`);
-  L.push(`- 기준: 공식 5.x parent(조사일 ${r.baseline.surveyedAt}) — RTE ${r.baseline.rte}, Spring ${r.baseline.springFramework ?? "-"}, Boot ${r.baseline.springBoot ?? "-"}, Java ${r.baseline.java}`);
+  L.push(`- 기준: 공식 5.x parent(조사일 ${r.baseline.surveyedAt}) — RTE ${r.baseline.rte}, Spring ${r.baseline.springFramework ?? "-"}, Boot ${r.baseline.springBoot ?? "-"}, Java ${r.baseline.java}${r.baseline.bootBom ? ` · Boot BOM ${r.baseline.bootBom}종 · RTE 전이 ${r.baseline.rteTransitive ?? 0}종` : ""}`);
   L.push(`- parent: ${r.parent.kind === "none" ? "없음" : `${r.parent.groupId}:${r.parent.artifactId}:${r.parent.version ?? "?"} (${r.parent.kind}, ${r.parent.status})`}`);
   L.push(`- Java: ${r.java.value ?? "미검출"} (${r.java.status})`);
   const s = r.summary;
-  L.push(`- 의존성 ${r.findings.length}건: 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · parent 관리 ${s.managed} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 기준 없음 ${s.unknown} · 버전 없음 ${s.unversioned}`);
+  L.push(`- 의존성 ${r.findings.length}건: 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · parent 관리 ${s.managed} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 벤더 배포 ${s.vendor ?? 0} · 기준 없음 ${s.unknown} · 버전 없음 ${s.unversioned}`);
+  const basisCount = new Map<DependencyBasis, number>();
+  for (const f of r.findings) if (f.basis) basisCount.set(f.basis, (basisCount.get(f.basis) ?? 0) + 1);
+  if (basisCount.size) L.push(`- 기준 출처: ${[...basisCount.entries()].map(([k, v]) => `${BASIS_LABEL[k]} ${v}`).join(" · ")}`);
   for (const n of r.notes) L.push(`- ${n}`);
   const attention = r.findings.filter((f) => f.status === "outdated" || f.status === "legacy" || f.status === "replace" || f.status === "unversioned");
   if (attention.length) {
-    L.push(``, `## 조치 필요 (${attention.length})`, ``, `| 파일:라인 | 좌표 | 현재 | 기준/대체 | 상태 | 비고 |`, `|---|---|---|---|---|---|`);
-    for (const f of attention) L.push(`| ${f.file}:${f.line} | ${f.groupId}:${f.artifactId} | ${f.resolvedVersion ?? f.version ?? "-"} | ${f.baseline ?? "-"} | ${STATUS_LABEL[f.status]} | ${f.note ?? ""} |`);
+    L.push(``, `## 조치 필요 (${attention.length})`, ``, `| 파일:라인 | 좌표 | 현재 | 기준/대체 | 상태 | 출처 | 비고 |`, `|---|---|---|---|---|---|---|`);
+    for (const f of attention) L.push(`| ${f.file}:${f.line} | ${f.groupId}:${f.artifactId} | ${f.resolvedVersion ?? f.version ?? "-"} | ${f.baseline ?? "-"} | ${STATUS_LABEL[f.status]} | ${f.basis ? BASIS_LABEL[f.basis] : "-"} | ${f.note ?? ""} |`);
   }
+  const vendor = r.findings.filter((f) => f.status === "vendor");
+  if (vendor.length) L.push(``, `## 벤더·기관 배포 (${vendor.length}) — 공개 저장소 기준 없음`, ``, ...vendor.map((f) => `- ${f.groupId}:${f.artifactId}${f.resolvedVersion ? `:${f.resolvedVersion}` : ""} — ${f.note ?? ""}`));
   const unknown = r.findings.filter((f) => f.status === "unknown");
   if (unknown.length) L.push(``, `## 기준 없음 (${unknown.length}) — 판단 보류`, ``, unknown.map((f) => `${f.groupId}:${f.artifactId}${f.resolvedVersion ? `:${f.resolvedVersion}` : ""}`).join(", "));
   L.push(``, `## 보안 설정 점검`, ``);

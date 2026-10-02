@@ -1,25 +1,25 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedBy": "scripts/generate-dependency-baseline.mjs",
-  "surveyedAt": "2026-09-28",
+  "surveyedAt": "2026-10-02",
   "repository": "https://maven.egovframe.go.kr/maven/",
   "sources": [
     {
       "kind": "web",
       "groupId": "org.egovframe.web",
       "artifactId": "egovframe-web-config-parent",
-      "version": "5.0.1",
-      "url": "https://maven.egovframe.go.kr/maven/org/egovframe/web/egovframe-web-config-parent/5.0.1/egovframe-web-config-parent-5.0.1.pom",
-      "sha256": "c2e2cd82b81b561397b2d49bfe93d3cd980361b13d7f052b45de31e74a17bd59",
+      "version": "5.0.2",
+      "url": "https://maven.egovframe.go.kr/maven/org/egovframe/web/egovframe-web-config-parent/5.0.2/egovframe-web-config-parent-5.0.2.pom",
+      "sha256": "5ed26739673c7931cabfbdc14571cbb70978395d6b6c1e6bc3a98c88278ac961",
       "managed": 106
     },
     {
       "kind": "boot",
       "groupId": "org.egovframe.boot",
       "artifactId": "egovframe-boot-starter-parent",
-      "version": "5.0.1",
-      "url": "https://maven.egovframe.go.kr/maven/org/egovframe/boot/egovframe-boot-starter-parent/5.0.1/egovframe-boot-starter-parent-5.0.1.pom",
-      "sha256": "102afd32f02a9efb0a1ffbb7d2992170a8acc00eb1f5117dcbd215a510f40217",
+      "version": "5.0.2",
+      "url": "https://maven.egovframe.go.kr/maven/org/egovframe/boot/egovframe-boot-starter-parent/5.0.2/egovframe-boot-starter-parent-5.0.2.pom",
+      "sha256": "a0a10e23ad28db72fa58465e9218d40a3e6758921cb53e2b5587ec6a2884ae00",
       "managed": 72,
       "parent": {
         "groupId": "org.springframework.boot",
@@ -32,8 +32,8 @@
   "rte": {
     "version": "5.0.2",
     "parentManaged": {
-      "web": "5.0.1",
-      "boot": "5.0.1"
+      "web": "5.0.2",
+      "boot": "5.0.2"
     }
   },
   "spring": {
@@ -44,7 +44,7 @@
   "properties": {
     "web": {
       "java.version": "17",
-      "egovframe.rte.version": "5.0.1",
+      "egovframe.rte.version": "5.0.2",
       "spring.framework.version": "6.2.11",
       "jakarta.annotation-api.version": "3.0.0",
       "jakarta.servlet-api.version": "5.0.0",
@@ -122,7 +122,7 @@
     },
     "boot": {
       "java.version": "17",
-      "egovframe.rte.version": "5.0.1",
+      "egovframe.rte.version": "5.0.2",
       "egovframe.boot.starter.version": "5.0.0",
       "spring.framework.version": "6.2.11",
       "spring.security.version": "6.5.5",
@@ -758,8 +758,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -767,8 +766,7 @@
       "version": "5.0.2",
       "sources": [
         "web"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -777,8 +775,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -786,8 +783,7 @@
       "version": "5.0.2",
       "sources": [
         "web"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -796,8 +792,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -806,8 +801,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -816,8 +810,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -826,8 +819,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -836,8 +828,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -846,8 +837,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -855,8 +845,7 @@
       "version": "5.0.2",
       "sources": [
         "web"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -865,8 +854,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -875,8 +863,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -885,8 +872,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -895,8 +881,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -905,8 +890,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -915,8 +899,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -925,8 +908,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -935,8 +917,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -945,8 +926,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -955,8 +935,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -965,8 +944,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -975,8 +953,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.egovframe.rte",
@@ -985,8 +962,7 @@
       "sources": [
         "web",
         "boot"
-      ],
-      "parentVersion": "5.0.1"
+      ]
     },
     {
       "groupId": "org.glassfish",
@@ -1345,37 +1321,2496 @@
     {
       "groupIdPrefix": "com.fasterxml.jackson",
       "version": "2.18.2",
-      "via": "web parent jackson.version"
+      "via": "web parent jackson.version",
+      "matchSubgroups": true
     },
     {
       "groupIdPrefix": "dev.langchain4j",
       "version": "1.8.0",
-      "via": "dev.langchain4j:langchain4j-bom:1.8.0 (BOM import, web)"
+      "via": "dev.langchain4j:langchain4j-bom:1.8.0 (BOM import, web)",
+      "matchSubgroups": false
     },
     {
       "groupIdPrefix": "org.springframework",
       "version": "6.2.11",
-      "via": "org.springframework:spring-framework-bom:6.2.11 (BOM import, boot)"
+      "via": "org.springframework:spring-framework-bom:6.2.11 (BOM import, boot)",
+      "matchSubgroups": false
     },
     {
       "groupIdPrefix": "org.springframework.batch",
       "version": "5.2.3",
-      "via": "boot parent spring.batch.version"
+      "via": "boot parent spring.batch.version",
+      "matchSubgroups": false
     },
     {
       "groupIdPrefix": "org.springframework.boot",
       "version": "3.5.6",
-      "via": "boot parent 의 상위 spring-boot-starter-parent"
-    },
-    {
-      "groupIdPrefix": "org.springframework.cloud",
-      "version": "2025.0.0",
-      "via": "org.springframework.cloud:spring-cloud-dependencies:2025.0.0 (BOM import, boot)"
+      "via": "boot parent 의 상위 spring-boot-starter-parent",
+      "matchSubgroups": false
     },
     {
       "groupIdPrefix": "org.springframework.security",
       "version": "6.5.5",
-      "via": "org.springframework.security:spring-security-bom:6.5.5 (BOM import, boot)"
+      "via": "org.springframework.security:spring-security-bom:6.5.5 (BOM import, boot)",
+      "matchSubgroups": false
     }
-  ]
+  ],
+  "releaseTrains": [
+    {
+      "groupId": "org.springframework.cloud",
+      "artifactId": "spring-cloud-dependencies",
+      "version": "2025.0.0",
+      "sources": [
+        "boot"
+      ]
+    }
+  ],
+  "boot": {
+    "bom": {
+      "groupId": "org.springframework.boot",
+      "artifactId": "spring-boot-dependencies",
+      "version": "3.5.6",
+      "url": "https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies/3.5.6/spring-boot-dependencies-3.5.6.pom",
+      "sha256": "bf7a8d3e28ca375add0b48100405d6d3c54471de0276ce7c4f00c4eaff21a0f7",
+      "direct": 362,
+      "imports": 44
+    },
+    "imports": [
+      {
+        "groupId": "org.apache.activemq",
+        "artifactId": "activemq-bom",
+        "version": "6.1.7",
+        "url": "https://repo1.maven.org/maven2/org/apache/activemq/activemq-bom/6.1.7/activemq-bom-6.1.7.pom",
+        "sha256": "627a96a27fd4f2ba9a53a7df4878627d56cff40b789b283354180c4b8d2ab966",
+        "members": 28
+      },
+      {
+        "groupId": "org.apache.activemq",
+        "artifactId": "artemis-bom",
+        "version": "2.40.0",
+        "url": "https://repo1.maven.org/maven2/org/apache/activemq/artemis-bom/2.40.0/artemis-bom-2.40.0.pom",
+        "sha256": "158b29acf6770fd74cb21460d80edb3a7f65a448ee9e61484b87ba8575e26418",
+        "members": 39
+      },
+      {
+        "groupId": "org.assertj",
+        "artifactId": "assertj-bom",
+        "version": "3.27.4",
+        "url": "https://repo1.maven.org/maven2/org/assertj/assertj-bom/3.27.4/assertj-bom-3.27.4.pom",
+        "sha256": "01fc1f78e6af0fa0e634b4db0fc6cd75842bfb983e9a8dd26a24de1af20b39c8",
+        "members": 2
+      },
+      {
+        "groupId": "io.zipkin.reporter2",
+        "artifactId": "zipkin-reporter-bom",
+        "version": "3.5.1",
+        "url": "https://repo1.maven.org/maven2/io/zipkin/reporter2/zipkin-reporter-bom/3.5.1/zipkin-reporter-bom-3.5.1.pom",
+        "sha256": "8f9ff76823286c7d5eb3f061b053bea5fd829d255cddda849b831f41166a7d90",
+        "members": 11
+      },
+      {
+        "groupId": "io.zipkin.brave",
+        "artifactId": "brave-bom",
+        "version": "6.1.0",
+        "url": "https://repo1.maven.org/maven2/io/zipkin/brave/brave-bom/6.1.0/brave-bom-6.1.0.pom",
+        "sha256": "894726669a6f000aad5b5fcff7baec3f8d9cf7001a83d0f48054b12f16e16e93",
+        "members": 37
+      },
+      {
+        "groupId": "org.apache.cassandra",
+        "artifactId": "java-driver-bom",
+        "version": "4.19.0",
+        "url": "https://repo1.maven.org/maven2/org/apache/cassandra/java-driver-bom/4.19.0/java-driver-bom-4.19.0.pom",
+        "sha256": "d5c7f700d265e447de3b1d2596d050e0d67e2a59e1de2fba9622092d29e8170a",
+        "members": 10
+      },
+      {
+        "groupId": "org.glassfish.jaxb",
+        "artifactId": "jaxb-bom",
+        "version": "4.0.5",
+        "url": "https://repo1.maven.org/maven2/org/glassfish/jaxb/jaxb-bom/4.0.5/jaxb-bom-4.0.5.pom",
+        "sha256": "ec97ec42d937d3c89519797e44246f80de0850819ac7a7ae675c4497b7075c39",
+        "members": 32
+      },
+      {
+        "groupId": "org.apache.groovy",
+        "artifactId": "groovy-bom",
+        "version": "4.0.28",
+        "url": "https://repo1.maven.org/maven2/org/apache/groovy/groovy-bom/4.0.28/groovy-bom-4.0.28.pom",
+        "sha256": "f3052cce59b599d5369e4fc1d9fb2e9fa395aa8e772bedc2dcd7907cd18a3d06",
+        "members": 30
+      },
+      {
+        "groupId": "org.infinispan",
+        "artifactId": "infinispan-bom",
+        "version": "15.2.6.Final",
+        "url": "https://repo1.maven.org/maven2/org/infinispan/infinispan-bom/15.2.6.Final/infinispan-bom-15.2.6.Final.pom",
+        "sha256": "bb9382b9f62f6b1c2ca794ac00efcdf6bf498229a8d63260fe58b975ecc8b86e",
+        "members": 67
+      },
+      {
+        "groupId": "com.fasterxml.jackson",
+        "artifactId": "jackson-bom",
+        "version": "2.19.2",
+        "url": "https://repo1.maven.org/maven2/com/fasterxml/jackson/jackson-bom/2.19.2/jackson-bom-2.19.2.pom",
+        "sha256": "22006be70fd018099e99c6c27ac0982320f3a0f3c2ce053c55703579a5eea303",
+        "members": 71
+      },
+      {
+        "groupId": "org.glassfish.jersey",
+        "artifactId": "jersey-bom",
+        "version": "3.1.11",
+        "url": "https://repo1.maven.org/maven2/org/glassfish/jersey/jersey-bom/3.1.11/jersey-bom-3.1.11.pom",
+        "sha256": "dc375c139598fb956066559ab7bd2fc3118796f55c30c4f5f4b5bc3b474422b4",
+        "members": 78
+      },
+      {
+        "groupId": "org.eclipse.jetty.ee10",
+        "artifactId": "jetty-ee10-bom",
+        "version": "12.0.27",
+        "url": "https://repo1.maven.org/maven2/org/eclipse/jetty/ee10/jetty-ee10-bom/12.0.27/jetty-ee10-bom-12.0.27.pom",
+        "sha256": "c6180ed9bbfc2a96a7966f7875be52f7983959d41e5de87c8aea86b05cb70c6e",
+        "members": 26
+      },
+      {
+        "groupId": "org.eclipse.jetty",
+        "artifactId": "jetty-bom",
+        "version": "12.0.27",
+        "url": "https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-bom/12.0.27/jetty-bom-12.0.27.pom",
+        "sha256": "dd8559d334e1e343d450d0fc66b582041e26fe4c4b7bfc3dc31d898d133c61db",
+        "members": 57
+      },
+      {
+        "groupId": "org.junit",
+        "artifactId": "junit-bom",
+        "version": "5.12.2",
+        "url": "https://repo1.maven.org/maven2/org/junit/junit-bom/5.12.2/junit-bom-5.12.2.pom",
+        "sha256": "cef80fec86454f6806bfb0df24669b5c6f32e2cb728539ea859f47dfdc9bbc17",
+        "members": 18
+      },
+      {
+        "groupId": "org.jetbrains.kotlin",
+        "artifactId": "kotlin-bom",
+        "version": "1.9.25",
+        "url": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-bom/1.9.25/kotlin-bom-1.9.25.pom",
+        "sha256": "199ae7a589eba1681846a9549a695cf3b0a42c1d92119a50a830ff12babba023",
+        "members": 23
+      },
+      {
+        "groupId": "org.jetbrains.kotlinx",
+        "artifactId": "kotlinx-coroutines-bom",
+        "version": "1.8.1",
+        "url": "https://repo1.maven.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-bom/1.8.1/kotlinx-coroutines-bom-1.8.1.pom",
+        "sha256": "563e4aa29fa8fe09a6e1746d0a5b51308f7c7dedc468dc5a0ca810a485877030",
+        "members": 17
+      },
+      {
+        "groupId": "org.jetbrains.kotlinx",
+        "artifactId": "kotlinx-serialization-bom",
+        "version": "1.6.3",
+        "url": "https://repo1.maven.org/maven2/org/jetbrains/kotlinx/kotlinx-serialization-bom/1.6.3/kotlinx-serialization-bom-1.6.3.pom",
+        "sha256": "29d69842bb7d449be2aa4ade6a4a7ce6aa55827d0ab13d168745fe6d95739332",
+        "members": 13
+      },
+      {
+        "groupId": "org.apache.logging.log4j",
+        "artifactId": "log4j-bom",
+        "version": "2.24.3",
+        "url": "https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-bom/2.24.3/log4j-bom-2.24.3.pom",
+        "sha256": "b17ab7f328f4586b7e71f8c94fc35a5da2bce80705a5d63004022c1928833558",
+        "members": 28
+      },
+      {
+        "groupId": "io.micrometer",
+        "artifactId": "micrometer-bom",
+        "version": "1.15.4",
+        "url": "https://repo1.maven.org/maven2/io/micrometer/micrometer-bom/1.15.4/micrometer-bom-1.15.4.pom",
+        "sha256": "0015e61d5a0a8216313979b9be0b1dba26a393e540a959ec974a8c8ac602bf1b",
+        "members": 34
+      },
+      {
+        "groupId": "io.micrometer",
+        "artifactId": "micrometer-tracing-bom",
+        "version": "1.5.4",
+        "url": "https://repo1.maven.org/maven2/io/micrometer/micrometer-tracing-bom/1.5.4/micrometer-tracing-bom-1.5.4.pom",
+        "sha256": "3eec14d9feb3e17e6da1bbe62724f29b1a1771bb6adcee85c06f0a5ba7d7190a",
+        "members": 7
+      },
+      {
+        "groupId": "org.mockito",
+        "artifactId": "mockito-bom",
+        "version": "5.17.0",
+        "url": "https://repo1.maven.org/maven2/org/mockito/mockito-bom/5.17.0/mockito-bom-5.17.0.pom",
+        "sha256": "18d279b034d532c63f54ceb61867a68dd590f2ba15ba3f0d649030f7f20927fb",
+        "members": 6
+      },
+      {
+        "groupId": "org.mongodb",
+        "artifactId": "mongodb-driver-bom",
+        "version": "5.5.1",
+        "url": "https://repo1.maven.org/maven2/org/mongodb/mongodb-driver-bom/5.5.1/mongodb-driver-bom-5.5.1.pom",
+        "sha256": "2e68b431dd6ba0b52b07832f91540598381abe9ce2b87952720e1bf48a70361c",
+        "members": 17
+      },
+      {
+        "groupId": "io.netty",
+        "artifactId": "netty-bom",
+        "version": "4.1.127.Final",
+        "url": "https://repo1.maven.org/maven2/io/netty/netty-bom/4.1.127.Final/netty-bom-4.1.127.Final.pom",
+        "sha256": "ecf77634c87403d788252bdfee66347f9a873e27747602d6c54a845679a49bd8",
+        "members": 55
+      },
+      {
+        "groupId": "io.opentelemetry",
+        "artifactId": "opentelemetry-bom",
+        "version": "1.49.0",
+        "url": "https://repo1.maven.org/maven2/io/opentelemetry/opentelemetry-bom/1.49.0/opentelemetry-bom-1.49.0.pom",
+        "sha256": "44fcba73912b950d3ec88129e38e03c181b975f5b5ee73d7bab7866a4b376c50",
+        "members": 23
+      },
+      {
+        "groupId": "io.prometheus",
+        "artifactId": "prometheus-metrics-bom",
+        "version": "1.3.10",
+        "url": "https://repo1.maven.org/maven2/io/prometheus/prometheus-metrics-bom/1.3.10/prometheus-metrics-bom-1.3.10.pom",
+        "sha256": "7f174563faf040be976dd1fc5ddc8e207766149dc5ec5c1d0f106a84abca0350",
+        "members": 25
+      },
+      {
+        "groupId": "io.prometheus",
+        "artifactId": "simpleclient_bom",
+        "version": "0.16.0",
+        "url": "https://repo1.maven.org/maven2/io/prometheus/simpleclient_bom/0.16.0/simpleclient_bom-0.16.0.pom",
+        "sha256": "af441d3295de11a70e35febeb3d919ba2ed17552753163325b954d53594d55c3",
+        "members": 23
+      },
+      {
+        "groupId": "org.apache.pulsar",
+        "artifactId": "pulsar-bom",
+        "version": "4.0.6",
+        "url": "https://repo1.maven.org/maven2/org/apache/pulsar/pulsar-bom/4.0.6/pulsar-bom-4.0.6.pom",
+        "sha256": "7a6a8638ff8817c9ccb7d93ac4c446f19de0f22bc7574c61b7f0496c1f719a3a",
+        "members": 110
+      },
+      {
+        "groupId": "org.apache.pulsar",
+        "artifactId": "pulsar-client-reactive-bom",
+        "version": "0.6.0",
+        "url": "https://repo1.maven.org/maven2/org/apache/pulsar/pulsar-client-reactive-bom/0.6.0/pulsar-client-reactive-bom-0.6.0.pom",
+        "sha256": "3f230bd54d000d24b98f12004951746b1eee9e846a69360694c191e70953c9a4",
+        "members": 5
+      },
+      {
+        "groupId": "com.querydsl",
+        "artifactId": "querydsl-bom",
+        "version": "5.1.0",
+        "url": "https://repo1.maven.org/maven2/com/querydsl/querydsl-bom/5.1.0/querydsl-bom-5.1.0.pom",
+        "sha256": "8853dce132c9ece4c295c7f4d4f3c2832eee0d7d44930870c0666fa72043ca56",
+        "members": 22
+      },
+      {
+        "groupId": "io.projectreactor",
+        "artifactId": "reactor-bom",
+        "version": "2024.0.10",
+        "url": "https://repo1.maven.org/maven2/io/projectreactor/reactor-bom/2024.0.10/reactor-bom-2024.0.10.pom",
+        "sha256": "7eeca9c86fbe0ece1e8bbc9fe7553eb8211dc0a49ddf4a84df06a4e21c72f654",
+        "members": 15
+      },
+      {
+        "groupId": "io.rest-assured",
+        "artifactId": "rest-assured-bom",
+        "version": "5.5.6",
+        "url": "https://repo1.maven.org/maven2/io/rest-assured/rest-assured-bom/5.5.6/rest-assured-bom-5.5.6.pom",
+        "sha256": "8d36a260cc3af900382c8326fb480035cdae9d960099a3fb25c366e4fe1cbc96",
+        "members": 14
+      },
+      {
+        "groupId": "io.rsocket",
+        "artifactId": "rsocket-bom",
+        "version": "1.1.5",
+        "url": "https://repo1.maven.org/maven2/io/rsocket/rsocket-bom/1.1.5/rsocket-bom-1.1.5.pom",
+        "sha256": "0a4e1375cc8c14ecfe31221940681798ef8a7b8af6e8968e363f15c0ed478c3f",
+        "members": 6
+      },
+      {
+        "groupId": "org.seleniumhq.selenium",
+        "artifactId": "selenium-bom",
+        "version": "4.31.0",
+        "url": "https://repo1.maven.org/maven2/org/seleniumhq/selenium/selenium-bom/4.31.0/selenium-bom-4.31.0.pom",
+        "sha256": "8fa11de77df0e28cc230ee2cfd3f87775bc8e425c12ac03a3d875a1bef25f6b8",
+        "members": 19
+      },
+      {
+        "groupId": "org.springframework.amqp",
+        "artifactId": "spring-amqp-bom",
+        "version": "3.2.7",
+        "url": "https://repo1.maven.org/maven2/org/springframework/amqp/spring-amqp-bom/3.2.7/spring-amqp-bom-3.2.7.pom",
+        "sha256": "9402b37d623ad17130c27d06094c78304af8d18dce795c73dcdf061e43b63b5d",
+        "members": 5
+      },
+      {
+        "groupId": "org.springframework.batch",
+        "artifactId": "spring-batch-bom",
+        "version": "5.2.3",
+        "url": "https://repo1.maven.org/maven2/org/springframework/batch/spring-batch-bom/5.2.3/spring-batch-bom-5.2.3.pom",
+        "sha256": "e959e8a312b57ad40995f5fc9cf73be5f40b83f90df9f0538fe18bbd089ed58c",
+        "members": 4
+      },
+      {
+        "groupId": "org.springframework.data",
+        "artifactId": "spring-data-bom",
+        "version": "2025.0.4",
+        "url": "https://repo1.maven.org/maven2/org/springframework/data/spring-data-bom/2025.0.4/spring-data-bom-2025.0.4.pom",
+        "sha256": "bdcceee879492b6c9b2d78349d9690bb928f649dece32775a28f36e48752b422",
+        "members": 17
+      },
+      {
+        "groupId": "org.springframework",
+        "artifactId": "spring-framework-bom",
+        "version": "6.2.11",
+        "url": "https://repo1.maven.org/maven2/org/springframework/spring-framework-bom/6.2.11/spring-framework-bom-6.2.11.pom",
+        "sha256": "d3c40143f12a2e03ef2d4b1c22362c428120e162ec2bba6acd3bae213c76c809",
+        "members": 23
+      },
+      {
+        "groupId": "org.springframework.integration",
+        "artifactId": "spring-integration-bom",
+        "version": "6.5.2",
+        "url": "https://repo1.maven.org/maven2/org/springframework/integration/spring-integration-bom/6.5.2/spring-integration-bom-6.5.2.pom",
+        "sha256": "a56046dc3c2f55a201c714deaf489ee9c4b964103c40346540ee7920f90e0f03",
+        "members": 41
+      },
+      {
+        "groupId": "org.springframework.pulsar",
+        "artifactId": "spring-pulsar-bom",
+        "version": "1.2.10",
+        "url": "https://repo1.maven.org/maven2/org/springframework/pulsar/spring-pulsar-bom/1.2.10/spring-pulsar-bom-1.2.10.pom",
+        "sha256": "9dcdadd7357af3a0785da343584dda29cc84e6d55b0994813411089e2239f293",
+        "members": 5
+      },
+      {
+        "groupId": "org.springframework.restdocs",
+        "artifactId": "spring-restdocs-bom",
+        "version": "3.0.5",
+        "url": "https://repo1.maven.org/maven2/org/springframework/restdocs/spring-restdocs-bom/3.0.5/spring-restdocs-bom-3.0.5.pom",
+        "sha256": "cb890cc32eeae58c95171f419158c31b79cdd8208d3a760281810afb315cfb81",
+        "members": 5
+      },
+      {
+        "groupId": "org.springframework.security",
+        "artifactId": "spring-security-bom",
+        "version": "6.5.5",
+        "url": "https://repo1.maven.org/maven2/org/springframework/security/spring-security-bom/6.5.5/spring-security-bom-6.5.5.pom",
+        "sha256": "ca771a5dad139cd125f5a51d261432ca195736c30b21deb2c99a8c1b6f2f2527",
+        "members": 18
+      },
+      {
+        "groupId": "org.springframework.session",
+        "artifactId": "spring-session-bom",
+        "version": "3.5.2",
+        "url": "https://repo1.maven.org/maven2/org/springframework/session/spring-session-bom/3.5.2/spring-session-bom-3.5.2.pom",
+        "sha256": "6cf47ed1636209fff2f95e45c92a293cd67401b293d256a980d4f89cd9ce0df6",
+        "members": 5
+      },
+      {
+        "groupId": "org.springframework.ws",
+        "artifactId": "spring-ws-bom",
+        "version": "4.1.1",
+        "url": "https://repo1.maven.org/maven2/org/springframework/ws/spring-ws-bom/4.1.1/spring-ws-bom-4.1.1.pom",
+        "sha256": "1bb6abc3111635daf37ac997484282c31172a7fdea7d9082496cc8667e2c116a",
+        "members": 5
+      },
+      {
+        "groupId": "org.testcontainers",
+        "artifactId": "testcontainers-bom",
+        "version": "1.21.3",
+        "url": "https://repo1.maven.org/maven2/org/testcontainers/testcontainers-bom/1.21.3/testcontainers-bom-1.21.3.pom",
+        "sha256": "2ce717226d1d67b5b1df9707ed98022a366ac892d9e496c5f0173f1ab78a0965",
+        "members": 63
+      }
+    ],
+    "conflicts": 1,
+    "managed": {
+      "ch.qos.logback:logback-classic": "1.5.18",
+      "ch.qos.logback:logback-core": "1.5.18",
+      "co.elastic.clients:elasticsearch-java": "8.18.6",
+      "com.couchbase.client:java-client": "3.8.3",
+      "com.datastax.oss:native-protocol": "1.5.1",
+      "com.fasterxml:classmate": "1.7.0",
+      "com.fasterxml.jackson.core:jackson-annotations": "2.19.2",
+      "com.fasterxml.jackson.core:jackson-core": "2.19.2",
+      "com.fasterxml.jackson.core:jackson-databind": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-avro": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-cbor": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-csv": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-ion": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-properties": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-protobuf": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-smile": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-toml": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-xml": "2.19.2",
+      "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-eclipse-collections": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-guava": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-hibernate3": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-hibernate4": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-hibernate5": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-hibernate5-jakarta": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-hibernate6": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-hppc": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-jakarta-jsonp": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-javax-money": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-jaxrs": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-jdk8": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-joda": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-joda-money": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-json-org": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-jsr310": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-jsr353": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-moneta": "2.19.2",
+      "com.fasterxml.jackson.datatype:jackson-datatype-pcollections": "2.19.2",
+      "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base": "2.19.2",
+      "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-cbor-provider": "2.19.2",
+      "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider": "2.19.2",
+      "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-smile-provider": "2.19.2",
+      "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-xml-provider": "2.19.2",
+      "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-yaml-provider": "2.19.2",
+      "com.fasterxml.jackson.jaxrs:jackson-jaxrs-base": "2.19.2",
+      "com.fasterxml.jackson.jaxrs:jackson-jaxrs-cbor-provider": "2.19.2",
+      "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider": "2.19.2",
+      "com.fasterxml.jackson.jaxrs:jackson-jaxrs-smile-provider": "2.19.2",
+      "com.fasterxml.jackson.jaxrs:jackson-jaxrs-xml-provider": "2.19.2",
+      "com.fasterxml.jackson.jaxrs:jackson-jaxrs-yaml-provider": "2.19.2",
+      "com.fasterxml.jackson.jr:jackson-jr-all": "2.19.2",
+      "com.fasterxml.jackson.jr:jackson-jr-annotation-support": "2.19.2",
+      "com.fasterxml.jackson.jr:jackson-jr-extension-javatime": "2.19.2",
+      "com.fasterxml.jackson.jr:jackson-jr-objects": "2.19.2",
+      "com.fasterxml.jackson.jr:jackson-jr-retrofit2": "2.19.2",
+      "com.fasterxml.jackson.jr:jackson-jr-stree": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-afterburner": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-android-record": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-blackbird": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-guice": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-guice7": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-jaxb-annotations": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-jsonSchema": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-jsonSchema-jakarta": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-kotlin": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-mrbean": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-no-ctor-deser": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-osgi": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-parameter-names": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-paranamer": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-scala_2.11": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-scala_2.12": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-scala_2.13": "2.19.2",
+      "com.fasterxml.jackson.module:jackson-module-scala_3": "2.19.2",
+      "com.fasterxml.woodstox:woodstox-core": "7.1.1",
+      "com.github.ben-manes.caffeine:caffeine": "3.2.2",
+      "com.github.ben-manes.caffeine:guava": "3.2.2",
+      "com.github.ben-manes.caffeine:jcache": "3.2.2",
+      "com.github.ben-manes.caffeine:simulator": "3.2.2",
+      "com.github.mxab.thymeleaf.extras:thymeleaf-extras-data-attribute": "2.0.1",
+      "com.google.code.gson:gson": "2.13.2",
+      "com.graphql-java:graphql-java": "24.1",
+      "com.h2database:h2": "2.3.232",
+      "com.hazelcast:hazelcast": "5.5.0",
+      "com.hazelcast:hazelcast-spring": "5.5.0",
+      "com.ibm.db2:jcc": "12.1.2.0",
+      "com.jayway.jsonpath:json-path": "2.9.0",
+      "com.jayway.jsonpath:json-path-assert": "2.9.0",
+      "com.microsoft.sqlserver:mssql-jdbc": "12.10.1.jre11",
+      "com.mysql:mysql-connector-j": "9.4.0",
+      "com.oracle.database.ha:ons": "23.7.0.25.01",
+      "com.oracle.database.ha:simplefan": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ojdbc11": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ojdbc11-production": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ojdbc17": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ojdbc17-production": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ojdbc8": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ojdbc8-production": "23.7.0.25.01",
+      "com.oracle.database.jdbc:rsi": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ucp": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ucp11": "23.7.0.25.01",
+      "com.oracle.database.jdbc:ucp17": "23.7.0.25.01",
+      "com.oracle.database.nls:orai18n": "23.7.0.25.01",
+      "com.oracle.database.r2dbc:oracle-r2dbc": "1.3.0",
+      "com.oracle.database.security:oraclepki": "23.7.0.25.01",
+      "com.oracle.database.xml:xdb": "23.7.0.25.01",
+      "com.oracle.database.xml:xmlparserv2": "23.7.0.25.01",
+      "com.querydsl:codegen-utils": "5.1.0",
+      "com.querydsl:querydsl-apt": "5.1.0",
+      "com.querydsl:querydsl-codegen": "5.1.0",
+      "com.querydsl:querydsl-collections": "5.1.0",
+      "com.querydsl:querydsl-core": "5.1.0",
+      "com.querydsl:querydsl-guava": "5.1.0",
+      "com.querydsl:querydsl-hibernate-search": "5.1.0",
+      "com.querydsl:querydsl-jdo": "5.1.0",
+      "com.querydsl:querydsl-jpa": "5.1.0",
+      "com.querydsl:querydsl-jpa-codegen": "5.1.0",
+      "com.querydsl:querydsl-kotlin": "5.1.0",
+      "com.querydsl:querydsl-kotlin-codegen": "5.1.0",
+      "com.querydsl:querydsl-lucene3": "5.1.0",
+      "com.querydsl:querydsl-lucene4": "5.1.0",
+      "com.querydsl:querydsl-lucene5": "5.1.0",
+      "com.querydsl:querydsl-mongodb": "5.1.0",
+      "com.querydsl:querydsl-scala": "5.1.0",
+      "com.querydsl:querydsl-spatial": "5.1.0",
+      "com.querydsl:querydsl-sql": "5.1.0",
+      "com.querydsl:querydsl-sql-codegen": "5.1.0",
+      "com.querydsl:querydsl-sql-spatial": "5.1.0",
+      "com.querydsl:querydsl-sql-spring": "5.1.0",
+      "com.rabbitmq:amqp-client": "5.25.0",
+      "com.rabbitmq:stream-client": "0.23.0",
+      "com.redis:testcontainers-redis": "2.2.4",
+      "com.samskivert:jmustache": "1.16",
+      "com.sendgrid:sendgrid-java": "4.10.3",
+      "com.sun.istack:istack-commons-runtime": "4.1.2",
+      "com.sun.xml.bind:jaxb-core": "4.0.5",
+      "com.sun.xml.bind:jaxb-impl": "4.0.5",
+      "com.sun.xml.bind:jaxb-jxc": "4.0.5",
+      "com.sun.xml.bind:jaxb-osgi": "4.0.5",
+      "com.sun.xml.bind:jaxb-xjc": "4.0.5",
+      "com.sun.xml.fastinfoset:FastInfoset": "2.1.1",
+      "com.sun.xml.messaging.saaj:saaj-impl": "3.0.4",
+      "com.unboundid:unboundid-ldapsdk": "7.0.3",
+      "com.zaxxer:HikariCP": "6.3.3",
+      "commons-codec:commons-codec": "1.18.0",
+      "commons-pool:commons-pool": "1.6",
+      "io.asyncer:r2dbc-mysql": "1.4.1",
+      "io.lettuce:lettuce-core": "6.6.0.RELEASE",
+      "io.micrometer:context-propagation": "1.1.3",
+      "io.micrometer:docs": "1.5.4",
+      "io.micrometer:micrometer-commons": "1.15.4",
+      "io.micrometer:micrometer-core": "1.15.4",
+      "io.micrometer:micrometer-jakarta9": "1.15.4",
+      "io.micrometer:micrometer-java11": "1.15.4",
+      "io.micrometer:micrometer-java21": "1.15.4",
+      "io.micrometer:micrometer-jetty11": "1.15.4",
+      "io.micrometer:micrometer-jetty12": "1.15.4",
+      "io.micrometer:micrometer-observation": "1.15.4",
+      "io.micrometer:micrometer-observation-test": "1.15.4",
+      "io.micrometer:micrometer-registry-appoptics": "1.15.4",
+      "io.micrometer:micrometer-registry-atlas": "1.15.4",
+      "io.micrometer:micrometer-registry-azure-monitor": "1.15.4",
+      "io.micrometer:micrometer-registry-cloudwatch2": "1.15.4",
+      "io.micrometer:micrometer-registry-datadog": "1.15.4",
+      "io.micrometer:micrometer-registry-dynatrace": "1.15.4",
+      "io.micrometer:micrometer-registry-elastic": "1.15.4",
+      "io.micrometer:micrometer-registry-ganglia": "1.15.4",
+      "io.micrometer:micrometer-registry-graphite": "1.15.4",
+      "io.micrometer:micrometer-registry-health": "1.15.4",
+      "io.micrometer:micrometer-registry-humio": "1.15.4",
+      "io.micrometer:micrometer-registry-influx": "1.15.4",
+      "io.micrometer:micrometer-registry-jmx": "1.15.4",
+      "io.micrometer:micrometer-registry-kairos": "1.15.4",
+      "io.micrometer:micrometer-registry-new-relic": "1.15.4",
+      "io.micrometer:micrometer-registry-opentsdb": "1.15.4",
+      "io.micrometer:micrometer-registry-otlp": "1.15.4",
+      "io.micrometer:micrometer-registry-prometheus": "1.15.4",
+      "io.micrometer:micrometer-registry-prometheus-simpleclient": "1.15.4",
+      "io.micrometer:micrometer-registry-signalfx": "1.15.4",
+      "io.micrometer:micrometer-registry-stackdriver": "1.15.4",
+      "io.micrometer:micrometer-registry-statsd": "1.15.4",
+      "io.micrometer:micrometer-registry-wavefront": "1.15.4",
+      "io.micrometer:micrometer-test": "1.15.4",
+      "io.micrometer:micrometer-tracing": "1.5.4",
+      "io.micrometer:micrometer-tracing-bridge-brave": "1.5.4",
+      "io.micrometer:micrometer-tracing-bridge-otel": "1.5.4",
+      "io.micrometer:micrometer-tracing-integration-test": "1.5.4",
+      "io.micrometer:micrometer-tracing-reporter-wavefront": "1.5.4",
+      "io.micrometer:micrometer-tracing-test": "1.5.4",
+      "io.netty:netty-all": "4.1.127.Final",
+      "io.netty:netty-buffer": "4.1.127.Final",
+      "io.netty:netty-codec": "4.1.127.Final",
+      "io.netty:netty-codec-dns": "4.1.127.Final",
+      "io.netty:netty-codec-haproxy": "4.1.127.Final",
+      "io.netty:netty-codec-http": "4.1.127.Final",
+      "io.netty:netty-codec-http2": "4.1.127.Final",
+      "io.netty:netty-codec-memcache": "4.1.127.Final",
+      "io.netty:netty-codec-mqtt": "4.1.127.Final",
+      "io.netty:netty-codec-redis": "4.1.127.Final",
+      "io.netty:netty-codec-smtp": "4.1.127.Final",
+      "io.netty:netty-codec-socks": "4.1.127.Final",
+      "io.netty:netty-codec-stomp": "4.1.127.Final",
+      "io.netty:netty-codec-xml": "4.1.127.Final",
+      "io.netty:netty-common": "4.1.127.Final",
+      "io.netty:netty-dev-tools": "4.1.127.Final",
+      "io.netty:netty-handler": "4.1.127.Final",
+      "io.netty:netty-handler-proxy": "4.1.127.Final",
+      "io.netty:netty-handler-ssl-ocsp": "4.1.127.Final",
+      "io.netty:netty-resolver": "4.1.127.Final",
+      "io.netty:netty-resolver-dns": "4.1.127.Final",
+      "io.netty:netty-resolver-dns-classes-macos": "4.1.127.Final",
+      "io.netty:netty-resolver-dns-native-macos": "4.1.127.Final",
+      "io.netty:netty-tcnative": "2.0.73.Final",
+      "io.netty:netty-tcnative-boringssl-static": "2.0.73.Final",
+      "io.netty:netty-tcnative-classes": "2.0.73.Final",
+      "io.netty:netty-transport": "4.1.127.Final",
+      "io.netty:netty-transport-classes-epoll": "4.1.127.Final",
+      "io.netty:netty-transport-classes-kqueue": "4.1.127.Final",
+      "io.netty:netty-transport-native-epoll": "4.1.127.Final",
+      "io.netty:netty-transport-native-kqueue": "4.1.127.Final",
+      "io.netty:netty-transport-native-unix-common": "4.1.127.Final",
+      "io.netty:netty-transport-rxtx": "4.1.127.Final",
+      "io.netty:netty-transport-sctp": "4.1.127.Final",
+      "io.netty:netty-transport-udt": "4.1.127.Final",
+      "io.opentelemetry:opentelemetry-api": "1.49.0",
+      "io.opentelemetry:opentelemetry-context": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-common": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-logging": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-logging-otlp": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-otlp": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-otlp-common": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-sender-grpc-managed-channel": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-sender-jdk": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-sender-okhttp": "1.49.0",
+      "io.opentelemetry:opentelemetry-exporter-zipkin": "1.49.0",
+      "io.opentelemetry:opentelemetry-extension-kotlin": "1.49.0",
+      "io.opentelemetry:opentelemetry-extension-trace-propagators": "1.49.0",
+      "io.opentelemetry:opentelemetry-opentracing-shim": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-common": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-extension-jaeger-remote-sampler": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-logs": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-metrics": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-testing": "1.49.0",
+      "io.opentelemetry:opentelemetry-sdk-trace": "1.49.0",
+      "io.projectreactor:reactor-core": "3.7.11",
+      "io.projectreactor:reactor-core-micrometer": "1.2.11",
+      "io.projectreactor:reactor-test": "3.7.11",
+      "io.projectreactor:reactor-tools": "3.7.11",
+      "io.projectreactor.addons:reactor-adapter": "3.5.3",
+      "io.projectreactor.addons:reactor-extra": "3.5.3",
+      "io.projectreactor.addons:reactor-pool": "1.1.4",
+      "io.projectreactor.addons:reactor-pool-micrometer": "0.2.4",
+      "io.projectreactor.kafka:reactor-kafka": "1.3.24",
+      "io.projectreactor.kotlin:reactor-kotlin-extensions": "1.2.4",
+      "io.projectreactor.netty:reactor-netty": "1.2.10",
+      "io.projectreactor.netty:reactor-netty-core": "1.2.10",
+      "io.projectreactor.netty:reactor-netty-http": "1.2.10",
+      "io.projectreactor.netty:reactor-netty-http-brave": "1.2.10",
+      "io.prometheus:prometheus-metrics-config": "1.3.10",
+      "io.prometheus:prometheus-metrics-core": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-common": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-httpserver": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-opentelemetry": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-opentelemetry-no-otel": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-opentelemetry-otel-agent-resources": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-pushgateway": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-servlet-jakarta": "1.3.10",
+      "io.prometheus:prometheus-metrics-exporter-servlet-javax": "1.3.10",
+      "io.prometheus:prometheus-metrics-exposition-formats": "1.3.10",
+      "io.prometheus:prometheus-metrics-exposition-formats-no-protobuf": "1.3.10",
+      "io.prometheus:prometheus-metrics-exposition-textformats": "1.3.10",
+      "io.prometheus:prometheus-metrics-instrumentation-caffeine": "1.3.10",
+      "io.prometheus:prometheus-metrics-instrumentation-dropwizard": "1.3.10",
+      "io.prometheus:prometheus-metrics-instrumentation-dropwizard5": "1.3.10",
+      "io.prometheus:prometheus-metrics-instrumentation-guava": "1.3.10",
+      "io.prometheus:prometheus-metrics-instrumentation-jvm": "1.3.10",
+      "io.prometheus:prometheus-metrics-model": "1.3.10",
+      "io.prometheus:prometheus-metrics-simpleclient-bridge": "1.3.10",
+      "io.prometheus:prometheus-metrics-tracer": "1.3.10",
+      "io.prometheus:prometheus-metrics-tracer-common": "1.3.10",
+      "io.prometheus:prometheus-metrics-tracer-initializer": "1.3.10",
+      "io.prometheus:prometheus-metrics-tracer-otel": "1.3.10",
+      "io.prometheus:prometheus-metrics-tracer-otel-agent": "1.3.10",
+      "io.prometheus:simpleclient": "0.16.0",
+      "io.prometheus:simpleclient_caffeine": "0.16.0",
+      "io.prometheus:simpleclient_common": "0.16.0",
+      "io.prometheus:simpleclient_dropwizard": "0.16.0",
+      "io.prometheus:simpleclient_graphite_bridge": "0.16.0",
+      "io.prometheus:simpleclient_guava": "0.16.0",
+      "io.prometheus:simpleclient_hibernate": "0.16.0",
+      "io.prometheus:simpleclient_hotspot": "0.16.0",
+      "io.prometheus:simpleclient_httpserver": "0.16.0",
+      "io.prometheus:simpleclient_jetty": "0.16.0",
+      "io.prometheus:simpleclient_jetty_jdk8": "0.16.0",
+      "io.prometheus:simpleclient_log4j": "0.16.0",
+      "io.prometheus:simpleclient_log4j2": "0.16.0",
+      "io.prometheus:simpleclient_logback": "0.16.0",
+      "io.prometheus:simpleclient_pushgateway": "0.16.0",
+      "io.prometheus:simpleclient_servlet": "0.16.0",
+      "io.prometheus:simpleclient_servlet_jakarta": "0.16.0",
+      "io.prometheus:simpleclient_spring_boot": "0.16.0",
+      "io.prometheus:simpleclient_spring_web": "0.16.0",
+      "io.prometheus:simpleclient_tracer_common": "0.16.0",
+      "io.prometheus:simpleclient_tracer_otel": "0.16.0",
+      "io.prometheus:simpleclient_tracer_otel_agent": "0.16.0",
+      "io.prometheus:simpleclient_vertx": "0.16.0",
+      "io.r2dbc:r2dbc-h2": "1.0.0.RELEASE",
+      "io.r2dbc:r2dbc-mssql": "1.0.3.RELEASE",
+      "io.r2dbc:r2dbc-pool": "1.0.2.RELEASE",
+      "io.r2dbc:r2dbc-proxy": "1.1.6.RELEASE",
+      "io.r2dbc:r2dbc-spi": "1.0.0.RELEASE",
+      "io.reactivex.rxjava3:rxjava": "3.1.11",
+      "io.rest-assured:json-path": "5.5.6",
+      "io.rest-assured:json-schema-validator": "5.5.6",
+      "io.rest-assured:kotlin-extensions": "5.5.6",
+      "io.rest-assured:rest-assured": "5.5.6",
+      "io.rest-assured:rest-assured-all": "5.5.6",
+      "io.rest-assured:rest-assured-common": "5.5.6",
+      "io.rest-assured:scala-extensions": "5.5.6",
+      "io.rest-assured:scala-support": "5.5.6",
+      "io.rest-assured:spring-commons": "5.5.6",
+      "io.rest-assured:spring-mock-mvc": "5.5.6",
+      "io.rest-assured:spring-mock-mvc-kotlin-extensions": "5.5.6",
+      "io.rest-assured:spring-web-test-client": "5.5.6",
+      "io.rest-assured:spring-web-test-client-kotlin-extensions": "5.5.6",
+      "io.rest-assured:xml-path": "5.5.6",
+      "io.rsocket:rsocket-core": "1.1.5",
+      "io.rsocket:rsocket-load-balancer": "1.1.5",
+      "io.rsocket:rsocket-micrometer": "1.1.5",
+      "io.rsocket:rsocket-test": "1.1.5",
+      "io.rsocket:rsocket-transport-local": "1.1.5",
+      "io.rsocket:rsocket-transport-netty": "1.1.5",
+      "io.spring.gradle:dependency-management-plugin": "1.1.7",
+      "io.undertow:undertow-core": "2.3.19.Final",
+      "io.undertow:undertow-servlet": "2.3.19.Final",
+      "io.undertow:undertow-websockets-jsr": "2.3.19.Final",
+      "io.zipkin.brave:brave": "6.1.0",
+      "io.zipkin.brave:brave-context-jfr": "6.1.0",
+      "io.zipkin.brave:brave-context-log4j12": "6.1.0",
+      "io.zipkin.brave:brave-context-log4j2": "6.1.0",
+      "io.zipkin.brave:brave-context-slf4j": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-dubbo": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-grpc": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-http": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-http-tests": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-http-tests-jakarta": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-httpasyncclient": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-httpclient": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-httpclient5": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-jakarta-jms": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-jaxrs2": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-jersey-server": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-jms": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-jms-jakarta": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-kafka-clients": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-kafka-streams": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-messaging": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-mongodb": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-mysql": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-mysql6": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-mysql8": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-netty-codec-http": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-okhttp3": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-rocketmq-client": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-rpc": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-servlet": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-servlet-jakarta": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-spring-rabbit": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-spring-web": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-spring-webmvc": "6.1.0",
+      "io.zipkin.brave:brave-instrumentation-vertx-web": "6.1.0",
+      "io.zipkin.brave:brave-spring-beans": "6.1.0",
+      "io.zipkin.brave:brave-tests": "6.1.0",
+      "io.zipkin.reporter2:zipkin-reporter": "3.5.1",
+      "io.zipkin.reporter2:zipkin-reporter-brave": "3.5.1",
+      "io.zipkin.reporter2:zipkin-reporter-metrics-micrometer": "3.5.1",
+      "io.zipkin.reporter2:zipkin-reporter-spring-beans": "3.5.1",
+      "io.zipkin.reporter2:zipkin-sender-activemq-client": "3.5.1",
+      "io.zipkin.reporter2:zipkin-sender-amqp-client": "3.5.1",
+      "io.zipkin.reporter2:zipkin-sender-kafka": "3.5.1",
+      "io.zipkin.reporter2:zipkin-sender-libthrift": "3.5.1",
+      "io.zipkin.reporter2:zipkin-sender-okhttp3": "3.5.1",
+      "io.zipkin.reporter2:zipkin-sender-pulsar-client": "3.5.1",
+      "io.zipkin.reporter2:zipkin-sender-urlconnection": "3.5.1",
+      "jakarta.activation:jakarta.activation-api": "2.1.4",
+      "jakarta.annotation:jakarta.annotation-api": "2.1.1",
+      "jakarta.inject:jakarta.inject-api": "2.0.1",
+      "jakarta.jms:jakarta.jms-api": "3.1.0",
+      "jakarta.json:jakarta.json-api": "2.1.3",
+      "jakarta.json.bind:jakarta.json.bind-api": "3.0.1",
+      "jakarta.mail:jakarta.mail-api": "2.1.4",
+      "jakarta.management.j2ee:jakarta.management.j2ee-api": "1.1.4",
+      "jakarta.persistence:jakarta.persistence-api": "3.1.0",
+      "jakarta.servlet:jakarta.servlet-api": "6.0.0",
+      "jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api": "3.0.2",
+      "jakarta.transaction:jakarta.transaction-api": "2.0.1",
+      "jakarta.validation:jakarta.validation-api": "3.0.2",
+      "jakarta.websocket:jakarta.websocket-api": "2.1.1",
+      "jakarta.websocket:jakarta.websocket-client-api": "2.1.1",
+      "jakarta.ws.rs:jakarta.ws.rs-api": "3.1.0",
+      "jakarta.xml.bind:jakarta.xml.bind-api": "4.0.2",
+      "jakarta.xml.soap:jakarta.xml.soap-api": "3.0.2",
+      "jakarta.xml.ws:jakarta.xml.ws-api": "4.0.2",
+      "javax.cache:cache-api": "1.1.1",
+      "javax.money:money-api": "1.1",
+      "jaxen:jaxen": "2.0.0",
+      "junit:junit": "4.13.2",
+      "net.bytebuddy:byte-buddy": "1.17.7",
+      "net.bytebuddy:byte-buddy-agent": "1.17.7",
+      "net.minidev:json-smart": "2.5.2",
+      "net.sourceforge.jtds:jtds": "1.3.1",
+      "net.sourceforge.nekohtml:nekohtml": "1.9.22",
+      "nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect": "3.4.0",
+      "org.apache.activemq:activemq-all": "6.1.7",
+      "org.apache.activemq:activemq-amqp": "6.1.7",
+      "org.apache.activemq:activemq-blueprint": "6.1.7",
+      "org.apache.activemq:activemq-branding": "2.40.0",
+      "org.apache.activemq:activemq-broker": "6.1.7",
+      "org.apache.activemq:activemq-client": "6.1.7",
+      "org.apache.activemq:activemq-console": "6.1.7",
+      "org.apache.activemq:activemq-http": "6.1.7",
+      "org.apache.activemq:activemq-jaas": "6.1.7",
+      "org.apache.activemq:activemq-jdbc-store": "6.1.7",
+      "org.apache.activemq:activemq-jms-pool": "6.1.7",
+      "org.apache.activemq:activemq-kahadb-store": "6.1.7",
+      "org.apache.activemq:activemq-karaf": "6.1.7",
+      "org.apache.activemq:activemq-log4j-appender": "6.1.7",
+      "org.apache.activemq:activemq-mqtt": "6.1.7",
+      "org.apache.activemq:activemq-openwire-generator": "6.1.7",
+      "org.apache.activemq:activemq-openwire-legacy": "6.1.7",
+      "org.apache.activemq:activemq-osgi": "6.1.7",
+      "org.apache.activemq:activemq-pool": "6.1.7",
+      "org.apache.activemq:activemq-ra": "6.1.7",
+      "org.apache.activemq:activemq-rar": "6.1.7",
+      "org.apache.activemq:activemq-run": "6.1.7",
+      "org.apache.activemq:activemq-runtime-config": "6.1.7",
+      "org.apache.activemq:activemq-shiro": "6.1.7",
+      "org.apache.activemq:activemq-spring": "6.1.7",
+      "org.apache.activemq:activemq-stomp": "6.1.7",
+      "org.apache.activemq:activemq-web": "6.1.7",
+      "org.apache.activemq:activemq-web-console": "6.1.7",
+      "org.apache.activemq:activemq-web-demo": "6.1.7",
+      "org.apache.activemq:artemis-amqp-protocol": "2.40.0",
+      "org.apache.activemq:artemis-boot": "2.40.0",
+      "org.apache.activemq:artemis-cdi-client": "2.40.0",
+      "org.apache.activemq:artemis-cli": "2.40.0",
+      "org.apache.activemq:artemis-commons": "2.40.0",
+      "org.apache.activemq:artemis-console": "2.40.0",
+      "org.apache.activemq:artemis-core-client": "2.40.0",
+      "org.apache.activemq:artemis-core-client-all": "2.40.0",
+      "org.apache.activemq:artemis-core-client-osgi": "2.40.0",
+      "org.apache.activemq:artemis-dto": "2.40.0",
+      "org.apache.activemq:artemis-features": "2.40.0",
+      "org.apache.activemq:artemis-hornetq-protocol": "2.40.0",
+      "org.apache.activemq:artemis-hqclient-protocol": "2.40.0",
+      "org.apache.activemq:artemis-jakarta-cdi-client": "2.40.0",
+      "org.apache.activemq:artemis-jakarta-client": "2.40.0",
+      "org.apache.activemq:artemis-jakarta-client-all": "2.40.0",
+      "org.apache.activemq:artemis-jakarta-openwire-protocol": "2.40.0",
+      "org.apache.activemq:artemis-jakarta-ra": "2.40.0",
+      "org.apache.activemq:artemis-jakarta-server": "2.40.0",
+      "org.apache.activemq:artemis-jakarta-service-extensions": "2.40.0",
+      "org.apache.activemq:artemis-jdbc-store": "2.40.0",
+      "org.apache.activemq:artemis-jms-client": "2.40.0",
+      "org.apache.activemq:artemis-jms-client-all": "2.40.0",
+      "org.apache.activemq:artemis-jms-client-osgi": "2.40.0",
+      "org.apache.activemq:artemis-jms-server": "2.40.0",
+      "org.apache.activemq:artemis-journal": "2.40.0",
+      "org.apache.activemq:artemis-lockmanager-api": "2.40.0",
+      "org.apache.activemq:artemis-lockmanager-ri": "2.40.0",
+      "org.apache.activemq:artemis-mqtt-protocol": "2.40.0",
+      "org.apache.activemq:artemis-openwire-protocol": "2.40.0",
+      "org.apache.activemq:artemis-ra": "2.40.0",
+      "org.apache.activemq:artemis-selector": "2.40.0",
+      "org.apache.activemq:artemis-server": "2.40.0",
+      "org.apache.activemq:artemis-server-osgi": "2.40.0",
+      "org.apache.activemq:artemis-service-extensions": "2.40.0",
+      "org.apache.activemq:artemis-stomp-protocol": "2.40.0",
+      "org.apache.activemq:artemis-web": "2.40.0",
+      "org.apache.activemq:artemis-website": "2.40.0",
+      "org.apache.cassandra:java-driver-core": "4.19.0",
+      "org.apache.cassandra:java-driver-core-shaded": "4.19.0",
+      "org.apache.cassandra:java-driver-guava-shaded": "4.19.0",
+      "org.apache.cassandra:java-driver-mapper-processor": "4.19.0",
+      "org.apache.cassandra:java-driver-mapper-runtime": "4.19.0",
+      "org.apache.cassandra:java-driver-metrics-micrometer": "4.19.0",
+      "org.apache.cassandra:java-driver-metrics-microprofile": "4.19.0",
+      "org.apache.cassandra:java-driver-query-builder": "4.19.0",
+      "org.apache.cassandra:java-driver-test-infra": "4.19.0",
+      "org.apache.commons:commons-dbcp2": "2.13.0",
+      "org.apache.commons:commons-lang3": "3.17.0",
+      "org.apache.commons:commons-pool2": "2.12.1",
+      "org.apache.derby:derby": "10.16.1.1",
+      "org.apache.derby:derbyclient": "10.16.1.1",
+      "org.apache.derby:derbynet": "10.16.1.1",
+      "org.apache.derby:derbyoptionaltools": "10.16.1.1",
+      "org.apache.derby:derbyshared": "10.16.1.1",
+      "org.apache.derby:derbytools": "10.16.1.1",
+      "org.apache.groovy:groovy": "4.0.28",
+      "org.apache.groovy:groovy-ant": "4.0.28",
+      "org.apache.groovy:groovy-astbuilder": "4.0.28",
+      "org.apache.groovy:groovy-cli-commons": "4.0.28",
+      "org.apache.groovy:groovy-cli-picocli": "4.0.28",
+      "org.apache.groovy:groovy-console": "4.0.28",
+      "org.apache.groovy:groovy-contracts": "4.0.28",
+      "org.apache.groovy:groovy-datetime": "4.0.28",
+      "org.apache.groovy:groovy-dateutil": "4.0.28",
+      "org.apache.groovy:groovy-docgenerator": "4.0.28",
+      "org.apache.groovy:groovy-ginq": "4.0.28",
+      "org.apache.groovy:groovy-groovydoc": "4.0.28",
+      "org.apache.groovy:groovy-groovysh": "4.0.28",
+      "org.apache.groovy:groovy-jmx": "4.0.28",
+      "org.apache.groovy:groovy-json": "4.0.28",
+      "org.apache.groovy:groovy-jsr223": "4.0.28",
+      "org.apache.groovy:groovy-macro": "4.0.28",
+      "org.apache.groovy:groovy-macro-library": "4.0.28",
+      "org.apache.groovy:groovy-nio": "4.0.28",
+      "org.apache.groovy:groovy-servlet": "4.0.28",
+      "org.apache.groovy:groovy-sql": "4.0.28",
+      "org.apache.groovy:groovy-swing": "4.0.28",
+      "org.apache.groovy:groovy-templates": "4.0.28",
+      "org.apache.groovy:groovy-test": "4.0.28",
+      "org.apache.groovy:groovy-test-junit5": "4.0.28",
+      "org.apache.groovy:groovy-testng": "4.0.28",
+      "org.apache.groovy:groovy-toml": "4.0.28",
+      "org.apache.groovy:groovy-typecheckers": "4.0.28",
+      "org.apache.groovy:groovy-xml": "4.0.28",
+      "org.apache.groovy:groovy-yaml": "4.0.28",
+      "org.apache.httpcomponents:httpasyncclient": "4.1.5",
+      "org.apache.httpcomponents:httpcore": "4.4.16",
+      "org.apache.httpcomponents:httpcore-nio": "4.4.16",
+      "org.apache.httpcomponents.client5:httpclient5": "5.5",
+      "org.apache.httpcomponents.client5:httpclient5-cache": "5.5",
+      "org.apache.httpcomponents.client5:httpclient5-fluent": "5.5",
+      "org.apache.httpcomponents.core5:httpcore5": "5.3.5",
+      "org.apache.httpcomponents.core5:httpcore5-h2": "5.3.5",
+      "org.apache.httpcomponents.core5:httpcore5-reactive": "5.3.5",
+      "org.apache.kafka:connect": "3.9.1",
+      "org.apache.kafka:connect-api": "3.9.1",
+      "org.apache.kafka:connect-basic-auth-extension": "3.9.1",
+      "org.apache.kafka:connect-file": "3.9.1",
+      "org.apache.kafka:connect-json": "3.9.1",
+      "org.apache.kafka:connect-mirror": "3.9.1",
+      "org.apache.kafka:connect-mirror-client": "3.9.1",
+      "org.apache.kafka:connect-runtime": "3.9.1",
+      "org.apache.kafka:connect-transforms": "3.9.1",
+      "org.apache.kafka:generator": "3.9.1",
+      "org.apache.kafka:kafka_2.12": "3.9.1",
+      "org.apache.kafka:kafka_2.13": "3.9.1",
+      "org.apache.kafka:kafka-clients": "3.9.1",
+      "org.apache.kafka:kafka-log4j-appender": "3.9.1",
+      "org.apache.kafka:kafka-metadata": "3.9.1",
+      "org.apache.kafka:kafka-raft": "3.9.1",
+      "org.apache.kafka:kafka-server": "3.9.1",
+      "org.apache.kafka:kafka-server-common": "3.9.1",
+      "org.apache.kafka:kafka-shell": "3.9.1",
+      "org.apache.kafka:kafka-storage": "3.9.1",
+      "org.apache.kafka:kafka-storage-api": "3.9.1",
+      "org.apache.kafka:kafka-streams": "3.9.1",
+      "org.apache.kafka:kafka-streams-scala_2.12": "3.9.1",
+      "org.apache.kafka:kafka-streams-scala_2.13": "3.9.1",
+      "org.apache.kafka:kafka-streams-test-utils": "3.9.1",
+      "org.apache.kafka:kafka-tools": "3.9.1",
+      "org.apache.kafka:trogdor": "3.9.1",
+      "org.apache.logging.log4j:log4j-1.2-api": "2.24.3",
+      "org.apache.logging.log4j:log4j-api": "2.24.3",
+      "org.apache.logging.log4j:log4j-api-test": "2.24.3",
+      "org.apache.logging.log4j:log4j-appserver": "2.24.3",
+      "org.apache.logging.log4j:log4j-cassandra": "2.24.3",
+      "org.apache.logging.log4j:log4j-core": "2.24.3",
+      "org.apache.logging.log4j:log4j-core-test": "2.24.3",
+      "org.apache.logging.log4j:log4j-couchdb": "2.24.3",
+      "org.apache.logging.log4j:log4j-docker": "2.24.3",
+      "org.apache.logging.log4j:log4j-flume-ng": "2.23.1",
+      "org.apache.logging.log4j:log4j-iostreams": "2.24.3",
+      "org.apache.logging.log4j:log4j-jakarta-smtp": "2.24.3",
+      "org.apache.logging.log4j:log4j-jakarta-web": "2.24.3",
+      "org.apache.logging.log4j:log4j-jcl": "2.24.3",
+      "org.apache.logging.log4j:log4j-jpa": "2.24.3",
+      "org.apache.logging.log4j:log4j-jpl": "2.24.3",
+      "org.apache.logging.log4j:log4j-jul": "2.24.3",
+      "org.apache.logging.log4j:log4j-layout-template-json": "2.24.3",
+      "org.apache.logging.log4j:log4j-mongodb": "2.24.3",
+      "org.apache.logging.log4j:log4j-mongodb4": "2.24.3",
+      "org.apache.logging.log4j:log4j-slf4j-impl": "2.24.3",
+      "org.apache.logging.log4j:log4j-slf4j2-impl": "2.24.3",
+      "org.apache.logging.log4j:log4j-spring-boot": "2.24.3",
+      "org.apache.logging.log4j:log4j-spring-cloud-config-client": "2.24.3",
+      "org.apache.logging.log4j:log4j-taglib": "2.24.3",
+      "org.apache.logging.log4j:log4j-to-jul": "2.24.3",
+      "org.apache.logging.log4j:log4j-to-slf4j": "2.24.3",
+      "org.apache.logging.log4j:log4j-web": "2.24.3",
+      "org.apache.pulsar:bouncy-castle-bc": "4.0.6",
+      "org.apache.pulsar:bouncy-castle-bcfips": "4.0.6",
+      "org.apache.pulsar:bouncy-castle-parent": "4.0.6",
+      "org.apache.pulsar:buildtools": "4.0.6",
+      "org.apache.pulsar:distribution": "4.0.6",
+      "org.apache.pulsar:docker-images": "4.0.6",
+      "org.apache.pulsar:jclouds-shaded": "4.0.6",
+      "org.apache.pulsar:managed-ledger": "4.0.6",
+      "org.apache.pulsar:pulsar": "4.0.6",
+      "org.apache.pulsar:pulsar-all-docker-image": "4.0.6",
+      "org.apache.pulsar:pulsar-broker": "4.0.6",
+      "org.apache.pulsar:pulsar-broker-auth-athenz": "4.0.6",
+      "org.apache.pulsar:pulsar-broker-auth-oidc": "4.0.6",
+      "org.apache.pulsar:pulsar-broker-auth-sasl": "4.0.6",
+      "org.apache.pulsar:pulsar-broker-common": "4.0.6",
+      "org.apache.pulsar:pulsar-cli-utils": "4.0.6",
+      "org.apache.pulsar:pulsar-client": "4.0.6",
+      "org.apache.pulsar:pulsar-client-admin": "4.0.6",
+      "org.apache.pulsar:pulsar-client-admin-api": "4.0.6",
+      "org.apache.pulsar:pulsar-client-admin-original": "4.0.6",
+      "org.apache.pulsar:pulsar-client-all": "4.0.6",
+      "org.apache.pulsar:pulsar-client-api": "4.0.6",
+      "org.apache.pulsar:pulsar-client-auth-athenz": "4.0.6",
+      "org.apache.pulsar:pulsar-client-auth-sasl": "4.0.6",
+      "org.apache.pulsar:pulsar-client-messagecrypto-bc": "4.0.6",
+      "org.apache.pulsar:pulsar-client-original": "4.0.6",
+      "org.apache.pulsar:pulsar-client-reactive-adapter": "0.6.0",
+      "org.apache.pulsar:pulsar-client-reactive-api": "0.6.0",
+      "org.apache.pulsar:pulsar-client-reactive-jackson": "0.6.0",
+      "org.apache.pulsar:pulsar-client-reactive-producer-cache-caffeine": "0.6.0",
+      "org.apache.pulsar:pulsar-client-reactive-producer-cache-caffeine-shaded": "0.6.0",
+      "org.apache.pulsar:pulsar-client-tools": "4.0.6",
+      "org.apache.pulsar:pulsar-client-tools-api": "4.0.6",
+      "org.apache.pulsar:pulsar-common": "4.0.6",
+      "org.apache.pulsar:pulsar-config-validation": "4.0.6",
+      "org.apache.pulsar:pulsar-docker-image": "4.0.6",
+      "org.apache.pulsar:pulsar-docs-tools": "4.0.6",
+      "org.apache.pulsar:pulsar-functions": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-api": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-api-examples": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-api-examples-builtin": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-instance": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-local-runner": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-local-runner-original": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-proto": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-runtime": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-runtime-all": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-secrets": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-utils": "4.0.6",
+      "org.apache.pulsar:pulsar-functions-worker": "4.0.6",
+      "org.apache.pulsar:pulsar-io": "4.0.6",
+      "org.apache.pulsar:pulsar-io-aerospike": "4.0.6",
+      "org.apache.pulsar:pulsar-io-alluxio": "4.0.6",
+      "org.apache.pulsar:pulsar-io-aws": "4.0.6",
+      "org.apache.pulsar:pulsar-io-batch-data-generator": "4.0.6",
+      "org.apache.pulsar:pulsar-io-batch-discovery-triggerers": "4.0.6",
+      "org.apache.pulsar:pulsar-io-canal": "4.0.6",
+      "org.apache.pulsar:pulsar-io-cassandra": "4.0.6",
+      "org.apache.pulsar:pulsar-io-common": "4.0.6",
+      "org.apache.pulsar:pulsar-io-core": "4.0.6",
+      "org.apache.pulsar:pulsar-io-data-generator": "4.0.6",
+      "org.apache.pulsar:pulsar-io-debezium": "4.0.6",
+      "org.apache.pulsar:pulsar-io-debezium-core": "4.0.6",
+      "org.apache.pulsar:pulsar-io-debezium-mongodb": "4.0.6",
+      "org.apache.pulsar:pulsar-io-debezium-mssql": "4.0.6",
+      "org.apache.pulsar:pulsar-io-debezium-mysql": "4.0.6",
+      "org.apache.pulsar:pulsar-io-debezium-oracle": "4.0.6",
+      "org.apache.pulsar:pulsar-io-debezium-postgres": "4.0.6",
+      "org.apache.pulsar:pulsar-io-distribution": "4.0.6",
+      "org.apache.pulsar:pulsar-io-docs": "4.0.6",
+      "org.apache.pulsar:pulsar-io-dynamodb": "4.0.6",
+      "org.apache.pulsar:pulsar-io-elastic-search": "4.0.6",
+      "org.apache.pulsar:pulsar-io-file": "4.0.6",
+      "org.apache.pulsar:pulsar-io-flume": "4.0.6",
+      "org.apache.pulsar:pulsar-io-hbase": "4.0.6",
+      "org.apache.pulsar:pulsar-io-hdfs3": "4.0.6",
+      "org.apache.pulsar:pulsar-io-http": "4.0.6",
+      "org.apache.pulsar:pulsar-io-influxdb": "4.0.6",
+      "org.apache.pulsar:pulsar-io-jdbc": "4.0.6",
+      "org.apache.pulsar:pulsar-io-jdbc-clickhouse": "4.0.6",
+      "org.apache.pulsar:pulsar-io-jdbc-core": "4.0.6",
+      "org.apache.pulsar:pulsar-io-jdbc-mariadb": "4.0.6",
+      "org.apache.pulsar:pulsar-io-jdbc-openmldb": "4.0.6",
+      "org.apache.pulsar:pulsar-io-jdbc-postgres": "4.0.6",
+      "org.apache.pulsar:pulsar-io-jdbc-sqlite": "4.0.6",
+      "org.apache.pulsar:pulsar-io-kafka": "4.0.6",
+      "org.apache.pulsar:pulsar-io-kafka-connect-adaptor": "4.0.6",
+      "org.apache.pulsar:pulsar-io-kafka-connect-adaptor-nar": "4.0.6",
+      "org.apache.pulsar:pulsar-io-kinesis": "4.0.6",
+      "org.apache.pulsar:pulsar-io-mongo": "4.0.6",
+      "org.apache.pulsar:pulsar-io-netty": "4.0.6",
+      "org.apache.pulsar:pulsar-io-nsq": "4.0.6",
+      "org.apache.pulsar:pulsar-io-rabbitmq": "4.0.6",
+      "org.apache.pulsar:pulsar-io-redis": "4.0.6",
+      "org.apache.pulsar:pulsar-io-solr": "4.0.6",
+      "org.apache.pulsar:pulsar-io-twitter": "4.0.6",
+      "org.apache.pulsar:pulsar-metadata": "4.0.6",
+      "org.apache.pulsar:pulsar-offloader-distribution": "4.0.6",
+      "org.apache.pulsar:pulsar-package-bookkeeper-storage": "4.0.6",
+      "org.apache.pulsar:pulsar-package-core": "4.0.6",
+      "org.apache.pulsar:pulsar-package-filesystem-storage": "4.0.6",
+      "org.apache.pulsar:pulsar-package-management": "4.0.6",
+      "org.apache.pulsar:pulsar-proxy": "4.0.6",
+      "org.apache.pulsar:pulsar-server-distribution": "4.0.6",
+      "org.apache.pulsar:pulsar-shell-distribution": "4.0.6",
+      "org.apache.pulsar:pulsar-testclient": "4.0.6",
+      "org.apache.pulsar:pulsar-transaction-common": "4.0.6",
+      "org.apache.pulsar:pulsar-transaction-coordinator": "4.0.6",
+      "org.apache.pulsar:pulsar-transaction-parent": "4.0.6",
+      "org.apache.pulsar:pulsar-websocket": "4.0.6",
+      "org.apache.pulsar:structured-event-log": "4.0.6",
+      "org.apache.pulsar:testmocks": "4.0.6",
+      "org.apache.pulsar:tiered-storage-file-system": "4.0.6",
+      "org.apache.pulsar:tiered-storage-jcloud": "4.0.6",
+      "org.apache.pulsar:tiered-storage-parent": "4.0.6",
+      "org.apache.tomcat:tomcat-annotations-api": "10.1.46",
+      "org.apache.tomcat:tomcat-jdbc": "10.1.46",
+      "org.apache.tomcat:tomcat-jsp-api": "10.1.46",
+      "org.apache.tomcat.embed:tomcat-embed-core": "10.1.46",
+      "org.apache.tomcat.embed:tomcat-embed-el": "10.1.46",
+      "org.apache.tomcat.embed:tomcat-embed-jasper": "10.1.46",
+      "org.apache.tomcat.embed:tomcat-embed-websocket": "10.1.46",
+      "org.aspectj:aspectjrt": "1.9.24",
+      "org.aspectj:aspectjtools": "1.9.24",
+      "org.aspectj:aspectjweaver": "1.9.24",
+      "org.assertj:assertj-core": "3.27.4",
+      "org.assertj:assertj-guava": "3.27.4",
+      "org.awaitility:awaitility": "4.2.2",
+      "org.awaitility:awaitility-groovy": "4.2.2",
+      "org.awaitility:awaitility-kotlin": "4.2.2",
+      "org.awaitility:awaitility-scala": "4.2.2",
+      "org.cache2k:cache2k-api": "2.6.1.Final",
+      "org.cache2k:cache2k-config": "2.6.1.Final",
+      "org.cache2k:cache2k-core": "2.6.1.Final",
+      "org.cache2k:cache2k-jcache": "2.6.1.Final",
+      "org.cache2k:cache2k-micrometer": "2.6.1.Final",
+      "org.cache2k:cache2k-spring": "2.6.1.Final",
+      "org.codehaus.janino:commons-compiler": "3.1.12",
+      "org.codehaus.janino:commons-compiler-jdk": "3.1.12",
+      "org.codehaus.janino:janino": "3.1.12",
+      "org.codehaus.woodstox:stax2-api": "4.2.2",
+      "org.crac:crac": "1.5.0",
+      "org.eclipse:yasson": "3.0.4",
+      "org.eclipse.angus:angus-activation": "2.0.2",
+      "org.eclipse.angus:angus-core": "2.0.4",
+      "org.eclipse.angus:angus-mail": "2.0.4",
+      "org.eclipse.angus:dsn": "2.0.4",
+      "org.eclipse.angus:gimap": "2.0.4",
+      "org.eclipse.angus:imap": "2.0.4",
+      "org.eclipse.angus:jakarta.mail": "2.0.4",
+      "org.eclipse.angus:logging-mailhandler": "2.0.4",
+      "org.eclipse.angus:pop3": "2.0.4",
+      "org.eclipse.angus:smtp": "2.0.4",
+      "org.eclipse.jetty:jetty-alpn-client": "12.0.27",
+      "org.eclipse.jetty:jetty-alpn-conscrypt-client": "12.0.27",
+      "org.eclipse.jetty:jetty-alpn-conscrypt-server": "12.0.27",
+      "org.eclipse.jetty:jetty-alpn-java-client": "12.0.27",
+      "org.eclipse.jetty:jetty-alpn-java-server": "12.0.27",
+      "org.eclipse.jetty:jetty-alpn-server": "12.0.27",
+      "org.eclipse.jetty:jetty-client": "12.0.27",
+      "org.eclipse.jetty:jetty-deploy": "12.0.27",
+      "org.eclipse.jetty:jetty-ee": "12.0.27",
+      "org.eclipse.jetty:jetty-http": "12.0.27",
+      "org.eclipse.jetty:jetty-http-spi": "12.0.27",
+      "org.eclipse.jetty:jetty-http-tools": "12.0.27",
+      "org.eclipse.jetty:jetty-io": "12.0.27",
+      "org.eclipse.jetty:jetty-jmx": "12.0.27",
+      "org.eclipse.jetty:jetty-jndi": "12.0.27",
+      "org.eclipse.jetty:jetty-keystore": "12.0.27",
+      "org.eclipse.jetty:jetty-openid": "12.0.27",
+      "org.eclipse.jetty:jetty-osgi": "12.0.27",
+      "org.eclipse.jetty:jetty-plus": "12.0.27",
+      "org.eclipse.jetty:jetty-proxy": "12.0.27",
+      "org.eclipse.jetty:jetty-reactive-httpclient": "4.0.11",
+      "org.eclipse.jetty:jetty-rewrite": "12.0.27",
+      "org.eclipse.jetty:jetty-security": "12.0.27",
+      "org.eclipse.jetty:jetty-server": "12.0.27",
+      "org.eclipse.jetty:jetty-session": "12.0.27",
+      "org.eclipse.jetty:jetty-slf4j-impl": "12.0.27",
+      "org.eclipse.jetty:jetty-start": "12.0.27",
+      "org.eclipse.jetty:jetty-unixdomain-server": "12.0.27",
+      "org.eclipse.jetty:jetty-util": "12.0.27",
+      "org.eclipse.jetty:jetty-util-ajax": "12.0.27",
+      "org.eclipse.jetty:jetty-xml": "12.0.27",
+      "org.eclipse.jetty.demos:jetty-demo-handler": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-annotations": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-apache-jsp": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-cdi": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-fcgi-proxy": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-glassfish-jstl": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-jaspi": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-jndi": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-jspc-maven-plugin": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-maven-plugin": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-plus": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-proxy": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-quickstart": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-runner": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-servlet": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-servlets": "12.0.27",
+      "org.eclipse.jetty.ee10:jetty-ee10-webapp": "12.0.27",
+      "org.eclipse.jetty.ee10.osgi:jetty-ee10-osgi-alpn": "12.0.27",
+      "org.eclipse.jetty.ee10.osgi:jetty-ee10-osgi-boot": "12.0.27",
+      "org.eclipse.jetty.ee10.osgi:jetty-ee10-osgi-boot-jsp": "12.0.27",
+      "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-jakarta-client": "12.0.27",
+      "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-jakarta-client-webapp": "12.0.27",
+      "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-jakarta-common": "12.0.27",
+      "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-jakarta-server": "12.0.27",
+      "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-jetty-client-webapp": "12.0.27",
+      "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-jetty-server": "12.0.27",
+      "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-servlet": "12.0.27",
+      "org.eclipse.jetty.fcgi:jetty-fcgi-client": "12.0.27",
+      "org.eclipse.jetty.fcgi:jetty-fcgi-proxy": "12.0.27",
+      "org.eclipse.jetty.fcgi:jetty-fcgi-server": "12.0.27",
+      "org.eclipse.jetty.http2:jetty-http2-client": "12.0.27",
+      "org.eclipse.jetty.http2:jetty-http2-client-transport": "12.0.27",
+      "org.eclipse.jetty.http2:jetty-http2-common": "12.0.27",
+      "org.eclipse.jetty.http2:jetty-http2-hpack": "12.0.27",
+      "org.eclipse.jetty.http2:jetty-http2-server": "12.0.27",
+      "org.eclipse.jetty.http3:jetty-http3-client": "12.0.27",
+      "org.eclipse.jetty.http3:jetty-http3-client-transport": "12.0.27",
+      "org.eclipse.jetty.http3:jetty-http3-common": "12.0.27",
+      "org.eclipse.jetty.http3:jetty-http3-qpack": "12.0.27",
+      "org.eclipse.jetty.http3:jetty-http3-server": "12.0.27",
+      "org.eclipse.jetty.quic:jetty-quic-client": "12.0.27",
+      "org.eclipse.jetty.quic:jetty-quic-common": "12.0.27",
+      "org.eclipse.jetty.quic:jetty-quic-quiche-common": "12.0.27",
+      "org.eclipse.jetty.quic:jetty-quic-quiche-foreign": "12.0.27",
+      "org.eclipse.jetty.quic:jetty-quic-quiche-jna": "12.0.27",
+      "org.eclipse.jetty.quic:jetty-quic-server": "12.0.27",
+      "org.eclipse.jetty.websocket:jetty-websocket-core-client": "12.0.27",
+      "org.eclipse.jetty.websocket:jetty-websocket-core-common": "12.0.27",
+      "org.eclipse.jetty.websocket:jetty-websocket-core-server": "12.0.27",
+      "org.eclipse.jetty.websocket:jetty-websocket-jetty-api": "12.0.27",
+      "org.eclipse.jetty.websocket:jetty-websocket-jetty-client": "12.0.27",
+      "org.eclipse.jetty.websocket:jetty-websocket-jetty-common": "12.0.27",
+      "org.eclipse.jetty.websocket:jetty-websocket-jetty-server": "12.0.27",
+      "org.ehcache:ehcache": "3.10.9",
+      "org.ehcache:ehcache-clustered": "3.10.9",
+      "org.ehcache:ehcache-transactions": "3.10.9",
+      "org.elasticsearch.client:elasticsearch-rest-client": "8.18.6",
+      "org.elasticsearch.client:elasticsearch-rest-client-sniffer": "8.18.6",
+      "org.firebirdsql.jdbc:jaybird": "6.0.3",
+      "org.flywaydb:flyway-commandline": "11.7.2",
+      "org.flywaydb:flyway-core": "11.7.2",
+      "org.flywaydb:flyway-database-cassandra": "11.7.2",
+      "org.flywaydb:flyway-database-db2": "11.7.2",
+      "org.flywaydb:flyway-database-derby": "11.7.2",
+      "org.flywaydb:flyway-database-hsqldb": "11.7.2",
+      "org.flywaydb:flyway-database-informix": "11.7.2",
+      "org.flywaydb:flyway-database-mongodb": "11.7.2",
+      "org.flywaydb:flyway-database-oracle": "11.7.2",
+      "org.flywaydb:flyway-database-postgresql": "11.7.2",
+      "org.flywaydb:flyway-database-redshift": "11.7.2",
+      "org.flywaydb:flyway-database-saphana": "11.7.2",
+      "org.flywaydb:flyway-database-snowflake": "11.7.2",
+      "org.flywaydb:flyway-database-sybasease": "11.7.2",
+      "org.flywaydb:flyway-firebird": "11.7.2",
+      "org.flywaydb:flyway-gcp-bigquery": "11.7.2",
+      "org.flywaydb:flyway-gcp-spanner": "11.7.2",
+      "org.flywaydb:flyway-mysql": "11.7.2",
+      "org.flywaydb:flyway-singlestore": "11.7.2",
+      "org.flywaydb:flyway-sqlserver": "11.7.2",
+      "org.freemarker:freemarker": "2.3.34",
+      "org.glassfish.jaxb:codemodel": "4.0.5",
+      "org.glassfish.jaxb:jaxb-core": "4.0.5",
+      "org.glassfish.jaxb:jaxb-jxc": "4.0.5",
+      "org.glassfish.jaxb:jaxb-runtime": "4.0.5",
+      "org.glassfish.jaxb:jaxb-xjc": "4.0.5",
+      "org.glassfish.jaxb:txw2": "4.0.5",
+      "org.glassfish.jaxb:xsom": "4.0.5",
+      "org.glassfish.jersey.bundles:jaxrs-ri": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-apache-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-apache5-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-grizzly-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-helidon-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-jdk-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-jetty-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-jetty-http2-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-jetty11-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-jnh-connector": "3.1.11",
+      "org.glassfish.jersey.connectors:jersey-netty-connector": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-grizzly2-http": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-grizzly2-servlet": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-jdk-http": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-jetty-http": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-jetty-http2": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-jetty-servlet": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-jetty11-http": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-netty-http": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-servlet": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-servlet-core": "3.1.11",
+      "org.glassfish.jersey.containers:jersey-container-simple-http": "3.1.11",
+      "org.glassfish.jersey.containers.glassfish:jersey-gf-ejb": "3.1.11",
+      "org.glassfish.jersey.core:jersey-client": "3.1.11",
+      "org.glassfish.jersey.core:jersey-common": "3.1.11",
+      "org.glassfish.jersey.core:jersey-server": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-bean-validation": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-declarative-linking": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-entity-filtering": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-metainf-services": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-micrometer": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-mvc": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-mvc-bean-validation": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-mvc-freemarker": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-mvc-jsp": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-mvc-mustache": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-proxy-client": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-spring6": "3.1.11",
+      "org.glassfish.jersey.ext:jersey-wadl-doclet": "3.1.11",
+      "org.glassfish.jersey.ext.cdi:jersey-cdi-rs-inject": "3.1.11",
+      "org.glassfish.jersey.ext.cdi:jersey-cdi1x": "3.1.11",
+      "org.glassfish.jersey.ext.cdi:jersey-cdi1x-ban-custom-hk2-binding": "3.1.11",
+      "org.glassfish.jersey.ext.cdi:jersey-cdi1x-servlet": "3.1.11",
+      "org.glassfish.jersey.ext.cdi:jersey-cdi1x-transaction": "3.1.11",
+      "org.glassfish.jersey.ext.cdi:jersey-cdi1x-validation": "3.1.11",
+      "org.glassfish.jersey.ext.cdi:jersey-weld2-se": "3.1.11",
+      "org.glassfish.jersey.ext.microprofile:jersey-mp-config": "3.1.11",
+      "org.glassfish.jersey.ext.microprofile:jersey-mp-rest-client": "3.1.11",
+      "org.glassfish.jersey.ext.rx:jersey-rx-client-guava": "3.1.11",
+      "org.glassfish.jersey.ext.rx:jersey-rx-client-rxjava": "3.1.11",
+      "org.glassfish.jersey.ext.rx:jersey-rx-client-rxjava2": "3.1.11",
+      "org.glassfish.jersey.inject:jersey-cdi2-se": "3.1.11",
+      "org.glassfish.jersey.inject:jersey-hk2": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-jaxb": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-json-binding": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-json-gson": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-json-jackson": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-json-jettison": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-json-processing": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-kryo": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-moxy": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-multipart": "3.1.11",
+      "org.glassfish.jersey.media:jersey-media-sse": "3.1.11",
+      "org.glassfish.jersey.security:oauth1-client": "3.1.11",
+      "org.glassfish.jersey.security:oauth1-server": "3.1.11",
+      "org.glassfish.jersey.security:oauth1-signature": "3.1.11",
+      "org.glassfish.jersey.security:oauth2-client": "3.1.11",
+      "org.glassfish.jersey.test-framework:jersey-test-framework-core": "3.1.11",
+      "org.glassfish.jersey.test-framework:jersey-test-framework-util": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-bundle": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-external": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-grizzly2": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-inmemory": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-jdk-http": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-jetty": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-jetty-http2": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-netty": "3.1.11",
+      "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-simple": "3.1.11",
+      "org.glassfish.web:jakarta.servlet.jsp.jstl": "3.0.1",
+      "org.hamcrest:hamcrest": "3.0",
+      "org.hamcrest:hamcrest-core": "3.0",
+      "org.hamcrest:hamcrest-library": "3.0",
+      "org.hibernate.orm:hibernate-agroal": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-ant": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-c3p0": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-community-dialects": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-core": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-envers": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-graalvm": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-hikaricp": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-jcache": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-jpamodelgen": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-micrometer": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-proxool": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-spatial": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-testing": "6.6.29.Final",
+      "org.hibernate.orm:hibernate-vibur": "6.6.29.Final",
+      "org.hibernate.validator:hibernate-validator": "8.0.3.Final",
+      "org.hibernate.validator:hibernate-validator-annotation-processor": "8.0.3.Final",
+      "org.hsqldb:hsqldb": "2.7.3",
+      "org.htmlunit:htmlunit": "4.11.1",
+      "org.infinispan:infinispan-anchored-keys": "15.2.6.Final",
+      "org.infinispan:infinispan-api": "15.2.6.Final",
+      "org.infinispan:infinispan-cachestore-jdbc": "15.2.6.Final",
+      "org.infinispan:infinispan-cachestore-jdbc-common": "15.2.6.Final",
+      "org.infinispan:infinispan-cachestore-remote": "15.2.6.Final",
+      "org.infinispan:infinispan-cachestore-rocksdb": "15.2.6.Final",
+      "org.infinispan:infinispan-cachestore-sql": "15.2.6.Final",
+      "org.infinispan:infinispan-cdi-common": "15.2.6.Final",
+      "org.infinispan:infinispan-cdi-embedded": "15.2.6.Final",
+      "org.infinispan:infinispan-cdi-remote": "15.2.6.Final",
+      "org.infinispan:infinispan-checkstyle": "15.2.6.Final",
+      "org.infinispan:infinispan-cli-client": "15.2.6.Final",
+      "org.infinispan:infinispan-client-hotrod": "15.2.6.Final",
+      "org.infinispan:infinispan-client-hotrod-legacy": "15.2.6.Final",
+      "org.infinispan:infinispan-client-rest": "15.2.6.Final",
+      "org.infinispan:infinispan-clustered-counter": "15.2.6.Final",
+      "org.infinispan:infinispan-clustered-lock": "15.2.6.Final",
+      "org.infinispan:infinispan-commons": "15.2.6.Final",
+      "org.infinispan:infinispan-commons-graalvm": "15.2.6.Final",
+      "org.infinispan:infinispan-commons-spi": "15.2.6.Final",
+      "org.infinispan:infinispan-commons-test": "15.2.6.Final",
+      "org.infinispan:infinispan-component-annotations": "15.2.6.Final",
+      "org.infinispan:infinispan-component-processor": "15.2.6.Final",
+      "org.infinispan:infinispan-console": "15.2.1.Final",
+      "org.infinispan:infinispan-core": "15.2.6.Final",
+      "org.infinispan:infinispan-core-graalvm": "15.2.6.Final",
+      "org.infinispan:infinispan-counter-api": "15.2.6.Final",
+      "org.infinispan:infinispan-hibernate-cache-commons": "15.2.6.Final",
+      "org.infinispan:infinispan-hibernate-cache-spi": "15.2.6.Final",
+      "org.infinispan:infinispan-hibernate-cache-v62": "15.2.6.Final",
+      "org.infinispan:infinispan-jboss-marshalling": "15.2.6.Final",
+      "org.infinispan:infinispan-jcache": "15.2.6.Final",
+      "org.infinispan:infinispan-jcache-commons": "15.2.6.Final",
+      "org.infinispan:infinispan-jcache-remote": "15.2.6.Final",
+      "org.infinispan:infinispan-key-value-store-client": "15.2.6.Final",
+      "org.infinispan:infinispan-logging-annotations": "15.2.6.Final",
+      "org.infinispan:infinispan-logging-processor": "15.2.6.Final",
+      "org.infinispan:infinispan-multimap": "15.2.6.Final",
+      "org.infinispan:infinispan-objectfilter": "15.2.6.Final",
+      "org.infinispan:infinispan-query": "15.2.6.Final",
+      "org.infinispan:infinispan-query-core": "15.2.6.Final",
+      "org.infinispan:infinispan-query-dsl": "15.2.6.Final",
+      "org.infinispan:infinispan-remote-query-client": "15.2.6.Final",
+      "org.infinispan:infinispan-remote-query-server": "15.2.6.Final",
+      "org.infinispan:infinispan-scripting": "15.2.6.Final",
+      "org.infinispan:infinispan-server-core": "15.2.6.Final",
+      "org.infinispan:infinispan-server-hotrod": "15.2.6.Final",
+      "org.infinispan:infinispan-server-memcached": "15.2.6.Final",
+      "org.infinispan:infinispan-server-resp": "15.2.6.Final",
+      "org.infinispan:infinispan-server-rest": "15.2.6.Final",
+      "org.infinispan:infinispan-server-router": "15.2.6.Final",
+      "org.infinispan:infinispan-server-runtime": "15.2.6.Final",
+      "org.infinispan:infinispan-server-testdriver-core": "15.2.6.Final",
+      "org.infinispan:infinispan-server-testdriver-junit4": "15.2.6.Final",
+      "org.infinispan:infinispan-server-testdriver-junit5": "15.2.6.Final",
+      "org.infinispan:infinispan-spring-boot3-starter-embedded": "15.2.6.Final",
+      "org.infinispan:infinispan-spring-boot3-starter-remote": "15.2.6.Final",
+      "org.infinispan:infinispan-spring6-common": "15.2.6.Final",
+      "org.infinispan:infinispan-spring6-embedded": "15.2.6.Final",
+      "org.infinispan:infinispan-spring6-remote": "15.2.6.Final",
+      "org.infinispan:infinispan-tasks": "15.2.6.Final",
+      "org.infinispan:infinispan-tasks-api": "15.2.6.Final",
+      "org.infinispan:infinispan-tools": "15.2.6.Final",
+      "org.infinispan.protostream:protostream": "5.0.13.Final",
+      "org.infinispan.protostream:protostream-processor": "5.0.13.Final",
+      "org.infinispan.protostream:protostream-types": "5.0.13.Final",
+      "org.influxdb:influxdb-java": "2.25",
+      "org.jboss.logging:jboss-logging": "3.6.1.Final",
+      "org.jdom:jdom2": "2.0.6.1",
+      "org.jetbrains.kotlin:kotlin-compiler": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-compiler-embeddable": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-daemon-client": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-main-kts": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-osgi-bundle": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-reflect": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-script-runtime": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-scripting-common": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-scripting-ide-services": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-scripting-jvm": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-scripting-jvm-host": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-stdlib": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-stdlib-common": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-stdlib-jdk7": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-stdlib-jdk8": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-stdlib-js": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-test": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-test-annotations-common": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-test-common": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-test-js": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-test-junit": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-test-junit5": "1.9.25",
+      "org.jetbrains.kotlin:kotlin-test-testng": "1.9.25",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-android": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-core": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-debug": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-guava": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-javafx": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-jdk9": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-play-services": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-reactive": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-reactor": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-rx2": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-rx3": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-slf4j": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-swing": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": "1.8.1",
+      "org.jetbrains.kotlinx:kotlinx-serialization-cbor": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-cbor-jvm": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-core": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-hocon": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-json": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-json-okio": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-json-okio-jvm": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-properties": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-properties-jvm": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-protobuf": "1.6.3",
+      "org.jetbrains.kotlinx:kotlinx-serialization-protobuf-jvm": "1.6.3",
+      "org.jooq:jooq": "3.19.26",
+      "org.jooq:jooq-codegen": "3.19.26",
+      "org.jooq:jooq-kotlin": "3.19.26",
+      "org.jooq:jooq-meta": "3.19.26",
+      "org.junit.jupiter:junit-jupiter": "5.12.2",
+      "org.junit.jupiter:junit-jupiter-api": "5.12.2",
+      "org.junit.jupiter:junit-jupiter-engine": "5.12.2",
+      "org.junit.jupiter:junit-jupiter-migrationsupport": "5.12.2",
+      "org.junit.jupiter:junit-jupiter-params": "5.12.2",
+      "org.junit.platform:junit-platform-commons": "1.12.2",
+      "org.junit.platform:junit-platform-console": "1.12.2",
+      "org.junit.platform:junit-platform-engine": "1.12.2",
+      "org.junit.platform:junit-platform-jfr": "1.12.2",
+      "org.junit.platform:junit-platform-launcher": "1.12.2",
+      "org.junit.platform:junit-platform-reporting": "1.12.2",
+      "org.junit.platform:junit-platform-runner": "1.12.2",
+      "org.junit.platform:junit-platform-suite": "1.12.2",
+      "org.junit.platform:junit-platform-suite-api": "1.12.2",
+      "org.junit.platform:junit-platform-suite-commons": "1.12.2",
+      "org.junit.platform:junit-platform-suite-engine": "1.12.2",
+      "org.junit.platform:junit-platform-testkit": "1.12.2",
+      "org.junit.vintage:junit-vintage-engine": "5.12.2",
+      "org.jvnet.staxex:stax-ex": "2.1.0",
+      "org.liquibase:liquibase-cdi": "4.31.1",
+      "org.liquibase:liquibase-core": "4.31.1",
+      "org.mariadb:r2dbc-mariadb": "1.3.0",
+      "org.mariadb.jdbc:mariadb-java-client": "3.5.6",
+      "org.messaginghub:pooled-jms": "3.1.7",
+      "org.mockito:mockito-android": "5.17.0",
+      "org.mockito:mockito-core": "5.17.0",
+      "org.mockito:mockito-errorprone": "5.17.0",
+      "org.mockito:mockito-junit-jupiter": "5.17.0",
+      "org.mockito:mockito-proxy": "5.17.0",
+      "org.mockito:mockito-subclass": "5.17.0",
+      "org.mongodb:bson": "5.5.1",
+      "org.mongodb:bson-kotlin": "5.5.1",
+      "org.mongodb:bson-kotlinx": "5.5.1",
+      "org.mongodb:bson-record-codec": "5.5.1",
+      "org.mongodb:mongodb-crypt": "5.5.1",
+      "org.mongodb:mongodb-driver-core": "5.5.1",
+      "org.mongodb:mongodb-driver-kotlin-coroutine": "5.5.1",
+      "org.mongodb:mongodb-driver-kotlin-extensions": "5.5.1",
+      "org.mongodb:mongodb-driver-kotlin-sync": "5.5.1",
+      "org.mongodb:mongodb-driver-reactivestreams": "5.5.1",
+      "org.mongodb:mongodb-driver-sync": "5.5.1",
+      "org.mongodb.scala:mongo-scala-bson_2.11": "5.5.1",
+      "org.mongodb.scala:mongo-scala-bson_2.12": "5.5.1",
+      "org.mongodb.scala:mongo-scala-bson_2.13": "5.5.1",
+      "org.mongodb.scala:mongo-scala-driver_2.11": "5.5.1",
+      "org.mongodb.scala:mongo-scala-driver_2.12": "5.5.1",
+      "org.mongodb.scala:mongo-scala-driver_2.13": "5.5.1",
+      "org.neo4j.driver:neo4j-java-driver": "5.28.9",
+      "org.postgresql:postgresql": "42.7.7",
+      "org.postgresql:r2dbc-postgresql": "1.0.7.RELEASE",
+      "org.projectlombok:lombok": "1.18.40",
+      "org.quartz-scheduler:quartz": "2.5.0",
+      "org.quartz-scheduler:quartz-jobs": "2.5.0",
+      "org.reactivestreams:reactive-streams": "1.0.4",
+      "org.seleniumhq.selenium:htmlunit3-driver": "4.30.0",
+      "org.seleniumhq.selenium:selenium-api": "4.31.0",
+      "org.seleniumhq.selenium:selenium-chrome-driver": "4.31.0",
+      "org.seleniumhq.selenium:selenium-chromium-driver": "4.31.0",
+      "org.seleniumhq.selenium:selenium-devtools-v133": "4.31.0",
+      "org.seleniumhq.selenium:selenium-devtools-v134": "4.31.0",
+      "org.seleniumhq.selenium:selenium-devtools-v135": "4.31.0",
+      "org.seleniumhq.selenium:selenium-edge-driver": "4.31.0",
+      "org.seleniumhq.selenium:selenium-firefox-driver": "4.31.0",
+      "org.seleniumhq.selenium:selenium-grid": "4.31.0",
+      "org.seleniumhq.selenium:selenium-http": "4.31.0",
+      "org.seleniumhq.selenium:selenium-ie-driver": "4.31.0",
+      "org.seleniumhq.selenium:selenium-java": "4.31.0",
+      "org.seleniumhq.selenium:selenium-json": "4.31.0",
+      "org.seleniumhq.selenium:selenium-manager": "4.31.0",
+      "org.seleniumhq.selenium:selenium-remote-driver": "4.31.0",
+      "org.seleniumhq.selenium:selenium-safari-driver": "4.31.0",
+      "org.seleniumhq.selenium:selenium-session-map-jdbc": "4.31.0",
+      "org.seleniumhq.selenium:selenium-session-map-redis": "4.31.0",
+      "org.seleniumhq.selenium:selenium-support": "4.31.0",
+      "org.skyscreamer:jsonassert": "1.5.3",
+      "org.slf4j:jcl-over-slf4j": "2.0.17",
+      "org.slf4j:jul-to-slf4j": "2.0.17",
+      "org.slf4j:log4j-over-slf4j": "2.0.17",
+      "org.slf4j:slf4j-api": "2.0.17",
+      "org.slf4j:slf4j-ext": "2.0.17",
+      "org.slf4j:slf4j-jdk-platform-logging": "2.0.17",
+      "org.slf4j:slf4j-jdk14": "2.0.17",
+      "org.slf4j:slf4j-log4j12": "2.0.17",
+      "org.slf4j:slf4j-nop": "2.0.17",
+      "org.slf4j:slf4j-reload4j": "2.0.17",
+      "org.slf4j:slf4j-simple": "2.0.17",
+      "org.springframework:spring-aop": "6.2.11",
+      "org.springframework:spring-aspects": "6.2.11",
+      "org.springframework:spring-beans": "6.2.11",
+      "org.springframework:spring-context": "6.2.11",
+      "org.springframework:spring-context-indexer": "6.2.11",
+      "org.springframework:spring-context-support": "6.2.11",
+      "org.springframework:spring-core": "6.2.11",
+      "org.springframework:spring-core-test": "6.2.11",
+      "org.springframework:spring-expression": "6.2.11",
+      "org.springframework:spring-instrument": "6.2.11",
+      "org.springframework:spring-jcl": "6.2.11",
+      "org.springframework:spring-jdbc": "6.2.11",
+      "org.springframework:spring-jms": "6.2.11",
+      "org.springframework:spring-messaging": "6.2.11",
+      "org.springframework:spring-orm": "6.2.11",
+      "org.springframework:spring-oxm": "6.2.11",
+      "org.springframework:spring-r2dbc": "6.2.11",
+      "org.springframework:spring-test": "6.2.11",
+      "org.springframework:spring-tx": "6.2.11",
+      "org.springframework:spring-web": "6.2.11",
+      "org.springframework:spring-webflux": "6.2.11",
+      "org.springframework:spring-webmvc": "6.2.11",
+      "org.springframework:spring-websocket": "6.2.11",
+      "org.springframework.amqp:spring-amqp": "3.2.7",
+      "org.springframework.amqp:spring-rabbit": "3.2.7",
+      "org.springframework.amqp:spring-rabbit-junit": "3.2.7",
+      "org.springframework.amqp:spring-rabbit-stream": "3.2.7",
+      "org.springframework.amqp:spring-rabbit-test": "3.2.7",
+      "org.springframework.batch:spring-batch-core": "5.2.3",
+      "org.springframework.batch:spring-batch-infrastructure": "5.2.3",
+      "org.springframework.batch:spring-batch-integration": "5.2.3",
+      "org.springframework.batch:spring-batch-test": "5.2.3",
+      "org.springframework.boot:spring-boot": "3.5.6",
+      "org.springframework.boot:spring-boot-actuator": "3.5.6",
+      "org.springframework.boot:spring-boot-actuator-autoconfigure": "3.5.6",
+      "org.springframework.boot:spring-boot-autoconfigure": "3.5.6",
+      "org.springframework.boot:spring-boot-autoconfigure-processor": "3.5.6",
+      "org.springframework.boot:spring-boot-buildpack-platform": "3.5.6",
+      "org.springframework.boot:spring-boot-configuration-metadata": "3.5.6",
+      "org.springframework.boot:spring-boot-configuration-processor": "3.5.6",
+      "org.springframework.boot:spring-boot-devtools": "3.5.6",
+      "org.springframework.boot:spring-boot-docker-compose": "3.5.6",
+      "org.springframework.boot:spring-boot-jarmode-tools": "3.5.6",
+      "org.springframework.boot:spring-boot-loader": "3.5.6",
+      "org.springframework.boot:spring-boot-loader-classic": "3.5.6",
+      "org.springframework.boot:spring-boot-loader-tools": "3.5.6",
+      "org.springframework.boot:spring-boot-properties-migrator": "3.5.6",
+      "org.springframework.boot:spring-boot-starter": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-activemq": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-actuator": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-amqp": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-aop": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-artemis": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-batch": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-cache": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-cassandra": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-cassandra-reactive": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-couchbase": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-couchbase-reactive": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-elasticsearch": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-jdbc": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-jpa": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-ldap": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-mongodb": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-mongodb-reactive": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-neo4j": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-r2dbc": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-redis": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-redis-reactive": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-data-rest": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-freemarker": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-graphql": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-groovy-templates": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-hateoas": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-integration": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-jdbc": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-jersey": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-jetty": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-jooq": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-json": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-log4j2": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-logging": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-mail": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-mustache": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-oauth2-authorization-server": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-oauth2-client": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-oauth2-resource-server": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-pulsar": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-pulsar-reactive": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-quartz": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-reactor-netty": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-rsocket": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-security": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-test": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-thymeleaf": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-tomcat": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-undertow": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-validation": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-web": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-web-services": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-webflux": "3.5.6",
+      "org.springframework.boot:spring-boot-starter-websocket": "3.5.6",
+      "org.springframework.boot:spring-boot-test": "3.5.6",
+      "org.springframework.boot:spring-boot-test-autoconfigure": "3.5.6",
+      "org.springframework.boot:spring-boot-testcontainers": "3.5.6",
+      "org.springframework.data:spring-data-cassandra": "4.5.4",
+      "org.springframework.data:spring-data-commons": "3.5.4",
+      "org.springframework.data:spring-data-couchbase": "5.5.4",
+      "org.springframework.data:spring-data-elasticsearch": "5.5.4",
+      "org.springframework.data:spring-data-envers": "3.5.4",
+      "org.springframework.data:spring-data-jdbc": "3.5.4",
+      "org.springframework.data:spring-data-jpa": "3.5.4",
+      "org.springframework.data:spring-data-keyvalue": "3.5.4",
+      "org.springframework.data:spring-data-ldap": "3.5.4",
+      "org.springframework.data:spring-data-mongodb": "4.5.4",
+      "org.springframework.data:spring-data-neo4j": "7.5.4",
+      "org.springframework.data:spring-data-r2dbc": "3.5.4",
+      "org.springframework.data:spring-data-redis": "3.5.4",
+      "org.springframework.data:spring-data-relational": "3.5.4",
+      "org.springframework.data:spring-data-rest-core": "4.5.4",
+      "org.springframework.data:spring-data-rest-hal-explorer": "4.5.4",
+      "org.springframework.data:spring-data-rest-webmvc": "4.5.4",
+      "org.springframework.graphql:spring-graphql": "1.4.2",
+      "org.springframework.graphql:spring-graphql-test": "1.4.2",
+      "org.springframework.hateoas:spring-hateoas": "2.5.1",
+      "org.springframework.integration:spring-integration-amqp": "6.5.2",
+      "org.springframework.integration:spring-integration-camel": "6.5.2",
+      "org.springframework.integration:spring-integration-cassandra": "6.5.2",
+      "org.springframework.integration:spring-integration-core": "6.5.2",
+      "org.springframework.integration:spring-integration-debezium": "6.5.2",
+      "org.springframework.integration:spring-integration-event": "6.5.2",
+      "org.springframework.integration:spring-integration-feed": "6.5.2",
+      "org.springframework.integration:spring-integration-file": "6.5.2",
+      "org.springframework.integration:spring-integration-ftp": "6.5.2",
+      "org.springframework.integration:spring-integration-graphql": "6.5.2",
+      "org.springframework.integration:spring-integration-groovy": "6.5.2",
+      "org.springframework.integration:spring-integration-hazelcast": "6.5.2",
+      "org.springframework.integration:spring-integration-http": "6.5.2",
+      "org.springframework.integration:spring-integration-ip": "6.5.2",
+      "org.springframework.integration:spring-integration-jdbc": "6.5.2",
+      "org.springframework.integration:spring-integration-jms": "6.5.2",
+      "org.springframework.integration:spring-integration-jmx": "6.5.2",
+      "org.springframework.integration:spring-integration-jpa": "6.5.2",
+      "org.springframework.integration:spring-integration-kafka": "6.5.2",
+      "org.springframework.integration:spring-integration-mail": "6.5.2",
+      "org.springframework.integration:spring-integration-mongodb": "6.5.2",
+      "org.springframework.integration:spring-integration-mqtt": "6.5.2",
+      "org.springframework.integration:spring-integration-r2dbc": "6.5.2",
+      "org.springframework.integration:spring-integration-redis": "6.5.2",
+      "org.springframework.integration:spring-integration-rsocket": "6.5.2",
+      "org.springframework.integration:spring-integration-scripting": "6.5.2",
+      "org.springframework.integration:spring-integration-sftp": "6.5.2",
+      "org.springframework.integration:spring-integration-smb": "6.5.2",
+      "org.springframework.integration:spring-integration-stomp": "6.5.2",
+      "org.springframework.integration:spring-integration-stream": "6.5.2",
+      "org.springframework.integration:spring-integration-syslog": "6.5.2",
+      "org.springframework.integration:spring-integration-test": "6.5.2",
+      "org.springframework.integration:spring-integration-test-support": "6.5.2",
+      "org.springframework.integration:spring-integration-webflux": "6.5.2",
+      "org.springframework.integration:spring-integration-websocket": "6.5.2",
+      "org.springframework.integration:spring-integration-ws": "6.5.2",
+      "org.springframework.integration:spring-integration-xml": "6.5.2",
+      "org.springframework.integration:spring-integration-xmpp": "6.5.2",
+      "org.springframework.integration:spring-integration-zeromq": "6.5.2",
+      "org.springframework.integration:spring-integration-zip": "6.5.2",
+      "org.springframework.integration:spring-integration-zookeeper": "6.5.2",
+      "org.springframework.kafka:spring-kafka": "3.3.10",
+      "org.springframework.kafka:spring-kafka-test": "3.3.10",
+      "org.springframework.ldap:spring-ldap-core": "3.3.3",
+      "org.springframework.ldap:spring-ldap-ldif-core": "3.3.3",
+      "org.springframework.ldap:spring-ldap-odm": "3.3.3",
+      "org.springframework.ldap:spring-ldap-test": "3.3.3",
+      "org.springframework.pulsar:spring-pulsar": "1.2.10",
+      "org.springframework.pulsar:spring-pulsar-cache-provider": "1.2.10",
+      "org.springframework.pulsar:spring-pulsar-cache-provider-caffeine": "1.2.10",
+      "org.springframework.pulsar:spring-pulsar-reactive": "1.2.10",
+      "org.springframework.pulsar:spring-pulsar-test": "1.2.10",
+      "org.springframework.restdocs:spring-restdocs-asciidoctor": "3.0.5",
+      "org.springframework.restdocs:spring-restdocs-core": "3.0.5",
+      "org.springframework.restdocs:spring-restdocs-mockmvc": "3.0.5",
+      "org.springframework.restdocs:spring-restdocs-restassured": "3.0.5",
+      "org.springframework.restdocs:spring-restdocs-webtestclient": "3.0.5",
+      "org.springframework.retry:spring-retry": "2.0.12",
+      "org.springframework.security:spring-security-acl": "6.5.5",
+      "org.springframework.security:spring-security-aspects": "6.5.5",
+      "org.springframework.security:spring-security-cas": "6.5.5",
+      "org.springframework.security:spring-security-config": "6.5.5",
+      "org.springframework.security:spring-security-core": "6.5.5",
+      "org.springframework.security:spring-security-crypto": "6.5.5",
+      "org.springframework.security:spring-security-data": "6.5.5",
+      "org.springframework.security:spring-security-ldap": "6.5.5",
+      "org.springframework.security:spring-security-messaging": "6.5.5",
+      "org.springframework.security:spring-security-oauth2-authorization-server": "1.5.2",
+      "org.springframework.security:spring-security-oauth2-client": "6.5.5",
+      "org.springframework.security:spring-security-oauth2-core": "6.5.5",
+      "org.springframework.security:spring-security-oauth2-jose": "6.5.5",
+      "org.springframework.security:spring-security-oauth2-resource-server": "6.5.5",
+      "org.springframework.security:spring-security-rsocket": "6.5.5",
+      "org.springframework.security:spring-security-saml2-service-provider": "6.5.5",
+      "org.springframework.security:spring-security-taglibs": "6.5.5",
+      "org.springframework.security:spring-security-test": "6.5.5",
+      "org.springframework.security:spring-security-web": "6.5.5",
+      "org.springframework.session:spring-session-core": "3.5.2",
+      "org.springframework.session:spring-session-data-mongodb": "3.5.2",
+      "org.springframework.session:spring-session-data-redis": "3.5.2",
+      "org.springframework.session:spring-session-hazelcast": "3.5.2",
+      "org.springframework.session:spring-session-jdbc": "3.5.2",
+      "org.springframework.ws:spring-ws-core": "4.1.1",
+      "org.springframework.ws:spring-ws-security": "4.1.1",
+      "org.springframework.ws:spring-ws-support": "4.1.1",
+      "org.springframework.ws:spring-ws-test": "4.1.1",
+      "org.springframework.ws:spring-xml": "4.1.1",
+      "org.testcontainers:activemq": "1.21.3",
+      "org.testcontainers:azure": "1.21.3",
+      "org.testcontainers:cassandra": "1.21.3",
+      "org.testcontainers:chromadb": "1.21.3",
+      "org.testcontainers:clickhouse": "1.21.3",
+      "org.testcontainers:cockroachdb": "1.21.3",
+      "org.testcontainers:consul": "1.21.3",
+      "org.testcontainers:couchbase": "1.21.3",
+      "org.testcontainers:cratedb": "1.21.3",
+      "org.testcontainers:database-commons": "1.21.3",
+      "org.testcontainers:databend": "1.21.3",
+      "org.testcontainers:db2": "1.21.3",
+      "org.testcontainers:dynalite": "1.21.3",
+      "org.testcontainers:elasticsearch": "1.21.3",
+      "org.testcontainers:gcloud": "1.21.3",
+      "org.testcontainers:grafana": "1.21.3",
+      "org.testcontainers:hivemq": "1.21.3",
+      "org.testcontainers:influxdb": "1.21.3",
+      "org.testcontainers:jdbc": "1.21.3",
+      "org.testcontainers:junit-jupiter": "1.21.3",
+      "org.testcontainers:k3s": "1.21.3",
+      "org.testcontainers:k6": "1.21.3",
+      "org.testcontainers:kafka": "1.21.3",
+      "org.testcontainers:ldap": "1.21.3",
+      "org.testcontainers:localstack": "1.21.3",
+      "org.testcontainers:mariadb": "1.21.3",
+      "org.testcontainers:milvus": "1.21.3",
+      "org.testcontainers:minio": "1.21.3",
+      "org.testcontainers:mockserver": "1.21.3",
+      "org.testcontainers:mongodb": "1.21.3",
+      "org.testcontainers:mssqlserver": "1.21.3",
+      "org.testcontainers:mysql": "1.21.3",
+      "org.testcontainers:neo4j": "1.21.3",
+      "org.testcontainers:nginx": "1.21.3",
+      "org.testcontainers:oceanbase": "1.21.3",
+      "org.testcontainers:ollama": "1.21.3",
+      "org.testcontainers:openfga": "1.21.3",
+      "org.testcontainers:oracle-free": "1.21.3",
+      "org.testcontainers:oracle-xe": "1.21.3",
+      "org.testcontainers:orientdb": "1.21.3",
+      "org.testcontainers:pinecone": "1.21.3",
+      "org.testcontainers:postgresql": "1.21.3",
+      "org.testcontainers:presto": "1.21.3",
+      "org.testcontainers:pulsar": "1.21.3",
+      "org.testcontainers:qdrant": "1.21.3",
+      "org.testcontainers:questdb": "1.21.3",
+      "org.testcontainers:r2dbc": "1.21.3",
+      "org.testcontainers:rabbitmq": "1.21.3",
+      "org.testcontainers:redpanda": "1.21.3",
+      "org.testcontainers:scylladb": "1.21.3",
+      "org.testcontainers:selenium": "1.21.3",
+      "org.testcontainers:solace": "1.21.3",
+      "org.testcontainers:solr": "1.21.3",
+      "org.testcontainers:spock": "1.21.3",
+      "org.testcontainers:testcontainers": "1.21.3",
+      "org.testcontainers:tidb": "1.21.3",
+      "org.testcontainers:timeplus": "1.21.3",
+      "org.testcontainers:toxiproxy": "1.21.3",
+      "org.testcontainers:trino": "1.21.3",
+      "org.testcontainers:typesense": "1.21.3",
+      "org.testcontainers:vault": "1.21.3",
+      "org.testcontainers:weaviate": "1.21.3",
+      "org.testcontainers:yugabytedb": "1.21.3",
+      "org.thymeleaf:thymeleaf": "3.1.3.RELEASE",
+      "org.thymeleaf:thymeleaf-spring6": "3.1.3.RELEASE",
+      "org.thymeleaf.extras:thymeleaf-extras-springsecurity6": "3.1.3.RELEASE",
+      "org.vibur:vibur-dbcp": "26.0",
+      "org.vibur:vibur-object-pool": "26.0",
+      "org.webjars:webjars-locator-core": "0.59",
+      "org.webjars:webjars-locator-lite": "1.1.0",
+      "org.xerial:sqlite-jdbc": "3.49.1.0",
+      "org.xmlunit:xmlunit-assertj": "2.10.4",
+      "org.xmlunit:xmlunit-assertj3": "2.10.4",
+      "org.xmlunit:xmlunit-core": "2.10.4",
+      "org.xmlunit:xmlunit-jakarta-jaxb-impl": "2.10.4",
+      "org.xmlunit:xmlunit-legacy": "2.10.4",
+      "org.xmlunit:xmlunit-matchers": "2.10.4",
+      "org.xmlunit:xmlunit-placeholders": "2.10.4",
+      "org.yaml:snakeyaml": "2.4",
+      "redis.clients:jedis": "6.0.0",
+      "wsdl4j:wsdl4j": "1.6.3"
+    }
+  },
+  "rteTransitive": {
+    "version": "5.0.2",
+    "root": {
+      "artifactId": "egovframe-rte-root",
+      "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-root/5.0.2/egovframe-rte-root-5.0.2.pom",
+      "sha256": "cad6fe6035145eda52d7d21edcb6737ac8d8f5ecc6b82f3ee97ca62b1c888427"
+    },
+    "modules": [
+      {
+        "artifactId": "egovframe-rte-bat-core",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-bat-core/5.0.2/egovframe-rte-bat-core-5.0.2.pom",
+        "sha256": "0e4ffd49c6521f2a263d9a4c540a417979aaf1d6d0252407e3e313c2f6b3d0a0",
+        "dependencies": 18
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-access",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-access/5.0.2/egovframe-rte-fdl-access-5.0.2.pom",
+        "sha256": "a7b2ea1e368a6c074e984070262954a801d45cc1c0072f1ab7418cf375a81be7",
+        "dependencies": 8
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-cmmn",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-cmmn/5.0.2/egovframe-rte-fdl-cmmn-5.0.2.pom",
+        "sha256": "abaedbd08f31f3e4fde7c75719f2dcfac41bc029c28a4c40a47f8b21dfc0eb76",
+        "dependencies": 5
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-crypto",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-crypto/5.0.2/egovframe-rte-fdl-crypto-5.0.2.pom",
+        "sha256": "2e3f45b21931f8a66103ae77195b6ade60b485772106e38d5d25c106139672dc",
+        "dependencies": 9
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-excel",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-excel/5.0.2/egovframe-rte-fdl-excel-5.0.2.pom",
+        "sha256": "6c3ae905d02566d5e127e1f921fd4693b89e40eacbc2030e03f68324e485a25e",
+        "dependencies": 10
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-filehandling",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-filehandling/5.0.2/egovframe-rte-fdl-filehandling-5.0.2.pom",
+        "sha256": "0c99e64a8ed03607b7f4fed7b21ef78c3cedc00b5a86e9786322cbbd6b5146ba",
+        "dependencies": 4
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-idgnr",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-idgnr/5.0.2/egovframe-rte-fdl-idgnr-5.0.2.pom",
+        "sha256": "0620695959f9bba7acae98e18de32201cc849d31cc46d3d8b02e95fb10d1aad7",
+        "dependencies": 3
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-logging",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-logging/5.0.2/egovframe-rte-fdl-logging-5.0.2.pom",
+        "sha256": "66b76d380cda60075b629009f921f473879ff495e3c7473b3e4216e7c728a370",
+        "dependencies": 8
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-property",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-property/5.0.2/egovframe-rte-fdl-property-5.0.2.pom",
+        "sha256": "9daa95359da4ee794eed7022ae6e8dc3ddeb1f6f5c7827ba1c2ce22dafdd463c",
+        "dependencies": 6
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-security",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-security/5.0.2/egovframe-rte-fdl-security-5.0.2.pom",
+        "sha256": "a31e4c9fdcbeff8dde7028f4f143f973cfd1bcf73bd182d05511e94574eb5b51",
+        "dependencies": 9
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-string",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-string/5.0.2/egovframe-rte-fdl-string-5.0.2.pom",
+        "sha256": "3cabafe8cc2c679efd2f897bd97de809f2bafe70b1912541bd8e008c1853e7c4",
+        "dependencies": 3
+      },
+      {
+        "artifactId": "egovframe-rte-fdl-xml",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-xml/5.0.2/egovframe-rte-fdl-xml-5.0.2.pom",
+        "sha256": "67555b84133046d99e51543ed1db9cc57b2271047122aa2286bb79453b71f197",
+        "dependencies": 3
+      },
+      {
+        "artifactId": "egovframe-rte-itl-integration",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-itl-integration/5.0.2/egovframe-rte-itl-integration-5.0.2.pom",
+        "sha256": "ec44eb68773653c592d7846440d96f9a83a98189efa4da1b22a073a223d8497f",
+        "dependencies": 5
+      },
+      {
+        "artifactId": "egovframe-rte-itl-webservice",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-itl-webservice/5.0.2/egovframe-rte-itl-webservice-5.0.2.pom",
+        "sha256": "3aeb366c86c0309ee91c12728e260bdb15f0e4fbeea707a1a0654709628d0253",
+        "dependencies": 9
+      },
+      {
+        "artifactId": "egovframe-rte-psl-data-jpa",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-psl-data-jpa/5.0.2/egovframe-rte-psl-data-jpa-5.0.2.pom",
+        "sha256": "bec150bceec63603f353f98e0114810f43dfff5168b94a2509329f394d76a631",
+        "dependencies": 7
+      },
+      {
+        "artifactId": "egovframe-rte-psl-data-mongodb",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-psl-data-mongodb/5.0.2/egovframe-rte-psl-data-mongodb-5.0.2.pom",
+        "sha256": "1e88fca4dd68974ba9f4a9d9147ab904ca661746dcaf833ede28d9c45bea6eed",
+        "dependencies": 12
+      },
+      {
+        "artifactId": "egovframe-rte-psl-dataaccess",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-psl-dataaccess/5.0.2/egovframe-rte-psl-dataaccess-5.0.2.pom",
+        "sha256": "2da9a327fcaed767f38392004a4595f76d283cf92f7ec8508af7b14774e21dc0",
+        "dependencies": 9
+      },
+      {
+        "artifactId": "egovframe-rte-ptl-mvc",
+        "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-ptl-mvc/5.0.2/egovframe-rte-ptl-mvc-5.0.2.pom",
+        "sha256": "ccc9444bef40556aabc636fa5c2a981744d56d207b554fb26bd20c57e2167227",
+        "dependencies": 11
+      }
+    ],
+    "managed": {
+      "com.fasterxml.jackson.core:jackson-annotations": {
+        "version": "2.18.2",
+        "scope": "compile",
+        "via": [
+          "fdl-access",
+          "fdl-crypto",
+          "fdl-security"
+        ]
+      },
+      "com.fasterxml.jackson.core:jackson-core": {
+        "version": "2.18.2",
+        "scope": "compile",
+        "via": [
+          "fdl-access",
+          "fdl-crypto",
+          "fdl-security"
+        ]
+      },
+      "com.fasterxml.jackson.core:jackson-databind": {
+        "version": "2.18.2",
+        "scope": "compile",
+        "via": [
+          "fdl-access",
+          "fdl-crypto",
+          "fdl-security"
+        ]
+      },
+      "com.google.protobuf:protobuf-java": {
+        "version": "3.25.5",
+        "scope": "compile",
+        "via": [
+          "psl-data-jpa"
+        ]
+      },
+      "com.mysql:mysql-connector-j": {
+        "version": "8.4.0",
+        "scope": "compile",
+        "via": [
+          "psl-data-jpa"
+        ]
+      },
+      "commons-beanutils:commons-beanutils": {
+        "version": "1.11.0",
+        "scope": "compile",
+        "via": [
+          "fdl-excel",
+          "ptl-mvc"
+        ]
+      },
+      "commons-codec:commons-codec": {
+        "version": "1.18.0",
+        "scope": "compile",
+        "via": [
+          "fdl-crypto",
+          "fdl-string"
+        ]
+      },
+      "commons-io:commons-io": {
+        "version": "2.18.0",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-crypto",
+          "fdl-excel",
+          "fdl-filehandling"
+        ]
+      },
+      "commons-validator:commons-validator": {
+        "version": "1.9.0",
+        "scope": "compile",
+        "via": [
+          "ptl-mvc"
+        ]
+      },
+      "jakarta.annotation:jakarta.annotation-api": {
+        "version": "3.0.0",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-access",
+          "fdl-crypto",
+          "fdl-excel",
+          "fdl-filehandling",
+          "fdl-idgnr",
+          "fdl-logging",
+          "fdl-property",
+          "fdl-security",
+          "fdl-string",
+          "fdl-xml",
+          "itl-integration",
+          "itl-webservice",
+          "psl-data-jpa",
+          "psl-dataaccess",
+          "ptl-mvc"
+        ]
+      },
+      "jakarta.persistence:jakarta.persistence-api": {
+        "version": "3.2.0",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-access",
+          "fdl-logging",
+          "psl-dataaccess"
+        ]
+      },
+      "jakarta.platform:jakarta.jakartaee-api": {
+        "version": "10.0.0",
+        "scope": "provided",
+        "via": [
+          "fdl-excel",
+          "fdl-xml",
+          "psl-dataaccess"
+        ]
+      },
+      "jakarta.servlet:jakarta.servlet-api": {
+        "version": "6.0.0",
+        "scope": "compile",
+        "via": [
+          "fdl-access",
+          "fdl-excel",
+          "fdl-property",
+          "fdl-security",
+          "itl-webservice",
+          "ptl-mvc"
+        ]
+      },
+      "jakarta.servlet.jsp:jakarta.servlet.jsp-api": {
+        "version": "4.0.0",
+        "scope": "provided",
+        "via": [
+          "ptl-mvc"
+        ]
+      },
+      "jakarta.transaction:jakarta.transaction-api": {
+        "version": "2.0.1",
+        "scope": "compile",
+        "via": [
+          "psl-data-jpa"
+        ]
+      },
+      "jakarta.validation:jakarta.validation-api": {
+        "version": "3.1.1",
+        "scope": "compile",
+        "via": [
+          "ptl-mvc"
+        ]
+      },
+      "jakarta.xml.ws:jakarta.xml.ws-api": {
+        "version": "4.0.2",
+        "scope": "compile",
+        "via": [
+          "itl-webservice"
+        ]
+      },
+      "org.apache.commons:commons-collections4": {
+        "version": "4.4",
+        "scope": "compile",
+        "via": [
+          "psl-dataaccess"
+        ]
+      },
+      "org.apache.commons:commons-configuration2": {
+        "version": "2.11.0",
+        "scope": "compile",
+        "via": [
+          "fdl-property"
+        ]
+      },
+      "org.apache.commons:commons-lang3": {
+        "version": "3.18.0",
+        "scope": "compile",
+        "via": [
+          "fdl-excel",
+          "fdl-filehandling",
+          "fdl-logging",
+          "fdl-property"
+        ]
+      },
+      "org.apache.commons:commons-vfs2": {
+        "version": "2.10.0",
+        "scope": "compile",
+        "via": [
+          "fdl-filehandling"
+        ]
+      },
+      "org.apache.cxf:cxf-rt-frontend-jaxws": {
+        "version": "4.1.5",
+        "scope": "compile",
+        "via": [
+          "itl-webservice"
+        ]
+      },
+      "org.apache.cxf:cxf-rt-transports-http-jetty": {
+        "version": "4.1.5",
+        "scope": "compile",
+        "via": [
+          "itl-webservice"
+        ]
+      },
+      "org.apache.ibatis:ibatis-sqlmap": {
+        "version": "2.3.4.726",
+        "scope": "compile",
+        "via": [
+          "psl-dataaccess"
+        ]
+      },
+      "org.apache.logging.log4j:log4j-core": {
+        "version": "2.25.3",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-logging",
+          "psl-data-mongodb",
+          "ptl-mvc"
+        ]
+      },
+      "org.apache.logging.log4j:log4j-slf4j2-impl": {
+        "version": "2.25.3",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-logging",
+          "psl-data-mongodb",
+          "ptl-mvc"
+        ]
+      },
+      "org.apache.poi:poi": {
+        "version": "5.4.0",
+        "scope": "compile",
+        "via": [
+          "fdl-excel"
+        ]
+      },
+      "org.apache.poi:poi-ooxml": {
+        "version": "5.4.0",
+        "scope": "compile",
+        "via": [
+          "fdl-excel"
+        ]
+      },
+      "org.aspectj:aspectjrt": {
+        "version": "1.9.23",
+        "scope": "compile",
+        "via": [
+          "fdl-cmmn"
+        ]
+      },
+      "org.aspectj:aspectjweaver": {
+        "version": "1.9.23",
+        "scope": "compile",
+        "via": [
+          "fdl-cmmn"
+        ]
+      },
+      "org.hibernate.orm:hibernate-core": {
+        "version": "6.6.12.Final",
+        "scope": "compile",
+        "via": [
+          "itl-integration",
+          "itl-webservice",
+          "psl-data-jpa"
+        ]
+      },
+      "org.jasypt:jasypt": {
+        "version": "1.9.3",
+        "scope": "compile",
+        "via": [
+          "fdl-crypto"
+        ]
+      },
+      "org.jxls:jxls-poi": {
+        "version": "3.0.0",
+        "scope": "compile",
+        "via": [
+          "fdl-excel"
+        ]
+      },
+      "org.mongodb:mongodb-driver-core": {
+        "version": "5.4.0",
+        "scope": "compile",
+        "via": [
+          "psl-data-mongodb"
+        ]
+      },
+      "org.mongodb:mongodb-driver-sync": {
+        "version": "5.4.0",
+        "scope": "compile",
+        "via": [
+          "psl-data-mongodb"
+        ]
+      },
+      "org.mybatis:mybatis": {
+        "version": "3.5.19",
+        "scope": "compile",
+        "via": [
+          "psl-dataaccess"
+        ]
+      },
+      "org.mybatis:mybatis-spring": {
+        "version": "3.0.5",
+        "scope": "compile",
+        "via": [
+          "psl-dataaccess"
+        ]
+      },
+      "org.projectlombok:lombok": {
+        "version": "1.18.42",
+        "scope": "provided",
+        "via": [
+          "psl-data-jpa",
+          "psl-data-mongodb"
+        ]
+      },
+      "org.slf4j:jcl-over-slf4j": {
+        "version": "2.0.17",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-logging",
+          "psl-data-mongodb",
+          "ptl-mvc"
+        ]
+      },
+      "org.slf4j:log4j-over-slf4j": {
+        "version": "2.0.17",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-logging",
+          "psl-data-mongodb",
+          "ptl-mvc"
+        ]
+      },
+      "org.springframework:spring-aop": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "bat-core"
+        ]
+      },
+      "org.springframework:spring-beans": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "fdl-crypto"
+        ]
+      },
+      "org.springframework:spring-context": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "fdl-crypto",
+          "fdl-idgnr",
+          "fdl-logging",
+          "fdl-string",
+          "itl-integration",
+          "itl-webservice",
+          "psl-data-mongodb",
+          "psl-dataaccess"
+        ]
+      },
+      "org.springframework:spring-context-support": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-cmmn",
+          "fdl-xml",
+          "itl-integration"
+        ]
+      },
+      "org.springframework:spring-jdbc": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-access",
+          "fdl-cmmn",
+          "fdl-idgnr",
+          "fdl-property",
+          "fdl-security"
+        ]
+      },
+      "org.springframework:spring-messaging": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "bat-core"
+        ]
+      },
+      "org.springframework:spring-orm": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "itl-integration",
+          "itl-webservice",
+          "psl-dataaccess"
+        ]
+      },
+      "org.springframework:spring-tx": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-cmmn",
+          "psl-data-mongodb"
+        ]
+      },
+      "org.springframework:spring-web": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "fdl-property",
+          "itl-webservice",
+          "psl-data-mongodb"
+        ]
+      },
+      "org.springframework:spring-webmvc": {
+        "version": "6.2.11",
+        "scope": "compile",
+        "via": [
+          "bat-core",
+          "fdl-access",
+          "fdl-excel",
+          "fdl-security",
+          "psl-data-mongodb",
+          "ptl-mvc"
+        ]
+      },
+      "org.springframework.batch:spring-batch-core": {
+        "version": "5.2.3",
+        "scope": "compile",
+        "via": [
+          "bat-core"
+        ]
+      },
+      "org.springframework.batch:spring-batch-infrastructure": {
+        "version": "5.2.3",
+        "scope": "compile",
+        "via": [
+          "bat-core"
+        ]
+      },
+      "org.springframework.batch:spring-batch-integration": {
+        "version": "5.2.3",
+        "scope": "compile",
+        "via": [
+          "bat-core"
+        ]
+      },
+      "org.springframework.batch:spring-batch-test": {
+        "version": "5.2.3",
+        "scope": "compile",
+        "via": [
+          "bat-core"
+        ]
+      },
+      "org.springframework.data:spring-data-jpa": {
+        "version": "3.5.3",
+        "scope": "compile",
+        "via": [
+          "psl-data-jpa"
+        ]
+      },
+      "org.springframework.data:spring-data-mongodb": {
+        "version": "4.5.1",
+        "scope": "compile",
+        "via": [
+          "psl-data-mongodb"
+        ]
+      },
+      "org.springframework.security:spring-security-config": {
+        "version": "6.5.5",
+        "scope": "compile",
+        "via": [
+          "fdl-security"
+        ]
+      },
+      "org.springframework.security:spring-security-taglibs": {
+        "version": "6.5.5",
+        "scope": "compile",
+        "via": [
+          "fdl-security"
+        ]
+      }
+    }
+  }
 }

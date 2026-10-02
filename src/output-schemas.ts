@@ -66,15 +66,16 @@ export const MigrateOutput = loose({
   remaining: MigrateSummary.optional(),
 });
 
-const DependencyStatus = z.enum(["ok", "outdated", "managed", "legacy", "replace", "unknown", "unversioned"]);
+const DependencyStatus = z.enum(["ok", "outdated", "managed", "legacy", "replace", "vendor", "unknown", "unversioned"]);
+const DependencyBasis = z.enum(["parent", "family", "boot-bom", "rte-transitive", "migration-rules"]);
 export const DependenciesOutput = loose({
   projectDir: z.string(),
   buildSystem: z.enum(["maven", "gradle", "unknown"]),
   offline: z.boolean(),
-  baseline: loose({ surveyedAt: z.string(), rte: z.string(), springFramework: z.string().nullable(), springBoot: z.string().nullable(), java: z.number().int() }),
+  baseline: loose({ surveyedAt: z.string(), rte: z.string(), springFramework: z.string().nullable(), springBoot: z.string().nullable(), java: z.number().int(), bootBom: z.number().int().optional(), rteTransitive: z.number().int().optional() }),
   parent: loose({ groupId: z.string().nullable(), artifactId: z.string().nullable(), version: z.string().nullable(), kind: z.enum(["web", "boot", "other", "none"]), status: z.enum(["ok", "outdated", "n/a"]) }),
   java: loose({ value: z.string().nullable(), status: z.enum(["ok", "outdated", "unknown"]) }),
-  findings: z.array(loose({ file: z.string(), line: z.number().int(), groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), resolvedVersion: z.string().nullable(), scope: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable() })),
+  findings: z.array(loose({ file: z.string(), line: z.number().int(), groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), resolvedVersion: z.string().nullable(), scope: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable(), basis: DependencyBasis.nullable() })),
   summary: z.record(z.number().int()),
   checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })),
   vulnerabilities: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })).optional(),
