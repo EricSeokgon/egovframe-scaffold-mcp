@@ -75,6 +75,10 @@ export { collectAgentsFacts, renderAgentsMd, generateAgentsMd } from "./agents-m
 export type { AgentsLang, AgentsMdOptions, AgentsMdResult, AgentsFacts } from "./agents-md.js";
 export { LANG_ENV, TOOL_DESCRIPTIONS_EN, resolveToolLang, toolDescription } from "./i18n.js";
 export type { ToolLang } from "./i18n.js";
+export { TOOL_META, READ_ONLY_TOOLS, DESTRUCTIVE_TOOLS, toolTitle, toolAnnotations } from "./tool-meta.js";
+export type { ToolMeta, ToolAnnotationsLite } from "./tool-meta.js";
+export { OUTPUT_SCHEMAS, DiagnoseOutput, ValidateOutput, MigrateOutput, DependenciesOutput, NetworkOutput } from "./output-schemas.js";
+export type { StructuredToolName } from "./output-schemas.js";
 export type {
   TemplateCatalog,
   UnifiedProject,

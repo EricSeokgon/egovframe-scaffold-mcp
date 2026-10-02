@@ -48,12 +48,12 @@ assert.deepEqual(order3, ["bbs"], "의존성 미포함 옵션을 반영해야 �
 assert.throws(() => resolveComponents(catalog, ["nope"]), "알 수 없는 컴포넌트 ID를 거부해야 한다");
 
 // dryRun 미리보기
-const p = await addComponents({ projectDir: "/tmp/x", components: ["bbs", "login"], dryRun: true });
+const p = await addComponents({ projectDir: "/tmp/x", components: ["bbs", "login"], dryRun: true }); // portability: ok dryRun 은 디렉터리를 쓰지 않음
 assert.ok(p.totalFiles > 0, "dryRun 설치 계획에 파일이 있어야 한다");
 
 // 실제 조립은 존재하는 프로젝트 디렉터리가 필요
 await assert.rejects(
-  () => addComponents({ projectDir: "/tmp/no-such-dir-abc", components: ["bbs"], dryRun: false }),
+  () => addComponents({ projectDir: "/tmp/no-such-dir-abc", components: ["bbs"], dryRun: false }), // portability: ok 존재하지 않는 경로의 거부 검증
   "존재하지 않는 프로젝트 디렉터리를 거부해야 한다",
 );
 

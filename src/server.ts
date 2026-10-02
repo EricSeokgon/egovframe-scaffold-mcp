@@ -21,11 +21,13 @@ import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
-import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown } from "./migrate.js";
+import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
 import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network.js";
 import { generateAgentsMd } from "./agents-md.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
+import { toolAnnotations, toolTitle } from "./tool-meta.js";
+import { OUTPUT_SCHEMAS } from "./output-schemas.js";
 
 /** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
 export { SERVER_VERSION } from "./version.js";
@@ -49,16 +51,21 @@ function unifiedTemplateSummary():
   }
 }
 
+/** structuredContent 용: 편집 오프셋(edits)은 적용 내부용이라 구조화 출력에서 뺀다 (json text 에는 그대로 남음) */
+function stripEdits(r: MigrateResult): Record<string, unknown> {
+  return { ...r, items: r.items.map(({ edits: _e, ...rest }) => rest) } as unknown as Record<string, unknown>;
+}
+
 export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   const server = new McpServer({ name: "egovframe-scaffold-mcp", version: SERVER_VERSION });
   const lang = opts.lang ?? resolveToolLang();
   const d = (name: string, ko: string) => toolDescription(name, ko, lang);
+  const t = (name: string) => toolTitle(name, lang);
 
-  server.tool(
+  server.registerTool(
     "list_egovframe_templates",
-    d("list_egovframe_templates", "사용 가능한 전자정부 표준프레임워크 프로젝트 템플릿 목록을 반환합니다."),
-    {},
-    async () => ({
+    { title: t("list_egovframe_templates"), description: d("list_egovframe_templates", "사용 가능한 전자정부 표준프레임워크 프로젝트 템플릿 목록을 반환합니다."), inputSchema: {}, annotations: toolAnnotations("list_egovframe_templates") },
+        async () => ({
       content: [
         {
           type: "text",
@@ -68,12 +75,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }),
   );
 
-  server.tool(
+  server.registerTool(
     "create_egovframe_project",
-    d("create_egovframe_project", "전자정부 표준프레임워크 공식 템플릿으로 새 프로젝트 골격을 생성합니다. " +
+    { title: t("create_egovframe_project"), description: d("create_egovframe_project", "전자정부 표준프레임워크 공식 템플릿으로 새 프로젝트 골격을 생성합니다. " +
       "공식 GitHub 템플릿을 내려받아 projectName/groupId/DB 타입을 적용합니다. " +
-      "dryRun=true로 먼저 미리보기할 수 있습니다."),
-    {
+      "dryRun=true로 먼저 미리보기할 수 있습니다."), inputSchema: {
       projectName: z.string().describe("프로젝트명(artifactId). 소문자·숫자·하이픈, 예: my-egov-app"),
       groupId: z.string().describe("자바 groupId. 예: egovframework.example"),
       database: z.enum(DB_TYPES).default("hsql").describe("DB 타입 (템플릿 지원: hsql|mysql|oracle|altibase|tibero)"),
@@ -81,7 +87,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       outputDir: z.string().describe("프로젝트를 생성할 상위 디렉터리(절대경로 권장)"),
       ref: z.string().optional().describe("내려받을 브랜치/태그(미지정 시 템플릿 기본 브랜치). 예: main, v4.3.0"),
       dryRun: z.boolean().default(false).describe("true면 디스크에 쓰지 않고 생성 예정 내용만 미리보기"),
-    },
+    }, annotations: toolAnnotations("create_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
       const result = await createProject(args as CreateOptions);
@@ -103,12 +109,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   );
 
 
-  server.tool(
+  server.registerTool(
     "sync_egovframe_catalog",
-    d("sync_egovframe_catalog", "공식 egovframe-common-components 태그·commit·아카이브 무결성을 검증하고, 고정 카탈로그 대비 upstream 변경과 sec.security 보안 패키지를 점검합니다."),
-    {
+    { title: t("sync_egovframe_catalog"), description: d("sync_egovframe_catalog", "공식 egovframe-common-components 태그·commit·아카이브 무결성을 검증하고, 고정 카탈로그 대비 upstream 변경과 sec.security 보안 패키지를 점검합니다."), inputSchema: {
       ref: z.string().optional().describe("확인할 태그·브랜치·commit. 미지정 시 카탈로그의 공식 고정 태그 사용"),
-    },
+    }, annotations: toolAnnotations("sync_egovframe_catalog") },
     async (args) => {
       enforceAllowedRoots(args);
       const result = await syncCatalog(args as CatalogSyncOptions);
@@ -127,12 +132,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
 
-  server.tool(
+  server.registerTool(
     "sync_egovframe_templates",
-    d("sync_egovframe_templates", "공식 프로젝트 템플릿 통합 카탈로그(Initializr·MCP·Development)를 upstream 과 대조해 추가·삭제·변경과 MCP 커버리지 격차를 보고합니다."),
-    {
+    { title: t("sync_egovframe_templates"), description: d("sync_egovframe_templates", "공식 프로젝트 템플릿 통합 카탈로그(Initializr·MCP·Development)를 upstream 과 대조해 추가·삭제·변경과 MCP 커버리지 격차를 보고합니다."), inputSchema: {
       ref: z.string().optional().describe("확인할 Initializr 저장소의 브랜치·태그·commit. 미지정 시 고정 카탈로그의 branch 사용"),
-    },
+    }, annotations: toolAnnotations("sync_egovframe_templates") },
     async (args) => {
       enforceAllowedRoots(args);
       const result = await syncTemplateCatalog(args as { ref?: string });
@@ -173,11 +177,10 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
 
-  server.tool(
+  server.registerTool(
     "list_egovframe_components",
-    d("list_egovframe_components", "선택 설치를 지원하는 공통컴포넌트 카탈로그를 반환합니다 (저장소 스캔으로 자동 생성, scripts/generate-catalog.mjs)."),
-    {},
-    async () => {
+    { title: t("list_egovframe_components"), description: d("list_egovframe_components", "선택 설치를 지원하는 공통컴포넌트 카탈로그를 반환합니다 (저장소 스캔으로 자동 생성, scripts/generate-catalog.mjs)."), inputSchema: {}, annotations: toolAnnotations("list_egovframe_components") },
+        async () => {
       const catalog = loadCatalog();
       let ai: { source: AiCatalog["source"]; components: { id: string; stack: string; name: string; description: string; approxFiles: number }[] } | undefined;
       try {
@@ -220,18 +223,17 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
 
-  server.tool(
+  server.registerTool(
     "add_egovframe_components",
-    d("add_egovframe_components", "공통컴포넌트를 골라 기존 프로젝트에 조립합니다. 의존 컴포넌트를 포함해 소스·매퍼·JSP를 복사하고, " +
+    { title: t("add_egovframe_components"), description: d("add_egovframe_components", "공통컴포넌트를 골라 기존 프로젝트에 조립합니다. 의존 컴포넌트를 포함해 소스·매퍼·JSP를 복사하고, " +
       "database 지정 시 DB DDL·DML 스크립트도 복사합니다. 기존 파일과 충돌하면 아무것도 쓰지 않고 거부합니다. " +
-      "dryRun=true로 먼저 미리볼 수 있습니다."),
-    {
+      "dryRun=true로 먼저 미리볼 수 있습니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장). 먼저 create_egovframe_project로 생성"),
       components: z.array(z.string()).min(1).describe("컴포넌트 id 목록. 예: [\"bbs\", \"login\"]"),
       includeDependencies: z.boolean().default(true).describe("의존 컴포넌트 자동 포함 여부"),
       database: z.enum(ECC_DB_TYPES).optional().describe("DB 스크립트 복사 대상 DB (altibase|cubrid|goldilocks|maria|mysql|oracle|postgres|tibero)"),
       dryRun: z.boolean().default(false).describe("true면 복사 없이 설치 순서·규모만 미리보기(네트워크 불필요)"),
-    },
+    }, annotations: toolAnnotations("add_egovframe_components") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await addComponents(args as AddComponentsOptions);
@@ -258,13 +260,12 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
 
-  server.tool(
+  server.registerTool(
     "search_egovframe_components",
-    d("search_egovframe_components", "키워드로 공통컴포넌트를 검색합니다 (id·이름·설명·카테고리 부분 일치, 점수순 상위 10건)."),
-    {
+    { title: t("search_egovframe_components"), description: d("search_egovframe_components", "키워드로 공통컴포넌트를 검색합니다 (id·이름·설명·카테고리 부분 일치, 점수순 상위 10건)."), inputSchema: {
       query: z.string().describe("검색어. 예: 게시판, bbs, 로그인"),
       category: z.string().optional().describe("카테고리 필터 (cmm|cop|uss|sym|sec|utl|dam|ext|ssi|sts|uat)"),
-    },
+    }, annotations: toolAnnotations("search_egovframe_components") },
     async (args) => {
       enforceAllowedRoots(args);
       const results = searchComponents(loadCatalog(), args.query as string, args.category as string | undefined);
@@ -276,17 +277,16 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
 
-  server.tool(
+  server.registerTool(
     "remove_egovframe_components",
-    d("remove_egovframe_components", "add_egovframe_components로 조립한 컴포넌트를 제거합니다. 설치 매니페스트에 기록된 파일만 삭제하며, " +
+    { title: t("remove_egovframe_components"), description: d("remove_egovframe_components", "add_egovframe_components로 조립한 컴포넌트를 제거합니다. 설치 매니페스트에 기록된 파일만 삭제하며, " +
       "다른 설치 컴포넌트가 의존하거나 설치 시점 hash와 달라진 파일은 기본 거부합니다. " +
-      "force=true는 remove-backup/에 사본을 만든 뒤 트랜잭션 제거하며, dryRun 미리보기를 지원합니다."),
-    {
+      "force=true는 remove-backup/에 사본을 만든 뒤 트랜잭션 제거하며, dryRun 미리보기를 지원합니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리"),
       components: z.array(z.string()).min(1).describe("제거할 컴포넌트 id 목록"),
       dryRun: z.boolean().default(false).describe("true면 삭제 없이 대상만 미리보기"),
       force: z.boolean().default(false).describe("사용자 수정·hash 미검증 파일도 remove-backup/에 백업한 뒤 제거"),
-    },
+    }, annotations: toolAnnotations("remove_egovframe_components") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await removeComponents(args as RemoveOptions);
@@ -304,12 +304,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
 
-  server.tool(
+  server.registerTool(
     "validate_egovframe_project",
-    d("validate_egovframe_project", "조립된 프로젝트의 무결성을 진단합니다: 설치 매니페스트 기준 파일 존재 확인, Globals.DbType과 복사된 DB 스크립트 일치 확인."),
-    {
+    { title: t("validate_egovframe_project"), description: d("validate_egovframe_project", "조립된 프로젝트의 무결성을 진단합니다: 설치 매니페스트 기준 파일 존재 확인, Globals.DbType과 복사된 DB 스크립트 일치 확인."), inputSchema: {
       projectDir: z.string().describe("검증할 프로젝트 디렉터리"),
-    },
+    }, outputSchema: OUTPUT_SCHEMAS.validate_egovframe_project.shape, annotations: toolAnnotations("validate_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await validateProject(args as { projectDir: string });
@@ -325,18 +324,17 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
           : []),
         ...(r.warnings.length ? ["", "경고:", ...r.warnings.map((w) => `  ! ${w}`)] : []),
       ].join("\n");
-      return { content: [{ type: "text", text }] };
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
 
-  server.tool(
+  server.registerTool(
     "get_egovframe_guide",
-    d("get_egovframe_guide", "컴포넌트의 공식 가이드 문서(표준프레임워크 포털 egovframe-docs)를 가져옵니다. " +
-      "문서가 여러 건이면 목록을 함께 반환하며 docIndex로 선택할 수 있습니다."),
-    {
+    { title: t("get_egovframe_guide"), description: d("get_egovframe_guide", "컴포넌트의 공식 가이드 문서(표준프레임워크 포털 egovframe-docs)를 가져옵니다. " +
+      "문서가 여러 건이면 목록을 함께 반환하며 docIndex로 선택할 수 있습니다."), inputSchema: {
       component: z.string().describe("컴포넌트 id. 예: bbs, login, cop.cmy"),
       docIndex: z.number().int().min(0).default(0).describe("문서가 여러 건일 때 선택 (0부터, 기본 0)"),
-    },
+    }, annotations: toolAnnotations("get_egovframe_guide") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await getGuide(args.component as string, args.docIndex as number);
@@ -354,12 +352,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   );
 
 
-  server.tool(
+  server.registerTool(
     "add_ai_components",
-    d("add_ai_components", "공식 egovframe-ai-rag 샘플 기반 AI RAG 챗봇(문서 업로드→임베딩→하이브리드 검색→LLM 응답)을 기존 Boot 프로젝트에 조립합니다. " +
+    { title: t("add_ai_components"), description: d("add_ai_components", "공식 egovframe-ai-rag 샘플 기반 AI RAG 챗봇(문서 업로드→임베딩→하이브리드 검색→LLM 응답)을 기존 Boot 프로젝트에 조립합니다. " +
       "소스·설정(application-ai.yml 프로필)·UI·인프라를 복사하고 pom에 누락 의존성만 마커 구간으로 삽입합니다(백업 생성, 제거 시 원복). " +
-      "기존 파일과 충돌하면 아무것도 쓰지 않고 거부합니다. dryRun=true로 먼저 미리볼 수 있습니다."),
-    {
+      "기존 파일과 충돌하면 아무것도 쓰지 않고 거부합니다. dryRun=true로 먼저 미리볼 수 있습니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장). egovframe-boot-starter-parent 기반 Boot 프로젝트"),
       stack: z.enum(AI_STACKS).describe("AI 스택: spring-ai(Redis Stack) | langchain4j(PGVector). 상호 배타"),
       includeInfra: z.boolean().default(true).describe("docker-compose.ai.yml·Dockerfile.ai·k8s/ai 복사"),
@@ -367,7 +364,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       includeTests: z.boolean().default(false).describe("샘플 테스트 복사"),
       ref: z.string().optional().describe("egovframe-ai-rag 브랜치/태그 (기본: 카탈로그 기준 브랜치)"),
       dryRun: z.boolean().default(false).describe("true면 복사·병합 없이 계획만 미리보기(네트워크 불필요)"),
-    },
+    }, annotations: toolAnnotations("add_ai_components") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await addAiComponents(args as AddAiComponentsOptions);
@@ -398,26 +395,24 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   );
 
   // ── 레시피 도구 (v0.13.0) ──────────────────────────────
-  server.tool(
+  server.registerTool(
     "list_egovframe_recipes",
-    d("list_egovframe_recipes", "큐레이션된 레시피(템플릿+컴포넌트 번들) 목록을 반환합니다. apply_egovframe_recipe로 한 번에 조립할 수 있습니다."),
-    {},
-    async () => ({
+    { title: t("list_egovframe_recipes"), description: d("list_egovframe_recipes", "큐레이션된 레시피(템플릿+컴포넌트 번들) 목록을 반환합니다. apply_egovframe_recipe로 한 번에 조립할 수 있습니다."), inputSchema: {}, annotations: toolAnnotations("list_egovframe_recipes") },
+        async () => ({
       content: [{ type: "text", text: JSON.stringify({ recipes: loadRecipes() }, null, 2) }],
     }),
   );
 
-  server.tool(
+  server.registerTool(
     "apply_egovframe_recipe",
-    d("apply_egovframe_recipe", "레시피 하나를 골라 프로젝트 생성 → 공통컴포넌트(필요 시 AI 계층) 조립까지 순차 실행합니다. dryRun=true로 전체 계획을 먼저 미리볼 수 있습니다."),
-    {
+    { title: t("apply_egovframe_recipe"), description: d("apply_egovframe_recipe", "레시피 하나를 골라 프로젝트 생성 → 공통컴포넌트(필요 시 AI 계층) 조립까지 순차 실행합니다. dryRun=true로 전체 계획을 먼저 미리볼 수 있습니다."), inputSchema: {
       recipeId: z.string().describe("list_egovframe_recipes의 id. 예: board-login"),
       projectName: z.string().describe("프로젝트명(artifactId). 소문자·숫자·하이픈"),
       groupId: z.string().default("egovframework.example").describe("자바 groupId"),
       outputDir: z.string().describe("생성할 상위 디렉터리(절대경로 권장)"),
       database: z.enum(ECC_DB_TYPES).optional().describe("DB 스크립트 대상(미지정 시 레시피 기본값)"),
       dryRun: z.boolean().default(false).describe("true면 디스크 변경 없이 전체 계획만 미리보기"),
-    },
+    }, annotations: toolAnnotations("apply_egovframe_recipe") },
     async (args) => {
       enforceAllowedRoots(args);
       const recipe = loadRecipes().find((r) => r.id === args.recipeId);
@@ -534,12 +529,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }),
   );
   // ── 진단 도구 (v0.14.0) ────────────────────────────────
-  server.tool(
+  server.registerTool(
     "diagnose_egovframe_project",
-    d("diagnose_egovframe_project", "기존(스캐폴딩 도구로 만들지 않은 것 포함) 전자정부 표준프레임워크 프로젝트를 스캔해 빌드시스템·RTE 버전·DbType·설치된 공통컴포넌트(카탈로그 pathPrefixes 지문)·설정 문제를 진단합니다. 디스크를 변경하지 않는 읽기 전용입니다."),
-    {
+    { title: t("diagnose_egovframe_project"), description: d("diagnose_egovframe_project", "기존(스캐폴딩 도구로 만들지 않은 것 포함) 전자정부 표준프레임워크 프로젝트를 스캔해 빌드시스템·RTE 버전·DbType·설치된 공통컴포넌트(카탈로그 pathPrefixes 지문)·설정 문제를 진단합니다. 디스크를 변경하지 않는 읽기 전용입니다."), inputSchema: {
       projectDir: z.string().describe("진단할 프로젝트 디렉터리(절대경로 권장)"),
-    },
+    }, outputSchema: OUTPUT_SCHEMAS.diagnose_egovframe_project.shape, annotations: toolAnnotations("diagnose_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = diagnoseProject({ projectDir: args.projectDir });
@@ -553,74 +547,70 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       ];
       if (r.issues.length) lines.push(``, `⚠️ 이슈:`, ...r.issues.map((i) => ` · ${i}`));
       if (r.suggestions.length) lines.push(``, `💡 제안:`, ...r.suggestions.map((s) => ` · ${s}`));
-      return { content: [{ type: "text", text: lines.join("\n") }] };
+      return { content: [{ type: "text", text: lines.join("\n") }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── 5.x 전환 진단 도구 (v0.29.0, 1단계 읽기 전용) ──────
-  server.tool(
+  server.registerTool(
     "migrate_egovframe_project",
-    d("migrate_egovframe_project", "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단하고(1단계), apply=true 이면 auto 항목을 실제로 치환합니다(2단계). 진단: RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요). 적용: apply=true 는 dryRun=true(기본)면 파일별 변경 미리보기만 돌려주고, dryRun=false 면 auto 항목을 하나의 transaction 으로 치환하며 원본을 migration-backup/<시각>/ 에 보관하고 migration-plan.json 을 남깁니다(중간 실패 시 작업 전 상태로 복구). manual 항목은 건드리지 않고 결과에 남깁니다. 규칙은 egovframe-runtime 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다."),
-    {
+    { title: t("migrate_egovframe_project"), description: d("migrate_egovframe_project", "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단하고(1단계), apply=true 이면 auto 항목을 실제로 치환합니다(2단계). 진단: RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요). 적용: apply=true 는 dryRun=true(기본)면 파일별 변경 미리보기만 돌려주고, dryRun=false 면 auto 항목을 하나의 transaction 으로 치환하며 원본을 migration-backup/<시각>/ 에 보관하고 migration-plan.json 을 남깁니다(중간 실패 시 작업 전 상태로 복구). manual 항목은 건드리지 않고 결과에 남깁니다. 규칙은 egovframe-runtime 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
       target: z.enum(["5.x"]).default("5.x").describe("전환 목표 (현재 5.x 만 지원)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식. markdown=사람이 읽는 요약, json=항목 배열 그대로"),
       apply: z.boolean().default(false).describe("true 면 2단계(적용). false(기본)면 진단만"),
       dryRun: z.boolean().default(true).describe("apply=true 일 때만 의미. true(기본)면 파일별 변경 미리보기만, false 면 실제로 치환(백업 생성)"),
-    },
+    }, outputSchema: OUTPUT_SCHEMAS.migrate_egovframe_project.shape, annotations: toolAnnotations("migrate_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
       if (args.apply) {
         const r = await applyMigration({ projectDir: args.projectDir, target: args.target, dryRun: args.dryRun });
         const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationApplyMarkdown(r);
-        return { content: [{ type: "text", text }] };
+        return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
       }
       const r = migrateProject({ projectDir: args.projectDir, target: args.target });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationMarkdown(r);
-      return { content: [{ type: "text", text }] };
+      return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
     },
   );
   // ── 의존성 점검 도구 (v0.30.0, 읽기 전용) ──────────────
-  server.tool(
+  server.registerTool(
     "check_egovframe_dependencies",
-    d("check_egovframe_dependencies", "프로젝트의 Maven/Gradle 의존성을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x 등)/기준 없음 으로 분류하고, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다."),
-    {
+    { title: t("check_egovframe_dependencies"), description: d("check_egovframe_dependencies", "프로젝트의 Maven/Gradle 의존성을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x 등)/기준 없음 으로 분류하고, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다."), inputSchema: {
       projectDir: z.string().describe("점검할 프로젝트 디렉터리(절대경로 권장)"),
       offline: z.boolean().default(true).describe("true(기본)면 네트워크 없이 기준 대조만, false 면 OSV 취약점 조회 추가"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
-    },
+    }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_dependencies.shape, annotations: toolAnnotations("check_egovframe_dependencies") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await checkDependencies({ projectDir: args.projectDir, offline: args.offline });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDependencyMarkdown(r);
-      return { content: [{ type: "text", text }] };
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── 네트워크 진단 도구 (v0.31.0) ──────────────────────
-  server.tool(
+  server.registerTool(
     "diagnose_egovframe_network",
-    d("diagnose_egovframe_network", "이 서버의 도구들이 내려받는 외부 호스트(codeload.github.com·raw.githubusercontent.com·media.githubusercontent.com·maven.egovframe.go.kr·repo1.maven.org·registry.npmjs.org·api.osv.dev)에 DNS 조회와 HEAD 요청을 실제로 보내 접속 가능 여부·소요 시간·실패 종류(DNS·타임아웃·TLS·프록시 인증·거부)를 보고하고, 환경에 맞는 처방(HTTPS_PROXY+NODE_USE_ENV_PROXY=1, NODE_OPTIONS=--dns-result-order=ipv4first, NODE_EXTRA_CA_CERTS)을 bash/cmd/PowerShell 명령으로 안내합니다. 프로젝트 생성·컴포넌트 조립이 타임아웃으로 실패할 때 먼저 실행하세요. 파일을 쓰지 않으며 프로젝트 디렉터리도 필요 없습니다."),
-    {
+    { title: t("diagnose_egovframe_network"), description: d("diagnose_egovframe_network", "이 서버의 도구들이 내려받는 외부 호스트(codeload.github.com·raw.githubusercontent.com·media.githubusercontent.com·maven.egovframe.go.kr·repo1.maven.org·registry.npmjs.org·api.osv.dev)에 DNS 조회와 HEAD 요청을 실제로 보내 접속 가능 여부·소요 시간·실패 종류(DNS·타임아웃·TLS·프록시 인증·거부)를 보고하고, 환경에 맞는 처방(HTTPS_PROXY+NODE_USE_ENV_PROXY=1, NODE_OPTIONS=--dns-result-order=ipv4first, NODE_EXTRA_CA_CERTS)을 bash/cmd/PowerShell 명령으로 안내합니다. 프로젝트 생성·컴포넌트 조립이 타임아웃으로 실패할 때 먼저 실행하세요. 파일을 쓰지 않으며 프로젝트 디렉터리도 필요 없습니다."), inputSchema: {
       hosts: z.array(z.enum(NETWORK_HOSTS.map((h) => h.host) as [string, ...string[]])).optional().describe("점검할 호스트(기본: 전부)"),
       timeoutMs: z.number().int().min(1000).max(60_000).default(10_000).describe("호스트당 제한 시간(ms, 기본 10000)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
-    },
+    }, outputSchema: OUTPUT_SCHEMAS.diagnose_egovframe_network.shape, annotations: toolAnnotations("diagnose_egovframe_network") },
     async (args) => {
       const r = await diagnoseNetwork({ hosts: args.hosts, timeoutMs: args.timeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderNetworkMarkdown(r);
-      return { content: [{ type: "text", text }] };
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── AGENTS.md 생성 도구 (v0.31.0) ─────────────────────
-  server.tool(
+  server.registerTool(
     "generate_agents_md",
-    d("generate_agents_md", "프로젝트를 진단해 AI 코딩 도구(Claude Code·Copilot·Cursor 등)용 AGENTS.md 를 생성합니다 — 빌드·테스트 명령(래퍼 감지), RTE 버전과 5.x 전환 상태, DbType, 기본 패키지·설정 디렉터리, 설치 공통컴포넌트(매니페스트 관리 여부), 지켜야 할 규칙(좌표·백업 디렉터리·비밀 정보·의존성 기준), 사용할 수 있는 MCP 도구. 기존 파일은 overwrite=true 가 아니면 거부하고, dryRun=true 면 내용만 돌려줍니다. 한국어(기본)·영어."),
-    {
+    { title: t("generate_agents_md"), description: d("generate_agents_md", "프로젝트를 진단해 AI 코딩 도구(Claude Code·Copilot·Cursor 등)용 AGENTS.md 를 생성합니다 — 빌드·테스트 명령(래퍼 감지), RTE 버전과 5.x 전환 상태, DbType, 기본 패키지·설정 디렉터리, 설치 공통컴포넌트(매니페스트 관리 여부), 지켜야 할 규칙(좌표·백업 디렉터리·비밀 정보·의존성 기준), 사용할 수 있는 MCP 도구. 기존 파일은 overwrite=true 가 아니면 거부하고, dryRun=true 면 내용만 돌려줍니다. 한국어(기본)·영어."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
       fileName: z.string().regex(/^[A-Za-z0-9_.-]{1,64}\.md$/).default("AGENTS.md").describe("파일명(프로젝트 루트 기준, 기본 AGENTS.md — CLAUDE.md 등으로 바꿀 수 있음)"),
       lang: z.enum(["ko", "en"]).default("ko").describe("문서 언어"),
       overwrite: z.boolean().default(false).describe("기존 파일 덮어쓰기(transaction, 실패 시 원복)"),
       dryRun: z.boolean().default(false).describe("true 면 파일을 쓰지 않고 내용만 반환"),
-    },
+    }, annotations: toolAnnotations("generate_agents_md") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await generateAgentsMd({ projectDir: args.projectDir, fileName: args.fileName, lang: args.lang, overwrite: args.overwrite, dryRun: args.dryRun });
@@ -629,14 +619,13 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
   // ── 문서 검색 도구 (v0.15.0) ───────────────────────────
-  server.tool(
+  server.registerTool(
     "search_egovframe_docs",
-    d("search_egovframe_docs", "공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색합니다. 기본은 오프라인 인덱스 검색(제목·경로·연계 컴포넌트·카테고리 점수순)이며, fetchTop>0이면 상위 결과의 문서 본문을 내려받아 스니펫도 함께 제공합니다."),
-    {
+    { title: t("search_egovframe_docs"), description: d("search_egovframe_docs", "공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색합니다. 기본은 오프라인 인덱스 검색(제목·경로·연계 컴포넌트·카테고리 점수순)이며, fetchTop>0이면 상위 결과의 문서 본문을 내려받아 스니펫도 함께 제공합니다."), inputSchema: {
       query: z.string().describe("검색어. 예: \"로그인\", \"게시판 권한\""),
       limit: z.number().int().min(1).max(30).default(10).describe("최대 결과 수 (기본 10)"),
       fetchTop: z.number().int().min(0).max(5).default(0).describe("본문을 내려받아 스니펫을 붙일 상위 결과 수 (0=오프라인, 최대 5)"),
-    },
+    }, annotations: toolAnnotations("search_egovframe_docs") },
     async (args) => {
       enforceAllowedRoots(args);
       const hits = searchDocs({ query: args.query, limit: args.limit });
@@ -664,12 +653,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
   // ── 리포트 도구 (v0.16.0) ──────────────────────────────
-  server.tool(
+  server.registerTool(
     "generate_egovframe_report",
-    d("generate_egovframe_report", "프로젝트를 스캔해 설치 공통컴포넌트·참조 테이블·가이드 문서 링크·이슈를 Markdown 리포트로 생성합니다. (읽기 전용) 조립 결과 문서화나 README 첨부에 적합합니다."),
-    {
+    { title: t("generate_egovframe_report"), description: d("generate_egovframe_report", "프로젝트를 스캔해 설치 공통컴포넌트·참조 테이블·가이드 문서 링크·이슈를 Markdown 리포트로 생성합니다. (읽기 전용) 조립 결과 문서화나 README 첨부에 적합합니다."), inputSchema: {
       projectDir: z.string().describe("리포트를 만들 프로젝트 디렉터리(절대경로 권장)"),
-    },
+    }, annotations: toolAnnotations("generate_egovframe_report") },
     async (args) => {
       enforceAllowedRoots(args);
       return {
@@ -678,15 +666,14 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
   // ── 업그레이드 도구 (v0.17.0) ──────────────────────────
-  server.tool(
+  server.registerTool(
     "upgrade_egovframe_project",
-    d("upgrade_egovframe_project", "매니페스트에 기록된 설치 공통컴포넌트를 upstream 최신본과 비교해 갱신합니다. 사용자가 수정한 파일은 force 없이는 보존하며, dryRun(기본)으로 변경 계획을 먼저 확인합니다. 덮어쓰기 전 upgrade-backup/에 백업하고, 하드 충돌 시 아무것도 쓰지 않고 거부합니다."),
-    {
+    { title: t("upgrade_egovframe_project"), description: d("upgrade_egovframe_project", "매니페스트에 기록된 설치 공통컴포넌트를 upstream 최신본과 비교해 갱신합니다. 사용자가 수정한 파일은 force 없이는 보존하며, dryRun(기본)으로 변경 계획을 먼저 확인합니다. 덮어쓰기 전 upgrade-backup/에 백업하고, 하드 충돌 시 아무것도 쓰지 않고 거부합니다."), inputSchema: {
       projectDir: z.string().describe("업그레이드할 프로젝트 디렉터리(절대경로 권장)"),
       components: z.array(z.string()).optional().describe("대상 컴포넌트 id (미지정 시 매니페스트 전체)"),
       dryRun: z.boolean().default(true).describe("true(기본)면 계획만 미리보기, 디스크 변경 없음"),
       force: z.boolean().default(false).describe("사용자 수정 파일(충돌)도 백업 후 덮어쓸지"),
-    },
+    }, annotations: toolAnnotations("upgrade_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await upgradeProject(args);
@@ -708,12 +695,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
   // ── 컴포넌트 설명 도구 (v0.18.0) ───────────────────────
-  server.tool(
+  server.registerTool(
     "explain_egovframe_component",
-    d("explain_egovframe_component", "공통컴포넌트 하나의 상세(설명·직접/전이 의존성·이 컴포넌트에 의존하는 컴포넌트·참조 테이블·가이드 문서 링크·설치 명령)를 한 번에 반환합니다. (읽기 전용)"),
-    {
+    { title: t("explain_egovframe_component"), description: d("explain_egovframe_component", "공통컴포넌트 하나의 상세(설명·직접/전이 의존성·이 컴포넌트에 의존하는 컴포넌트·참조 테이블·가이드 문서 링크·설치 명령)를 한 번에 반환합니다. (읽기 전용)"), inputSchema: {
       id: z.string().describe("컴포넌트 id. 예: bbs"),
-    },
+    }, annotations: toolAnnotations("explain_egovframe_component") },
     async (args) => {
       enforceAllowedRoots(args);
       const e = explainComponent(args.id);
@@ -737,12 +723,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
 
   // ── 리소스·프롬프트 확장 (v0.18.0) ─────────────────────
   // ── 설정 파일 생성 도구 (v0.28.0) ────────────────────────
-  server.tool(
+  server.registerTool(
     "generate_egovframe_config",
-    d("generate_egovframe_config", "공식 eGovFrame Initializr 설정 템플릿(21종, 오프라인 동봉)으로 Spring 설정 파일을 생성합니다 — datasource(DBCP/C3P0/JDBC·JNDI), transaction(datasource/JPA/JTA), cache(Ehcache), logging(log4j2 console/file/rolling/time-rolling/jdbc), scheduling(Quartz job/trigger/scheduler), idGeneration(sequence/table/uuid), property. " +
+    { title: t("generate_egovframe_config"), description: d("generate_egovframe_config", "공식 eGovFrame Initializr 설정 템플릿(21종, 오프라인 동봉)으로 Spring 설정 파일을 생성합니다 — datasource(DBCP/C3P0/JDBC·JNDI), transaction(datasource/JPA/JTA), cache(Ehcache), logging(log4j2 console/file/rolling/time-rolling/jdbc), scheduling(Quartz job/trigger/scheduler), idGeneration(sequence/table/uuid), property. " +
       "형식은 xml(Spring XML)·javaConfig(@Configuration 클래스)·yaml·properties(logging 만). 필드를 생략하면 Initializr 웹뷰 폼과 같은 기본값을 쓰고, 기존 파일이 있으면 덮어쓰지 않고 거부합니다. " +
-      "템플릿별 필드·기본값·선택지는 리소스 egovframe://catalog/config-templates 에서 확인하거나 dryRun 결과의 context 로 볼 수 있습니다."),
-    {
+      "템플릿별 필드·기본값·선택지는 리소스 egovframe://catalog/config-templates 에서 확인하거나 dryRun 결과의 context 로 볼 수 있습니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
       configId: z.enum(loadConfigCatalog().entries.map((e) => e.id) as [string, ...string[]]).describe("설정 템플릿 id (예: datasource, transaction-datasource, logging-rolling-file, scheduling-cron-trigger)"),
       format: z.enum(CONFIG_FORMATS).default("xml").describe("xml | javaConfig | yaml | properties (yaml·properties 는 logging 계열만)"),
@@ -750,7 +735,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       fileName: z.string().optional().describe("파일명(확장자 제외) 또는 JavaConfig 클래스명. 미지정 시 Initializr 기본값(예: context-datasource, EgovDataSourceConfig)"),
       outputDir: z.string().optional().describe("프로젝트 상대 출력 디렉터리. 미지정 시 xml→src/main/resources/egovframework/spring(logging 은 src/main/resources), javaConfig→src/main/java/<패키지>"),
       dryRun: z.boolean().default(false).describe("true면 파일을 쓰지 않고 내용·경로·컨텍스트만 반환"),
-    },
+    }, annotations: toolAnnotations("generate_egovframe_config") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = generateConfig({
@@ -859,10 +844,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       ],
     }),
   );
-  server.tool(
+  server.registerTool(
     "generate_egovframe_crud",
-    d("generate_egovframe_crud", "eGovFrame Development의 공식 CRUD wizard 입력 체계에 맞춰 VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5 테스트(선택) 골격을 생성합니다. Classic XML과 Boot REST 프로필을 지원하며, 전체 파일 충돌을 먼저 검사해 하나라도 존재하면 아무것도 쓰지 않습니다."),
-    {
+    { title: t("generate_egovframe_crud"), description: d("generate_egovframe_crud", "eGovFrame Development의 공식 CRUD wizard 입력 체계에 맞춰 VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5 테스트(선택) 골격을 생성합니다. Classic XML과 Boot REST 프로필을 지원하며, 전체 파일 충돌을 먼저 검사해 하나라도 존재하면 아무것도 쓰지 않습니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장, pom.xml 또는 build.gradle 필요)"),
       tableName: z.string().describe("CRUD 대상 테이블명. 단일 SQL 식별자, 예: SAMPLE_BOARD"),
       entityName: z.string().optional().describe("생성 클래스명. 미지정 시 tableName에서 PascalCase로 생성"),
@@ -893,7 +877,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       includeJsp: z.boolean().optional().describe("classic 프로필의 JSP 2종 생성 여부(기본 true)"),
       withTest: z.boolean().default(false).describe("JUnit 5 서비스 계약 테스트 골격 생성"),
       dryRun: z.boolean().default(false).describe("true면 파일을 쓰지 않고 생성 계획만 반환"),
-    },
+    }, annotations: toolAnnotations("generate_egovframe_crud") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = generateCrud(args);
@@ -916,14 +900,13 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     },
   );
   // ── CI 설정 생성 도구 (v0.19.0) ────────────────────────
-  server.tool(
+  server.registerTool(
     "generate_egovframe_ci",
-    d("generate_egovframe_ci", "프로젝트에 GitHub Actions CI 워크플로(빌드·테스트)를 생성합니다. 빌드도구(maven/gradle) 자동 감지, JDK 지정. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다."),
-    {
+    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 GitHub Actions CI 워크플로(빌드·테스트)를 생성합니다. 빌드도구(maven/gradle) 자동 감지, JDK 지정. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
       jdk: z.string().regex(CI_JDK_RE, "숫자와 점으로 된 버전만 허용 (예: 17, 21, 1.8)").default("17").describe("JDK 버전 (기본 17, 숫자·점만 허용)"),
       dryRun: z.boolean().default(false).describe("true면 파일 생성 없이 내용만 반환"),
-    },
+    }, annotations: toolAnnotations("generate_egovframe_ci") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = generateCiConfig(args);
@@ -936,10 +919,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 프로젝트 빌드 실행 도구 (v0.23.0) ────────────────────────
   // generate_egovframe_ci가 CI '설정'만 만들던 한계를 보완: 생성한 프로젝트를 실제로
   // 컴파일·테스트하고, 오류를 파일·라인 단위로 구조화해 생성→검증 루프를 닫는다.
-  server.tool(
+  server.registerTool(
     "build_egovframe_project",
-    d("build_egovframe_project", "생성한 eGovFrame 프로젝트를 실제로 빌드(컴파일·테스트·패키지)하고 결과를 구조화해 반환합니다. 빌드도구(maven/gradle)와 래퍼(mvnw/gradlew)를 자동 감지하고, 컴파일·테스트 오류를 파일·라인 단위로 파싱합니다. dryRun으로 실행 예정 명령만 미리볼 수 있습니다. (생성→검증 루프 완성)"),
-    {
+    { title: t("build_egovframe_project"), description: d("build_egovframe_project", "생성한 eGovFrame 프로젝트를 실제로 빌드(컴파일·테스트·패키지)하고 결과를 구조화해 반환합니다. 빌드도구(maven/gradle)와 래퍼(mvnw/gradlew)를 자동 감지하고, 컴파일·테스트 오류를 파일·라인 단위로 파싱합니다. dryRun으로 실행 예정 명령만 미리볼 수 있습니다. (생성→검증 루프 완성)"), inputSchema: {
       projectDir: z.string().describe("빌드할 프로젝트 루트 디렉터리(pom.xml 또는 build.gradle 위치, 절대경로 권장)"),
       goal: z
         .enum(["compile", "test", "package"])
@@ -960,7 +942,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         .default(200)
         .describe("반환 로그의 최대 줄 수(마지막 N줄). 기본 200줄"),
       dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령만 반환"),
-    },
+    }, annotations: toolAnnotations("build_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await runBuild({
@@ -1012,10 +994,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // build_egovframe_project(goal=test)는 종료 코드와 로그만 돌려줬다. 이 도구는 빌드도구가 남기는
   // JUnit XML 리포트를 읽어 스위트·케이스 단위로 결과를 구조화하고, 실패 케이스의 메시지와
   // 테스트 클래스 내 파일·라인까지 제공해 "어느 테스트가 왜 깨졌는가"에 바로 답한다.
-  server.tool(
+  server.registerTool(
     "test_egovframe_project",
-    d("test_egovframe_project", "eGovFrame 프로젝트의 테스트를 실제로 실행하고 JUnit XML 리포트(surefire/gradle)를 읽어 결과를 구조화합니다. 스위트별 통과·실패·오류·건너뜀 수와, 실패 케이스의 메시지·예외 타입·테스트 파일/라인을 반환합니다. testFilter로 특정 클래스/메서드만 실행할 수 있고, dryRun으로 실행 예정 명령을 미리볼 수 있습니다. (build_egovframe_project 의 테스트 후속)"),
-    {
+    { title: t("test_egovframe_project"), description: d("test_egovframe_project", "eGovFrame 프로젝트의 테스트를 실제로 실행하고 JUnit XML 리포트(surefire/gradle)를 읽어 결과를 구조화합니다. 스위트별 통과·실패·오류·건너뜀 수와, 실패 케이스의 메시지·예외 타입·테스트 파일/라인을 반환합니다. testFilter로 특정 클래스/메서드만 실행할 수 있고, dryRun으로 실행 예정 명령을 미리볼 수 있습니다. (build_egovframe_project 의 테스트 후속)"), inputSchema: {
       projectDir: z.string().describe("테스트할 프로젝트 루트 디렉터리(pom.xml 또는 build.gradle 위치, 절대경로 권장)"),
       testFilter: z
         .string()
@@ -1043,7 +1024,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         .default(50)
         .describe("반환할 실패·오류 케이스 최대 수. 기본 50"),
       dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령·리포트 위치만 반환"),
-    },
+    }, annotations: toolAnnotations("test_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = await runTests({

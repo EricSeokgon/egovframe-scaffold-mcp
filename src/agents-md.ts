@@ -12,7 +12,7 @@ import { withFileTransaction } from "./file-transaction.js";
 import { SERVER_VERSION } from "./version.js";
 
 export type AgentsLang = "ko" | "en";
-export interface AgentsMdOptions { projectDir: string; fileName?: string; lang?: AgentsLang; overwrite?: boolean; dryRun?: boolean }
+export interface AgentsMdOptions { projectDir: string; fileName?: string; lang?: AgentsLang; overwrite?: boolean; dryRun?: boolean; /** 빌드 명령 형태(래퍼 이름)를 정하는 플랫폼 — 기본 process.platform, 테스트 주입용 */ platform?: NodeJS.Platform | string }
 export interface AgentsMdResult {
   projectDir: string;
   filePath: string;
@@ -49,7 +49,7 @@ function listIf(dir: string, rel: string): string[] {
 function existsRel(dir: string, rel: string): boolean { return fs.existsSync(path.join(dir, rel)); }
 
 /** 진단으로 사실을 모은다(순수 읽기). */
-export function collectAgentsFacts(projectDir: string): AgentsFacts {
+export function collectAgentsFacts(projectDir: string, opts: { platform?: NodeJS.Platform | string } = {}): AgentsFacts {
   const dir = path.resolve(projectDir);
   const diag = diagnoseProject({ projectDir: dir });
   const buildTool = detectBuildToolAt(dir);
@@ -58,7 +58,7 @@ export function collectAgentsFacts(projectDir: string): AgentsFacts {
   if (buildTool) {
     commands = { compile: "", test: "", package: "" };
     for (const goal of ["compile", "test", "package"] as BuildGoal[]) {
-      const c = resolveCommand(dir, buildTool, goal);
+      const c = resolveCommand(dir, buildTool, goal, { platform: opts.platform });
       wrapper = wrapper || c.usedWrapper;
       commands[goal] = [c.command, ...c.args].join(" ");
     }
@@ -189,7 +189,7 @@ export async function generateAgentsMd(opts: AgentsMdOptions): Promise<AgentsMdR
   const fileName = opts.fileName ?? "AGENTS.md";
   if (!FILE_NAME_RE.test(fileName) || fileName.includes("..")) throw new Error(`파일명은 영숫자·._- 로 된 .md 파일이어야 합니다: ${fileName}`);
   const lang: AgentsLang = opts.lang ?? "ko";
-  const facts = collectAgentsFacts(dir);
+  const facts = collectAgentsFacts(dir, { platform: opts.platform });
   const content = renderAgentsMd(facts, { projectName: path.basename(dir), lang });
   const filePath = path.join(dir, fileName);
   const exists = fs.existsSync(filePath);
