@@ -42,10 +42,22 @@ assert(real.startsWith(`## ${facts.version}\n`) && real.length > 200, `현재 �
 
 // ── 패키지 내용 (npm pack --dry-run) ─────────────────
 const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-const pack = spawnSync(npmCmd, ["pack", "--dry-run", "--json", "--ignore-scripts"], { cwd: new URL("..", import.meta.url), encoding: "utf8", shell: process.platform === "win32" });
+// 부모 npm(publish 의 prepublishOnly)에서 넘어온 npm_config_*·lifecycle 환경은 지워 중첩 호출이 독립적으로 돌게 한다
+const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^npm_(config|lifecycle|package)_/i.test(k)));
+const pack = spawnSync(npmCmd, ["pack", "--dry-run", "--json", "--ignore-scripts"], { cwd: new URL("..", import.meta.url), encoding: "utf8", shell: process.platform === "win32", env: cleanEnv });
 if (pack.status !== 0) { console.error(pack.stderr); }
-const info = pack.status === 0 ? JSON.parse(pack.stdout)[0] : null;
-assert(info && info.name === facts.name && info.version === facts.version, `npm pack --dry-run 실행 (${info?.filename ?? pack.stderr?.slice(0, 200)})`);
+/** npm 10/11 은 배열, npm 12 는 패키지 이름을 키로 한 객체를 돌려준다(v0.36.1 — 첫 자동 배포가 npm@latest=12 에서 여기서 멈췄다). 경고가 섞여도 첫 JSON 토큰부터 읽는다. */
+export function parsePackJson(stdout) {
+  const start = stdout.search(/[[{]/);
+  if (start < 0) return null;
+  const parsed = JSON.parse(stdout.slice(start));
+  const info = Array.isArray(parsed) ? parsed[0] : Object.values(parsed)[0];
+  return info && typeof info === "object" ? info : null;
+}
+let info = null;
+try { info = pack.status === 0 ? parsePackJson(pack.stdout) : null; } catch (e) { console.error(`npm pack 출력 해석 실패: ${e.message}\n${pack.stdout.slice(0, 500)}`); }
+assert(info && info.name === facts.name && info.version === facts.version, `npm pack --dry-run 실행 (${info?.filename ?? `exit ${pack.status}: ${(pack.stderr || pack.stdout || "").slice(0, 300)}`})`);
+assert(parsePackJson(JSON.stringify([{ name: "x", files: [] }])).name === "x" && parsePackJson(`npm warn something\n${JSON.stringify({ x: { name: "x", files: [] } })}`).name === "x" && parsePackJson("no json") === null, "parsePackJson: 배열(npm ≤11)·객체(npm 12)·앞선 경고 허용");
 const files = new Set((info?.files ?? []).map((f) => f.path));
 for (const must of ["package.json", "README.md", "README.en.md", "LICENSE", "dist/index.js", "dist/server.js", "catalog/components.json", "catalog/templates.json", "catalog/migration-rules.json", "catalog/dependency-baseline.json", "catalog/config-templates.json"])
   assert(files.has(must), `tarball 포함: ${must}`);
