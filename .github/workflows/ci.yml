@@ -98,6 +98,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run test:catalog-drift-live
+      - name: server.json validates against the MCP Registry (mcp-publisher validate)
+        run: |
+          curl -sSL "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher validate
 
       - name: AI assembly test (downloads egovframe-ai-rag)
         run: npm run test:ai-assembly
