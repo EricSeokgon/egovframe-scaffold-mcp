@@ -327,7 +327,7 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Eri
 
 v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
 
-다음 세 버전(v0.32–v0.34)의 범위는 [다음 버전 기획](#다음-버전-기획-v032v034)에 있습니다. Homebrew 탭은 계속 후순위입니다.
+v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를 마쳤습니다. 다음 세 버전(v0.35–v0.37)의 범위는 [다음 버전 기획](#다음-버전-기획-v035v037)에 있습니다. Homebrew 탭은 계속 후순위입니다.
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -346,10 +346,75 @@ v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자
 | **v0.32 완료** | MCP 프로토콜 현대화 | `registerTool` 전환(deprecated `tool()` 0건), 도구 27종에 ko/en `title`·annotations(readOnly 14·destructive 4·openWorld), 5종 `outputSchema`+`structuredContent`, 테스트 이식성 검사 스크립트(게이트)와 플랫폼 주입 단언 |
 | **v0.33 완료** | `migrate_egovframe_project` 3단계: 검증 | `verify=true` 로 compile 오류 ↔ 수동 항목 연결 작업 목록(javac symbol/location 파싱, 연결 4단계), 공통컴포넌트 3.x→5.x 대응표(제거 54·이동 4, schemaVersion 2)와 재조립 권고·`skipComponents` |
 | **v0.34 완료** | 의존성 기준 완성 + drift 감시 | Spring Boot BOM 전체(1,473종)·RTE 모듈 전이 의존성(58종)을 기준에 포함하고 항목마다 기준 출처 표시, `vendor` 분류·EOL 좌표 교체 규칙으로 공통컴포넌트 3.10 pom 의 `unknown` 17 → 1, `sync_egovframe_templates` 가 규칙·기준 카탈로그의 upstream drift(새 태그·새 parent·pom sha256)와 갱신 절차 보고 |
+| **v0.35 계획** | 릴리스 자동화 (배포 공급망) | `main` 병합만으로 npm(OIDC trusted publishing + provenance)·태그·GitHub Release·MCP Registry(OIDC) 게시. 버전·태그·`server.json`·변경 이력 정합 검사, 패키지 내용 검사 |
+| **v0.36 계획** | 해석된 의존성 트리 + SBOM | `check_egovframe_dependencies(resolve=true)` 가 빌드 도구로 전이 의존성까지 해석해 기준·OSV 대조, 새 도구 `generate_egovframe_sbom` 이 CycloneDX 1.6 SBOM(빌드 파일 변경 없이)과 기준 판정·취약점을 함께 생성 |
+| **v0.37 계획** | 전환 준비도 평가서 + 회귀 코퍼스 | 진단·전환·의존성·보안·SBOM 을 한 번에 묶은 평가 리포트(`generate_egovframe_report` 확장), 공식 3.x/4.x 자산으로 전환·점검 결과를 고정하는 회귀 코퍼스(4.x→5.x 경로 포함) |
 
-## 다음 버전 기획 (v0.32–v0.34)
+## 다음 버전 기획 (v0.35–v0.37)
 
-v0.31.0 까지 끝난 상태(2026-10-02, 도구 27종, 테스트 약 1,100건)에서 다음 세 릴리스를 아래 순서로 진행합니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-02)"에 있습니다.
+v0.34.0 까지 끝난 상태(2026-10-04, 도구 27종, 테스트 약 1,300건, npm 0.33.1 배포·0.34.0 배포 대기)에서 다음 세 릴리스를 아래 순서로 진행합니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 이번 세 버전의 공통 주제는 **배포와 운영을 사람 손에서 떼어 내는 것**(v0.35), **선언된 의존성이 아니라 실제로 실리는 의존성을 보는 것**(v0.36), **지금까지 만든 분석을 한 장의 평가서와 회귀 코퍼스로 묶는 것**(v0.37)입니다. 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-04)"에 있습니다.
+
+### v0.35.0 — 릴리스 자동화 (배포 공급망)
+
+**목표**: v0.29–v0.34 여섯 번의 릴리스에서 태그를 잘못된 커밋에 단 일(2회), npm 배포를 빠뜨린 일(0.32.0·0.33.0), Windows 게이트 실패 상태로 병합한 일(2회)이 모두 사람이 명령을 순서대로 치는 과정에서 났습니다. `main` 에 병합되면 나머지(게이트 재확인 → 태그 → npm → GitHub Release → MCP Registry)는 CI 가 하고, 사람은 PR 병합만 합니다. 배포물에는 provenance 가 붙어 "이 npm 패키지는 이 저장소의 이 커밋에서 이 워크플로가 만들었다"를 소비자가 검증할 수 있게 합니다.
+
+**범위 (포함)**
+- `.github/workflows/release.yml`: CI 워크플로가 `main` 에서 성공한 뒤(`workflow_run`)에만 실행. `package.json` 버전을 읽어 (a) `server.json` 두 `version` 과 같고, (b) README 변경 이력에 그 버전 항목이 있고, (c) 태그 `vX.Y.Z` 가 아직 없고, (d) npm 에 그 버전이 없을 때만 진행합니다. 네 조건 중 하나라도 어긋나면 이유를 적고 성공 종료(병합마다 도는 워크플로가 빨간불이 되지 않게).
+- npm: **trusted publishing(OIDC)** 으로 토큰 없이 `npm publish --access public`. 공개 저장소·공개 패키지이므로 provenance 가 자동으로 붙습니다. 요구 조건은 npm CLI 11.5.1+·Node 22.14+·`id-token: write`·self-hosted 러너 금지이며, npmjs.com 의 패키지 설정에서 trusted publisher(저장소 `EricSeokgon/egovframe-scaffold-mcp`, 워크플로 파일명 `release.yml`)를 **저장소 소유자가 한 번 등록**해야 합니다(README 절차에 적음).
+- 태그·Release: 배포가 성공한 **그 `main` 커밋**에 `vX.Y.Z` 태그를 만들고, `scripts/release-notes.mjs` 가 README 변경 이력에서 해당 버전 항목을 뽑아 GitHub Release 본문으로 씁니다(태그가 병합 전 커밋에 달리는 사고가 구조적으로 사라집니다).
+- MCP Registry: `mcp-publisher login github-oidc` → `mcp-publisher publish`(`io.github.EricSeokgon/*` 네임스페이스는 GitHub OIDC 로 소유 증명, 비밀 없음). npm 에 패키지가 먼저 있어야 하므로 npm 단계 뒤에 둡니다. 첫 실행이 곧 "MCP Registry 첫 등록"(보류 항목)이 됩니다.
+- 패키지 내용 검사: `npm pack --dry-run --json` 으로 tarball 에 `dist/`·`catalog/`·`server.json`·`README*`·`LICENSE` 만 들어가고 `test/`·`scripts/`·`.github/` 가 없는지, 크기 상한(현재 약 1.2MB → 2MB)을 넘지 않는지 게이트에서 단언(`test:package`). `test:registry` 에 "변경 이력에 현재 버전 항목 존재" 단언 추가(변경 이력 누락을 게이트가 막음).
+- README 릴리스 절차를 "PR 병합 → CI 가 나머지 수행 → `npm view`·Release 페이지 확인" 3단계로 줄이고, 수동 절차는 비상용으로만 남깁니다.
+
+**범위 (제외)**: 브랜치 보호 설정(저장소 설정이라 코드로 못 함 — 보류 항목에 유지), Homebrew 탭, Windows 서명
+
+**검증 기준**: `test:package`·`test:registry` 게이트 통과. 워크플로는 실제 병합으로만 검증할 수 있으므로 v0.35.0 자체는 마지막 수동 릴리스로 내고, 병합 직후 `release.yml` 의 "조건 불충족 → 성공 종료" 경로(이미 태그·npm 이 있음)를 로그로 확인합니다. v0.36.0 부터 자동 배포. 배포 뒤 `npm view egovframe-scaffold-mcp --json` 의 `dist.attestations` 와 GitHub Release·MCP Registry 검색 결과를 확인합니다.
+
+**완료 정의**: 도구 27종(변화 없음), `release.yml` 병합, npmjs.com trusted publisher 등록(소유자 수동 1회, README 에 체크리스트), v0.36.0 이 사람 명령 없이 npm·태그·Release·Registry 에 게시
+
+### v0.36.0 — 해석된 의존성 트리 + SBOM
+
+**목표**: `check_egovframe_dependencies` 는 pom 에 **적힌** 의존성만 봅니다. 공식 `egovframe-web` 템플릿은 선언 19건·조치 0건이지만, Maven 으로 실제 해석하면 런타임에 **69개 artifact** 가 실리고 그중 11개가 기준 미만, 9개가 기준 밖, 8개에 OSV 권고가 붙어 있습니다(선행 조사). 전이 의존성까지 보는 `resolve=true` 와, 2027년부터 공공기관 SW 등록에 요구될 SBOM 을 표준 형식(CycloneDX 1.6)으로 만들어 주는 도구를 추가합니다.
+
+**범위 (포함)**
+- `check_egovframe_dependencies(resolve=true, resolveScope="runtime"|"all", timeoutMs)`: `build_egovframe_project` 의 러너(타임아웃·프로세스 트리 종료·래퍼 감지)로 Maven `org.apache.maven.plugins:maven-dependency-plugin:3.8.1:tree -DoutputFile -DoutputType=text`(pom 변경 없이 좌표를 완전히 적어 호출) 또는 Gradle `dependencies --configuration runtimeClasspath` 를 실행해 트리를 파싱합니다. 결과 `findings` 에 `origin: "declared" | "transitive"` 와 `via`(트리 경로, 예 `egovframe-rte-ptl-mvc → spring-webmvc`)를 붙이고, 해석된 집합 전체를 기존 분류기(parent → 계열 → Boot BOM/RTE 전이, v0.34)로 판정합니다. `summary` 는 선언/해석을 나눠 세고, 선언한 버전과 해석된 버전이 다른 좌표(가까운 선언이 이김)는 `resolvedDiffers` 로 따로 보입니다. `offline=false` 면 OSV 조회도 해석된 집합에 대해 합니다. 빌드 도구가 없거나 해석이 실패하면 선언 기준 결과에 이유를 붙여 돌려줍니다(기존 동작 유지).
+- 새 도구 `generate_egovframe_sbom(projectDir, format="cyclonedx-json", outputPath="sbom/bom.cdx.json", enrich=true, offline=true, dryRun=true)`: Maven 은 `org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom`(멀티 모듈 합산, pom 변경 없음), Gradle 은 `--init-script` 로 `cyclonedx-gradle-plugin` 3.4.1 을 적용(빌드 파일 변경 없음)해 CycloneDX **1.6 JSON** 을 만듭니다. `enrich=true` 면 component 마다 `properties` 에 `egovframe:status`(기준 판정)·`egovframe:basis`·`egovframe:baseline` 을 붙이고, `offline=false` 면 OSV 결과를 CycloneDX `vulnerabilities[]`(`affects` 로 component 참조)로 넣습니다. 출력은 프로젝트 안 경로만 허용, 기존 파일은 `overwrite=true` 가 아니면 거부, transaction·dryRun(요약만) 적용. 응답은 component 수·직접/전이 수·판정 집계·취약점 수·파일 경로.
+- 도구 메타: `generate_egovframe_sbom` 은 `openWorldHint`(빌드 도구가 저장소 접근)·비파괴(새 파일만, overwrite 는 명시)·`outputSchema` 선언. 영문 설명·README·AGENTS.md 생성기(사용 가능 도구 목록)에 반영.
+- 기준 카탈로그 소급: 선행 조사에서 드러난 공통컴포넌트 4.3.2 pom 의 `project:*` groupId(system scope 로 로컬 jar 를 붙이는 관행)는 `vendor` 로 분류하고 사유에 "system scope 로컬 jar — SBOM 에서 공급자 확인 필요" 를 적습니다.
+
+**범위 (제외)**: SPDX 형식(요구가 생기면 CycloneDX → SPDX 변환기로), 취약점 DB 동봉, 라이선스 정책 판정(SBOM 에 라이선스는 플러그인이 넣는 그대로)
+
+**검증 기준**: 공식 `egovframe-web` 템플릿(자리표시자 채운 pom)에서 `resolve=true` 가 60개 이상 해석·`transitive` 표시·`via` 경로 존재, SBOM 이 `bomFormat: CycloneDX`·`specVersion: 1.6`·component 60개 이상·모든 component 에 `purl`(`pkg:maven/…`)·`enrich` 속성 존재; `offline=false` 로 `vulnerabilities[]` 가 OSV 결과와 같은 수; Gradle 템플릿(`egovframe-boot-web` 를 Gradle 로 변환한 픽스처 또는 공식 Gradle 샘플)에서 init script 경로 통과; 오프라인 테스트는 트리 파서(Maven·Gradle 출력 픽스처)와 SBOM 보강을 가짜 러너로 단언; CI 통합에 실제 Maven 해석·SBOM 생성 추가
+
+**완료 정의**: 도구 28종, `test:dependencies` 에 해석 경로 단언, 신규 `test:sbom`(오프라인)·`test:sbom-live`(CI), `docs/design-dependency-check.md` 에 해석·SBOM 절, README 에 SBOM 사용 예
+
+### v0.37.0 — 전환 준비도 평가서 + 회귀 코퍼스
+
+**목표**: 공공 SI 현장에서 "이 3.x/4.x 시스템을 5.x 로 옮기면 무엇이 얼마나 걸리고, 지금 공급망 상태는 어떤가"를 묻는 데 답하려면 지금은 도구 다섯 개를 차례로 불러야 합니다. 한 번의 호출로 평가서를 만들고, 공식 3.x/4.x 자산에 대한 결과를 코퍼스로 고정해 규칙·기준이 바뀔 때 회귀를 잡습니다.
+
+**범위 (포함)**
+- `generate_egovframe_report(sections=["assessment"], resolve=false, offline=true)`: 기존 리포트(진단)에 평가서 절을 추가 — (1) 프로젝트 개요(빌드 도구·RTE 세대·parent·Java·공통컴포넌트), (2) 전환 범위(`migrate_egovframe_project` 진단 요약: auto/manual, 종류별, 파일 수, 재조립 권고 컴포넌트, 예상 수동 작업 목록 상위 N), (3) 의존성(기준 판정 집계·조치 목록·`resolve=true` 면 전이 포함·OSV), (4) 보안 설정 점검, (5) SBOM 요약(만들었으면 경로·component 수), (6) **등급과 근거**: 전환 난이도(수동 항목 수·재조립 컴포넌트 수·제거 클래스 참조 수를 구간으로)와 공급망 상태(기준 미만·교체 필요·취약점 수)를 각각 A–D 로 매기되, 등급 산식을 리포트 안에 그대로 적어 사람이 재계산할 수 있게 합니다. Markdown 과 `format=json`(`outputSchema`), 선택적으로 `outputPath` 에 파일로 저장(transaction·dryRun).
+- 회귀 코퍼스 `test:migrate-corpus`(CI 통합): 공식 `egovframe-common-components` **v3.10.0**(1,148 java)과 **v4.3.2**(1,295 java, 4.x 좌표 `org.egovframe.rte:org.egovframe.rte.*`) 소스 트리 전체에 진단·적용(dryRun)·의존성 점검을 돌려 종류별 건수·`unknown`·재조립 권고·적용 계획 수를 `catalog/migration-corpus.json` 에 기대값으로 고정하고 ±허용 범위 안인지 단언합니다. 4.x→5.x 경로는 지금까지 단위 픽스처로만 검증했으므로 실제 자산으로 처음 확인하는 셈입니다. 코퍼스 결과는 평가서 등급 산식의 구간을 정하는 근거로도 씁니다.
+- 코퍼스가 드러내는 결함 수정(선행 조사에서 이미 하나: 4.3.2 pom 의 `project:*` system scope jar 11건이 `unknown` — v0.36 에서 `vendor` 로 소급; 그 밖에 `javax.faces` 등 미처리 Jakarta 좌표가 있으면 매핑에 추가).
+
+**범위 (제외)**: 비용·공수 산정(사람·조직마다 다름 — 건수와 등급까지만), PDF/HWP 출력(Markdown 을 변환하는 것은 호출자의 몫)
+
+**검증 기준**: 코퍼스 2종(3.10.0·4.3.2) 기대값 고정 후 게이트·CI 통과, 평가서가 공식 5.x 템플릿에서 "전환 범위 0·등급 A", 3.10 자산에서 수동 항목·재조립 권고가 등급 근거로 나타남, `format=json` 이 `outputSchema` 통과, 등급 산식 재계산 테스트
+
+**완료 정의**: 도구 28종(평가서는 기존 도구 확장), `catalog/migration-corpus.json`, `docs/design-assessment-report.md`, README 에 평가서 예시
+
+### 보류·운영 항목
+
+- **npm 0.34.0 배포**: `main`·태그 `v0.34.0`(4bed548)은 준비됐고 npm 최신은 0.33.1 입니다. `git checkout main && git pull --ff-only origin main && npm publish`. v0.35 부터는 CI 가 합니다.
+- **MCP Registry 첫 등록**: v0.35 의 `release.yml` 이 OIDC 로 수행합니다(현재 레지스트리 검색 결과 0건). 그 전에 수동으로 하려면 `mcp-publisher login github && mcp-publisher publish`.
+- **npm trusted publisher 등록(소유자 1회)**: npmjs.com → 패키지 `egovframe-scaffold-mcp` → Settings → Trusted publishing → GitHub Actions: owner `EricSeokgon`, repository `egovframe-scaffold-mcp`, workflow `release.yml`. 등록 전에는 `release.yml` 의 npm 단계가 실패하므로 v0.35 PR 병합 전에 해 둡니다.
+- **브랜치 보호**: #33·#36 이 Windows gate 실패 상태로 병합됐습니다. `main` 규칙에 "Require status checks to pass"(gate 6 + integration)를 켜 두면 재발하지 않습니다.
+- **기준 없음 잔여**: 공통컴포넌트 3.10 pom 의 `xerces:xercesImpl` 은 공개 기준이 없어 그대로 둡니다(JDK 내장 파서로 충분하면 제거 권고를 규칙에 넣을 수 있음).
+- Homebrew 탭, Initializr upstream 이슈 3건 제출, 응답 본문 영문화(`EGOVFRAME_LANG=en` 은 현재 도구 설명만)는 계속 후순위입니다.
+
+## 이전 기획 (v0.32–v0.34, 완료)
+
+v0.31.0 까지 끝난 상태(2026-10-02, 도구 27종, 테스트 약 1,100건)에서 다음 세 릴리스를 아래 순서로 진행했습니다. 세 버전 모두 2026-10-03 까지 완료했으며 기획 원문은 기록으로 남기고 결과를 항목 아래에 적었습니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-02)"에 있습니다.
 
 ### v0.32.0 — MCP 프로토콜 현대화 + 테스트 플랫폼 중립 가드
 
@@ -403,13 +468,6 @@ v0.31.0 까지 끝난 상태(2026-10-02, 도구 27종, 테스트 약 1,100건)�
 **완료 정의**: 도구 27종, `test:dependencies` 확장, `docs/design-dependency-check.md` 갱신, 기준 파일 크기 200KB 이하 유지
 
 **결과(2026-10-03) — 완료**: 기준 파일 `schemaVersion` 2 에 `boot`(spring-boot-dependencies 3.5.6 직접 362 + import 44종 → 1,473 좌표, 충돌 1건은 Maven 순서대로 직접 항목 유지)와 `rteTransitive`(모듈 18종 pom → 58 좌표, 버전·scope·`via`)를 넣었고 크기는 150KB 입니다. 기획과 달라진 점: (1) 표준프레임워크 저장소가 `maven-metadata.xml`·디렉터리 목록을 막아 두어 "최신 parent 버전" 대신 다음 patch 3개·minor·major 후보를 HEAD 로 탐침합니다 — 이 탐침이 기준(5.0.1)보다 새 parent 5.0.2 를 찾아 이번에 기준을 5.0.2 로 올렸습니다(차이는 RTE 버전뿐). (2) 태그 조회는 GitHub API 가 막히면 태그 페이지(HTML)로 대체합니다(`GITHUB_TOKEN` 이 있으면 API 에 씀). (3) 계열 규칙이 `org.springframework.social`·`.ldap` 까지 `org.springframework` 로 묶던 결함을 고쳐 groupId 정확 일치(jackson 만 하위 포함)로 좁히고 달력형 릴리스 트레인(`spring-cloud-dependencies`)은 계열에서 뺐습니다. (4) 공통컴포넌트 3.10 pom 의 `unknown` 17건 가운데 공개 기준이 있을 수 없는 국내 벤더·기관 배포 6건은 새 분류 `vendor`(사유 표시)로, EOL·이전 좌표 8건은 전환 규칙 `libraries` 에 교체 규칙을 추가해(`migrate_egovframe_project` 의 manual 항목으로도 나옵니다) 남은 `unknown` 은 `xerces:xercesImpl` 1건입니다. 검증: 공식 `egovframe-boot-web`·`egovframe-web` 템플릿 pom `unknown` 0, drift 테스트는 오프라인 주입 26단언 + CI 통합 실제 조회, 기준 생성은 `--cache`/`--offline` 으로 재현 가능(같은 입력 → 같은 파일).
-
-### 보류·운영 항목
-
-- **MCP Registry 첫 등록**: npm 은 0.33.1 까지 배포됐습니다(0.33.0 은 Windows 게이트 결함으로 건너뜀). `mcp-publisher login github && mcp-publisher publish` 로 MCP Registry 에 첫 등록을 합니다(현재 레지스트리 검색 결과 0건).
-- **브랜치 보호**: #33 과 #36 이 Windows gate 실패 상태로 병합됐습니다. `main` 규칙에 "Require status checks to pass"(gate 6 + integration)를 켜 두면 재발하지 않습니다.
-- **기준 없음 잔여**: 공통컴포넌트 3.10 pom 의 `xerces:xercesImpl` 은 공개 기준이 없어 그대로 둡니다(JDK 내장 파서로 충분하면 제거 권고를 규칙에 넣을 수 있음).
-- Homebrew 탭, Initializr upstream 이슈 3건 제출은 계속 후순위입니다.
 
 ## 이전 기획 (v0.29–v0.31, 완료)
 
@@ -477,6 +535,15 @@ v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행�
 6. (v0.31+) `server.json` 의 두 `version` 이 새 버전과 같은지 `npm run test:registry` 로 확인했으므로, 필요하면 `mcp-publisher publish` 로 MCP Registry 갱신
 
 태그는 반드시 병합된 `main` 커밋에 답니다. 병합 전 커밋이나 로컬 병합 커밋에 태그가 달리면 지우고 다시 답니다(v0.25.2·v0.28.0·v0.28.1 에서 각각 한 번씩 겪었습니다).
+
+### 선행 조사 결과 (2026-10-04)
+
+- **npm trusted publishing**: 2025-07-31 GA. npm CLI 11.5.1+·Node 22.14+, 워크플로 `permissions: id-token: write`, npmjs.com 에 trusted publisher(조직/사용자·저장소·워크플로 파일명·선택 environment) 등록. 공개 저장소·공개 패키지면 provenance 자동 첨부(`provenance=false` 로 끌 수 있음). self-hosted 러너 미지원, `workflow_call` 재사용 워크플로는 호출 워크플로 이름으로 검사되므로 단일 파일 `release.yml` 로 둡니다.
+- **MCP Registry**: `mcp-publisher login github-oidc` 로 비밀 없이 로그인(`id-token: write`), `io.github.<owner>/*` 네임스페이스는 GitHub 계정 소유로 증명. 바이너리는 `github.com/modelcontextprotocol/registry/releases` 에서 OS/ARCH 별 tar.gz. npm 에 `mcpName` 이 있는 패키지가 **먼저** 게시돼 있어야 하므로 npm 단계 뒤에 실행. 저장소에는 아직 검색 결과 0건.
+- **해석된 의존성**: 공식 `egovframe-web` 템플릿 pom(자리표시자만 채움)에 `maven-dependency-plugin:3.8.1:list -DincludeScope=runtime` → **67 artifact**, `cyclonedx-maven-plugin:2.9.3:makeBom -DschemaVersion=1.6` → pom 변경 없이 186KB JSON, component 69(purl·MD5/SHA 해시·라이선스 포함). 해석 집합을 v0.34 분류기로 판정하면 parent 직접 23·계열 13·RTE 전이 9·Boot BOM 4 가 `ok`, 기준 미만 11(RTE 5.0.0 7 + Boot BOM 4), 기준 없음 9(commons-collections 3·commons-logging·antlr 런타임 등), OSV 권고가 붙는 component 8(spring-webmvc/-core/-web/-webflux/-expression 6.2.11, log4j-core/-api 2.25.3, commons-configuration2 2.11.0). 선언만 보던 결과(조치 0)와 크게 다릅니다. 플러그인 최신: maven-dependency-plugin 3.11.0, cyclonedx-maven-plugin 2.9.3, cyclonedx-gradle-plugin 3.4.1(검증한 버전으로 고정).
+- **SBOM 정책**: 과기정통부·국정원 SW 공급망 보안 로드맵(2026-06)은 2027년부터 공공기관이 도입 SW 의 SBOM 을 통합관리체계에 등록·공급망 위험을 상시 점검하고 공공 IT 사업에서 SBOM 과 취약점 대응 절차 제출을 요구하도록 단계화했습니다(형식은 SPDX/CycloneDX 를 특정하지 않음 — CycloneDX 1.6 JSON 을 기본으로 두고 SPDX 는 변환으로 대응).
+- **4.x 자산**: `egovframe-common-components` 는 v4.3.2 가 4.x 마지막 태그(java 1,295개, 의존성 70건). pom 에 현행 진단을 돌리면 4.x 좌표 9·Jakarta 8·라이브러리 8·제거 모듈 1(auto 19·manual 11) 이 잡히고, 의존성 점검은 `project:*` groupId 의 system scope 로컬 jar 10건(ojdbc6·altibase·tibero5·cubrid·goldilocks8·smeapi·gpki 2·onepass)과 `javax.faces:javax.faces-api` 가 `unknown` 으로 남아 v0.36 소급·v0.37 코퍼스의 첫 수정 대상입니다.
+- **릴리스 사고 기록(동기)**: v0.30.0 태그가 병합 전 커밋에(복구), v0.33.0 태그가 로컬 main 커밋에(복구), 0.32.0·0.33.0 npm 미배포(0.33.0 은 Windows 게이트 결함으로 의도적 건너뜀), #33·#36 Windows 게이트 실패 상태 병합. 모두 수동 절차 단계에서 발생.
 
 ### 선행 조사 결과 (2026-10-02)
 
