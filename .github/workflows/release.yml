@@ -46,9 +46,10 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - name: Upgrade npm
+      # trusted publishing 은 npm >= 11.5.1 이면 충분하다. @latest 는 메이저가 바뀌면(11 → 12 에서 `npm pack --json` 출력 형식이 바뀜) 게이트가 깨질 수 있어 11 로 고정한다.
+      - name: npm 11 (trusted publishing needs >= 11.5.1)
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11
           node --version
           npm --version
 
