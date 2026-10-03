@@ -94,6 +94,10 @@ jobs:
         run: npm run test:dependencies-live
       - name: Network diagnosis against real hosts
         run: npm run test:network-live
+      - name: Catalog drift watch (runtime/components tags, parent versions, pinned pom sha256)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run test:catalog-drift-live
 
       - name: AI assembly test (downloads egovframe-ai-rag)
         run: npm run test:ai-assembly

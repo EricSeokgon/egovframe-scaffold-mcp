@@ -18,7 +18,7 @@ function snapshot(root) {
 // ── 기준 카탈로그 정합 ────────────────────────────────
 const b = loadDependencyBaseline();
 const rules = loadMigrationRules();
-assert(b.schemaVersion === 1 && /^\d{4}-\d{2}-\d{2}$/.test(b.surveyedAt) && b.repository === "https://maven.egovframe.go.kr/maven/", "baseline 스키마·출처");
+assert(b.schemaVersion === 2 && /^\d{4}-\d{2}-\d{2}$/.test(b.surveyedAt) && b.repository === "https://maven.egovframe.go.kr/maven/", "baseline 스키마 2·출처");
 assert(b.sources.length === 2 && b.sources.every((s) => /^[0-9a-f]{64}$/.test(s.sha256) && s.url.startsWith(b.repository) && s.managed > 0), "출처 parent 2종 + sha256 + url");
 assert(b.sources.find((s) => s.kind === "boot")?.parent?.artifactId === "spring-boot-starter-parent", "boot parent 의 상위 spring-boot-starter-parent 기록");
 assert(b.java === 17 && b.rte.version === rules.target.runtimeVersion && b.spring.framework && versionBelow(b.spring.framework, "6.0.0") === false, `Java 17 · RTE ${b.rte.version} · Spring ${b.spring.framework}`);
@@ -30,6 +30,22 @@ for (const must of ["org.springframework:spring-test", "jakarta.servlet:jakarta.
   assert(keys.includes(must), `기준 포함: ${must}`);
 assert(!keys.some((k) => k.startsWith("javax.servlet") || k.startsWith("egovframework.rte:")), "기준에 javax.servlet·3.x 좌표 없음");
 assert(b.families.length >= 4 && b.families.some((f) => f.groupIdPrefix === "org.springframework" && f.version === b.spring.framework) && b.families.some((f) => f.groupIdPrefix === "org.springframework.security") && b.families.some((f) => f.groupIdPrefix === "org.springframework.boot"), "계열 기준: spring·security·boot");
+assert(b.families.every((f) => typeof f.matchSubgroups === "boolean") && b.families.find((f) => f.groupIdPrefix === "com.fasterxml.jackson")?.matchSubgroups === true && b.families.find((f) => f.groupIdPrefix === "org.springframework")?.matchSubgroups === false, "계열의 하위 groupId 적용 여부: jackson 만 true");
+assert(!b.families.some((f) => /^\d{4}\./.test(f.version)) && Array.isArray(b.releaseTrains) && b.releaseTrains.every((t) => /^\d{4}\./.test(t.version)), `달력형 릴리스 트레인은 계열이 아님 (${b.releaseTrains.map((t) => `${t.artifactId}:${t.version}`).join(", ")})`);
+
+// ── v0.34: Spring Boot BOM 전체 · RTE 전이 ─────────────────
+const bootKeys = Object.keys(b.boot.managed);
+assert(b.boot.bom.artifactId === "spring-boot-dependencies" && b.boot.bom.version === b.spring.boot && /^[0-9a-f]{64}$/.test(b.boot.bom.sha256) && b.boot.bom.url.startsWith("https://repo1.maven.org/maven2/"), "Boot BOM 출처: spring-boot-dependencies(Maven Central, sha256)");
+assert(b.boot.imports.length >= 30 && b.boot.imports.every((i) => /^[0-9a-f]{64}$/.test(i.sha256) && i.members > 0 && !i.unresolved) && b.boot.bom.imports === b.boot.imports.length, `BOM import ${b.boot.imports.length}종 전부 풀림(sha256 고정)`);
+assert(bootKeys.length >= 1000 && bootKeys.every((k) => /^[\w.\-]+:[\w.\-]+$/.test(k) && /^\d/.test(b.boot.managed[k])), `Boot BOM 좌표 ${bootKeys.length}종 형식`);
+for (const must of ["com.h2database:h2", "org.springframework.data:spring-data-jpa", "io.projectreactor:reactor-core", "io.micrometer:micrometer-tracing", "com.oracle.database.jdbc:ojdbc11", "com.mysql:mysql-connector-j"]) assert(bootKeys.includes(must), `Boot BOM 포함: ${must}`);
+assert(b.boot.managed["io.projectreactor:reactor-core"] !== b.boot.managed["io.projectreactor.netty:reactor-netty-core"] && b.boot.managed["io.micrometer:micrometer-core"] !== b.boot.managed["io.micrometer:micrometer-tracing"], "릴리스 트레인·동일 groupId 다른 버전이 artifact 단위로 풀림(reactor·micrometer)");
+assert(!bootKeys.some((k) => k.startsWith("javax.servlet:")), "Boot BOM 에 javax.servlet 없음");
+const rteKeys = Object.keys(b.rteTransitive.managed);
+assert(b.rteTransitive.version === rules.target.runtimeVersion && b.rteTransitive.modules.length === rules.coordinates.length && b.rteTransitive.modules.every((m) => /^[0-9a-f]{64}$/.test(m.sha256) && m.url.startsWith(b.repository)) && /^[0-9a-f]{64}$/.test(b.rteTransitive.root.sha256), `RTE 전이: 모듈 ${b.rteTransitive.modules.length}종 pom sha256 고정`);
+assert(rteKeys.length >= 40 && rteKeys.every((k) => { const v = b.rteTransitive.managed[k]; return /^\d/.test(v.version) && ["compile", "runtime", "provided"].includes(v.scope) && v.via.length > 0; }), `RTE 전이 좌표 ${rteKeys.length}종 형식(test 제외)`);
+assert(b.rteTransitive.managed["org.mybatis:mybatis"]?.via.includes("psl-dataaccess") && b.rteTransitive.managed["org.apache.poi:poi"]?.via.includes("fdl-excel") && !rteKeys.some((k) => k.startsWith("org.egovframe.rte:")), "RTE 전이: mybatis(psl-dataaccess)·poi(fdl-excel), RTE 자체 좌표 제외");
+assert(statSync(new URL("../catalog/dependency-baseline.json", import.meta.url)).size <= 200 * 1024, "기준 파일 200KB 이하");
 
 // ── classifyDependency (순수) ─────────────────────────
 const ctxNone = { baseline: b, rules, parentKind: "none" };
@@ -46,7 +62,20 @@ assert(cls("org.springframework.security", "spring-security-web", "6.0.0").statu
 assert(cls("org.springframework.boot", "spring-boot-starter-web", "3.2.0").status === "outdated", "Spring Boot 계열 기준");
 assert(cls("org.springframework", "spring-webmvc", null, ctxWeb).status === "managed", "web parent + 버전 없음 → managed");
 assert(cls("org.springframework", "spring-webmvc", null).status === "unversioned", "parent 없음 + 버전 없음 → unversioned");
-assert(cls("com.example", "internal-lib", "1.0").status === "unknown", "기준 밖 좌표 → unknown");
+assert(cls("com.example", "internal-lib", "1.0").status === "unknown" && cls("com.example", "internal-lib", "1.0").basis === null, "기준 밖 좌표 → unknown(basis null)");
+// v0.34: 출처 표시·Boot BOM·RTE 전이·vendor
+const ctxBoot = { baseline: b, rules, parentKind: "boot" };
+assert(cls("org.egovframe.rte", "egovframe-rte-fdl-cmmn", "5.0.2").basis === "parent" && cls("org.springframework", "spring-webmvc", b.spring.framework).basis === "family" && cls("egovframework.rte", "egovframework.rte.fdl.cmmn", "3.10.0").basis === "migration-rules", "basis: parent 직접·계열·전환 규칙");
+assert(cls("com.h2database", "h2", "1.4.180").status === "outdated" && cls("com.h2database", "h2", "1.4.180").basis === "boot-bom" && cls("com.h2database", "h2", b.boot.managed["com.h2database:h2"]).status === "ok", "Boot BOM 기준: h2 1.4 → outdated, 기준 버전 → ok");
+const my = cls("org.mybatis", "mybatis", "3.1.1");
+assert(my.status === "outdated" && my.basis === "rte-transitive" && /psl-dataaccess/.test(my.note) && /충돌/.test(my.note) && cls("org.mybatis", "mybatis", b.rteTransitive.managed["org.mybatis:mybatis"].version).status === "ok", "RTE 전이 기준: mybatis 3.1 → outdated(충돌 안내), 전이 버전 → ok");
+assert(cls("org.hibernate.orm", "hibernate-core", "6.6.12.Final", ctxNone).basis === "rte-transitive" && cls("org.hibernate.orm", "hibernate-core", "6.6.12.Final", ctxBoot).basis === "boot-bom", "Boot parent 는 Boot BOM 우선, 그 밖은 RTE 전이 우선(hibernate-core)");
+assert(cls("com.h2database", "h2", null, ctxBoot).status === "managed" && cls("com.h2database", "h2", null, ctxBoot).baseline === b.boot.managed["com.h2database:h2"] && cls("com.h2database", "h2", null, ctxBoot).basis === "boot-bom", "Boot parent + 버전 없음 → managed 에 Boot BOM 기준 버전");
+assert(cls("org.springframework.social", "spring-social-facebook", "2.0.3.RELEASE").status === "replace", "org.springframework.social 은 계열(org.springframework)이 아니라 교체 규칙");
+assert(cls("org.springframework.ldap", "spring-ldap-core", "2.4.4").basis === "parent" && cls("com.fasterxml.jackson.dataformat", "jackson-dataformat-yaml", "2.18.2").basis === "family", "하위 groupId: spring.ldap 는 parent 직접, jackson.dataformat 은 jackson 계열");
+const vend = cls("com.tmax.tibero", "tibero-jdbc", "5.0");
+assert(vend.status === "vendor" && vend.basis === null && /Tibero/.test(vend.note) && cls("kr.go.gpki", "gpkisecureweb", "1.0.4.9").status === "vendor" && cls("kr.go.other", "x", "1").status === "vendor", "국내 벤더·기관 배포 좌표 → vendor + 사유(접두 kr.go 포함)");
+for (const [g, a] of [["mysql", "mysql-connector-java"], ["ojdbc", "ojdbc"], ["org.codehaus.jackson", "jackson-mapper-asl"], ["xmlbeans", "xbean"], ["net.sf.ehcache", "ehcache-core"], ["org.apache.httpcomponents", "httpclient"], ["org.antlr", "antlr"]]) assert(cls(g, a, "1.0").status === "replace" && cls(g, a, "1.0").basis === "migration-rules", `EOL·이전 좌표 교체 규칙: ${g}:${a}`);
 assert(cls("org.springframework", "spring-webmvc", "${spring.version}").status === "unknown", "풀리지 않은 속성 → unknown");
 assert(cls("egovframework.rte", "spring-modules-validation", "0.9").status === "replace", "spring-modules-validation → replace");
 
@@ -76,9 +105,9 @@ const byA = Object.fromEntries(r.findings.map((f) => [f.artifactId, f]));
 assert(byA["egovframework.rte.ptl.mvc"].status === "legacy" && byA["egovframework.rte.ptl.mvc"].resolvedVersion === "3.10.0" && byA["egovframework.rte.ptl.mvc"].line === 5, "RTE 3.x legacy, 속성 해석 3.10.0, L5");
 assert(byA["javax.servlet-api"].status === "legacy" && byA["javax.servlet-api"].scope === "provided", "javax legacy + scope");
 assert(byA["commons-dbcp"].status === "replace" && byA["spring-test"].status === "replace" && byA["spring-test"].resolvedVersion === "4.3.25.RELEASE", "DBCP1·Spring 4 → replace");
-assert(byA["mybatis"].status === "unknown", "mybatis 는 parent 가 관리하지 않음 → unknown(RTE 가 전이 관리)");
-assert(byA["internal"].status === "unknown" && byA["commons-lang3"].status === "unversioned", "기준 밖 unknown · 버전 없음 unversioned");
-assert(r.summary.legacy === 2 && r.summary.replace === 2 && r.summary.unknown === 2 && r.summary.unversioned === 1, `요약 ${JSON.stringify(r.summary)}`);
+assert(byA["mybatis"].status === "outdated" && byA["mybatis"].basis === "rte-transitive" && byA["mybatis"].baseline === b.rteTransitive.managed["org.mybatis:mybatis"].version, "mybatis 3.5.6 은 RTE 전이 버전 미만 → outdated(v0.33 까지는 unknown)");
+assert(byA["internal"].status === "unknown" && byA["commons-lang3"].status === "unversioned" && byA["commons-lang3"].basis === "parent", "기준 밖 unknown · 버전 없음 unversioned(기준은 parent)");
+assert(r.summary.legacy === 2 && r.summary.replace === 2 && r.summary.unknown === 1 && r.summary.unversioned === 1 && r.summary.outdated === 1 && r.summary.vendor === 0, `요약 ${JSON.stringify(r.summary)}`);
 const chk = Object.fromEntries(r.checks.map((c) => [c.id, c]));
 assert(chk["https-repositories"].status === "missing" && chk["https-repositories"].evidence[0].file === "pom.xml" && chk["https-repositories"].evidence[0].line === 3, "http 저장소 → missing + 근거 L3");
 assert(chk["xss-filter"].status === "ok" && chk["xss-filter"].evidence[0].file.endsWith("web.xml"), "HTMLTagFilter → xss ok + 근거");
@@ -86,6 +115,7 @@ assert(chk["csrf"].status === "missing" && chk["security-headers"].status === "m
 assert(r.vulnerabilities === undefined, "오프라인이면 취약점 조회 없음");
 const md = renderDependencyMarkdown(r);
 assert(md.startsWith("# 의존성 점검") && md.includes("## 조치 필요") && md.includes("## 보안 설정 점검") && md.includes("egovframe-rte-ptl-mvc"), "Markdown 렌더링");
+assert(md.includes("- 기준 출처: ") && md.includes("| 출처 |") && md.includes("| RTE 전이 |") && md.includes("Boot BOM ") && md.includes("RTE 전이 ") , "Markdown 에 기준 출처 열·요약");
 
 // OSV mock
 const calls = [];
@@ -118,6 +148,31 @@ assert(r5.summary.managed === 2 && r5.summary.outdated === 1 && r5.findings.find
 const chk5 = Object.fromEntries(r5.checks.map((c) => [c.id, c]));
 assert(chk5["sec-security-component"].status === "ok" && chk5["csrf"].status === "ok" && chk5["security-headers"].status === "ok" && chk5["https-repositories"].status === "ok" && chk5["xss-filter"].status === "missing", "5.x 픽스처 보안 점검(sec.security·csrf·headers·https ok, xss missing)");
 
+// ── 픽스처: 5.x Boot parent — 공식 egovframe-boot-web 템플릿 pom 과 같은 꼴(버전 없는 starter + 명시 버전 몇 개) → unknown 0 (v0.34 검증 기준)
+const bootProj = mkdtempSync(path.join(tmpdir(), "egovdepboot-"));
+write(bootProj, "pom.xml", `<project>
+  <parent><groupId>org.egovframe.boot</groupId><artifactId>egovframe-boot-starter-parent</artifactId><version>${b.sources.find((s) => s.kind === "boot").version}</version></parent>
+  <dependencies>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-thymeleaf</artifactId></dependency>
+    <dependency><groupId>org.egovframe.rte</groupId><artifactId>egovframe-rte-ptl-mvc</artifactId></dependency>
+    <dependency><groupId>org.egovframe.rte</groupId><artifactId>egovframe-rte-psl-dataaccess</artifactId></dependency>
+    <dependency><groupId>org.apache.commons</groupId><artifactId>commons-dbcp2</artifactId><version>2.13.0</version></dependency>
+    <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>runtime</scope></dependency>
+    <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><optional>true</optional></dependency>
+    <dependency><groupId>jakarta.servlet</groupId><artifactId>jakarta.servlet-api</artifactId><scope>provided</scope></dependency>
+    <dependency><groupId>org.apache.tomcat.embed</groupId><artifactId>tomcat-embed-jasper</artifactId><scope>provided</scope></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>jakarta.xml.bind</groupId><artifactId>jakarta.xml.bind-api</artifactId><version>4.0.2</version></dependency>
+  </dependencies>
+</project>
+`);
+const rb = await checkDependencies({ projectDir: bootProj });
+assert(rb.parent.kind === "boot" && rb.parent.status === "ok" && rb.summary.unknown === 0 && rb.summary.vendor === 0, `Boot 템플릿형 pom: unknown 0 (요약 ${JSON.stringify(rb.summary)})`);
+const rbA = Object.fromEntries(rb.findings.map((f) => [f.artifactId, f]));
+assert(rbA["h2"].status === "managed" && rbA["h2"].basis === "boot-bom" && rbA["h2"].baseline === b.boot.managed["com.h2database:h2"] && rbA["spring-boot-starter-web"].status === "managed" && rbA["spring-boot-starter-web"].basis === "family" && rbA["egovframe-rte-ptl-mvc"].basis === "parent" && rbA["tomcat-embed-jasper"].basis === "boot-bom", "버전 없는 h2·tomcat-embed-jasper → Boot BOM 기준 버전 표시, starter-web 는 Boot 계열, RTE 는 parent 직접");
+assert(rbA["commons-dbcp2"].status === "ok" && rbA["commons-dbcp2"].basis === "parent" && rbA["jakarta.xml.bind-api"].status === "ok" && rbA["jakarta.xml.bind-api"].basis === "boot-bom", "명시 버전은 parent·Boot BOM 기준과 대조");
+
 // gradle
 const gradle = mkdtempSync(path.join(tmpdir(), "egovdepgr-"));
 write(gradle, "build.gradle", `plugins { id 'java' }\nsourceCompatibility = 17\nrepositories { maven { url 'http://maven.egovframe.go.kr/maven/' } }\ndependencies {\n  implementation 'org.egovframe.rte:egovframe-rte-fdl-cmmn:5.0.2'\n  implementation 'log4j:log4j:1.2.17'\n}\n`);
@@ -130,5 +185,5 @@ const empty = mkdtempSync(path.join(tmpdir(), "egovdepempty-"));
 const re = await checkDependencies({ projectDir: empty });
 assert(re.buildSystem === "unknown" && re.findings.length === 0 && re.notes.length > 0, "빌드 파일 없음 → 결과 비어 있음 + 안내");
 
-for (const d of [legacy, modern, gradle, empty]) rmSync(d, { recursive: true, force: true });
+for (const d of [legacy, modern, bootProj, gradle, empty]) rmSync(d, { recursive: true, force: true });
 if (process.exitCode) console.error(`dependencies FAIL (${n} assertions)`); else console.log(`dependencies OK (${n} assertions)`);

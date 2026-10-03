@@ -20,6 +20,7 @@ import { upgradeProject } from "./upgrade.js";
 import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
+import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
 import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, renderMigrationVerifyMarkdown, verifyMigration, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
@@ -134,7 +135,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
 
   server.registerTool(
     "sync_egovframe_templates",
-    { title: t("sync_egovframe_templates"), description: d("sync_egovframe_templates", "공식 프로젝트 템플릿 통합 카탈로그(Initializr·MCP·Development)를 upstream 과 대조해 추가·삭제·변경과 MCP 커버리지 격차를 보고합니다."), inputSchema: {
+    { title: t("sync_egovframe_templates"), description: d("sync_egovframe_templates", "공식 프로젝트 템플릿 통합 카탈로그(Initializr·MCP·Development)를 upstream 과 대조해 추가·삭제·변경과 MCP 커버리지 격차를 보고하고, 동봉한 5.x 전환 규칙·의존성 기준 카탈로그의 drift(egovframe-runtime·공통컴포넌트의 새 태그, 공식 parent 의 새 버전, 고정 pom sha256 변화)도 함께 보고합니다. 파일은 고치지 않습니다."), inputSchema: {
       ref: z.string().optional().describe("확인할 Initializr 저장소의 브랜치·태그·commit. 미지정 시 고정 카탈로그의 branch 사용"),
     }, annotations: toolAnnotations("sync_egovframe_templates") },
     async (args) => {
@@ -172,6 +173,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
             : `  - ${d.template}: sha256 ${d.pinnedSha256.slice(0, 12)}… → ${d.upstreamSha256} (${d.pinnedBytes} → ${d.upstreamBytes} bytes)`,
         ),
         ...result.warnings.map((warning) => `- 경고: ${warning}`),
+        ...(result.catalogs ? ["", "규칙·의존성 기준 카탈로그 drift:", ...renderCatalogDriftLines(result.catalogs)] : []),
       ].join("\n");
       return { content: [{ type: "text", text }] };
     },
@@ -582,7 +584,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 의존성 점검 도구 (v0.30.0, 읽기 전용) ──────────────
   server.registerTool(
     "check_egovframe_dependencies",
-    { title: t("check_egovframe_dependencies"), description: d("check_egovframe_dependencies", "프로젝트의 Maven/Gradle 의존성을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x 등)/기준 없음 으로 분류하고, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다."), inputSchema: {
+    { title: t("check_egovframe_dependencies"), description: d("check_egovframe_dependencies", "프로젝트의 Maven/Gradle 의존성을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전, Spring Boot BOM 전체(spring-boot-dependencies + import 한 단계), RTE 모듈 18종의 전이 의존성과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x·Jackson 1·Ehcache 2 등)/벤더 배포(국내 DBMS·GPKI 등)/기준 없음 으로 분류하고 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이)를 적으며, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다."), inputSchema: {
       projectDir: z.string().describe("점검할 프로젝트 디렉터리(절대경로 권장)"),
       offline: z.boolean().default(true).describe("true(기본)면 네트워크 없이 기준 대조만, false 면 OSV 취약점 조회 추가"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
@@ -797,7 +799,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   server.resource(
     "dependency-baseline",
     "egovframe://catalog/dependency-baseline",
-    { mimeType: "application/json", description: "의존성 기준 버전 — 공식 5.x parent 의 properties·dependencyManagement (check_egovframe_dependencies 용)" },
+    { mimeType: "application/json", description: "의존성 기준 버전 — 공식 5.x parent 의 properties·dependencyManagement + Spring Boot BOM 전체 + RTE 모듈 전이 의존성 (check_egovframe_dependencies 용)" },
     async (uri) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(loadDependencyBaseline(), null, 2) }] }),
   );
 

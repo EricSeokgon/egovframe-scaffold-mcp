@@ -126,8 +126,13 @@ for (const l of rules.libraries) {
   assert(l.match.groupId && l.match.artifactId && l.reason.length >= 10, `library 규칙 형식: ${l.match.groupId}:${l.match.artifactId}`);
   if (l.match.versionBelow) assert(/^\d+\.\d+\.\d+$/.test(l.match.versionBelow), `versionBelow 형식: ${l.match.groupId}:${l.match.artifactId}`);
 }
-for (const must of ["commons-dbcp:commons-dbcp", "log4j:log4j", "commons-fileupload:commons-fileupload", "org.apache.tiles:tiles-*", "egovframework.rte:spring-modules-validation"])
+for (const must of ["commons-dbcp:commons-dbcp", "log4j:log4j", "commons-fileupload:commons-fileupload", "org.apache.tiles:tiles-*", "egovframework.rte:spring-modules-validation", "mysql:mysql-connector-java", "ojdbc:ojdbc", "org.codehaus.jackson:*", "xmlbeans:xbean", "net.sf.ehcache:ehcache*", "org.apache.httpcomponents:httpclient", "org.antlr:antlr", "org.springframework.social:*"])
   assert(rules.libraries.some((l) => `${l.match.groupId}:${l.match.artifactId}` === must), `library 포함: ${must}`);
+const libKeys = rules.libraries.map((l) => `${l.match.groupId}:${l.match.artifactId}`);
+assert(new Set(libKeys).size === libKeys.length, "library 규칙 중복 없음");
+// v0.34: 벤더·기관 배포 좌표(의존성 점검 vendor 분류)
+assert(Array.isArray(rules.vendorCoordinates) && rules.vendorCoordinates.length >= 5 && rules.vendorCoordinates.every((v) => /^[\w.\-]+$/.test(v.groupIdPrefix) && v.note.length >= 10), `vendorCoordinates ${rules.vendorCoordinates?.length ?? 0}종 형식`);
+for (const must of ["com.tmax.tibero", "cubrid", "altibase", "kr.go.gpki", "kr.go"]) assert(rules.vendorCoordinates.some((v) => v.groupIdPrefix === must), `vendor 포함: ${must}`);
 assert(rules.xmlNamespaces.length >= 3 && rules.xmlNamespaces.every((x) => x.uri.startsWith("http://") && x.reason.length >= 10), "XML 네임스페이스 규칙 형식");
 for (const x of rules.xmlNamespaces) if (x.replacement.startsWith("org.egovframe.rte.")) assert(classes5.has(x.replacement), `네임스페이스 대체 클래스 존재: ${x.replacement}`);
 for (const must of ["egov-security", "egov-access", "egov-crypto"]) assert(rules.xmlNamespaces.some((x) => x.uri.endsWith(`/schema/${must}`)), `네임스페이스 포함: ${must}`);
