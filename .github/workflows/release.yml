@@ -36,13 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the commit CI verified
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
       - name: Node 22 (trusted publishing needs npm >= 11.5.1, Node >= 22.14)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org

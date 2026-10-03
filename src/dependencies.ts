@@ -8,6 +8,8 @@ import * as path from "node:path";
 import { diagnoseProject } from "./diagnose.js";
 import { DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
 import { lineAt, loadMigrationRules, parsePomDeps, parsePomProperties, resolveProp, versionBelow, walkProjectFiles, type MigrationRules } from "./migrate.js";
+import { resolveDependencyTree, type DependencyTreeResult, type ResolveScope } from "./dependency-tree.js";
+import type { Runner } from "./build-runner.js";
 
 export interface BaselineManaged { groupId: string; artifactId: string; version: string; scope?: string; type?: string; sources: ("web" | "boot")[]; versionBySource?: Record<string, string>; parentVersion?: string }
 export interface DependencyBaseline {
@@ -66,6 +68,14 @@ export interface DependencyFinding {
   baseline: string | null;
   /** 기준 출처(기준이 없으면 null) */
   basis: DependencyBasis | null;
+  /** 빌드 파일에 적힌 의존성(declared) 인지, resolve=true 로 해석한 트리에서만 나온 전이 의존성(transitive) 인지 (v0.36) */
+  origin: "declared" | "transitive";
+  /** 전이 의존성의 트리 경로(루트에서 이 artifact 까지의 artifactId, 자신 제외) */
+  via?: string[];
+  /** 트리 깊이(1 = 직접) — 해석 결과가 있을 때 */
+  depth?: number;
+  /** 해석된 트리의 버전이 선언과 다를 때 트리 버전 */
+  treeVersion?: string;
   note?: string;
 }
 export interface SecurityCheck { id: string; title: string; status: "ok" | "missing" | "n/a"; evidence: { file: string; line: number; text: string }[]; hint: string }
@@ -83,10 +93,31 @@ export interface CheckDependenciesResult {
   checks: SecurityCheck[];
   vulnerabilities?: Vulnerability[];
   osvError?: string;
+  /** resolve=true 의 해석 결과 요약 (v0.36) */
+  resolution?: {
+    ran: boolean; success: boolean; scope: ResolveScope; command: string; durationMs?: number;
+    /** 해석된 artifact 수(중복 제거) · 그중 직접(깊이 1) · 선언에 없던 전이 */
+    artifacts: number; direct: number; transitive: number;
+    /** 선언 버전과 해석 버전이 다른 좌표(가까운 선언이 이긴 결과) */
+    differs: { groupId: string; artifactId: string; declared: string; resolved: string }[];
+    /** 해석된 집합의 판정 집계 */
+    summary: Record<DependencyStatus, number>;
+    error?: string;
+  };
   notes: string[];
 }
 export type OsvQuery = (queries: { package: { name: string; ecosystem: "Maven" }; version: string }[]) => Promise<{ results: { vulns?: { id: string }[] }[] }>;
-export interface CheckDependenciesOptions { projectDir: string; offline?: boolean; osvQuery?: OsvQuery; maxFiles?: number }
+export interface CheckDependenciesOptions {
+  projectDir: string; offline?: boolean; osvQuery?: OsvQuery; maxFiles?: number;
+  /** v0.36: 빌드 도구로 전이 의존성까지 해석해 함께 판정한다(기본 false — 선언만) */
+  resolve?: boolean;
+  /** runtime(기본: compile+runtime) | all(test·provided 포함) */
+  resolveScope?: ResolveScope;
+  resolveTimeoutMs?: number;
+  /** 테스트용 가짜 runner·플랫폼 */
+  runner?: Runner;
+  platform?: NodeJS.Platform | string;
+}
 
 const OSV_URL = "https://api.osv.dev/v1/querybatch";
 export const defaultOsvQuery: OsvQuery = async (queries) => {
@@ -250,9 +281,41 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
     if (seen.has(key)) continue;
     seen.add(key);
     const c = classifyDependency(d, { baseline, rules, parentKind: parent.kind });
-    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, basis: c.basis, ...(c.note ? { note: c.note } : {}) });
+    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "declared", ...(c.note ? { note: c.note } : {}) });
   }
-  findings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+
+  // ── v0.36: 해석된 트리 — 선언에 없는 artifact 는 transitive 로 추가하고, 선언과 다른 버전으로 풀린 좌표는 differs 로 ──
+  let resolution: CheckDependenciesResult["resolution"];
+  if (opts.resolve && diag.buildSystem !== "unknown") {
+    const tree: DependencyTreeResult = await resolveDependencyTree({ projectDir: dir, scope: opts.resolveScope ?? "runtime", timeoutMs: opts.resolveTimeoutMs, runner: opts.runner, platform: opts.platform });
+    const buildFile = diag.buildSystem === "maven" ? "pom.xml" : (files.find((f) => /build\.gradle(\.kts)?$/.test(f)) ? path.relative(dir, files.find((f) => /build\.gradle(\.kts)?$/.test(f))!).split(path.sep).join("/") : "build.gradle");
+    const declaredByKey = new Map<string, DependencyFinding>();
+    for (const f of findings) { const k = `${f.groupId}:${f.artifactId}`; if (!declaredByKey.has(k)) declaredByKey.set(k, f); }
+    const differs: NonNullable<CheckDependenciesResult["resolution"]>["differs"] = [];
+    const rsum: Record<DependencyStatus, number> = { ok: 0, outdated: 0, managed: 0, legacy: 0, replace: 0, vendor: 0, unknown: 0, unversioned: 0 };
+    let transitive = 0;
+    for (const a of tree.artifacts) {
+      const key = `${a.groupId}:${a.artifactId}`;
+      const declared = declaredByKey.get(key);
+      if (declared) {
+        declared.depth = a.depth;
+        if (declared.resolvedVersion && declared.resolvedVersion !== a.version) { declared.treeVersion = a.version; differs.push({ groupId: a.groupId, artifactId: a.artifactId, declared: declared.resolvedVersion, resolved: a.version }); }
+        else if (!declared.resolvedVersion) declared.treeVersion = a.version;
+        const cls = classifyDependency({ groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version }, { baseline, rules, parentKind: parent.kind });
+        rsum[cls.status]++;
+        if (declared.status === "managed" && cls.status === "outdated") declared.note = `parent 가 정한 해석 버전 ${a.version} 은 기준 ${cls.baseline} 미만 — parent 버전을 올리면 해결`;
+        continue;
+      }
+      const c = classifyDependency({ groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version }, { baseline, rules, parentKind: parent.kind });
+      rsum[c.status]++;
+      transitive++;
+      findings.push({ file: buildFile, line: 0, groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version, scope: a.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "transitive", via: a.via, depth: a.depth, ...(c.note ? { note: c.note } : {}) });
+    }
+    resolution = { ran: tree.ran, success: tree.success, scope: tree.scope, command: tree.command, durationMs: tree.durationMs, artifacts: tree.artifacts.length, direct: tree.artifacts.filter((a) => a.depth === 1).length, transitive, differs, summary: rsum, ...(tree.error ? { error: tree.error } : {}) };
+    if (!tree.success) notes.push(`의존성 트리 해석 실패(${tree.error ?? "원인 미상"}) — 선언된 의존성만 판정했습니다. 명령: ${tree.command}`);
+  } else if (opts.resolve) notes.push("빌드 파일이 없어 의존성 트리를 해석하지 않았습니다.");
+
+  findings.sort((a, b) => (a.origin === b.origin ? 0 : a.origin === "declared" ? -1 : 1) || a.file.localeCompare(b.file) || a.line - b.line || (a.depth ?? 0) - (b.depth ?? 0) || `${a.groupId}:${a.artifactId}`.localeCompare(`${b.groupId}:${b.artifactId}`));
   const summary: Record<DependencyStatus, number> = { ok: 0, outdated: 0, managed: 0, legacy: 0, replace: 0, vendor: 0, unknown: 0, unversioned: 0 };
   for (const f of findings) summary[f.status]++;
 
@@ -283,7 +346,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   const result: CheckDependenciesResult = {
     projectDir: dir, buildSystem: diag.buildSystem, offline,
     baseline: { surveyedAt: baseline.surveyedAt, rte: baseline.rte.version, springFramework: baseline.spring.framework, springBoot: baseline.spring.boot, java: baseline.java, bootBom: baseline.boot ? Object.keys(baseline.boot.managed).length : 0, rteTransitive: baseline.rteTransitive ? Object.keys(baseline.rteTransitive.managed).length : 0 },
-    parent, java: { value: javaValue, status: javaStatus }, findings, summary, checks, notes,
+    parent, java: { value: javaValue, status: javaStatus }, findings, summary, checks, ...(resolution ? { resolution } : {}), notes,
   };
 
   if (!offline) {
@@ -322,11 +385,19 @@ export function renderDependencyMarkdown(r: CheckDependenciesResult): string {
   const basisCount = new Map<DependencyBasis, number>();
   for (const f of r.findings) if (f.basis) basisCount.set(f.basis, (basisCount.get(f.basis) ?? 0) + 1);
   if (basisCount.size) L.push(`- 기준 출처: ${[...basisCount.entries()].map(([k, v]) => `${BASIS_LABEL[k]} ${v}`).join(" · ")}`);
+  if (r.resolution) {
+    const x = r.resolution;
+    if (x.success) {
+      const rs = x.summary;
+      L.push(`- 해석된 트리(${x.scope}, ${x.durationMs ?? "?"}ms): artifact ${x.artifacts}종 = 직접 ${x.direct} + 전이 ${x.artifacts - x.direct} (선언에 없던 전이 ${x.transitive}) — 기준 충족 ${rs.ok} · 기준 미만 ${rs.outdated} · 전환 대상 ${rs.legacy} · 교체 필요 ${rs.replace} · 벤더 ${rs.vendor} · 기준 없음 ${rs.unknown}`);
+      if (x.differs.length) L.push(`- 선언과 다르게 해석된 좌표 ${x.differs.length}건(가까운 선언이 이김): ${x.differs.slice(0, 8).map((d) => `${d.artifactId} ${d.declared}→${d.resolved}`).join(", ")}${x.differs.length > 8 ? " …" : ""}`);
+    } else L.push(`- 해석된 트리: 실패 (${x.error ?? "원인 미상"}) — 선언만 판정`);
+  }
   for (const n of r.notes) L.push(`- ${n}`);
   const attention = r.findings.filter((f) => f.status === "outdated" || f.status === "legacy" || f.status === "replace" || f.status === "unversioned");
   if (attention.length) {
     L.push(``, `## 조치 필요 (${attention.length})`, ``, `| 파일:라인 | 좌표 | 현재 | 기준/대체 | 상태 | 출처 | 비고 |`, `|---|---|---|---|---|---|---|`);
-    for (const f of attention) L.push(`| ${f.file}:${f.line} | ${f.groupId}:${f.artifactId} | ${f.resolvedVersion ?? f.version ?? "-"} | ${f.baseline ?? "-"} | ${STATUS_LABEL[f.status]} | ${f.basis ? BASIS_LABEL[f.basis] : "-"} | ${f.note ?? ""} |`);
+    for (const f of attention) L.push(`| ${f.origin === "transitive" ? `(전이) ${f.via?.length ? f.via.join(" → ") : "-"}` : `${f.file}:${f.line}`} | ${f.groupId}:${f.artifactId} | ${f.resolvedVersion ?? f.version ?? "-"} | ${f.baseline ?? "-"} | ${STATUS_LABEL[f.status]} | ${f.basis ? BASIS_LABEL[f.basis] : "-"} | ${f.note ?? ""} |`);
   }
   const vendor = r.findings.filter((f) => f.status === "vendor");
   if (vendor.length) L.push(``, `## 벤더·기관 배포 (${vendor.length}) — 공개 저장소 기준 없음`, ``, ...vendor.map((f) => `- ${f.groupId}:${f.artifactId}${f.resolvedVersion ? `:${f.resolvedVersion}` : ""} — ${f.note ?? ""}`));

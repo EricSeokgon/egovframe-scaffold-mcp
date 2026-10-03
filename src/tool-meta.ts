@@ -35,6 +35,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   check_egovframe_dependencies: { title: { ko: "의존성 점검", en: "Check dependencies" }, annotations: ro(true) },
   diagnose_egovframe_network: { title: { ko: "네트워크 진단", en: "Diagnose network" }, annotations: ro(true) },
   generate_agents_md: { title: { ko: "AGENTS.md 생성", en: "Generate AGENTS.md" }, annotations: destructive() },
+  // v0.36: 새 파일만 만들고(overwrite 는 명시) 빌드 도구가 저장소에 접근하므로 openWorld; 같은 입력이면 같은 문서(serialNumber·timestamp 제외)
+  generate_egovframe_sbom: { title: { ko: "SBOM 생성 (CycloneDX)", en: "Generate SBOM (CycloneDX)" }, annotations: create(true) },
   search_egovframe_docs: { title: { ko: "가이드 문서 검색", en: "Search guide documents" }, annotations: ro(true) },
   generate_egovframe_report: { title: { ko: "프로젝트 리포트", en: "Project report" }, annotations: ro() },
   upgrade_egovframe_project: { title: { ko: "공통컴포넌트 업그레이드", en: "Upgrade common components" }, annotations: destructive(true) },

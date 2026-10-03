@@ -21,6 +21,7 @@ const REQUIRED_TOOLS = [
   "check_egovframe_dependencies",
   "diagnose_egovframe_network",
   "generate_agents_md",
+  "generate_egovframe_sbom",
 ];
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "ignore"] });
@@ -60,7 +61,7 @@ assert(new Set(tools.map((t) => t.name)).size === tools.length, "도구 이름 �
 assert(tools.every((t) => typeof t.title === "string" && t.title.length > 0), "tools/list 에 모든 도구 title 노출");
 assert(tools.every((t) => t.annotations && typeof t.annotations.readOnlyHint === "boolean" && typeof t.annotations.destructiveHint === "boolean" && typeof t.annotations.openWorldHint === "boolean"), "tools/list 에 모든 도구 annotations 노출");
 assert(tools.filter((t) => t.annotations.readOnlyHint).length === 14 && tools.find((t) => t.name === "diagnose_egovframe_project").annotations.readOnlyHint === true && tools.find((t) => t.name === "remove_egovframe_components").annotations.destructiveHint === true, "readOnly 14종, 진단 readOnly·제거 destructive");
-assert(tools.filter((t) => t.outputSchema).length === 5 && tools.find((t) => t.name === "migrate_egovframe_project").outputSchema.type === "object", "outputSchema 5종(JSON Schema object)");
+assert(tools.filter((t) => t.outputSchema).length === 6 && tools.find((t) => t.name === "migrate_egovframe_project").outputSchema.type === "object" && tools.find((t) => t.name === "generate_egovframe_sbom").outputSchema.type === "object", "outputSchema 6종(JSON Schema object)");
 const ci = tools.find((t) => t.name === "generate_egovframe_ci");
 assert(typeof ci?.inputSchema?.properties?.jdk?.pattern === "string", "generate_egovframe_ci.jdk 에 패턴 제약 노출");
 

@@ -75,10 +75,11 @@ export const DependenciesOutput = loose({
   baseline: loose({ surveyedAt: z.string(), rte: z.string(), springFramework: z.string().nullable(), springBoot: z.string().nullable(), java: z.number().int(), bootBom: z.number().int().optional(), rteTransitive: z.number().int().optional() }),
   parent: loose({ groupId: z.string().nullable(), artifactId: z.string().nullable(), version: z.string().nullable(), kind: z.enum(["web", "boot", "other", "none"]), status: z.enum(["ok", "outdated", "n/a"]) }),
   java: loose({ value: z.string().nullable(), status: z.enum(["ok", "outdated", "unknown"]) }),
-  findings: z.array(loose({ file: z.string(), line: z.number().int(), groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), resolvedVersion: z.string().nullable(), scope: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable(), basis: DependencyBasis.nullable() })),
+  findings: z.array(loose({ file: z.string(), line: z.number().int(), groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), resolvedVersion: z.string().nullable(), scope: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable(), basis: DependencyBasis.nullable(), origin: z.enum(["declared", "transitive"]), via: z.array(z.string()).optional(), depth: z.number().int().optional(), treeVersion: z.string().optional() })),
   summary: z.record(z.number().int()),
   checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })),
   vulnerabilities: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })).optional(),
+  resolution: loose({ ran: z.boolean(), success: z.boolean(), scope: z.enum(["runtime", "all"]), command: z.string(), artifacts: z.number().int(), direct: z.number().int(), transitive: z.number().int(), differs: z.array(loose({ groupId: z.string(), artifactId: z.string(), declared: z.string(), resolved: z.string() })), summary: z.record(z.number().int()), error: z.string().optional() }).optional(),
   osvError: z.string().optional(),
   notes: z.array(z.string()),
 });
@@ -101,11 +102,36 @@ export const NetworkOutput = loose({
 });
 
 /** 도구 이름 → outputSchema (테스트·문서용 색인) */
+export const SbomOutput = loose({
+  projectDir: z.string(),
+  buildTool: z.enum(["maven", "gradle"]),
+  format: z.enum(["cyclonedx-json"]),
+  specVersion: z.string(),
+  outputPath: z.string(),
+  absolutePath: z.string(),
+  dryRun: z.boolean(),
+  written: z.boolean(),
+  overwritten: z.boolean(),
+  command: z.string(),
+  generator: z.enum(["cyclonedx-maven-plugin", "egovframe-scaffold-mcp"]),
+  durationMs: z.number().optional(),
+  components: z.number().int(),
+  direct: z.number().int(),
+  transitive: z.number().int(),
+  statuses: z.record(z.number().int()),
+  vulnerabilities: z.number().int(),
+  osvError: z.string().optional(),
+  bytes: z.number().int(),
+  notes: z.array(z.string()),
+  logTail: z.string().optional(),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
   migrate_egovframe_project: MigrateOutput,
   check_egovframe_dependencies: DependenciesOutput,
   diagnose_egovframe_network: NetworkOutput,
+  generate_egovframe_sbom: SbomOutput,
 } as const;
 export type StructuredToolName = keyof typeof OUTPUT_SCHEMAS;

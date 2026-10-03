@@ -24,10 +24,10 @@ jobs:
         node: ['18', '20', '22']
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -49,10 +49,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: npm
@@ -92,6 +92,8 @@ jobs:
         run: npm run test:migrate-integration
       - name: Dependency check with OSV lookup
         run: npm run test:dependencies-live
+      - name: Resolved dependency tree and CycloneDX SBOM (Maven plugin, Gradle tree)
+        run: npm run test:sbom-live
       - name: Network diagnosis against real hosts
         run: npm run test:network-live
       - name: Catalog drift watch (runtime/components tags, parent versions, pinned pom sha256)

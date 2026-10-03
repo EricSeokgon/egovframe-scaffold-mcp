@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-migration-rules.mjs",
-  "surveyedAt": "2026-10-02",
+  "surveyedAt": "2026-10-03",
   "source": {
     "repository": "eGovFramework/egovframe-runtime",
     "fromTag": "v3.10.0",
@@ -1535,6 +1535,18 @@
           "artifactId": "jakarta.websocket-api"
         },
         "toVersion": "2.2.0"
+      },
+      {
+        "from": {
+          "groupId": "javax.faces",
+          "artifactId": "javax.faces-api"
+        },
+        "to": {
+          "groupId": "jakarta.faces",
+          "artifactId": "jakarta.faces-api"
+        },
+        "toVersion": "4.1.2",
+        "note": "Jakarta Faces 4.1(Spring Boot 3.5 BOM 기준 4.1.2). 구현체(Mojarra org.glassfish:jakarta.faces 4.x)도 함께 교체"
       }
     ],
     "note": "Spring 6 / Jakarta EE 9+ 에서 이름이 바뀐 패키지만 나열한다. JDK 에 포함된 javax.* (javax.sql, javax.xml.parsers, javax.crypto, javax.naming, javax.net, javax.swing, javax.imageio, javax.management, javax.security.*, javax.script, javax.annotation.processing, javax.transaction.xa 등)는 대상이 아니다."
@@ -1726,6 +1738,10 @@
   ],
   "vendorCoordinates": [
     {
+      "groupIdPrefix": "project",
+      "note": "system scope 로 프로젝트 안 로컬 jar 를 붙이는 관행(groupId 'project') — 공개 저장소 기준 없음. SBOM 에서 공급자·버전을 확인하고 가능하면 공개 좌표(예: com.oracle.database.jdbc)로 바꾸세요"
+    },
+    {
       "groupIdPrefix": "altibase",
       "note": "Altibase JDBC — 벤더 배포 jar. 표준프레임워크 저장소 또는 벤더 사이트의 DBMS 버전에 맞는 드라이버 사용"
     },
@@ -1752,6 +1768,10 @@
     {
       "groupIdPrefix": "kr.go",
       "note": "정부 기관 배포 라이브러리 — 공개 저장소 기준 없음. 배포본 버전을 따름"
+    },
+    {
+      "groupIdPrefix": "com.goldilocks",
+      "note": "GOLDILOCKS JDBC — 벤더 배포 jar"
     }
   ],
   "xmlNamespaces": [

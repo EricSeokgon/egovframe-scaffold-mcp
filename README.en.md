@@ -15,7 +15,7 @@ From an AI tool that speaks MCP (Claude, VS Code Copilot, Cursor, …) you can, 
 - assemble **common components** (190 catalog entries from the official v5.0.6 release) with sources, mappers, JSPs, messages, Spring/web fragments and per-database DDL/DML,
 - generate CRUD code (official Development wizard inputs), Spring configuration (21 official Initializr templates, offline) and a GitHub Actions workflow,
 - build and test with Maven/Gradle and get compiler errors and JUnit results structured by file and line,
-- diagnose an existing project, **migrate 3.x/4.x code to 5.x (Jakarta EE, Spring 6, Java 17)** — diagnosis first, then transactional apply, then compile-and-link verification —, check dependencies against the official 5.x parents, the full Spring Boot BOM and the RTE transitive versions (optionally with OSV), diagnose network/proxy problems, and generate `AGENTS.md` for AI coding tools.
+- diagnose an existing project, **migrate 3.x/4.x code to 5.x (Jakarta EE, Spring 6, Java 17)** — diagnosis first, then transactional apply, then compile-and-link verification —, check declared or fully resolved dependencies against the official 5.x parents, the full Spring Boot BOM and the RTE transitive versions (optionally with OSV), **generate a CycloneDX SBOM**, diagnose network/proxy problems, and generate `AGENTS.md` for AI coding tools.
 
 Every write tool offers `dryRun`, runs inside a file transaction (rollback on failure), never overwrites user files silently, and honours an optional allowed-roots sandbox.
 
@@ -44,7 +44,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `EGOVFRAME_ALLOWED_ROOTS` | Optional sandbox: every directory argument (`projectDir`, `outputDir`) must be inside one of these roots (path-separator-delimited, realpath-checked). |
 | `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list`. Responses stay Korean. |
 
-## Tools (27)
+## Tools (28)
 
 | Tool | What it does |
 |---|---|
@@ -66,7 +66,8 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `diagnose_egovframe_project` / `generate_egovframe_report` | Scan any existing project; Markdown report |
 | `get_egovframe_guide` / `search_egovframe_docs` | Official guide documents (151 mappings) and offline keyword search |
 | `migrate_egovframe_project` | **5.x migration**: diagnose RTE coordinates, package/class renames and removals (runtime and common components), javax→jakarta, web.xml, removed XML namespaces, libraries to replace (auto/manual with file:line); `apply=true` rewrites auto items in one transaction with backups; `verify=true` compiles and links compiler errors to the remaining manual items as a prioritised worklist |
-| `check_egovframe_dependencies` | Compare dependencies with the official 5.x parent baseline (139 coordinates + BOM families), the full Spring Boot BOM (1,473 coordinates) and the transitive dependencies of the 18 RTE modules (58): ok / outdated / parent-managed / legacy / replace / vendor / unknown, each with the basis it was compared against; security-config presence checks; optional OSV lookup |
+| `check_egovframe_dependencies` | Compare dependencies (declared, or with `resolve=true` the whole tree resolved by Maven/Gradle — transitive artifacts with their path, declared-vs-resolved differences) with the official 5.x parent baseline (139 coordinates + BOM families), the full Spring Boot BOM (1,473 coordinates) and the transitive dependencies of the 18 RTE modules (58): ok / outdated / parent-managed / legacy / replace / vendor / unknown, each with the basis it was compared against; security-config presence checks; optional OSV lookup |
+| `generate_egovframe_sbom` | CycloneDX 1.6 JSON SBOM without touching build files — Maven via cyclonedx-maven-plugin (hashes, licenses), Gradle from the resolved tree; baseline verdict per component (`egovframe:*` properties), optional OSV `vulnerabilities[]`; writes inside the project only, `dryRun` by default |
 | `diagnose_egovframe_network` | Probe the hosts the server downloads from, classify failures (DNS, timeout, TLS, proxy auth) and prescribe environment settings as bash/cmd/PowerShell commands |
 | `generate_agents_md` | `AGENTS.md` for AI coding tools: build/test commands, RTE and migration status, components, rules, available MCP tools (ko/en) |
 
@@ -77,7 +78,7 @@ Resources: `egovframe://catalog/components`, `…/components/{id}`, `…/templat
 - **Pinned sources**: component catalog (official v5.0.6 tag, commit, archive sha256), Initializr zip templates (commit, sha256, size), config templates (commit, per-file sha256, CRLF-safe), migration rules derived from `egovframe-runtime` tags v3.10.0 / v4.3.0-Final / v5.0.2-Final and `egovframe-common-components` v3.10.0 / v5.0.6, dependency baseline extracted from the official 5.x parent poms (5.0.2), `spring-boot-dependencies` 3.5.6 and the RTE 5.0.2 module poms — every pom with url and sha256. `sync_egovframe_templates` reports when any of these drifts upstream.
 - **Release gate**: `npm run prepublishOnly` runs the build and ~28 offline suites (over 1,300 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, checks that every migration target coordinate exists in the Maven repositories, watches upstream drift of the bundled rules and baseline, and validates `server.json` against the MCP Registry.
 - **Automated releases** (v0.35+): once a PR is merged and CI passes on `main`, `release.yml` publishes to npm with OIDC trusted publishing (provenance attached, no tokens), tags the verified commit, creates the GitHub Release from the changelog and publishes to the MCP Registry with GitHub OIDC — only when the version in `package.json`, `server.json` and the changelog agree and the version is not released yet.
-- **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools also declare `outputSchema` and return `structuredContent`.
+- **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools and the SBOM generator also declare `outputSchema` and return `structuredContent`.
 - **Safety**: transactions with structured rollback reports, `dryRun` everywhere, allowed roots with realpath checks, zip-slip guards, process-tree kill on build timeouts.
 
 ## Migration to 5.x in two calls
@@ -90,6 +91,15 @@ migrate_egovframe_project(projectDir="/work/legacy-app", verify=true)           
 ```
 
 Auto items (coordinates, package prefixes and renames, javax→jakarta packages and artifacts, repository URLs, Java 17, web.xml schema) are rewritten from the exact text offsets the diagnosis recorded; manual items (removed classes with their replacements, removed `egov-*` XML namespaces, libraries such as DBCP 1.x or Log4j 1.x, Spring < 6) stay in the report with reasons. Details: [docs/design-migration.md](docs/design-migration.md) (Korean).
+
+## Dependencies and SBOM
+
+```text
+check_egovframe_dependencies(projectDir="/work/legacy-app", resolve=true, offline=false)   # resolved tree + OSV
+generate_egovframe_sbom(projectDir="/work/legacy-app", dryRun=false, offline=false)         # sbom/bom.cdx.json (CycloneDX 1.6)
+```
+
+The official `egovframe-web` template declares 19 dependencies and looks clean; resolving the tree shows 65 artifacts, 11 below the baseline and 24 OSV advisories. The SBOM carries the same verdict per component (`egovframe:status`, `egovframe:basis`, `egovframe:baseline`) and the OSV findings as `vulnerabilities[]`.
 
 ## MCP Registry
 
