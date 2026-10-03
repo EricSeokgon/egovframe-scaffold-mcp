@@ -44,6 +44,10 @@ export { loadRecipes, applyRecipe } from "./recipes.js";
 export type { Recipe, ApplyRecipeOptions, ApplyRecipeResult } from "./recipes.js";
 export { diagnoseProject, generateReport } from "./diagnose.js";
 export type { DiagnoseResult } from "./diagnose.js";
+export { REMOVED_API_KINDS, ERA_POINTS, MIGRATION_RUBRIC, SUPPLY_CHAIN_RUBRIC, pointsFor, gradeFor, describeScale, computeGrade, groupManualItems, actionFor, kindLabel, assessProject, renderAssessmentMarkdown } from "./assessment.js";
+export type { Grade, Band, RubricFactor, Rubric, GradeFactorResult, GradeResult, AssessmentOptions, AssessmentAction, AssessmentResult } from "./assessment.js";
+export { REPORT_SECTIONS, generateProjectReport } from "./report.js";
+export type { ReportSection, ReportOptions, ReportResult } from "./report.js";
 export { classifyUpgrade, upgradeProject } from "./upgrade.js";
 export type { UpgradeClass, UpgradeItem, UpgradeResult, UpgradeOptions } from "./upgrade.js";
 export { explainComponent } from "./explain.js";
@@ -121,4 +125,4 @@ if (isMain) {
 }
 // v0.36 — 해석된 의존성 트리
 export { MAVEN_DEPENDENCY_PLUGIN, parseMavenCoord, parseMavenTree, parseGradleTree, dedupeArtifacts, treeCommand, resolveDependencyTree } from "./dependency-tree.js";
-export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveSbomOutputPath, sbomCommand, purlOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";
+export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveOutputPath, resolveSbomOutputPath, sbomCommand, purlOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";

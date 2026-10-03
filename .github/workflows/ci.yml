@@ -90,6 +90,13 @@ jobs:
         run: npm run test:migration-rules-live
       - name: Migration apply then JDK 17 Maven compile
         run: npm run test:migrate-integration
+      - name: Restore the migration regression corpus (official common-components v3.10.0 / v4.3.2 partial trees)
+        uses: actions/cache@v4
+        with:
+          path: .corpus-cache
+          key: migration-corpus-${{ hashFiles('catalog/migration-corpus.json') }}
+      - name: Migration regression corpus (diagnose, dry-run apply, dependency check, assessment grades)
+        run: npm run test:migrate-corpus
       - name: Dependency check with OSV lookup
         run: npm run test:dependencies-live
       - name: Resolved dependency tree and CycloneDX SBOM (Maven plugin, Gradle tree)

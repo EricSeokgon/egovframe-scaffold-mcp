@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "description": "5.x 전환 회귀 코퍼스 — 공식 egovframe-common-components 부분 트리(include)에 진단·dryRun 적용·의존성 점검·평가서를 돌린 기대값. test/migrate-corpus.mjs 가 tolerance 안인지 단언한다. 갱신: npm run generate:migration-corpus",
+  "repository": "eGovFramework/egovframe-common-components",
+  "include": [
+    "pom.xml",
+    "src/main/java",
+    "src/main/resources",
+    "src/main/webapp/WEB-INF",
+    "src/test"
+  ],
+  "tolerance": {
+    "pct": 0.01,
+    "abs": 0
+  },
+  "entries": [
+    {
+      "id": "cc-3.10.0",
+      "tag": "v3.10.0",
+      "commit": "aaebaa524baef45e391c54506a316b614a09f99d",
+      "era": "3.x",
+      "note": "3.x 좌표(egovframework.rte) 공통컴포넌트 전체 — 3.x→5.x 경로",
+      "expected": {
+        "javaFiles": 1125,
+        "filesScanned": 3504,
+        "migration": {
+          "sourceEra": "3.x",
+          "rteVersion": "3.10.0",
+          "items": 2315,
+          "auto": 1507,
+          "manual": 808,
+          "files": 859,
+          "byKind": {
+            "class-removed": 14,
+            "component-class-moved": 11,
+            "component-class-removed": 615,
+            "component-reassemble": 159,
+            "coordinate": 9,
+            "jakarta-artifact": 10,
+            "jakarta-package": 567,
+            "java-release": 2,
+            "library": 11,
+            "package": 883,
+            "package-renamed": 20,
+            "parent": 1,
+            "removed-module": 1,
+            "repository": 3,
+            "rte-version": 1,
+            "spring-version": 1,
+            "web-xml": 1,
+            "xml-namespace": 6
+          },
+          "reassemble": 159,
+          "removedApiRefs": 636,
+          "unknownClasses": 0
+        },
+        "apply": {
+          "items": 1507,
+          "edits": 1545,
+          "files": 564,
+          "conflicts": 0,
+          "skippedManual": 808
+        },
+        "dependencies": {
+          "findings": 66,
+          "summary": {
+            "ok": 10,
+            "outdated": 19,
+            "managed": 0,
+            "legacy": 18,
+            "replace": 12,
+            "vendor": 6,
+            "unknown": 1,
+            "unversioned": 0
+          },
+          "parentKind": "none",
+          "java": "1.7",
+          "unknown": [
+            "xerces:xercesImpl"
+          ],
+          "vendor": [
+            "altibase:altibase-jdbc-driver",
+            "com.tmax.tibero:tibero-jdbc",
+            "cubrid:cubrid-jdbc",
+            "kr.go.gpki:gpkisecureweb",
+            "kr.go.gpki:libgpkiapi_jni",
+            "kr.go.mgov:smeapi"
+          ],
+          "checksMissing": [
+            "https-repositories"
+          ]
+        },
+        "grades": {
+          "migration": "D",
+          "migrationScore": 11,
+          "supplyChain": "D",
+          "supplyChainScore": 9
+        }
+      }
+    },
+    {
+      "id": "cc-4.3.2",
+      "tag": "v4.3.2",
+      "commit": "bfa2ef5bf80ac9079f9c409af88ecf407b574c55",
+      "era": "4.x",
+      "note": "4.x 마지막 태그(org.egovframe.rte) — 4.x→5.x 경로(Jakarta·좌표 이름)",
+      "expected": {
+        "javaFiles": 1296,
+        "filesScanned": 3859,
+        "migration": {
+          "sourceEra": "4.x",
+          "rteVersion": "4.3.0",
+          "items": 1352,
+          "auto": 635,
+          "manual": 717,
+          "files": 689,
+          "byKind": {
+            "class-removed": 14,
+            "component-class-moved": 12,
+            "component-class-removed": 524,
+            "component-reassemble": 155,
+            "coordinate": 9,
+            "jakarta-artifact": 9,
+            "jakarta-package": 577,
+            "java-release": 1,
+            "library": 8,
+            "package-renamed": 25,
+            "parent": 1,
+            "removed-module": 1,
+            "rte-version": 1,
+            "spring-version": 1,
+            "web-xml": 1,
+            "xml-namespace": 13
+          },
+          "reassemble": 155,
+          "removedApiRefs": 552,
+          "unknownClasses": 0
+        },
+        "apply": {
+          "items": 635,
+          "edits": 662,
+          "files": 416,
+          "conflicts": 0,
+          "skippedManual": 717
+        },
+        "dependencies": {
+          "findings": 70,
+          "summary": {
+            "ok": 20,
+            "outdated": 13,
+            "managed": 0,
+            "legacy": 18,
+            "replace": 9,
+            "vendor": 9,
+            "unknown": 1,
+            "unversioned": 0
+          },
+          "parentKind": "none",
+          "java": "1.8",
+          "unknown": [
+            "xerces:xercesImpl"
+          ],
+          "vendor": [
+            "project:altibase",
+            "project:cubrid",
+            "project:goldilocks8",
+            "project:gpkisecureweb",
+            "project:libgpkiapi",
+            "project:ojdbc6",
+            "project:onepass",
+            "project:smeapi",
+            "project:tibero5"
+          ],
+          "checksMissing": []
+        },
+        "grades": {
+          "migration": "D",
+          "migrationScore": 10,
+          "supplyChain": "D",
+          "supplyChainScore": 8
+        }
+      }
+    }
+  ],
+  "generatedAt": "2026-10-03",
+  "generatedWith": {
+    "version": "0.37.0",
+    "rulesTag": "v5.0.2-Final",
+    "baselineSurveyedAt": "2026-10-02"
+  }
+}

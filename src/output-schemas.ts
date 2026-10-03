@@ -1,4 +1,4 @@
-// 구조화 출력 스키마 (v0.32.0): format=json 을 제공하던 도구 5종의 결과를 MCP outputSchema 로 선언한다.
+// 구조화 출력 스키마 (v0.32.0): format=json 을 제공하던 도구 5종(v0.36 SBOM·v0.37 리포트 추가로 7종)의 결과를 MCP outputSchema 로 선언한다.
 // 스키마는 src/*.ts 의 결과 인터페이스를 따르며, 테스트가 실제 결과를 이 스키마로 검증해 어긋남을 잡는다.
 // 알 수 없는 키는 허용(passthrough)해 결과 인터페이스에 필드가 늘어도 깨지지 않게 하고, 핵심 필드만 엄격히 본다.
 import { z } from "zod";
@@ -126,6 +126,56 @@ export const SbomOutput = loose({
   logTail: z.string().optional(),
 });
 
+// v0.37: generate_egovframe_report — markdown 은 text 로만 돌려주고 structuredContent 에서는 뺀다(스키마에 없음).
+const GradeResult = loose({
+  grade: z.enum(["A", "B", "C", "D"]),
+  score: z.number().int(),
+  max: z.number().int(),
+  factors: z.array(loose({ id: z.string(), label: z.string(), value: z.number(), points: z.number().int(), band: z.string(), note: z.string().optional() })),
+  scale: z.string(),
+  caveats: z.array(z.string()),
+});
+export const AssessmentOutput = loose({
+  projectDir: z.string(),
+  generatedAt: z.string(),
+  tool: loose({ name: z.string(), version: z.string(), rulesTag: z.string(), rulesSurveyedAt: z.string(), baselineSurveyedAt: z.string(), targetRuntime: z.string() }),
+  overview: loose({
+    buildSystem: z.enum(["maven", "gradle", "unknown"]), isEgovProject: z.boolean(), rteVersion: z.string().nullable(), sourceEra: z.enum(["3.x", "4.x", "5.x", "unknown"]),
+    parent: loose({ groupId: z.string().nullable(), artifactId: z.string().nullable(), version: z.string().nullable(), kind: z.enum(["web", "boot", "other", "none"]), status: z.enum(["ok", "outdated", "n/a"]) }),
+    java: loose({ value: z.string().nullable(), status: z.enum(["ok", "outdated", "unknown"]) }),
+    database: z.string().nullable(), components: loose({ count: z.number().int(), ids: z.array(z.string()) }), aiLayer: z.boolean(), hasManifest: z.boolean(), filesScanned: z.number().int(),
+  }),
+  migration: loose({
+    items: z.number().int(), auto: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: z.record(z.number().int()), manualByKind: z.record(z.number().int()),
+    reassemble: z.array(z.string()), removedApiRefs: z.number().int(),
+    manualTop: z.array(loose({ kind: z.string(), from: z.string(), to: z.string().nullable(), count: z.number().int(), files: z.number().int(), example: z.string(), reason: z.string() })),
+    manualTotalGroups: z.number().int(), notes: z.array(z.string()),
+  }),
+  dependencies: loose({
+    offline: z.boolean(), findings: z.number().int(), declared: z.number().int(), transitive: z.number().int(), summary: z.record(z.number().int()),
+    actions: z.array(loose({ groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable(), basis: z.string().nullable(), origin: z.enum(["declared", "transitive"]), file: z.string(), line: z.number().int(), action: z.string() })),
+    unknown: z.array(z.string()), vendor: z.array(z.string()),
+    resolution: loose({ ran: z.boolean(), success: z.boolean(), scope: z.enum(["runtime", "all"]), artifacts: z.number().int(), direct: z.number().int(), transitive: z.number().int(), differs: z.number().int(), error: z.string().optional() }).optional(),
+    vulnerabilities: loose({ queried: z.boolean(), dependencies: z.number().int(), ids: z.number().int(), items: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })) }),
+    osvError: z.string().optional(), notes: z.array(z.string()),
+  }),
+  security: loose({ ok: z.number().int(), missing: z.number().int(), na: z.number().int(), checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })) }),
+  sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), note: z.string() }),
+  grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
+  notes: z.array(z.string()),
+});
+export const ReportOutput = loose({
+  projectDir: z.string(),
+  sections: z.array(z.enum(["components", "assessment"])),
+  assessment: AssessmentOutput.optional(),
+  outputPath: z.string().optional(),
+  absolutePath: z.string().optional(),
+  dryRun: z.boolean(),
+  written: z.boolean(),
+  bytes: z.number().int(),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -133,5 +183,6 @@ export const OUTPUT_SCHEMAS = {
   check_egovframe_dependencies: DependenciesOutput,
   diagnose_egovframe_network: NetworkOutput,
   generate_egovframe_sbom: SbomOutput,
+  generate_egovframe_report: ReportOutput,
 } as const;
 export type StructuredToolName = keyof typeof OUTPUT_SCHEMAS;
