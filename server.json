@@ -1,19 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.EricSeokgon/egovframe-scaffold-mcp",
-  "description": "Scaffold, assemble, diagnose and migrate Korean eGovFrame (전자정부 표준프레임워크) projects: official templates, common components, CRUD/config generation, build/test, 5.x (Jakarta) migration and dependency checks.",
+  "description": "eGovFrame (전자정부 표준프레임워크) projects: templates, components, CRUD, build, 5.x migration, dependencies",
   "repository": {
     "url": "https://github.com/EricSeokgon/egovframe-scaffold-mcp",
     "source": "github"
   },
-  "version": "0.34.0",
+  "version": "0.35.0",
   "websiteUrl": "https://github.com/EricSeokgon/egovframe-scaffold-mcp#readme",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "egovframe-scaffold-mcp",
-      "version": "0.34.0",
+      "version": "0.35.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

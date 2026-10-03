@@ -1,0 +1,125 @@
+# 릴리스 자동화 (v0.35) — main 에서 CI 가 성공한 뒤 실행된다.
+#
+#   사람은 PR 을 병합하기만 한다. 이 워크플로가
+#     1) scripts/release-check.mjs 로 네 조건(server.json 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사하고
+#     2) npm 에 trusted publishing(OIDC, 토큰 없음, provenance 자동)으로 게시한 뒤
+#     3) 그 main 커밋에 vX.Y.Z 태그를 만들고 README 변경 이력에서 뽑은 노트로 GitHub Release 를 만들고
+#     4) mcp-publisher(GitHub OIDC)로 MCP Registry 에 게시한다.
+#   조건이 맞지 않으면(이미 릴리스된 버전 등) 이유만 적고 성공 종료한다.
+#
+#   선행 조건(저장소 소유자 1회): npmjs.com → 패키지 egovframe-scaffold-mcp → Settings → Trusted publishing →
+#   GitHub Actions: owner EricSeokgon / repository egovframe-scaffold-mcp / workflow filename release.yml
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 태그·Release 생성
+  id-token: write   # npm trusted publishing · MCP Registry OIDC
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+env:
+  MCP_PUBLISHER_VERSION: v1.8.1
+
+jobs:
+  release:
+    name: publish on main
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the commit CI verified
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Node 22 (trusted publishing needs npm >= 11.5.1, Node >= 22.14)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Upgrade npm
+        run: |
+          npm install -g npm@latest
+          node --version
+          npm --version
+
+      - name: Install
+        run: npm ci
+
+      - name: Release check (version, server.json, changelog, tag, npm)
+        id: check
+        run: node scripts/release-check.mjs
+
+      - name: Nothing to release
+        if: steps.check.outputs.publish != 'true'
+        run: |
+          echo "::notice::v${{ steps.check.outputs.version }} 은 배포하지 않습니다 — ${{ steps.check.outputs.reason }}"
+
+      # ── 여기서부터 배포 (prepublishOnly 가 빌드 + 전체 오프라인 게이트를 다시 돌린다) ──
+      - name: Validate server.json against the MCP Registry
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          curl -sSL "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher validate
+
+      - name: Publish to npm (OIDC trusted publishing, provenance)
+        if: steps.check.outputs.publish == 'true'
+        run: npm publish --access public
+
+      - name: Confirm npm has the version
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if [ "$(npm view egovframe-scaffold-mcp@${{ steps.check.outputs.version }} version 2>/dev/null)" = "${{ steps.check.outputs.version }}" ]; then echo "npm OK"; exit 0; fi
+            sleep 20
+          done
+          echo "::error::npm 에서 ${{ steps.check.outputs.version }} 을 확인하지 못했습니다"; exit 1
+
+      - name: Tag the released commit and create the GitHub Release
+        if: steps.check.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.check.outputs.version }}
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$V" -m "v$V" "${{ github.event.workflow_run.head_sha || github.sha }}"
+          git push origin "v$V"
+          node scripts/release-notes.mjs "$V" --out release-notes.md
+          gh release create "v$V" --title "v$V" --notes-file release-notes.md --verify-tag
+
+      - name: Publish to the MCP Registry (GitHub OIDC)
+        if: steps.check.outputs.publish == 'true'
+        continue-on-error: true
+        id: registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
+
+      - name: Registry publish failed (release itself is complete)
+        if: steps.check.outputs.publish == 'true' && steps.registry.outcome == 'failure'
+        run: echo "::warning::MCP Registry 게시에 실패했습니다. npm·태그·Release 는 완료됐으므로 'mcp-publisher login github && mcp-publisher publish' 로 수동 게시하세요."
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Release v${{ steps.check.outputs.version }}"
+            echo ""
+            if [ "${{ steps.check.outputs.publish }}" = "true" ]; then
+              echo "- npm: https://www.npmjs.com/package/egovframe-scaffold-mcp/v/${{ steps.check.outputs.version }}"
+              echo "- Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.check.outputs.version }}"
+              echo "- MCP Registry: ${{ steps.registry.outcome }}"
+            else
+              echo "- 배포 안 함: ${{ steps.check.outputs.reason }}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

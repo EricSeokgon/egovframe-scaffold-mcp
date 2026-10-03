@@ -75,7 +75,8 @@ Resources: `egovframe://catalog/components`, `…/components/{id}`, `…/templat
 ## How it stays trustworthy
 
 - **Pinned sources**: component catalog (official v5.0.6 tag, commit, archive sha256), Initializr zip templates (commit, sha256, size), config templates (commit, per-file sha256, CRLF-safe), migration rules derived from `egovframe-runtime` tags v3.10.0 / v4.3.0-Final / v5.0.2-Final and `egovframe-common-components` v3.10.0 / v5.0.6, dependency baseline extracted from the official 5.x parent poms (5.0.2), `spring-boot-dependencies` 3.5.6 and the RTE 5.0.2 module poms — every pom with url and sha256. `sync_egovframe_templates` reports when any of these drifts upstream.
-- **Release gate**: `npm run prepublishOnly` runs the build and ~25 offline suites (over 1,100 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, and checks that every migration target coordinate exists in the Maven repositories.
+- **Release gate**: `npm run prepublishOnly` runs the build and ~28 offline suites (over 1,300 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, checks that every migration target coordinate exists in the Maven repositories, watches upstream drift of the bundled rules and baseline, and validates `server.json` against the MCP Registry.
+- **Automated releases** (v0.35+): once a PR is merged and CI passes on `main`, `release.yml` publishes to npm with OIDC trusted publishing (provenance attached, no tokens), tags the verified commit, creates the GitHub Release from the changelog and publishes to the MCP Registry with GitHub OIDC — only when the version in `package.json`, `server.json` and the changelog agree and the version is not released yet.
 - **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools also declare `outputSchema` and return `structuredContent`.
 - **Safety**: transactions with structured rollback reports, `dryRun` everywhere, allowed roots with realpath checks, zip-slip guards, process-tree kill on build timeouts.
 
@@ -92,7 +93,7 @@ Auto items (coordinates, package prefixes and renames, javax→jakarta packages 
 
 ## MCP Registry
 
-The server is described for the [MCP Registry](https://registry.modelcontextprotocol.io) by `server.json` (`io.github.EricSeokgon/egovframe-scaffold-mcp`) and the matching `mcpName` in `package.json`. Publishing happens after the npm release with `mcp-publisher login github && mcp-publisher publish`.
+The server is described for the [MCP Registry](https://registry.modelcontextprotocol.io) by `server.json` (`io.github.EricSeokgon/egovframe-scaffold-mcp`) and the matching `mcpName` in `package.json`. CI publishes it right after the npm release (`mcp-publisher login github-oidc && mcp-publisher publish`); `mcp-publisher validate` runs in CI on every change.
 
 ## License
 
