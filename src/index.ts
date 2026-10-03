@@ -119,3 +119,6 @@ if (isMain) {
   await server.connect(transport);
   console.error("egovframe-scaffold-mcp: stdio에서 대기 중");
 }
+// v0.36 — 해석된 의존성 트리
+export { MAVEN_DEPENDENCY_PLUGIN, parseMavenCoord, parseMavenTree, parseGradleTree, dedupeArtifacts, treeCommand, resolveDependencyTree } from "./dependency-tree.js";
+export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveSbomOutputPath, sbomCommand, purlOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";

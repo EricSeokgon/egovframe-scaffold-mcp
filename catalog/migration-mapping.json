@@ -621,6 +621,18 @@
           "artifactId": "jakarta.websocket-api"
         },
         "toVersion": "2.2.0"
+      },
+      {
+        "from": {
+          "groupId": "javax.faces",
+          "artifactId": "javax.faces-api"
+        },
+        "to": {
+          "groupId": "jakarta.faces",
+          "artifactId": "jakarta.faces-api"
+        },
+        "toVersion": "4.1.2",
+        "note": "Jakarta Faces 4.1(Spring Boot 3.5 BOM 기준 4.1.2). 구현체(Mojarra org.glassfish:jakarta.faces 4.x)도 함께 교체"
       }
     ]
   },
@@ -816,6 +828,10 @@
     "comment": "공개 Maven 저장소에 기준 버전이 없는 국내 벤더·기관 배포 좌표(groupId 접두). 의존성 점검은 '기준 없음' 대신 'vendor' 로 분류하고 사유를 붙인다(v0.34).",
     "groupIdPrefixes": [
       {
+        "groupIdPrefix": "project",
+        "note": "system scope 로 프로젝트 안 로컬 jar 를 붙이는 관행(groupId 'project') — 공개 저장소 기준 없음. SBOM 에서 공급자·버전을 확인하고 가능하면 공개 좌표(예: com.oracle.database.jdbc)로 바꾸세요"
+      },
+      {
         "groupIdPrefix": "altibase",
         "note": "Altibase JDBC — 벤더 배포 jar. 표준프레임워크 저장소 또는 벤더 사이트의 DBMS 버전에 맞는 드라이버 사용"
       },
@@ -842,6 +858,10 @@
       {
         "groupIdPrefix": "kr.go",
         "note": "정부 기관 배포 라이브러리 — 공개 저장소 기준 없음. 배포본 버전을 따름"
+      },
+      {
+        "groupIdPrefix": "com.goldilocks",
+        "note": "GOLDILOCKS JDBC — 벤더 배포 jar"
       }
     ]
   },

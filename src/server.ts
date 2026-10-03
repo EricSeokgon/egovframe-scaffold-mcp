@@ -26,6 +26,7 @@ import { applyMigration, loadMigrationRules, migrateProject, renderMigrationAppl
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
 import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network.js";
 import { generateAgentsMd } from "./agents-md.js";
+import { generateSbom, renderSbomMarkdown } from "./sbom.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
 import { toolAnnotations, toolTitle } from "./tool-meta.js";
 import { OUTPUT_SCHEMAS } from "./output-schemas.js";
@@ -584,14 +585,17 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 의존성 점검 도구 (v0.30.0, 읽기 전용) ──────────────
   server.registerTool(
     "check_egovframe_dependencies",
-    { title: t("check_egovframe_dependencies"), description: d("check_egovframe_dependencies", "프로젝트의 Maven/Gradle 의존성을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전, Spring Boot BOM 전체(spring-boot-dependencies + import 한 단계), RTE 모듈 18종의 전이 의존성과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x·Jackson 1·Ehcache 2 등)/벤더 배포(국내 DBMS·GPKI 등)/기준 없음 으로 분류하고 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이)를 적으며, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다."), inputSchema: {
+    { title: t("check_egovframe_dependencies"), description: d("check_egovframe_dependencies", "프로젝트의 Maven/Gradle 의존성(resolve=true 면 빌드 도구로 해석한 전이 의존성까지, 트리 경로와 선언·해석 버전 차이 포함)을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전, Spring Boot BOM 전체(spring-boot-dependencies + import 한 단계), RTE 모듈 18종의 전이 의존성과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x·Jackson 1·Ehcache 2 등)/벤더 배포(국내 DBMS·GPKI 등)/기준 없음 으로 분류하고 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이)를 적으며, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다."), inputSchema: {
       projectDir: z.string().describe("점검할 프로젝트 디렉터리(절대경로 권장)"),
       offline: z.boolean().default(true).describe("true(기본)면 네트워크 없이 기준 대조만, false 면 OSV 취약점 조회 추가"),
+      resolve: z.boolean().default(false).describe("true 면 빌드 도구(Maven dependency:tree / Gradle dependencies)로 전이 의존성까지 해석해 함께 판정(빌드 도구·저장소 접근 필요, 수십 초)"),
+      resolveScope: z.enum(["runtime", "all"]).default("runtime").describe("resolve 범위: runtime(compile+runtime, 기본) | all(test·provided 포함)"),
+      resolveTimeoutMs: z.number().int().min(10_000).max(1_800_000).default(300_000).describe("해석 명령 타임아웃(ms)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_dependencies.shape, annotations: toolAnnotations("check_egovframe_dependencies") },
     async (args) => {
       enforceAllowedRoots(args);
-      const r = await checkDependencies({ projectDir: args.projectDir, offline: args.offline });
+      const r = await checkDependencies({ projectDir: args.projectDir, offline: args.offline, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDependencyMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -625,6 +629,29 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const r = await generateAgentsMd({ projectDir: args.projectDir, fileName: args.fileName, lang: args.lang, overwrite: args.overwrite, dryRun: args.dryRun });
       const head = r.dryRun ? `📝 dryRun — ${r.fileName} 미리보기 (기록 없음)` : `✅ ${r.filePath} ${r.overwritten ? "덮어씀" : "생성"}`;
       return { content: [{ type: "text", text: `${head}\n\n${r.content}` }] };
+    },
+  );
+
+  server.registerTool(
+    "generate_egovframe_sbom",
+    { title: t("generate_egovframe_sbom"), description: d("generate_egovframe_sbom", "Maven/Gradle 프로젝트의 SBOM 을 CycloneDX 1.6 JSON 으로 만듭니다(빌드 파일 변경 없음). Maven 은 cyclonedx-maven-plugin(makeAggregateBom, 해시·라이선스 포함), Gradle 은 해석된 의존성 트리로 문서를 구성합니다. enrich=true(기본)면 component 마다 기준 판정(egovframe:status·basis·baseline)을 properties 로 붙이고, offline=false 면 OSV 로 알려진 취약점을 vulnerabilities[] 로 넣습니다. 출력은 프로젝트 안 경로(기본 sbom/bom.cdx.json)만 허용하고 기존 파일은 overwrite=true 가 아니면 거부하며, dryRun(기본)은 실행 없이 계획만 돌려줍니다. 2027년부터 단계화되는 공공기관 SBOM 등록·제출에 쓸 수 있는 표준 형식입니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      outputPath: z.string().default("sbom/bom.cdx.json").describe("프로젝트 상대 출력 경로"),
+      bomFormat: z.enum(["cyclonedx-json"]).default("cyclonedx-json").describe("SBOM 형식(현재 CycloneDX JSON)"),
+      scope: z.enum(["runtime", "all"]).default("runtime").describe("runtime(compile+runtime, 기본) | all(test·provided 포함)"),
+      enrich: z.boolean().default(true).describe("component 마다 기준 판정 속성 부착"),
+      offline: z.boolean().default(true).describe("false 면 OSV 조회 결과를 vulnerabilities[] 로 포함"),
+      overwrite: z.boolean().default(false).describe("기존 출력 파일 덮어쓰기 허용"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 실행 없이 명령·출력 경로만 보고"),
+      timeoutMs: z.number().int().min(10_000).max(1_800_000).default(600_000).describe("생성 명령 타임아웃(ms)"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.generate_egovframe_sbom.shape, annotations: toolAnnotations("generate_egovframe_sbom") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await generateSbom({ projectDir: args.projectDir, outputPath: args.outputPath, format: args.bomFormat, scope: args.scope, enrich: args.enrich, offline: args.offline, overwrite: args.overwrite, dryRun: args.dryRun, timeoutMs: args.timeoutMs });
+      const { bom: _bom, ...structured } = r; // 문서 전체는 파일에 있으므로 구조화 출력에서 제외
+      const text = args.format === "json" ? JSON.stringify(structured, null, 2) : renderSbomMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: structured as unknown as Record<string, unknown> };
     },
   );
   // ── 문서 검색 도구 (v0.15.0) ───────────────────────────
