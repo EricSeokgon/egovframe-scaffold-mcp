@@ -80,7 +80,7 @@ generate_egovframe_sbom(projectDir, outputPath="sbom/bom.cdx.json", bomFormat="c
 
 ## 검증
 
-- `test:sbom`(36단언, 오프라인; v0.36): purl·트리→문서 구성(머리말·도구·루트·component·의존 그래프)·보강(재실행 유지)·취약점 병합, 출력 경로 거부(`..`·절대·드라이브·symlink)·명령(플러그인 좌표·범위·Windows 래퍼), dryRun 무기록·스키마, 가짜 플러그인 출력으로 기록·보존·보강·취약점·overwrite 거부·enrich=false·OSV 실패·플러그인 실패·시간 초과, 가짜 Gradle 트리 문서
+- `test:sbom`(37단언, 오프라인; v0.36): purl·트리→문서 구성(머리말·도구·루트·component·의존 그래프)·보강(재실행 유지)·취약점 병합, 출력 경로 거부(`..`·절대·드라이브·symlink)·명령(플러그인 좌표·범위·Windows 래퍼), dryRun 무기록·스키마, 가짜 플러그인 출력으로 기록·보존·보강·취약점·overwrite 거부·enrich=false·OSV 실패·플러그인 실패·시간 초과, 가짜 Gradle 트리 문서
 - `test:sbom-live`(CI 통합, v0.36): 공식 `egovframe-web` 템플릿을 실제 Maven 으로 해석(≥60 artifact, 전이 경로)·SBOM 생성(≥60 component, purl·속성·해시·라이선스·OSV `vulnerabilities[]`), Gradle 샘플 해석·SBOM(런너에 gradle 이 있을 때)
 - `test:dependencies`(129단언, 오프라인; v0.36 — Maven·Gradle 트리 파서(실제 출력 픽스처)·명령·가짜 runner 로 resolve 항목·경로·차이·parent 안내·OSV 포함·실패·시간 초과·Gradle all 범위 추가; v0.34 — 기준 스키마 2·Boot BOM import 전부 풀림·릴리스 트레인 분리·RTE 전이 모듈 sha256·파일 200KB·basis·Boot/RTE 우선순위·vendor·EOL 좌표 교체 규칙·Boot 템플릿형 pom unknown 0 추가): 기준 카탈로그 스키마·출처·RTE 5.x 모듈 포함·계열 규칙, 분류 함수(3.x/4.x/5.x RTE·javax·DBCP·Log4j·Spring 4/6.1/기준·parent 관리·버전 없음·기준 밖·미해결 속성), 3.10 픽스처(속성 해석·라인·scope·보안 근거·http 저장소), OSV 모의(질의 대상·결과 매핑·실패 처리), 5.x parent 픽스처(managed·outdated·Java parent 관리·보안 ok), gradle, 빈 디렉터리, 디스크 불변
 - `test:dependencies-live`(CI): log4j 1.2.17 픽스처를 `offline=false` 로 점검해 OSV 결과가 붙는지 확인; v0.34 — 공식 `egovframe-boot-web`·`egovframe-web` 템플릿 pom(Initializr 고정 commit)에서 기준 없음 0건, 공식 공통컴포넌트 v3.10.0 pom 에서 기준 없음 5건 이하

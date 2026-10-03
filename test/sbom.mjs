@@ -49,10 +49,12 @@ assert(cm.command === "mvn" && cm.args[1] === "org.cyclonedx:cyclonedx-maven-plu
 assert(ca.command === "mvn.cmd" && ca.args.includes("-DincludeTestScope=true") && ca.args.includes("-DincludeProvidedScope=true") && cg.args.join(" ") === "dependencies --configuration runtimeClasspath -q --console=plain", "all 범위·Windows 래퍼·Gradle 트리 명령");
 
 // ── generateSbom: dryRun ───────────────────────────────
-const d = await generateSbom({ projectDir: proj });
+const d = await generateSbom({ projectDir: proj, platform: "linux" }); // 명령 문자열 단언은 플랫폼을 고정(Windows 는 mvn.cmd)
 assert(d.dryRun && !d.written && d.outputPath === "sbom/bom.cdx.json" && d.buildTool === "maven" && d.generator === "cyclonedx-maven-plugin" && d.components === 0 && /dryRun/.test(d.notes[0]) && !existsSync(path.join(proj, "sbom")), "dryRun(기본): 실행·기록 없음, 계획만");
 assert(OUTPUT_SCHEMAS.generate_egovframe_sbom.safeParse(d).success, "dryRun 결과가 outputSchema 통과");
 assert(renderSbomMarkdown(d).includes("(dryRun — 쓰지 않음)") && renderSbomMarkdown(d).includes("`mvn -B org.cyclonedx"), "dryRun Markdown");
+const dWin = await generateSbom({ projectDir: proj, platform: "win32" });
+assert(dWin.dryRun && dWin.command.startsWith("mvn.cmd -B org.cyclonedx"), "dryRun(win32): mvn.cmd 래퍼 이름");
 
 // ── generateSbom: Maven(가짜 플러그인 출력) ────────────
 const pluginBom = { bomFormat: "CycloneDX", specVersion: "1.6", serialNumber: "urn:uuid:11111111-1111-1111-1111-111111111111", version: 1,
