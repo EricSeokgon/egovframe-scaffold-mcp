@@ -15,7 +15,8 @@ import { ECC_DB_TYPES, addComponents, removeComponents, type AddComponentsOption
 import { validateProject } from "./validate.js";
 import { DOCS_REPO, GUIDE_MAX_CHARS, extractDocSnippet, getGuide, searchDocs } from "./guide.js";
 import { applyRecipe, loadRecipes, type ApplyRecipeOptions } from "./recipes.js";
-import { diagnoseProject, generateReport } from "./diagnose.js";
+import { diagnoseProject } from "./diagnose.js";
+import { generateProjectReport } from "./report.js";
 import { upgradeProject } from "./upgrade.js";
 import { explainComponent } from "./explain.js";
 import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
@@ -688,17 +689,29 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       return { content: [{ type: "text", text: lines.join("\n") }] };
     },
   );
-  // ── 리포트 도구 (v0.16.0) ──────────────────────────────
+  // ── 리포트 도구 (v0.16.0 · v0.37 평가서) ───────────────
   server.registerTool(
     "generate_egovframe_report",
-    { title: t("generate_egovframe_report"), description: d("generate_egovframe_report", "프로젝트를 스캔해 설치 공통컴포넌트·참조 테이블·가이드 문서 링크·이슈를 Markdown 리포트로 생성합니다. (읽기 전용) 조립 결과 문서화나 README 첨부에 적합합니다."), inputSchema: {
+    { title: t("generate_egovframe_report"), description: d("generate_egovframe_report", "프로젝트 리포트를 Markdown(또는 format=json)으로 만듭니다. sections=[\"components\"](기본)는 설치 공통컴포넌트·참조 테이블·가이드 문서 링크·이슈, sections=[\"assessment\"]는 5.x 전환 준비도 평가서 — (1) 개요(빌드 도구·RTE 세대·parent·Java·공통컴포넌트) (2) 전환 범위(migrate 진단 요약: 자동/수동·종류별·재조립 권고·예상 수동 작업 상위 N) (3) 의존성(기준 판정 집계·조치 목록, resolve=true 면 전이 포함, offline=false 면 OSV 취약점) (4) 보안 설정 점검 (5) SBOM 요약(sbomPath 에 있으면) (6) 등급과 근거 — 전환 난이도·공급망 상태를 각각 A–D 로 매기고 산식(요인·구간·점수)을 리포트에 그대로 적어 사람이 재계산할 수 있게 합니다. 비용·공수는 산정하지 않습니다. outputPath 를 주면 프로젝트 안에 새 파일로만 저장하고(기존 파일 거부, transaction), 그 외에는 디스크를 바꾸지 않습니다."), inputSchema: {
       projectDir: z.string().describe("리포트를 만들 프로젝트 디렉터리(절대경로 권장)"),
-    }, annotations: toolAnnotations("generate_egovframe_report") },
+      sections: z.array(z.enum(["components", "assessment"])).default(["components"]).describe("포함할 절: components(설치 컴포넌트 리포트, 기본) · assessment(전환 준비도 평가서) — 둘 다 주면 이어 붙임"),
+      resolve: z.boolean().default(false).describe("assessment: 빌드 도구로 전이 의존성까지 해석해 판정(빌드 도구·저장소 접근 필요)"),
+      resolveScope: z.enum(["runtime", "all"]).default("runtime").describe("resolve 범위"),
+      resolveTimeoutMs: z.number().int().min(10_000).max(1_800_000).default(300_000).describe("해석 명령 타임아웃(ms)"),
+      offline: z.boolean().default(true).describe("assessment: true(기본)면 네트워크 없이, false 면 OSV 로 알려진 취약점 조회(공급망 등급 확정에 필요)"),
+      sbomPath: z.string().default("sbom/bom.cdx.json").describe("assessment: 요약할 SBOM 의 프로젝트 상대 경로(없으면 '없음'으로 표시, 생성하지 않음)"),
+      topN: z.number().int().min(1).max(200).default(20).describe("assessment: 예상 수동 작업 목록 상위 N"),
+      outputPath: z.string().optional().describe("프로젝트 상대 .md 경로. 주면 새 파일로 저장(기존 파일이 있으면 거부)"),
+      dryRun: z.boolean().default(false).describe("true 면 outputPath 가 있어도 쓰지 않고 내용만"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식(json 은 assessment 데이터 포함)"),
+    }, outputSchema: OUTPUT_SCHEMAS.generate_egovframe_report.shape, annotations: toolAnnotations("generate_egovframe_report") },
     async (args) => {
       enforceAllowedRoots(args);
-      return {
-        content: [{ type: "text", text: generateReport({ projectDir: args.projectDir }) }],
-      };
+      const r = await generateProjectReport({ projectDir: args.projectDir, sections: args.sections, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs, offline: args.offline, sbomPath: args.sbomPath, topN: args.topN, outputPath: args.outputPath, dryRun: args.dryRun });
+      const { markdown, ...structured } = r;
+      const head = r.outputPath ? (r.written ? `✅ ${r.outputPath} 저장 (${r.bytes} bytes)\n\n` : `📝 dryRun — ${r.outputPath} 에 쓰지 않음\n\n`) : "";
+      const text = args.format === "json" ? JSON.stringify(structured, null, 2) : `${head}${markdown}`;
+      return { content: [{ type: "text", text }], structuredContent: structured as unknown as Record<string, unknown> };
     },
   );
   // ── 업그레이드 도구 (v0.17.0) ──────────────────────────

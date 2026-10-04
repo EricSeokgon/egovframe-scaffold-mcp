@@ -93,8 +93,8 @@ export interface GenerateSbomResult {
 
 const REL_PATH_RE = /^(?!\/)(?!.*(^|\/)\.\.(\/|$))[^\0]+$/;
 
-/** 출력 경로를 검증하고 절대 경로를 돌려준다(프로젝트 안, symlink 이탈 금지). */
-export function resolveSbomOutputPath(projectDir: string, outputPath: string): { relPath: string; absolutePath: string } {
+/** 출력 경로를 검증하고 절대 경로를 돌려준다(프로젝트 안, symlink 이탈 금지). SBOM·리포트 공용. */
+export function resolveOutputPath(projectDir: string, outputPath: string): { relPath: string; absolutePath: string } {
   const relPath = outputPath.replace(/\\/g, "/").replace(/^\.\//, "");
   if (!REL_PATH_RE.test(relPath) || path.isAbsolute(outputPath) || /^[A-Za-z]:/.test(outputPath)) throw new Error(`outputPath 는 프로젝트 내부의 상대 경로여야 합니다: ${outputPath}`);
   const absolutePath = path.resolve(projectDir, relPath);
@@ -106,6 +106,7 @@ export function resolveSbomOutputPath(projectDir: string, outputPath: string): {
   if (relReal.startsWith("..") || path.isAbsolute(relReal)) throw new Error(`출력 경로가 symlink 를 통해 프로젝트 밖을 가리킵니다: ${outputPath}`);
   return { relPath, absolutePath };
 }
+export const resolveSbomOutputPath = resolveOutputPath;
 
 /** Maven: cyclonedx-maven-plugin 명령(출력은 임시 디렉터리로). */
 export function sbomCommand(projectDir: string, buildTool: BuildTool, scope: ResolveScope, outputDirectory: string, platform?: NodeJS.Platform | string): ResolvedCommand {

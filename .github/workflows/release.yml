@@ -1,11 +1,12 @@
-# 릴리스 자동화 (v0.35) — main 에서 CI 가 성공한 뒤 실행된다.
+# 릴리스 자동화 (v0.35, v0.37 재개) — main 에서 CI 가 성공한 뒤 실행된다.
 #
 #   사람은 PR 을 병합하기만 한다. 이 워크플로가
-#     1) scripts/release-check.mjs 로 네 조건(server.json 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사하고
+#     1) scripts/release-check.mjs 로 전제(server.json 버전 일치·변경 이력 항목)를 검사하고 원격 상태(npm·태그·Release·Registry)를 보아 남은 단계만 고르고
 #     2) npm 에 trusted publishing(OIDC, 토큰 없음, provenance 자동)으로 게시한 뒤
-#     3) 그 main 커밋에 vX.Y.Z 태그를 만들고 README 변경 이력에서 뽑은 노트로 GitHub Release 를 만들고
+#     3) 게시된 커밋에 vX.Y.Z 태그를 만들고 README 변경 이력에서 뽑은 노트로 GitHub Release 를 만들고
 #     4) mcp-publisher(GitHub OIDC)로 MCP Registry 에 게시한다.
 #   조건이 맞지 않으면(이미 릴리스된 버전 등) 이유만 적고 성공 종료한다.
+#   도중에 끊겨도(예: v0.36.1 — npm 게시 뒤 전파 확인이 시간 초과) 다음 실행이 npm 의 gitHead 로 같은 커밋에 태그를 만들어 이어 간다(resume).
 #
 #   선행 조건(저장소 소유자 1회): npmjs.com → 패키지 egovframe-scaffold-mcp → Settings → Trusted publishing →
 #   GitHub Actions: owner EricSeokgon / repository egovframe-scaffold-mcp / workflow filename release.yml
@@ -56,8 +57,10 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Release check (version, server.json, changelog, tag, npm)
+      - name: Release check (version, server.json, changelog, npm, tag, release, registry)
         id: check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/release-check.mjs
 
       - name: Nothing to release
@@ -73,33 +76,45 @@ jobs:
           ./mcp-publisher validate
 
       - name: Publish to npm (OIDC trusted publishing, provenance)
-        if: steps.check.outputs.publish == 'true'
+        if: steps.check.outputs.npm == 'true'
+        id: npm
         run: npm publish --access public
 
-      - name: Confirm npm has the version
-        if: steps.check.outputs.publish == 'true'
+      # npm publish 가 0 으로 끝났으면 게시는 된 것이다. 레지스트리 전파가 늦어도(v0.36.1 은 2분 넘게 걸림) 태그 단계를 막지 않는다 — 최대 10분 기다린 뒤 경고만 남긴다.
+      - name: Wait until npm serves the version (up to 10 minutes, warning only)
+        if: steps.check.outputs.npm == 'true'
         run: |
-          for i in 1 2 3 4 5 6; do
-            if [ "$(npm view egovframe-scaffold-mcp@${{ steps.check.outputs.version }} version 2>/dev/null)" = "${{ steps.check.outputs.version }}" ]; then echo "npm OK"; exit 0; fi
+          for i in $(seq 1 30); do
+            if [ "$(npm view egovframe-scaffold-mcp@${{ steps.check.outputs.version }} version 2>/dev/null)" = "${{ steps.check.outputs.version }}" ]; then echo "npm OK (${i}0s)"; exit 0; fi
             sleep 20
           done
-          echo "::error::npm 에서 ${{ steps.check.outputs.version }} 을 확인하지 못했습니다"; exit 1
+          echo "::warning::npm 이 아직 ${{ steps.check.outputs.version }} 을 돌려주지 않습니다(전파 지연). 게시 자체는 성공했으므로 태그·Release 를 계속합니다."
 
-      - name: Tag the released commit and create the GitHub Release
-        if: steps.check.outputs.publish == 'true'
+      - name: Tag the released commit
+        if: steps.check.outputs.tag == 'true'
+        id: tag
+        run: |
+          V=${{ steps.check.outputs.version }}
+          TARGET="${{ steps.check.outputs.tag_target }}"
+          [ -n "$TARGET" ] || TARGET="${{ github.event.workflow_run.head_sha || github.sha }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$V" -m "v$V" "$TARGET"
+          git push origin "v$V"
+          echo "태그 v$V → $TARGET (${{ steps.check.outputs.mode }})"
+
+      - name: Create the GitHub Release
+        if: steps.check.outputs.release == 'true'
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           V=${{ steps.check.outputs.version }}
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$V" -m "v$V" "${{ github.event.workflow_run.head_sha || github.sha }}"
-          git push origin "v$V"
           node scripts/release-notes.mjs "$V" --out release-notes.md
           gh release create "v$V" --title "v$V" --notes-file release-notes.md --verify-tag
 
       - name: Publish to the MCP Registry (GitHub OIDC)
-        if: steps.check.outputs.publish == 'true'
+        if: steps.check.outputs.registry == 'true'
         continue-on-error: true
         id: registry
         run: |
@@ -107,19 +122,21 @@ jobs:
           ./mcp-publisher publish
 
       - name: Registry publish failed (release itself is complete)
-        if: steps.check.outputs.publish == 'true' && steps.registry.outcome == 'failure'
-        run: echo "::warning::MCP Registry 게시에 실패했습니다. npm·태그·Release 는 완료됐으므로 'mcp-publisher login github && mcp-publisher publish' 로 수동 게시하세요."
+        if: steps.check.outputs.registry == 'true' && steps.registry.outcome == 'failure'
+        run: echo "::warning::MCP Registry 게시에 실패했습니다. npm·태그·Release 는 완료됐으므로 다음 main 병합의 Release 가 Registry 단계만 다시 시도합니다('mcp-publisher login github && mcp-publisher publish' 로 수동 게시도 가능)."
 
       - name: Summary
         if: always()
         run: |
           {
-            echo "## Release v${{ steps.check.outputs.version }}"
+            echo "## Release v${{ steps.check.outputs.version }} (${{ steps.check.outputs.mode }})"
             echo ""
             if [ "${{ steps.check.outputs.publish }}" = "true" ]; then
-              echo "- npm: https://www.npmjs.com/package/egovframe-scaffold-mcp/v/${{ steps.check.outputs.version }}"
-              echo "- Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.check.outputs.version }}"
+              echo "- npm: ${{ steps.npm.outcome }} — https://www.npmjs.com/package/egovframe-scaffold-mcp/v/${{ steps.check.outputs.version }}"
+              echo "- tag: ${{ steps.tag.outcome }} ${{ steps.check.outputs.tag_target }}"
+              echo "- Release: ${{ steps.release.outcome }} — https://github.com/${{ github.repository }}/releases/tag/v${{ steps.check.outputs.version }}"
               echo "- MCP Registry: ${{ steps.registry.outcome }}"
+              echo "- (skipped = 이미 돼 있어 건너뜀) ${{ steps.check.outputs.reason }}"
             else
               echo "- 배포 안 함: ${{ steps.check.outputs.reason }}"
             fi

@@ -38,7 +38,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   // v0.36: 새 파일만 만들고(overwrite 는 명시) 빌드 도구가 저장소에 접근하므로 openWorld; 같은 입력이면 같은 문서(serialNumber·timestamp 제외)
   generate_egovframe_sbom: { title: { ko: "SBOM 생성 (CycloneDX)", en: "Generate SBOM (CycloneDX)" }, annotations: create(true) },
   search_egovframe_docs: { title: { ko: "가이드 문서 검색", en: "Search guide documents" }, annotations: ro(true) },
-  generate_egovframe_report: { title: { ko: "프로젝트 리포트", en: "Project report" }, annotations: ro() },
+  // v0.37: outputPath 로 새 파일을 만들 수 있고(기존 파일 거부 → 비파괴) resolve/offline=false 는 네트워크를 쓴다 → 읽기 전용 힌트는 뗀다
+  generate_egovframe_report: { title: { ko: "프로젝트 리포트 · 전환 준비도 평가서", en: "Project report and migration readiness assessment" }, annotations: create(true) },
   upgrade_egovframe_project: { title: { ko: "공통컴포넌트 업그레이드", en: "Upgrade common components" }, annotations: destructive(true) },
   explain_egovframe_component: { title: { ko: "컴포넌트 상세", en: "Explain component" }, annotations: ro() },
   generate_egovframe_config: { title: { ko: "Spring 설정 파일 생성", en: "Generate Spring configuration" }, annotations: create() },

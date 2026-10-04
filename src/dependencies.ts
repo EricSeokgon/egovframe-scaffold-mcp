@@ -370,7 +370,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   return result;
 }
 
-const STATUS_LABEL: Record<DependencyStatus, string> = { ok: "기준 충족", outdated: "기준 미만", managed: "parent 관리", legacy: "전환 대상", replace: "교체 필요", vendor: "벤더 배포", unknown: "기준 없음", unversioned: "버전 없음" };
+export const STATUS_LABEL: Record<DependencyStatus, string> = { ok: "기준 충족", outdated: "기준 미만", managed: "parent 관리", legacy: "전환 대상", replace: "교체 필요", vendor: "벤더 배포", unknown: "기준 없음", unversioned: "버전 없음" };
 
 /** 점검 결과를 Markdown 으로 렌더링한다. */
 export function renderDependencyMarkdown(r: CheckDependenciesResult): string {

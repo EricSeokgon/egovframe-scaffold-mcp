@@ -1,7 +1,7 @@
 // node test/release.mjs — 릴리스 자동화의 판정·릴리스 노트·패키지 내용 (오프라인; npm pack --dry-run 만 로컬 실행)
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { decideRelease, hasChangelogEntry, readVersionFacts } from "../scripts/release-check.mjs";
+import { decideRelease, hasChangelogEntry, readVersionFacts, githubReleaseExists, registryVersionExists } from "../scripts/release-check.mjs";
 import { findChangelogEntry, renderReleaseNotes } from "../scripts/release-notes.mjs";
 
 let n = 0;
@@ -23,8 +23,28 @@ assert(decideRelease({ ...base, changelogHasEntry: false }).reasons.some((r) => 
 assert(decideRelease({ ...base, tagExists: true }).reasons.some((r) => /태그/.test(r)), "태그 이미 있음 → 거부(재배포 방지)");
 assert(decideRelease({ ...base, npmPublished: true }).reasons.some((r) => /npm/.test(r)), "npm 에 이미 있음 → 거부");
 assert(decideRelease({ ...base, version: "1.2" }).publish === false && decideRelease({ ...base, serverName: "io.github.x/z" }).publish === false, "버전 형식·mcpName 불일치 → 거부");
-const multi = decideRelease({ ...base, changelogHasEntry: false, tagExists: true, npmPublished: true });
-assert(multi.publish === false && multi.reasons.length === 3, "이유는 전부 모아 보고");
+const multi = decideRelease({ ...base, changelogHasEntry: false, serverVersions: ["1.2.3", "1.2.2"], version: "1.2.3" });
+assert(multi.publish === false && multi.reasons.length === 2 && multi.mode === "none", "전제 조건 이유는 전부 모아 보고");
+
+// ── v0.37: 끊긴 릴리스 재개(resume) ────────────────────
+const full = decideRelease({ ...base, headSha: "a".repeat(40) });
+assert(full.mode === "full" && full.steps.npm && full.steps.tag && full.steps.release && full.steps.registry && full.tagTarget === "a".repeat(40), "아무것도 없음 → full: npm·태그(현재 커밋)·Release·Registry");
+const gh = "b".repeat(40);
+const r1 = decideRelease({ ...base, npmPublished: true, tagExists: false, npmGitHead: gh, headSha: "c".repeat(40), gitHeadIsAncestor: true });
+assert(r1.publish && r1.mode === "resume" && !r1.steps.npm && r1.steps.tag && r1.steps.release && r1.steps.registry && r1.tagTarget === gh, "npm 만 있음(v0.36.1 상황) → 태그를 npm gitHead 커밋에, Release·Registry 이어서");
+assert(decideRelease({ ...base, npmPublished: true, tagExists: false, npmGitHead: gh, headSha: "c".repeat(40), gitHeadIsAncestor: false }).publish === false && decideRelease({ ...base, npmPublished: true, tagExists: false, npmGitHead: null }).reasons.some((r) => /gitHead/.test(r)), "gitHead 가 main 조상이 아니거나 모름 → 자동 태그 안 함(수동 안내)");
+const r2 = decideRelease({ ...base, npmPublished: true, tagExists: true, releaseExists: false });
+assert(r2.mode === "resume" && !r2.steps.npm && !r2.steps.tag && r2.steps.release && r2.steps.registry && r2.tagTarget === null, "npm·태그 있음, Release 없음 → Release·Registry 만");
+const r3 = decideRelease({ ...base, npmPublished: true, tagExists: true, releaseExists: true, registryPublished: false });
+assert(r3.mode === "resume" && r3.steps.registry && !r3.steps.release && !r3.steps.tag, "Registry 만 없음 → Registry 만");
+const done = decideRelease({ ...base, npmPublished: true, tagExists: true, releaseExists: true, registryPublished: true });
+assert(done.publish === false && done.mode === "none" && /이미 릴리스됨/.test(done.reasons[0]), "전부 있음 → 배포 안 함");
+assert(decideRelease({ ...base, npmPublished: true, tagExists: true, releaseExists: true, registryPublished: null }).publish === false, "Registry 유무를 모르면(조회 실패) 이미 릴리스된 것으로 보고 멈춤");
+assert(decideRelease({ ...base, npmPublished: true, tagExists: true, releaseExists: null }).reasons.some((r) => /토큰/.test(r)), "Release 유무 확인 불가(토큰 없음) → 멈춤");
+assert(decideRelease({ ...base, npmPublished: false, tagExists: true }).reasons.some((r) => /태그 v1\.2\.3 은 있는데 npm/.test(r)), "태그만 있고 npm 없음 → 멈춤(수동 정리)");
+const fakeFetch = (status) => async () => ({ status });
+assert((await githubReleaseExists("1.0.0", { repo: "o/r", token: "t", fetchImpl: fakeFetch(200) })) === true && (await githubReleaseExists("1.0.0", { repo: "o/r", token: "t", fetchImpl: fakeFetch(404) })) === false && (await githubReleaseExists("1.0.0", { repo: "o/r", token: "t", fetchImpl: fakeFetch(500) })) === null && (await githubReleaseExists("1.0.0", { repo: "o/r", token: "", fetchImpl: fakeFetch(200) })) === null, "GitHub Release 조회: 200/404/기타/토큰 없음");
+assert((await registryVersionExists("io.github.x/y", "1.0.0", fakeFetch(200))) === true && (await registryVersionExists("io.github.x/y", "1.0.0", fakeFetch(404))) === false && (await registryVersionExists("io.github.x/y", "1.0.0", async () => { throw new Error("net"); })) === null, "MCP Registry 조회: 200/404/오류");
 
 // ── 변경 이력 항목 추출·릴리스 노트 ─────────────────
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");

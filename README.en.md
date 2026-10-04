@@ -15,7 +15,7 @@ From an AI tool that speaks MCP (Claude, VS Code Copilot, Cursor, …) you can, 
 - assemble **common components** (190 catalog entries from the official v5.0.6 release) with sources, mappers, JSPs, messages, Spring/web fragments and per-database DDL/DML,
 - generate CRUD code (official Development wizard inputs), Spring configuration (21 official Initializr templates, offline) and a GitHub Actions workflow,
 - build and test with Maven/Gradle and get compiler errors and JUnit results structured by file and line,
-- diagnose an existing project, **migrate 3.x/4.x code to 5.x (Jakarta EE, Spring 6, Java 17)** — diagnosis first, then transactional apply, then compile-and-link verification —, check declared or fully resolved dependencies against the official 5.x parents, the full Spring Boot BOM and the RTE transitive versions (optionally with OSV), **generate a CycloneDX SBOM**, diagnose network/proxy problems, and generate `AGENTS.md` for AI coding tools.
+- diagnose an existing project, **migrate 3.x/4.x code to 5.x (Jakarta EE, Spring 6, Java 17)** — diagnosis first, then transactional apply, then compile-and-link verification —, check declared or fully resolved dependencies against the official 5.x parents, the full Spring Boot BOM and the RTE transitive versions (optionally with OSV), **generate a CycloneDX SBOM**, produce a one-call **migration readiness assessment** with A–D grades and the printed scoring formula, diagnose network/proxy problems, and generate `AGENTS.md` for AI coding tools.
 
 Every write tool offers `dryRun`, runs inside a file transaction (rollback on failure), never overwrites user files silently, and honours an optional allowed-roots sandbox.
 
@@ -63,7 +63,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `generate_egovframe_config` | Spring configuration from the 21 official Initializr templates (xml/javaConfig/yaml/properties), offline |
 | `generate_egovframe_ci` | GitHub Actions workflow (Maven/Gradle auto-detected) |
 | `build_egovframe_project` / `test_egovframe_project` | Run builds and tests; compiler errors and JUnit XML structured by file/line |
-| `diagnose_egovframe_project` / `generate_egovframe_report` | Scan any existing project; Markdown report |
+| `diagnose_egovframe_project` / `generate_egovframe_report` | Scan any existing project; Markdown report — `sections=["assessment"]` adds the 5.x migration readiness assessment (overview, migration scope, dependency actions, security settings, SBOM summary, two A–D grades with the formula printed), `format=json`, optional `outputPath` (new file only) |
 | `get_egovframe_guide` / `search_egovframe_docs` | Official guide documents (151 mappings) and offline keyword search |
 | `migrate_egovframe_project` | **5.x migration**: diagnose RTE coordinates, package/class renames and removals (runtime and common components), javax→jakarta, web.xml, removed XML namespaces, libraries to replace (auto/manual with file:line); `apply=true` rewrites auto items in one transaction with backups; `verify=true` compiles and links compiler errors to the remaining manual items as a prioritised worklist |
 | `check_egovframe_dependencies` | Compare dependencies (declared, or with `resolve=true` the whole tree resolved by Maven/Gradle — transitive artifacts with their path, declared-vs-resolved differences) with the official 5.x parent baseline (139 coordinates + BOM families), the full Spring Boot BOM (1,473 coordinates) and the transitive dependencies of the 18 RTE modules (58): ok / outdated / parent-managed / legacy / replace / vendor / unknown, each with the basis it was compared against; security-config presence checks; optional OSV lookup |
@@ -78,7 +78,9 @@ Resources: `egovframe://catalog/components`, `…/components/{id}`, `…/templat
 - **Pinned sources**: component catalog (official v5.0.6 tag, commit, archive sha256), Initializr zip templates (commit, sha256, size), config templates (commit, per-file sha256, CRLF-safe), migration rules derived from `egovframe-runtime` tags v3.10.0 / v4.3.0-Final / v5.0.2-Final and `egovframe-common-components` v3.10.0 / v5.0.6, dependency baseline extracted from the official 5.x parent poms (5.0.2), `spring-boot-dependencies` 3.5.6 and the RTE 5.0.2 module poms — every pom with url and sha256. `sync_egovframe_templates` reports when any of these drifts upstream.
 - **Release gate**: `npm run prepublishOnly` runs the build and ~28 offline suites (over 1,300 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, checks that every migration target coordinate exists in the Maven repositories, watches upstream drift of the bundled rules and baseline, and validates `server.json` against the MCP Registry.
 - **Automated releases** (v0.35+): once a PR is merged and CI passes on `main`, `release.yml` publishes to npm with OIDC trusted publishing (provenance attached, no tokens), tags the verified commit, creates the GitHub Release from the changelog and publishes to the MCP Registry with GitHub OIDC — only when the version in `package.json`, `server.json` and the changelog agree and the version is not released yet.
-- **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools and the SBOM generator also declare `outputSchema` and return `structuredContent`.
+- **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools, the SBOM generator and the report tool also declare `outputSchema` and return `structuredContent`.
+- **Regression corpus** (v0.37): CI runs diagnosis, dry-run apply, the dependency check and the assessment against the official `egovframe-common-components` **v3.10.0 and v4.3.2** source trees (pinned commits, sparse partial clones) and asserts the counts in `catalog/migration-corpus.json` within ±1% — so a rule or baseline change that moves real-world results is caught, and the 4.x→5.x path is verified on real assets.
+- **Resumable releases**: `release-check` looks at npm (including the published `gitHead`), the tag, the GitHub Release and the MCP Registry and runs only the missing steps, so an interrupted release continues on the next merge instead of needing manual tags.
 - **Safety**: transactions with structured rollback reports, `dryRun` everywhere, allowed roots with realpath checks, zip-slip guards, process-tree kill on build timeouts.
 
 ## Migration to 5.x in two calls
@@ -100,6 +102,15 @@ generate_egovframe_sbom(projectDir="/work/legacy-app", dryRun=false, offline=fal
 ```
 
 The official `egovframe-web` template declares 19 dependencies and looks clean; resolving the tree shows 65 artifacts, 11 below the baseline and 24 OSV advisories. The SBOM carries the same verdict per component (`egovframe:status`, `egovframe:basis`, `egovframe:baseline`) and the OSV findings as `vulnerabilities[]`.
+
+## Migration readiness assessment in one call
+
+```text
+generate_egovframe_report(projectDir="/work/legacy-app", sections=["assessment"])
+generate_egovframe_report(projectDir="/work/legacy-app", sections=["assessment"], offline=false, resolve=true, outputPath="docs/assessment.md")
+```
+
+Six sections: overview (build tool, RTE generation, parent, Java, components), migration scope (auto/manual by kind, reassembly advice, top manual work items grouped by kind and target), dependencies (verdict counts, an action list, transitive artifacts with `resolve=true`, OSV with `offline=false`), security settings, SBOM summary (if `sbom/bom.cdx.json` exists), and **grades with evidence**. Two grades — *migration difficulty* (manual items, components to reassemble, removed-API references, coordinate generation) and *supply-chain state* (below-baseline, legacy/replace, known vulnerabilities, missing security settings, parent/Java) — are sums of banded factor points, A=0 · B≤3 · C≤7 · D>7, and the full formula is printed in the report so anyone can recompute it (the tests do). The official 5.x template grades A for migration; the full common-components trees (v3.10.0, v4.3.2) grade D on both axes. No cost or effort estimates. Design notes: [docs/design-assessment-report.md](docs/design-assessment-report.md) (Korean).
 
 ## MCP Registry
 
