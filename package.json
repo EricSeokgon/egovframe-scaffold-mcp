@@ -1,6 +1,6 @@
 {
   "name": "egovframe-scaffold-mcp",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "mcpName": "io.github.EricSeokgon/egovframe-scaffold-mcp",
   "description": "전자정부 표준프레임워크(eGovFrame) 프로젝트·CRUD 스캐폴딩과 검증된 공통컴포넌트 완전 조립 MCP 서버",
   "license": "Apache-2.0",
@@ -22,7 +22,7 @@
     "generate:dependency-baseline": "node scripts/generate-dependency-baseline.mjs",
     "release:check": "node scripts/release-check.mjs",
     "release:notes": "node scripts/release-notes.mjs",
-    "prepublishOnly": "npm run build && npm run check:portability && npm run test:output-schemas && npm run test:catalog && npm run test:catalog-sync && npm run test:template-catalog && npm run test:catalog-drift && npm run test:config && npm run test:migration-rules && npm run test:migrate && npm run test:dependencies && npm run test:sbom && npm run test:network && npm run test:agents-md && npm run test:registry && npm run test:release && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:assessment && npm run test:reassemble && npm run test:upgrade && npm run test:remove && npm run test:transaction && npm run test:allowed-roots && npm run test:explain && npm run test:ci && npm run test:build && npm run test:test && npm run test:pom && npm run test:crud && npm run test:handshake",
+    "prepublishOnly": "npm run build && npm run check:portability && npm run test:output-schemas && npm run test:catalog && npm run test:catalog-sync && npm run test:template-catalog && npm run test:catalog-drift && npm run test:config && npm run test:migration-rules && npm run test:migrate && npm run test:dependencies && npm run test:sbom && npm run test:network && npm run test:agents-md && npm run test:registry && npm run test:release && npm run test:ai && npm run test:recipes && npm run test:diagnose && npm run test:docs && npm run test:report && npm run test:assessment && npm run test:reassemble && npm run test:upgrade && npm run test:remove && npm run test:transaction && npm run test:allowed-roots && npm run test:explain && npm run test:ci && npm run test:cli && npm run test:build && npm run test:test && npm run test:pom && npm run test:crud && npm run test:handshake",
     "test:ai": "node test/ai.mjs",
     "generate:ai-catalog": "node scripts/generate-ai-catalog.mjs",
     "test:ai-assembly": "node test/ai-assembly.mjs",
@@ -34,6 +34,7 @@
     "test:report": "node test/report.mjs",
     "test:assessment": "node test/assessment.mjs",
     "test:reassemble": "node test/reassemble.mjs",
+    "test:cli": "node test/cli.mjs",
     "test:reassemble-live": "node test/reassemble-live.mjs",
     "test:migrate-corpus": "node test/migrate-corpus.mjs",
     "generate:migration-corpus": "node scripts/generate-migration-corpus.mjs",
@@ -75,7 +76,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "adm-zip": "^0.6.1",
     "handlebars": "^4.7.9",
     "zod": "^3.23.8"

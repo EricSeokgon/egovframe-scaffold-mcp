@@ -35,7 +35,7 @@ export const TOOL_DESCRIPTIONS_EN: Record<string, string> = {
   explain_egovframe_component: "Explain one component: description, direct/transitive dependencies, dependents, tables, guide links and install command. Read-only.",
   generate_egovframe_config: "Generate Spring configuration files from the 21 official Initializr config templates bundled offline (datasource, transaction, cache, logging, scheduling, idGeneration, property) as xml/javaConfig/yaml/properties with Initializr's field names and defaults. Existing files are never overwritten; dryRun.",
   generate_egovframe_crud: "Generate CRUD code following the official Development wizard inputs: VO, Mapper XML, Service, Controller, optional JSP and JUnit 5; Classic/Boot profiles; all conflicts checked before writing.",
-  generate_egovframe_ci: "Generate a GitHub Actions CI workflow (build and test) with maven/gradle auto-detection; dryRun; existing files protected.",
+  generate_egovframe_ci: "Generate a GitHub Actions CI workflow (build and test) with maven/gradle auto-detection; dryRun; existing files protected. supplyChain=true adds a supply-chain gate job that runs this server as a CLI (npx egovframe-scaffold-mcp sbom and assess) to build the SBOM and the migration readiness assessment, writes the grades to the PR summary and fails above failOn (default supplyChain:D).",
   build_egovframe_project: "Build the project (compile/test/package) with maven/gradle or their wrappers; timeout, log cap, compiler errors structured by file/line; dryRun.",
   test_egovframe_project: "Run tests and structure JUnit XML reports (surefire, gradle): per-suite pass/fail/error/skip, failing case messages, exception types and test file/line; testFilter; stale reports excluded; dryRun.",
 };

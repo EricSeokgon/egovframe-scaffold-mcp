@@ -19,7 +19,7 @@ import { diagnoseProject } from "./diagnose.js";
 import { generateProjectReport } from "./report.js";
 import { upgradeProject } from "./upgrade.js";
 import { explainComponent } from "./explain.js";
-import { CI_JDK_RE, generateCiConfig } from "./ci-config.js";
+import { CI_FAIL_ON_RE, CI_JDK_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
@@ -972,10 +972,13 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── CI 설정 생성 도구 (v0.19.0) ────────────────────────
   server.registerTool(
     "generate_egovframe_ci",
-    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 GitHub Actions CI 워크플로(빌드·테스트)를 생성합니다. 빌드도구(maven/gradle) 자동 감지, JDK 지정. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다."), inputSchema: {
+    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 GitHub Actions CI 워크플로(빌드·테스트)를 생성합니다. 빌드도구(maven/gradle) 자동 감지, JDK 지정. supplyChain=true 면 이 서버의 CLI(npx egovframe-scaffold-mcp sbom·assess)로 SBOM 과 전환 준비도 평가서를 만들어 PR 요약에 등급을 남기고 failOn 기준(기본 supplyChain:D)을 넘으면 실패하는 공급망 게이트 job 을 추가합니다. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
       jdk: z.string().regex(CI_JDK_RE, "숫자와 점으로 된 버전만 허용 (예: 17, 21, 1.8)").default("17").describe("JDK 버전 (기본 17, 숫자·점만 허용)"),
       dryRun: z.boolean().default(false).describe("true면 파일 생성 없이 내용만 반환"),
+      supplyChain: z.boolean().default(false).describe("true 면 공급망 게이트 job 추가(v0.39): SBOM 생성 → 전환 준비도 평가서(등급을 PR 요약에) → 아티팩트, failOn 기준 초과 시 실패"),
+      failOn: z.string().regex(CI_FAIL_ON_RE, "예: supplyChain:D 또는 migration:C,vulnerabilities").default("supplyChain:D").describe("공급망 게이트의 --fail-on 식"),
+      osv: z.boolean().default(true).describe("공급망 게이트에서 OSV 취약점 조회(--offline=false)"),
     }, annotations: toolAnnotations("generate_egovframe_ci") },
     async (args) => {
       enforceAllowedRoots(args);

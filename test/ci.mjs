@@ -1,5 +1,5 @@
 // node test/ci.mjs — 오프라인 CI 생성 검증
-import { generateCiConfig, generateCiYaml, validateCiJdk } from "../dist/index.js";
+import { generateCiConfig, generateCiYaml, validateCiJdk, supplyChainJobYaml, CI_FAIL_ON_RE, SERVER_VERSION } from "../dist/index.js";
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -15,12 +15,26 @@ for (const bad of ["17'\n      - run: echo injected #", "17\n18", "'17'", "lates
   assert(rejected, `jdk 주입 거부: ${JSON.stringify(bad)}`);
 }
 
+// ── v0.39 공급망 게이트 job ──
+const sc = generateCiYaml("maven", "17", {});
+assert(!generateCiYaml("maven", "17").includes("supply-chain") && sc.includes("  supply-chain:\n") && sc.includes("mvn -B verify"), "supplyChain 옵션일 때만 게이트 job 추가(빌드 job 유지)");
+assert(sc.includes(`npx -y egovframe-scaffold-mcp@${SERVER_VERSION} sbom --project . --write --overwrite --offline=false`) && sc.includes(`npx -y egovframe-scaffold-mcp@${SERVER_VERSION} assess --project . --offline=false --out egovframe-assessment.md --step-summary --fail-on supplyChain:D`), "현재 버전 고정 npx 로 SBOM·평가서, 기본 fail-on supplyChain:D");
+assert(sc.includes("actions/setup-node@v4") && sc.includes("actions/upload-artifact@v4") && sc.includes("if: always()") && sc.includes("sbom/bom.cdx.json"), "Node·아티팩트(실패해도 업로드)");
+const noOsv = supplyChainJobYaml("gradle", "21", { osv: false, sbom: false, failOn: "migration:C,vulnerabilities>0" }).join("\n");
+assert(!noOsv.includes("--offline=false") && !noOsv.includes(" sbom ") && noOsv.includes("--fail-on migration:C,vulnerabilities>0") && noOsv.includes("cache: gradle"), "osv·sbom 끄기, 사용자 fail-on");
+for (const bad of ["supplyChain:E", "x; rm -rf /", "a b", "supplyChain:C\n      - run: id", "${{ secrets.X }}", ""]) {
+  let rejected = false; try { generateCiYaml("maven", "17", { failOn: bad }); } catch { rejected = true; }
+  assert(rejected && !CI_FAIL_ON_RE.test(bad), `failOn 주입 거부: ${JSON.stringify(bad)}`);
+}
+for (const good of ["supplyChain:D", "migration:C,supplyChain:B", "vulnerabilities", "manual>=20,outdated>3"]) assert(CI_FAIL_ON_RE.test(good), `failOn 허용: ${good}`);
+
 const mv = mkdtempSync(path.join(tmpdir(), "ci-mvn-"));
 writeFileSync(path.join(mv, "pom.xml"), "<project/>");
 const r = generateCiConfig({ projectDir: mv, dryRun: true });
 assert(r.buildTool === "maven", "maven 감지");
 assert(r.path === ".github/workflows/egovframe-ci.yml", "경로");
 assert(!existsSync(path.join(mv, r.path)), "dryRun 미기록");
+assert(generateCiConfig({ projectDir: mv, dryRun: true, supplyChain: true, failOn: "migration:C" }).content.includes("--fail-on migration:C"), "generateCiConfig supplyChain·failOn 전달");
 const r2 = generateCiConfig({ projectDir: mv });
 assert(existsSync(path.join(mv, r2.path)), "실제 생성됨");
 const inj = mkdtempSync(path.join(tmpdir(), "ci-inj-"));
