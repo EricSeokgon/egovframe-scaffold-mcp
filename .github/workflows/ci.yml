@@ -85,6 +85,8 @@ jobs:
         run: npm run test:recipe-transaction
 
       - name: Catalog pin and archive verification (official v5.0.6)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run test:catalog-sync-live
       - name: Migration rules exist in Maven repositories (eGovFrame repo, Central)
         run: npm run test:migration-rules-live

@@ -79,10 +79,12 @@ function repositoryOf(source: CatalogSourceMetadata): string {
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // api.github.com 은 비인증 60회/시간(IP 기준) — CI 러너처럼 IP 를 공유하는 곳에서 403 이 난다. GITHUB_TOKEN 이 있으면 쓴다(catalog-drift 와 같은 규칙).
+  const token = /^https:\/\/api\.github\.com\//.test(url) ? (process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? null) : null;
   try {
     return await fetch(url, {
       signal: controller.signal,
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "egovframe-scaffold-mcp" },
+      headers: { Accept: "application/vnd.github+json", "User-Agent": "egovframe-scaffold-mcp", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError")
