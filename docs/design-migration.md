@@ -103,3 +103,32 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 | 읽기 전용 | verify 는 파일을 쓰지 않는다(빌드 산출물은 빌드 도구의 것) | |
 
 검증: `test:migrate` 162단언(대응표 판정, 재조립 권고, skipComponents, `linkBuildError` 8케이스, javac 후속 줄 파싱, 가짜 runner verify 4케이스), `test:migration-rules` 605단언(공통컴포넌트 출처·근거·형식·큐레이션 반영), `test:migrate-integration`(CI): 적용 후 컴파일 통과 → 제거 클래스 참조 파일 추가 → 실제 `mvn compile` 오류 3건 전부 수동 항목 2건에 연결.
+
+## 4단계(v0.38.0): 공통컴포넌트 재조립 (`reassemble_egovframe_components`)
+
+3·4단계까지는 "공통컴포넌트는 5.x 원본을 다시 조립하라"는 권고만 냈다. 회귀 코퍼스에서 4.3.2 트리의 수동 항목 717건 중 524건이 복사된 공통컴포넌트 소스 안의 제거 클래스였으므로, 권고를 실행하는 도구를 둔다. 목표는 사용자가 손댄 파일을 한 줄도 잃지 않고 5.x(카탈로그 고정 v5.0.7) 원본으로 바꾸는 것이다.
+
+| 결정 | 내용 | 이유 |
+|---|---|---|
+| 기준선 | 매니페스트 대신 **원본 태그**(공식 저장소에서 그 프로젝트가 복사해 온 버전)를 3-way 의 기준으로 쓴다 | 3.x/4.x 프로젝트에는 매니페스트가 없다. 원본을 알아야 "사용자가 고쳤는가"를 판정할 수 있다 |
+| 원본 태그 식별 | 프로젝트 파일의 git blob id 를 좌표 세대(`sourceEra`)에 맞는 공식 태그들의 같은 경로 blob id 와 대조, 일치 파일 수가 가장 많은 태그. 동점은 높은 버전·짧은 이름(v3.10.0 vs v3.10.0-FINAL). `sourceTag` 로 지정 가능 | blob id 는 트리만 받으면 알 수 있어 파일 내용을 내려받지 않는다 |
+| 원본 저장소 | `GitOriginSource`: 공식 저장소를 `--bare --filter=blob:none --depth 1` 로 미러하고 필요한 태그만 같은 방식으로 fetch(태그당 ≈1초·수백 KB). 패치를 만들 때만 그 blob 을 지연 조회. 캐시 `EGOVFRAME_CACHE_DIR` | 아카이브(46MB)를 태그마다 받는 것보다 수백 배 작다 |
+| 줄바꿈 | 현재 파일은 원문과 CRLF→LF 정규화본 두 id 로 대조 | Windows `core.autocrlf` 체크아웃이 "사용자 수정"으로 오판되지 않게 |
+| 소유 | 경로의 컴포넌트는 카탈로그 리프 중 접두어가 가장 긴 것. 자산(메시지·IDGN·스케줄링·웹 자산·설정 조각)은 카탈로그의 경로 목록 | `add_egovframe_components` 와 같은 범위 |
+| 목표 내용 | 적용 시 카탈로그 고정 아카이브(sha256 검증)에서 읽고, 각 파일의 blob id 가 목표 태그 tree 와 같은지 다시 확인 | 조립 도구와 같은 공급 경로 + 태그 이동·아카이브 불일치 차단 |
+
+판정(원본 O · 현재 C · 목표 T)과 처리:
+
+| 판정 | 조건 | 소스 | 설정·자산 |
+|---|---|---|---|
+| 목표와 같음 | C = T | 유지 | 유지 |
+| 원본 그대로 | C = O ≠ T | 교체 | 교체 |
+| 사용자 수정 | C ≠ O, T 있음 | 교체 + 패치(O→C) | **유지** + 목표본 참고 저장 |
+| 원본 미확인 | O 없음, C ≠ T | 백업 후 교체 | 유지 + 목표본 참고 저장 |
+| 5.x 신규 | C 없음, T 있음 | 추가 | 추가 |
+| 5.x 에서 제거 | O 있음, T 없음 | 백업 후 삭제(사용자 수정이면 패치도) | — |
+| 사용자 추가 | O·T 없음 | 유지 | — |
+
+모든 변경은 하나의 transaction 이다(새로 추가한 `ProjectFileTransaction.removeFile` 로 삭제도 rollback 대상). `migration-backup/<시각>-reassemble-*/` 에 `originals/`(교체·삭제 전 원본), `patches/<컴포넌트>/<경로>.patch`(`git diff --no-index` 결과, 원문 바이트 보존 — EUC-KR 소스 대응), `reference/`(유지한 설정·자산의 목표본), `reassemble-plan.json` 을 남기고 매니페스트(`.egovframe-components.json`, 파일별 hash·srcHash)를 기록해 이후 `upgrade_egovframe_project`·`validate_egovframe_project`·`remove_egovframe_components` 가 그대로 동작하게 한다. 사용자 패치는 자동으로 다시 적용하지 않는다 — 5.x 소스가 크게 바뀌어 fuzz 적용은 조용한 오동작을 만들 수 있다. 대신 작업 목록(`reapply-patch`·`removed-in-5x`·`unverified-replaced`·`review-config`)을 돌려주고, `verify=true` 면 compile 오류 수를 그 파일에 붙인다.
+
+검증: `test:reassemble`(메모리 원본 저장소, 46단언), `test:reassemble-live`(공식 v3.10.0 트리의 `cmm`·`bbs` + 수정 2파일 → 원본 v3.10.0 99%, 교체·추가 780개 파일 = v5.0.7 tree blob, 패치 2, `validate` 누락 0, `upgrade` 미리보기 변경 0), `test:migrate-corpus`(공식 3.10.0·4.3.2 트리 자체의 재조립 미리보기 — 원본 100%·사용자 수정 0). 단독 `mvn compile` 은 넣지 않았다: `cmm`·`bbs` 만으로는 5.0.7 의 다른 컴포넌트 참조 때문에 컴파일이 성립하지 않으며, 쓴 파일이 공식 tree 와 바이트 단위로 같다는 단언이 더 강한 근거다.

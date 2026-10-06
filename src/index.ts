@@ -34,7 +34,7 @@ export { MANIFEST_FILE, readManifest } from "./manifest.js";
 export type { ManifestEntry, Manifest } from "./manifest.js";
 export { AI_STACKS, loadAiCatalog, planAiComponents, findProjectDependenciesClose, AI_POM_BACKUP, addAiComponents, stripAiPomAdditions } from "./ai.js";
 export type { AiMavenDependency, AiCopyGroup, AiComponent, AiCatalog, AddAiComponentsOptions, AiPlanResult, AddAiResult } from "./ai.js";
-export { ECC_DB_TYPES, addComponents, removeComponents } from "./components.js";
+export { ECC_DB_TYPES, addComponents, removeComponents, buildComponentSqlPlan } from "./components.js";
 export type { AddComponentsOptions, AddComponentsResult, RemoveOptions, RemoveFileState, RemoveFilePlan, RemoveResult } from "./components.js";
 export { resolveConfigPlaceholders, collectAiChecks, validateProject } from "./validate.js";
 export type { ValidateResult } from "./validate.js";
@@ -126,3 +126,7 @@ if (isMain) {
 // v0.36 — 해석된 의존성 트리
 export { MAVEN_DEPENDENCY_PLUGIN, parseMavenCoord, parseMavenTree, parseGradleTree, dedupeArtifacts, treeCommand, resolveDependencyTree } from "./dependency-tree.js";
 export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveOutputPath, resolveSbomOutputPath, sbomCommand, purlOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";
+export { COMPONENTS_REPOSITORY, gitBlobId, blobIdsOf, tagVersionKey, compareTags, defaultCacheDir, GitOriginSource, MemoryOriginSource } from "./component-origin.js";
+export type { OriginSource } from "./component-origin.js";
+export { REASSEMBLE_STATES, REASSEMBLE_STATE_LABEL, unifiedPatch, reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
+export type { ReassembleState, ReassembleAction, ReassembleFile, ReassembleWorkItem, ReassembleOptions, ReassembleResult } from "./reassemble.js";

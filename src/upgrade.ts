@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { withFileTransaction } from "./file-transaction.js";
 import { sha256 } from "./shared.js";
-import { loadCatalog } from "./catalog.js";
+import { COMPONENT_ASSET_FIELDS, loadCatalog } from "./catalog.js";
 import { MANIFEST_FILE, readManifest } from "./manifest.js";
 import { downloadComponentsZip, resolveTrackedFile } from "./components.js";
 
@@ -78,10 +78,12 @@ export async function upgradeProject(opts: UpgradeOptions): Promise<UpgradeResul
     const c = byId.get(id);
     const entry = manifest.components[id];
     const upstream = new Map<string, Buffer>();
+    // v0.38: 소스 접두어뿐 아니라 조립 때 함께 설치한 자산(메시지·설정 조각·웹 자산 등)도 upstream 으로 본다 — 빠지면 자산 파일이 전부 "removed" 로 보고됐다
+    const assetPaths = new Set<string>(c ? COMPONENT_ASSET_FIELDS.flatMap((f) => c[f] ?? []) : []);
     if (c)
       for (const e of entries) {
         const r = rel(e.entryName);
-        if (r && c.pathPrefixes.some((p) => r.startsWith(p))) upstream.set(r, e.getData());
+        if (r && (c.pathPrefixes.some((p) => r.startsWith(p)) || assetPaths.has(r))) upstream.set(r, e.getData());
       }
     const relPaths = new Set<string>([...upstream.keys(), ...entry.files]);
     for (const r of relPaths) {

@@ -13,21 +13,21 @@ const check = (name, value) => { const r = OUTPUT_SCHEMAS[name].safeParse(value)
 // ── 메타데이터 정합 ───────────────────────────────────
 const server = buildServer();
 const names = Object.keys(server._registeredTools);
-assert(names.length === 28 && names.every((nm) => TOOL_META[nm]) && Object.keys(TOOL_META).every((nm) => names.includes(nm)), "TOOL_META 와 등록 도구 28종 일치");
+assert(names.length === 29 && names.every((nm) => TOOL_META[nm]) && Object.keys(TOOL_META).every((nm) => names.includes(nm)), "TOOL_META 와 등록 도구 29종 일치");
 assert(names.every((nm) => { const t = server._registeredTools[nm]; return typeof t.title === "string" && t.title.length > 0 && t.annotations && typeof t.annotations.readOnlyHint === "boolean"; }), "모든 도구에 title·annotations");
 // v0.37: generate_egovframe_report 는 outputPath 로 새 파일을 만들 수 있어 읽기 전용 힌트를 뗐다(14 → 13)
-assert(READ_ONLY_TOOLS.length === 13 && DESTRUCTIVE_TOOLS.length === 4, `readOnly 13 · destructive 4 (got ${READ_ONLY_TOOLS.length}/${DESTRUCTIVE_TOOLS.length})`);
+assert(READ_ONLY_TOOLS.length === 13 && DESTRUCTIVE_TOOLS.length === 5, `readOnly 13 · destructive 5 (got ${READ_ONLY_TOOLS.length}/${DESTRUCTIVE_TOOLS.length})`);
 assert(READ_ONLY_TOOLS.every((nm) => !DESTRUCTIVE_TOOLS.includes(nm)) && READ_ONLY_TOOLS.every((nm) => TOOL_META[nm].annotations.idempotentHint), "읽기 전용은 파괴적이지 않고 멱등");
-for (const nm of ["remove_egovframe_components", "upgrade_egovframe_project", "migrate_egovframe_project", "generate_agents_md"]) assert(DESTRUCTIVE_TOOLS.includes(nm), `destructiveHint: ${nm}`);
+for (const nm of ["remove_egovframe_components", "upgrade_egovframe_project", "migrate_egovframe_project", "generate_agents_md", "reassemble_egovframe_components"]) assert(DESTRUCTIVE_TOOLS.includes(nm), `destructiveHint: ${nm}`);
 for (const nm of ["list_egovframe_templates", "diagnose_egovframe_project", "validate_egovframe_project", "check_egovframe_dependencies", "diagnose_egovframe_network", "sync_egovframe_catalog"]) assert(READ_ONLY_TOOLS.includes(nm), `readOnlyHint: ${nm}`);
 assert(!READ_ONLY_TOOLS.includes("generate_egovframe_report") && TOOL_META.generate_egovframe_report.annotations.destructiveHint === false && TOOL_META.generate_egovframe_report.annotations.openWorldHint === true, "generate_egovframe_report: 비읽기(outputPath)·비파괴(새 파일만)·openWorld(resolve·OSV)");
 for (const nm of ["create_egovframe_project", "add_egovframe_components", "get_egovframe_guide", "diagnose_egovframe_network", "build_egovframe_project"]) assert(TOOL_META[nm].annotations.openWorldHint, `openWorldHint: ${nm}`);
 for (const nm of ["generate_egovframe_config", "generate_egovframe_crud", "list_egovframe_components", "remove_egovframe_components"]) assert(!TOOL_META[nm].annotations.openWorldHint, `오프라인 도구는 openWorldHint 아님: ${nm}`);
-assert(Object.keys(OUTPUT_SCHEMAS).length === 7 && Object.keys(OUTPUT_SCHEMAS).every((nm) => server._registeredTools[nm].outputSchema), "구조화 출력 7종이 등록에 outputSchema 로 반영");
-assert(names.filter((nm) => server._registeredTools[nm].outputSchema).length === 7, "outputSchema 는 7종에만");
+assert(Object.keys(OUTPUT_SCHEMAS).length === 8 && Object.keys(OUTPUT_SCHEMAS).every((nm) => server._registeredTools[nm].outputSchema), "구조화 출력 8종이 등록에 outputSchema 로 반영");
+assert(names.filter((nm) => server._registeredTools[nm].outputSchema).length === 8, "outputSchema 는 8종에만");
 assert(TOOL_META.generate_egovframe_sbom.annotations.readOnlyHint === false && TOOL_META.generate_egovframe_sbom.annotations.destructiveHint === false && TOOL_META.generate_egovframe_sbom.annotations.openWorldHint === true, "generate_egovframe_sbom: 비읽기·비파괴·openWorld");
 const en = buildServer({ lang: "en" });
-assert(names.every((nm) => en._registeredTools[nm].title !== server._registeredTools[nm].title && /^[\x20-\x7E]+$/.test(en._registeredTools[nm].title)), "영문 title 28종(ASCII, 한국어와 다름)");
+assert(names.every((nm) => en._registeredTools[nm].title !== server._registeredTools[nm].title && /^[\x20-\x7E]+$/.test(en._registeredTools[nm].title)), "영문 title 29종(ASCII, 한국어와 다름)");
 
 // ── 실제 결과 ↔ 스키마 ────────────────────────────────
 const legacy = mkdtempSync(path.join(tmpdir(), "egovschema-"));

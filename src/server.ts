@@ -28,6 +28,7 @@ import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } f
 import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network.js";
 import { generateAgentsMd } from "./agents-md.js";
 import { generateSbom, renderSbomMarkdown } from "./sbom.js";
+import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
 import { toolAnnotations, toolTitle } from "./tool-meta.js";
 import { OUTPUT_SCHEMAS } from "./output-schemas.js";
@@ -598,6 +599,26 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       enforceAllowedRoots(args);
       const r = await checkDependencies({ projectDir: args.projectDir, offline: args.offline, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDependencyMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 공통컴포넌트 재조립 (v0.38.0) ─────────────────────
+  server.registerTool(
+    "reassemble_egovframe_components",
+    { title: t("reassemble_egovframe_components"), description: d("reassemble_egovframe_components", "3.x/4.x(또는 이전 5.x) 프로젝트에 복사돼 있는 공통컴포넌트 소스를 카탈로그 고정 버전(현재 v5.0.7)으로 다시 조립합니다. (1) 프로젝트 파일의 git blob id 를 공식 egovframe-common-components 후보 태그(좌표 세대별)와 대조해 원본 태그를 식별하고(파일 내용을 내려받지 않음, sourceTag 로 지정 가능) (2) 원본·현재·목표로 파일마다 목표와 같음/원본 그대로(교체)/사용자 수정/5.x 신규/5.x 에서 제거/원본 미확인/사용자 추가를 판정한 뒤 (3) dryRun=false 면 하나의 transaction 으로 목표 파일을 쓰고(아카이브 sha256 검증), 5.x 에 없는 원본 파일은 백업 후 지우고, 사용자 수정 소스는 교체하되 원본 대비 변경을 unified diff 패치로 보존하며(설정·자산 파일은 사용자본을 유지하고 목표본을 참고로 저장) 매니페스트를 기록해 이후 upgrade·validate·remove 도구가 적용되게 합니다. 백업·패치·reassemble-plan.json 은 migration-backup/<시각>-reassemble-*/ 에 남고, 작업 목록(패치 다시 반영·5.x 제거 파일·설정 비교)을 돌려줍니다. verify=true 면 적용 뒤 compile 을 실행해 오류를 작업 목록 파일에 붙입니다. 원본 태그 비교에 git 이 필요하며 캐시는 EGOVFRAME_CACHE_DIR(기본 ~/.cache/egovframe-scaffold-mcp)에 둡니다. 패치를 자동으로 다시 적용하지는 않습니다."), inputSchema: {
+      projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
+      components: z.array(z.string()).optional().describe("재조립할 컴포넌트 id(그룹 id 는 하위 컴포넌트로 펼침). 미지정 시 감지된 컴포넌트 전부"),
+      sourceTag: z.string().regex(/^(auto|[A-Za-z0-9._-]+)$/).default("auto").describe("원본 태그(예: v3.10.0). auto(기본)면 파일 대조로 식별"),
+      database: z.enum(ECC_DB_TYPES).optional().describe("지정 시 컴포넌트별 DDL·DML 을 scripts/egovframe-components/<db>/ 에 함께 생성"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 분류·계획만, false 면 적용(transaction)"),
+      verify: z.boolean().default(false).describe("적용 뒤 compile 실행해 오류를 작업 목록에 연결"),
+      timeoutMs: z.number().int().min(10_000).max(1_800_000).default(300_000).describe("verify 컴파일 타임아웃(ms)"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.reassemble_egovframe_components.shape, annotations: toolAnnotations("reassemble_egovframe_components") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await reassembleComponents({ projectDir: args.projectDir, components: args.components, sourceTag: args.sourceTag, database: args.database, dryRun: args.dryRun, verify: args.verify, timeoutMs: args.timeoutMs });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderReassembleMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );

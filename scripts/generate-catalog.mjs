@@ -5,6 +5,9 @@
  * 사용법:
  *   node scripts/generate-catalog.mjs            # 저장소 zip을 내려받아 생성
  *   node scripts/generate-catalog.mjs --zip a.zip # 로컬 zip 사용(오프라인)
+ *   node scripts/generate-catalog.mjs --zip a.zip --archive-sha256 <hex> --archive-bytes <n>
+ *        # 로컬 zip 이 `git archive` 로 만든 것이면 내용은 같아도 바이트가 codeload zip 과 다르다.
+ *        # 도구는 실행 시 codeload zip 을 sha256·크기로 검증하므로 codeload 에서 잰 값을 직접 고정한다(v0.38).
  *
  * 규칙:
  *  - 컴포넌트 단위(v0.12.0): 리프 패키지(service/web 이전까지의 패키지 경로, 최대 4단계).
@@ -24,10 +27,10 @@ const SOURCE = {
   repository: "eGovFramework/egovframe-common-components",
   repo: "eGovFramework/egovframe-common-components",
   branch: "main",
-  tag: "v5.0.6",
-  commit: "23d01889e01fcfa486d28d7a2ec4adb51fbaf3ad",
-  surveyedAt: "2026-07-22",
-  securityPatchLevel: "v5.0.6",
+  tag: "v5.0.7",
+  commit: "3756ab2cb6cd5b79c05d66976a0bb9eef74cd1f5",
+  surveyedAt: "2026-10-06",
+  securityPatchLevel: "v5.0.7",
 };
 const JAVA = "src/main/java/egovframework/com/";
 const MAPPER = "src/main/resources/egovframework/mapper/com/";
@@ -41,6 +44,7 @@ const WEB_FRAGMENT_PREFIXES = [
   "src/main/webapp/WEB-INF/config/egovframework/springmvc/",
 ];
 
+function argValue(name) { const i = process.argv.indexOf(name); return i > -1 ? process.argv[i + 1] : undefined; }
 let zipEntriesCache = null;
 let zipBufferCache = null;
 async function loadZipEntries() {
@@ -349,8 +353,8 @@ const catalog = {
   source: {
     ...SOURCE,
     archive: {
-      sha256: createHash("sha256").update(zipBufferCache).digest("hex"),
-      bytes: zipBufferCache.length,
+      sha256: argValue("--archive-sha256") ?? createHash("sha256").update(zipBufferCache).digest("hex"),
+      bytes: argValue("--archive-bytes") ? Number(argValue("--archive-bytes")) : zipBufferCache.length,
       files: entries.length,
     },
   },

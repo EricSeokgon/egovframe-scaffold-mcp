@@ -81,11 +81,12 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   // api.github.com 은 비인증 60회/시간(IP 기준) — CI 러너처럼 IP 를 공유하는 곳에서 403 이 난다. GITHUB_TOKEN 이 있으면 쓴다(catalog-drift 와 같은 규칙).
   const token = /^https:\/\/api\.github\.com\//.test(url) ? (process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? null) : null;
+  const headers = { Accept: "application/vnd.github+json", "User-Agent": "egovframe-scaffold-mcp" };
   try {
-    return await fetch(url, {
-      signal: controller.signal,
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "egovframe-scaffold-mcp", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    });
+    const res = await fetch(url, { signal: controller.signal, headers: token ? { ...headers, Authorization: `Bearer ${token}` } : headers });
+    // 만료·권한 없는 토큰(401)이면 비인증으로 한 번 더 — 공개 저장소라 토큰 없이도 읽을 수 있다
+    if (token && res.status === 401) return await fetch(url, { signal: controller.signal, headers });
+    return res;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError")
       throw new Error(`공통컴포넌트 카탈로그 동기화 시간 초과(${timeoutMs}ms): ${url}`);

@@ -414,7 +414,7 @@ write(comp, "src/main/java/egovframework/com/cmm/Other.java", "import egovframew
 write(comp, "src/main/java/egovframework/example/App.java", "import egovframework.rte.fdl.cmmn.EgovAbstractServiceImpl;\nclass App {}\n");
 const rc = migrateProject({ projectDir: comp });
 const reasm = rc.items.filter((i) => i.kind === "component-reassemble");
-assert(reasm.length === 1 && reasm[0].file === "src/main/java/egovframework/com/cmm/" && reasm[0].from.startsWith("cmm") && reasm[0].action === "manual" && reasm[0].to.includes('add_egovframe_components(componentIds=["cmm"])'), "cmm 디렉터리에 3.x 항목 → 재조립 권고 1건");
+assert(reasm.length === 1 && reasm[0].file === "src/main/java/egovframework/com/cmm/" && reasm[0].from.startsWith("cmm") && reasm[0].action === "manual" && reasm[0].to.includes('reassemble_egovframe_components(components=["cmm"])'), "cmm 디렉터리에 3.x 항목 → 재조립 권고 1건");
 one(rc, (i) => i.kind === "component-class-removed" && i.from.endsWith("EgovMybaitsUtil") && i.action === "manual", "제거 공통컴포넌트 클래스 참조 → manual");
 one(rc, (i) => i.kind === "component-class-moved" && i.action === "auto" && i.edits?.length === 1, "이동 공통컴포넌트 클래스 → auto 편집");
 const rcSkip = migrateProject({ projectDir: comp, skipComponents: true });

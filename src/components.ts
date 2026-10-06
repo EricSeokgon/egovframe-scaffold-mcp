@@ -77,6 +77,58 @@ function componentMavenDependencies(components: CatalogComponent[]): string[] {
 }
 
 /**
+ * 컴포넌트별 DDL·DML 선별 추출(M4, v0.38 에서 재조립과 공유하도록 분리).
+ * 통합 스크립트(script/ddl|dml/<db>/)에서 컴포넌트 참조 테이블이 나오는 구문만 모으고, 테이블 정보가 없는데 매퍼가 있는 컴포넌트가 있으면 통합본을 함께 둔다.
+ */
+export function buildComponentSqlPlan(
+  files: { relPath: string; read: () => Buffer }[],
+  order: CatalogComponent[],
+  db: string,
+  hasMapper: (componentId: string) => boolean,
+): { relPath: string; content: Buffer; componentId: string }[] {
+  const sqlPlan: { relPath: string; content: Buffer; componentId: string }[] = [];
+  const scriptText = new Map<string, string>();
+  for (const f of files)
+    for (const kind of ["ddl", "dml"])
+      if (f.relPath.startsWith(`script/${kind}/${db}/`)) scriptText.set(kind + ":" + f.relPath, f.read().toString("utf8"));
+  const extractFor = (tables: string[], kind: string): string => {
+    const re = new RegExp("\\b(" + tables.join("|") + ")\\b");
+    const parts: string[] = [];
+    for (const [key, text] of scriptText) {
+      if (!key.startsWith(kind + ":")) continue;
+      for (const stmt of text.split(/;\s*(?:\r?\n|$)/)) {
+        const t = stmt.trim();
+        if (t && re.test(t)) parts.push(t + ";");
+      }
+    }
+    return parts.join("\n\n");
+  };
+  const noTables: CatalogComponent[] = [];
+  for (const c of order) {
+    if (!c.tables || c.tables.length === 0) {
+      if (hasMapper(c.id)) noTables.push(c);
+      continue;
+    }
+    for (const kind of ["ddl", "dml"]) {
+      const sql = extractFor(c.tables, kind);
+      if (sql)
+        sqlPlan.push({
+          relPath: `scripts/egovframe-components/${db}/${kind}/${c.id}.sql`,
+          content: Buffer.from(`-- ${c.id} (${c.name}) — ${kind.toUpperCase()} 선별 추출: ${c.tables.join(", ")}\n\n` + sql + "\n", "utf8"),
+          componentId: c.id,
+        });
+    }
+  }
+  if (noTables.length > 0) {
+    for (const [key, text] of scriptText) {
+      const [kind, r] = [key.slice(0, 3), key.slice(4)];
+      sqlPlan.push({ relPath: `scripts/egovframe-components/${db}/${kind}/` + r.split("/").pop()!, content: Buffer.from(text, "utf8"), componentId: noTables[0].id });
+    }
+  }
+  return sqlPlan;
+}
+
+/**
  * 공통컴포넌트 선택 조립 (M2).
  * - dryRun=true : 네트워크 없이 카탈로그 메타데이터로 설치 순서·규모 미리보기
  * - dryRun=false: 공통컴포넌트 저장소를 내려받아 선택 컴포넌트 파일을 대상 프로젝트에 복사.
@@ -146,60 +198,10 @@ export async function addComponents(opts: AddComponentsOptions): Promise<AddComp
   if (plan.length === 0) throw new Error("복사할 파일이 없습니다 — 카탈로그 pathPrefixes를 확인하세요");
 
   // DB 스크립트 수집 — 컴포넌트별 테이블 선별 추출 (M4)
-  const sqlPlan: { relPath: string; content: Buffer; componentId: string }[] = [];
-  if (opts.database) {
-    const db = opts.database;
-    // 통합 스크립트 본문 로드 (ddl·dml)
-    const scriptText = new Map<string, string>();
-    for (const e of entries) {
-      const r = rel(e.entryName);
-      for (const kind of ["ddl", "dml"]) {
-        if (r.startsWith(`script/${kind}/${db}/`))
-          scriptText.set(kind + ":" + r, e.getData().toString("utf8"));
-      }
-    }
-    /** 통합 스크립트에서 특정 테이블 관련 구문만 추출 */
-    const extractFor = (tables: string[], kind: string): string => {
-      const re = new RegExp("\\b(" + tables.join("|") + ")\\b");
-      const parts: string[] = [];
-      for (const [key, text] of scriptText) {
-        if (!key.startsWith(kind + ":")) continue;
-        for (const stmt of text.split(/;\s*(?:\r?\n|$)/)) {
-          const t = stmt.trim();
-          if (t && re.test(t)) parts.push(t + ";");
-        }
-      }
-      return parts.join("\n\n");
-    };
-    const noTables: CatalogComponent[] = [];
-    for (const c of order) {
-      if (!c.tables || c.tables.length === 0) {
-        const hasMapper = plan.some((item) => item.componentId === c.id && item.relPath.startsWith("src/main/resources/egovframework/mapper/"));
-        if (hasMapper) noTables.push(c);
-        continue;
-      }
-      for (const kind of ["ddl", "dml"]) {
-        const sql = extractFor(c.tables, kind);
-        if (sql)
-          sqlPlan.push({
-            relPath: `scripts/egovframe-components/${db}/${kind}/${c.id}.sql`,
-            content: Buffer.from(`-- ${c.id} (${c.name}) — ${kind.toUpperCase()} 선별 추출: ${c.tables.join(", ")}\n\n` + sql + "\n", "utf8"),
-            componentId: c.id,
-          });
-      }
-    }
-    // 테이블 정보가 없는 컴포넌트가 있으면 통합본을 함께 복사 (폴백)
-    if (noTables.length > 0) {
-      for (const [key, text] of scriptText) {
-        const [kind, r] = [key.slice(0, 3), key.slice(4)];
-        sqlPlan.push({
-          relPath: `scripts/egovframe-components/${db}/${kind}/` + r.split("/").pop()!,
-          content: Buffer.from(text, "utf8"),
-          componentId: noTables[0].id,
-        });
-      }
-    }
-  }
+  const sqlPlan = opts.database
+    ? buildComponentSqlPlan(entries.map((e) => ({ relPath: rel(e.entryName), read: () => e.getData() })), order, opts.database,
+        (id) => plan.some((item) => item.componentId === id && item.relPath.startsWith("src/main/resources/egovframework/mapper/")))
+    : [];
 
   // 파일·SQL·매니페스트를 하나의 공통 transaction으로 반영한다.
   const reusedFiles = new Set<string>();

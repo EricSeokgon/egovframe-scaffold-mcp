@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-migration-rules.mjs",
-  "surveyedAt": "2026-10-03",
+  "surveyedAt": "2026-10-06",
   "source": {
     "repository": "eGovFramework/egovframe-runtime",
     "fromTag": "v3.10.0",
@@ -14,8 +14,8 @@
       "repository": "eGovFramework/egovframe-common-components",
       "fromTag": "v3.10.0",
       "fromCommit": "aaebaa524baef45e391c54506a316b614a09f99d",
-      "toTag": "v5.0.6",
-      "toCommit": "23d01889e01fcfa486d28d7a2ec4adb51fbaf3ad"
+      "toTag": "v5.0.7",
+      "toCommit": "3756ab2cb6cd5b79c05d66976a0bb9eef74cd1f5"
     },
     "samples": {
       "web": "eGovFramework/egovframe-vscode-initializr templates(egovframe-web)·egovframe-web-sample v5.0.x",
@@ -798,267 +798,272 @@
         {
           "class": "egovframework.com.ext.oauth.service.EgovSignupService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.ext.oauth.service.KakaoAPI20",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.ext.oauth.service.impl.EgovSignInAdapterServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.ext.oauth.service.impl.EgovSignupServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.sec.rnc.service.EgovRlnmManageService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.sec.rnc.service.EgovSocketClient",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.sec.rnc.service.EgovTimedSocket",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.sec.rnc.service.impl.EgovRlnmManageServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.sec.rnc.web.EgovRlnmManageController",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+        },
+        {
+          "class": "egovframework.com.sts.dst.web.EgovDtaUseStatsContoller",
+          "replacement": null,
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.sym.mnu.bmm.service.EgovBkmkMenuManageservice",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.bnr.service.Banner",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.bnt.service.BndtCeckManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.bnt.service.BndtDiary",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.bnt.service.BndtManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.ctn.service.CtsnnManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.EgovFacebookConfig",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.FacebookSecurityContext",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.FacebookUser",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.impl.EgovSimpleConnectionSignUp",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.web.FacebookSimpleSignInAdapter",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.web.FacebookUserCookieGenerator",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.web.FacebookUserInterceptor",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.isg.service.IntnetSvcGuidance",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.lsi.service.LoginScrinImage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.msi.service.MainImage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.mtg.service.MtgPlaceManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.mtg.service.MtgPlaceResve",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.noi.service.Notification",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.nws.service.NewsDefaultVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.pwm.service.PopupManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.rec.service.RecomendSiteDefaultVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.sit.service.SiteDefaultVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.EgovTwitterRecptnService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.EgovTwitterTrnsmitService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.TwitterInfo",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.impl.EgovTwitterRecptnServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.impl.EgovTwitterTrnsmitServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.uas.service.UserAbsnce",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.ion.vct.service.VcatnManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.umt.service.EgovUserManageService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.umt.service.UserManageVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.umt.service.impl.EgovUserManageServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.umt.service.impl.UserManageDAO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.uss.umt.web.EgovUserManageController",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sec.filter.CertProcessFilter",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sec.filter.CertProcessRequestWrapper",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sec.service.CertInfoVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sec.service.EgovCertInfoUtil",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sec.web.EgovCertLoginController",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sim.service.EgovNetInfo",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sys.pxy.service.ProxyLogVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sys.pxy.service.ProxySvcVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         },
         {
           "class": "egovframework.com.utl.sys.ssy.service.SynchrnServerVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.6 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 add_egovframe_components 로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.6 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
         }
       ],
       "moves": [
@@ -1081,10 +1086,10 @@
       ],
       "evidence": {
         "from": 1095,
-        "to": 1089,
-        "removed": 54,
+        "to": 1097,
+        "removed": 55,
         "moved": 4,
-        "added": 52
+        "added": 61
       }
     }
   },

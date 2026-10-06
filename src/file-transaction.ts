@@ -189,6 +189,28 @@ export class ProjectFileTransaction {
     }
   }
 
+  /** 파일을 지운다(v0.38). 원본은 staging 으로 옮겨 두었다가 rollback 시 복원한다. 없는 파일이면 아무것도 하지 않는다. */
+  removeFile(relPath: string): boolean {
+    this.assertActive();
+    const target = this.resolveTarget(relPath);
+    const key = process.platform === "win32" ? target.toLowerCase() : target;
+    let snapshot = this.snapshots.get(key);
+    if (!snapshot) {
+      const existed = fs.existsSync(target);
+      if (!existed) return false;
+      snapshot = { relPath, target, existed };
+      const backup = path.join(this.stagingDir, "originals", relPath);
+      fs.mkdirSync(path.dirname(backup), { recursive: true });
+      fs.renameSync(target, backup);
+      snapshot.backup = backup;
+      this.snapshots.set(key, snapshot);
+      return true;
+    }
+    if (!fs.existsSync(target)) return false;
+    fs.rmSync(target, { force: true });
+    return true;
+  }
+
   commit(): void {
     this.assertActive();
     fs.rmSync(this.stagingDir, { recursive: true, force: true });

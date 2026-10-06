@@ -84,7 +84,7 @@ jobs:
       - name: Recipe transaction rollback (official template and components)
         run: npm run test:recipe-transaction
 
-      - name: Catalog pin and archive verification (official v5.0.6)
+      - name: Catalog pin and archive verification (official v5.0.7)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run test:catalog-sync-live
@@ -99,6 +99,8 @@ jobs:
           key: migration-corpus-${{ hashFiles('catalog/migration-corpus.json') }}
       - name: Migration regression corpus (diagnose, dry-run apply, dependency check, assessment grades)
         run: npm run test:migrate-corpus
+      - name: Reassemble common components (git origin tag, verified v5.0.7 archive, patches, manifest)
+        run: npm run test:reassemble-live
       - name: Dependency check with OSV lookup
         run: npm run test:dependencies-live
       - name: Resolved dependency tree and CycloneDX SBOM (Maven plugin, Gradle tree)

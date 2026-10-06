@@ -176,6 +176,27 @@ export const ReportOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v0.38: reassemble_egovframe_components
+const ReassembleStateEnum = z.enum(["identical", "unchanged", "user-modified", "unverified", "new", "removed-unchanged", "removed-modified", "user-added"]);
+export const ReassembleOutput = loose({
+  projectDir: z.string(),
+  dryRun: z.boolean(),
+  target: loose({ tag: z.string(), commit: z.string().nullable() }),
+  sourceEra: z.enum(["3.x", "4.x", "5.x", "unknown"]),
+  origin: loose({ tag: z.string().nullable(), mode: z.enum(["auto", "fixed"]), candidates: z.array(loose({ tag: z.string(), matched: z.number().int(), total: z.number().int(), ratio: z.number() })) }),
+  components: z.array(loose({ id: z.string(), name: z.string(), files: z.number().int(), summary: z.record(z.number().int()) })),
+  summary: z.record(z.number().int()),
+  actions: z.record(z.number().int()),
+  files: z.array(loose({ componentId: z.string(), path: z.string(), asset: z.string(), state: ReassembleStateEnum, action: z.enum(["keep", "replace", "add", "delete", "keep-reference"]), patch: z.string().optional() })),
+  worklist: z.array(loose({ componentId: z.string(), path: z.string(), kind: z.enum(["reapply-patch", "removed-in-5x", "review-config", "unverified-replaced"]), detail: z.string(), patch: z.string().optional(), errors: z.number().int().optional() })),
+  sql: z.array(z.string()),
+  manifestUpdated: z.boolean(),
+  backupDir: z.string().optional(),
+  planPath: z.string().optional(),
+  verify: loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), errors: z.number().int(), inReassembled: z.number().int(), reason: z.string().optional() }).optional(),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -184,5 +205,6 @@ export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_network: NetworkOutput,
   generate_egovframe_sbom: SbomOutput,
   generate_egovframe_report: ReportOutput,
+  reassemble_egovframe_components: ReassembleOutput,
 } as const;
 export type StructuredToolName = keyof typeof OUTPUT_SCHEMAS;

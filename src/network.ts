@@ -15,7 +15,7 @@ export interface NetworkHost {
 
 /** 도구가 접근하는 외부 호스트. 순서는 중요도(프로젝트 생성 → 컴포넌트 → 설정) */
 export const NETWORK_HOSTS: NetworkHost[] = [
-  { host: "codeload.github.com", purpose: "공식 템플릿·공통컴포넌트 저장소 zip 아카이브", probeUrl: "https://codeload.github.com/eGovFramework/egovframe-common-components/zip/refs/tags/v5.0.6", tools: ["create_egovframe_project", "add_egovframe_components", "add_ai_components", "apply_egovframe_recipe", "upgrade_egovframe_project", "sync_egovframe_catalog"] },
+  { host: "codeload.github.com", purpose: "공식 템플릿·공통컴포넌트 저장소 zip 아카이브", probeUrl: "https://codeload.github.com/eGovFramework/egovframe-common-components/zip/refs/tags/v5.0.7", tools: ["create_egovframe_project", "add_egovframe_components", "add_ai_components", "apply_egovframe_recipe", "upgrade_egovframe_project", "sync_egovframe_catalog"] },
   { host: "raw.githubusercontent.com", purpose: "가이드 문서·카탈로그 원본 파일", probeUrl: "https://raw.githubusercontent.com/eGovFramework/egovframe-common-components/main/README.md", tools: ["get_egovframe_guide", "search_egovframe_docs(fetchTop>0)", "sync_egovframe_templates"] },
   { host: "media.githubusercontent.com", purpose: "Initializr zip 조달 템플릿(Git LFS)", probeUrl: "https://media.githubusercontent.com/media/eGovFramework/egovframe-vscode-initializr/main/templates/projects/examples/egovframe-web.zip", tools: ["create_egovframe_project(zip 조달 템플릿 12종)"] },
   { host: "maven.egovframe.go.kr", purpose: "표준프레임워크 Maven 저장소(빌드 시 RTE 의존성)", probeUrl: "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-fdl-cmmn/5.0.2/egovframe-rte-fdl-cmmn-5.0.2.pom", tools: ["build_egovframe_project", "test_egovframe_project"] },
