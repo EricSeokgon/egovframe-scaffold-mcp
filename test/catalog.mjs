@@ -6,7 +6,7 @@ const catalog = loadCatalog();
 assert.ok(catalog.components.length >= 3, "카탈로그 컴포넌트를 읽어야 한다");
 assert.equal(catalog.schemaVersion, 2, "카탈로그 schemaVersion");
 assert.ok(
-  catalog.source.tag === "v5.0.6" &&
+  catalog.source.tag === "v5.0.7" &&
     /^[0-9a-f]{40}$/.test(catalog.source.commit) &&
     catalog.source.archive.files > 6000,
   "공식 소스 태그·커밋·파일 수를 고정해야 한다",

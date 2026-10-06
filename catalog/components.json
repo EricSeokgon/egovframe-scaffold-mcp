@@ -4,14 +4,14 @@
     "repository": "eGovFramework/egovframe-common-components",
     "repo": "eGovFramework/egovframe-common-components",
     "branch": "main",
-    "tag": "v5.0.6",
-    "commit": "23d01889e01fcfa486d28d7a2ec4adb51fbaf3ad",
-    "surveyedAt": "2026-07-22",
-    "securityPatchLevel": "v5.0.6",
+    "tag": "v5.0.7",
+    "commit": "3756ab2cb6cd5b79c05d66976a0bb9eef74cd1f5",
+    "surveyedAt": "2026-10-06",
+    "securityPatchLevel": "v5.0.7",
     "archive": {
-      "sha256": "f34bdaa97b98424b7a7d18b870d4ff512ca9c7e1b9d4f9809792a23f76ead865",
-      "bytes": 46452895,
-      "files": 6430
+      "sha256": "44a518c1b01bdfc272ca5175fb549dff5908deea06135ba71551f4df512dd1e9",
+      "bytes": 46903152,
+      "files": 6604
     }
   },
   "sqlNote": "DB 스크립트는 선택 컴포넌트의 참조 테이블을 기준으로 DDL·DML을 선별 추출하며 자동 실행하지 않습니다.",
@@ -111,7 +111,7 @@
         "src/main/webapp/WEB-INF/jsp/egovframework/com/cmm/"
       ],
       "dependsOn": [],
-      "approxFiles": 705,
+      "approxFiles": 709,
       "tables": [
         "COMTCCMMNDETAILCODE",
         "COMTNAUTHORGROUPINFO",
@@ -1089,7 +1089,7 @@
       "description": "egovframework/com/cop/smt 하위 컴포넌트 9종 일괄 설치 그룹",
       "pathPrefixes": [],
       "dependsOn": [],
-      "approxFiles": 202,
+      "approxFiles": 203,
       "children": [
         "cop.smt.djm",
         "cop.smt.dsm",
@@ -1172,7 +1172,6 @@
       "approxFiles": 20,
       "tables": [
         "COMTNDIARYINFO",
-        "COMTNEMPLYRINFO",
         "COMTNSCHDULINFO"
       ],
       "messageBundles": [
@@ -1340,7 +1339,6 @@
       ],
       "approxFiles": 15,
       "tables": [
-        "COMTNEMPLYRINFO",
         "COMTNSCHDULINFO"
       ],
       "messageBundles": [
@@ -1376,7 +1374,7 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 31,
+      "approxFiles": 32,
       "tables": [
         "COMTNDIARYINFO",
         "COMTNEMPLYRINFO",
@@ -1547,7 +1545,6 @@
       "approxFiles": 45,
       "tables": [
         "COMTCCMMNDETAILCODE",
-        "COMTNBBSMASTER",
         "COMTNEMPLYRINFO",
         "COMTNTMPLATINFO"
       ],
@@ -7073,7 +7070,7 @@
       "dependsOn": [
         "cmm"
       ],
-      "approxFiles": 13,
+      "approxFiles": 16,
       "tables": [],
       "messageBundles": [],
       "idgnContexts": [],

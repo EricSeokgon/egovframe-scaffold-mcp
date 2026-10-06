@@ -621,8 +621,8 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
     componentDirs.push(prefix);
     push({
       file: c.matchedPrefix, line: 1, kind: "component-reassemble", from: `${c.id} (3.x 소스, 전환 항목 ${inside.length}건)`,
-      to: `add_egovframe_components(componentIds=["${c.id}"]) 로 ${rules.source.components?.toTag ?? "5.x"} 재조립`, action: "manual",
-      reason: "공통컴포넌트는 upstream 에서 복사한 소스이고 5.x 에서 내용이 바뀌었다(클래스·매퍼·설정). 텍스트 치환보다 5.x 원본을 다시 조립하고 사용자 수정은 백업과 diff 로 옮기는 편이 안전하다. 치환을 원하면 skipComponents=false(기본)로 두면 된다.",
+      to: `reassemble_egovframe_components(components=["${c.id}"]) 로 ${rules.source.components?.toTag ?? "5.x"} 재조립(원본 태그 식별·사용자 수정 패치 보존)`, action: "manual",
+      reason: "공통컴포넌트는 upstream 에서 복사한 소스이고 5.x 에서 내용이 바뀌었다(클래스·매퍼·설정). 텍스트 치환보다 5.x 원본을 다시 조립하고 사용자 수정은 백업과 diff 로 옮기는 편이 안전하다(reassemble_egovframe_components 가 원본 태그를 찾아 사용자 수정만 패치로 남긴다). 치환을 원하면 skipComponents=false(기본)로 두면 된다.",
     });
   }
   if (opts.skipComponents && componentDirs.length) {

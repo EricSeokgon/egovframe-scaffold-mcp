@@ -108,8 +108,8 @@ assert.ok(mf !== null, "조립 매니페스트를 기록해야 한다");
 assert.deepEqual(Object.keys(mf.components).sort(), ["bbs", "cmm", "login", "sec.security"], "설치 컴포넌트를 기록해야 한다");
 assert.ok(
   mf.schemaVersion === 3 &&
-    mf.source.tag === "v5.0.6" &&
-    mf.source.commit === "23d01889e01fcfa486d28d7a2ec4adb51fbaf3ad",
+    mf.source.tag === "v5.0.7" &&
+    mf.source.commit === "3756ab2cb6cd5b79c05d66976a0bb9eef74cd1f5",
   "매니페스트에 공식 소스 provenance를 기록해야 한다",
 );
 assert.ok(mf.components.bbs.files.length >= 88, "bbs 설치 파일 목록을 기록해야 한다");

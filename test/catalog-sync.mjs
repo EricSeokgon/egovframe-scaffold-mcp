@@ -20,8 +20,8 @@ assert.equal(inspected.unmappedComponentPaths.length, 1);
 assert.match(inspected.unmappedComponentPaths[0], /cop\/newpkg/);
 
 const catalog = loadCatalog();
-assert.equal(catalog.source.tag, "v5.0.6");
-assert.equal(catalog.source.commit, "23d01889e01fcfa486d28d7a2ec4adb51fbaf3ad");
+assert.equal(catalog.source.tag, "v5.0.7");
+assert.equal(catalog.source.commit, "3756ab2cb6cd5b79c05d66976a0bb9eef74cd1f5");
 assert.match(catalog.source.archive.sha256, /^[0-9a-f]{64}$/);
 assert.ok(catalog.source.archive.bytes > 40_000_000);
 console.log("catalog-sync OK");

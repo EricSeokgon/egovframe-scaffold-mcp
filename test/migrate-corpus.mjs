@@ -36,6 +36,9 @@ for (const entry of corpus.entries) {
   assert(actual.migration.reassemble >= 100 && actual.migration.byKind["component-reassemble"] === actual.migration.reassemble, `${entry.id}: 공통컴포넌트 전체가 재조립 권고(${actual.migration.reassemble}종)`);
   assert(actual.grades.migration === "D" && actual.grades.supplyChain === "D", `${entry.id}: 공통컴포넌트 전체 트리는 두 축 모두 D (${actual.grades.migration}/${actual.grades.supplyChain})`);
   assert(ms < 60_000, `${entry.id}: 측정 ${ms}ms < 60s`);
+  // v0.38: 공식 트리 자체를 재조립 미리보기 — 원본 태그가 그 트리의 태그로 식별되고 사용자 수정·원본 미확인이 0 이어야 한다
+  const ra = await api.reassembleComponents({ projectDir: dir, components: ["cmm", "bbs"] });
+  assert(ra.origin.tag && api.compareTags(ra.origin.tag, entry.tag) === 0 && ra.origin.candidates[0].ratio === 1 && ra.summary["user-modified"] === 0 && ra.summary.unverified === 0, `${entry.id}: 재조립 미리보기 원본 ${ra.origin.tag}(100%), 사용자 수정 0 — 교체 ${ra.summary.unchanged}·신규 ${ra.summary.new}·5.x 제거 ${ra.summary["removed-unchanged"]}`);
 }
 // 두 세대의 관계: 4.x 는 3.x 보다 패키지 접두어 항목이 없고(이미 org.egovframe) Jakarta 항목은 비슷하다
 const e3 = corpus.entries.find((e) => e.id === "cc-3.10.0").expected, e4 = corpus.entries.find((e) => e.id === "cc-4.3.2").expected;
