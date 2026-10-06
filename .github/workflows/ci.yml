@@ -105,7 +105,9 @@ jobs:
         run: npm run test:sbom-live
       - name: Network diagnosis against real hosts
         run: npm run test:network-live
+      # drift 감시는 정보용이다 — upstream 새 태그·Maven 저장소 일시 장애가 릴리스를 막지 않게 실패해도 job 은 계속한다(경고·요약은 로그에 남음).
       - name: Catalog drift watch (runtime/components tags, parent versions, pinned pom sha256)
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run test:catalog-drift-live
