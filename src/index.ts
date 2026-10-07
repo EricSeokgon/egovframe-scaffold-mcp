@@ -132,7 +132,9 @@ if (isMain) {
 }
 // v0.36 — 해석된 의존성 트리
 export { MAVEN_DEPENDENCY_PLUGIN, parseMavenCoord, parseMavenTree, parseGradleTree, dedupeArtifacts, treeCommand, resolveDependencyTree } from "./dependency-tree.js";
-export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveOutputPath, resolveSbomOutputPath, sbomCommand, purlOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";
+export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveOutputPath, resolveSbomOutputPath, sbomCommand, purlOf, pomIdentity, applySbomMetadata, fillComponentSuppliers, parentKindOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";
+export { DEFAULT_VEX_PATH, loadSbomRules, valuesAt, parseMavenPurl, coordinateOf, supplierFor, checkMinimumElements, recheckSbom, diffSboms, bomLink, mergeVex, checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
+export type { SbomRules, SbomElementRule, MinimumElementsReport, RecheckResult, SbomDiff, VexDocument, VexMergeResult, CheckSbomOptions, CheckSbomResult } from "./sbom-check.js";
 export { COMPONENTS_REPOSITORY, gitBlobId, blobIdsOf, tagVersionKey, compareTags, defaultCacheDir, GitOriginSource, MemoryOriginSource } from "./component-origin.js";
 export type { OriginSource } from "./component-origin.js";
 export { EXIT as CLI_EXIT, COMMANDS as CLI_COMMANDS, parseArgs, kebabToCamel, coerceArgs, parseFailOn, evaluateFailOn, usage as cliUsage, runCli } from "./cli.js";

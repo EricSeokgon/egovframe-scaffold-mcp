@@ -39,6 +39,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   generate_agents_md: { title: { ko: "AGENTS.md 생성", en: "Generate AGENTS.md" }, annotations: destructive() },
   // v0.36: 새 파일만 만들고(overwrite 는 명시) 빌드 도구가 저장소에 접근하므로 openWorld; 같은 입력이면 같은 문서(serialNumber·timestamp 제외)
   generate_egovframe_sbom: { title: { ko: "SBOM 생성 (CycloneDX)", en: "Generate SBOM (CycloneDX)" }, annotations: create(true) },
+  // v0.40: SBOM 은 읽기만 하고 vex=true 일 때만 VEX 파일을 새로 만들거나 판단을 보존하며 항목을 덧붙인다(비파괴), offline=false 는 OSV
+  check_egovframe_sbom: { title: { ko: "SBOM 점검 (최소 요소·비교·VEX)", en: "Check SBOM (minimum elements, diff, VEX)" }, annotations: create(true) },
   search_egovframe_docs: { title: { ko: "가이드 문서 검색", en: "Search guide documents" }, annotations: ro(true) },
   // v0.37: outputPath 로 새 파일을 만들 수 있고(기존 파일 거부 → 비파괴) resolve/offline=false 는 네트워크를 쓴다 → 읽기 전용 힌트는 뗀다
   generate_egovframe_report: { title: { ko: "프로젝트 리포트 · 전환 준비도 평가서", en: "Project report and migration readiness assessment" }, annotations: create(true) },

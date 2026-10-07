@@ -121,9 +121,45 @@ export const SbomOutput = loose({
   statuses: z.record(z.number().int()),
   vulnerabilities: z.number().int(),
   osvError: z.string().optional(),
+  minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()), componentsWithGaps: z.number().int(), supplierFromCatalog: z.number().int() }).optional(),
   bytes: z.number().int(),
   notes: z.array(z.string()),
   logTail: z.string().optional(),
+});
+
+// v0.40: check_egovframe_sbom
+const MinimumElements = loose({
+  verdict: z.enum(["ready", "needs-work"]),
+  elements: z.array(loose({ id: z.string(), label: z.string(), labelEn: z.string(), level: z.enum(["document", "component"]), satisfied: z.number().int(), total: z.number().int(), ok: z.boolean(), missing: z.array(z.string()), hint: z.string() })),
+  componentsWithGaps: z.number().int(),
+  components: z.number().int(),
+  supplierFromCatalog: z.number().int(),
+});
+export const SbomCheckOutput = loose({
+  projectDir: z.string(),
+  sbomPath: z.string(),
+  absolutePath: z.string(),
+  document: loose({ specVersion: z.string(), serialNumber: z.string().nullable(), version: z.number().int(), timestamp: z.string().nullable(), components: z.number().int(), tools: z.array(z.string()), vulnerabilities: z.number().int() }),
+  minimum: MinimumElements,
+  recheck: loose({
+    components: z.number().int(),
+    summary: z.record(z.number().int()),
+    changed: z.array(loose({ component: z.string(), from: z.string(), to: z.string(), baseline: z.string().nullable() })),
+    unrecorded: z.number().int(),
+    osv: loose({ queried: z.boolean(), recorded: z.boolean(), error: z.string().optional(), ids: z.number().int(), newIds: z.array(z.string()), goneIds: z.array(z.string()), items: z.array(loose({ component: z.string(), ref: z.string(), ids: z.array(z.string()) })) }),
+  }),
+  diff: loose({
+    baselinePath: z.string(), baselineTimestamp: z.string().nullable(),
+    added: z.array(loose({ component: z.string(), version: z.string().nullable() })),
+    removed: z.array(loose({ component: z.string(), version: z.string().nullable() })),
+    versionChanged: z.array(loose({ component: z.string(), from: z.string(), to: z.string() })),
+    statusChanged: z.array(loose({ component: z.string(), from: z.string(), to: z.string() })),
+    newVulnerabilities: z.array(loose({ id: z.string(), components: z.array(z.string()) })),
+    resolvedVulnerabilities: z.array(z.string()),
+    unchanged: z.number().int(),
+  }).optional(),
+  vex: loose({ path: z.string(), dryRun: z.boolean(), written: z.boolean(), created: z.boolean(), added: z.number().int(), extended: z.number().int(), preserved: z.number().int(), notDetected: z.array(z.string()), states: z.record(z.number().int()), usedBomLink: z.boolean(), vulnerabilities: z.number().int() }).optional(),
+  notes: z.array(z.string()),
 });
 
 // v0.37: generate_egovframe_report — markdown 은 text 로만 돌려주고 structuredContent 에서는 뺀다(스키마에 없음).
@@ -160,7 +196,7 @@ export const AssessmentOutput = loose({
     osvError: z.string().optional(), notes: z.array(z.string()),
   }),
   security: loose({ ok: z.number().int(), missing: z.number().int(), na: z.number().int(), checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })) }),
-  sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), note: z.string() }),
+  sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
   notes: z.array(z.string()),
 });
@@ -204,6 +240,7 @@ export const OUTPUT_SCHEMAS = {
   check_egovframe_dependencies: DependenciesOutput,
   diagnose_egovframe_network: NetworkOutput,
   generate_egovframe_sbom: SbomOutput,
+  check_egovframe_sbom: SbomCheckOutput,
   generate_egovframe_report: ReportOutput,
   reassemble_egovframe_components: ReassembleOutput,
 } as const;

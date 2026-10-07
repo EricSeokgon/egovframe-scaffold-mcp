@@ -13,6 +13,7 @@ import { resolveDependencyTree, type ResolveScope, type ResolvedArtifact } from 
 import { loadMigrationRules, parsePomProperties } from "./migrate.js";
 import { withFileTransaction } from "./file-transaction.js";
 import { SERVER_VERSION } from "./version.js";
+import { checkMinimumElements, loadSbomRules, supplierFor } from "./sbom-check.js";
 
 export const CYCLONEDX_MAVEN_PLUGIN = "org.cyclonedx:cyclonedx-maven-plugin:2.9.3";
 export const CYCLONEDX_SPEC_VERSION = "1.6";
@@ -58,6 +59,15 @@ export interface GenerateSbomOptions {
   osvQuery?: OsvQuery;
   overwrite?: boolean;
   dryRun?: boolean;
+  /** v0.40: 공급자(주 component·문서) — 없으면 pom <organization><name> */
+  supplier?: string;
+  /** v0.40: SBOM 작성자(metadata.authors) — 없으면 supplier */
+  author?: string;
+  /** v0.40: 주 component 이름·버전 덮어쓰기(없으면 pom <name>·<version>) */
+  componentName?: string;
+  componentVersion?: string;
+  /** v0.40: 공급자가 빠진 component 를 catalog/sbom-rules.json 공급자 표로 보완(기본: enrich 와 같음) */
+  fillSuppliers?: boolean;
   timeoutMs?: number;
   runner?: Runner;
   platform?: NodeJS.Platform | string;
@@ -84,6 +94,8 @@ export interface GenerateSbomResult {
   statuses: Record<DependencyStatus, number>;
   vulnerabilities: number;
   osvError?: string;
+  /** v0.40: 최소 요소 7종 점검 요약(check_egovframe_sbom 과 같은 규칙) */
+  minimum?: { verdict: "ready" | "needs-work"; missing: string[]; componentsWithGaps: number; supplierFromCatalog: number };
   bytes: number;
   /** dryRun 이 아니면 문서 전체 */
   bom?: SbomDocument;
@@ -151,6 +163,7 @@ export function buildBomFromTree(root: { name: string; group?: string; version?:
   };
 }
 
+const ENRICH_KEYS = new Set(["egovframe:status", "egovframe:basis", "egovframe:baseline"]);
 /** component 마다 기준 판정을 properties 로 붙인다(기존 properties 는 유지, egovframe:* 는 갱신). */
 export function enrichBom(bom: SbomDocument, parentKind: ParentInfo["kind"]): Record<DependencyStatus, number> {
   const baseline = loadDependencyBaseline();
@@ -160,7 +173,7 @@ export function enrichBom(bom: SbomDocument, parentKind: ParentInfo["kind"]): Re
     if (!c.group || !c.version) continue;
     const r = classifyDependency({ groupId: c.group, artifactId: c.name, version: c.version, resolvedVersion: c.version }, { baseline, rules, parentKind });
     statuses[r.status]++;
-    const props = (c.properties ?? []).filter((p) => !p.name.startsWith("egovframe:"));
+    const props = (c.properties ?? []).filter((p) => !ENRICH_KEYS.has(p.name));
     props.push({ name: "egovframe:status", value: r.status });
     if (r.basis) props.push({ name: "egovframe:basis", value: r.basis });
     if (r.baseline) props.push({ name: "egovframe:baseline", value: r.baseline });
@@ -180,6 +193,48 @@ export async function attachVulnerabilities(bom: SbomDocument, query: OsvQuery):
   }
   bom.vulnerabilities = [...byId.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([id, refs]) => ({ id, "bom-ref": `vuln:${id}`, source: { name: "OSV", url: `https://osv.dev/vulnerability/${id}` }, affects: [...refs].sort().map((ref) => ({ ref })) }));
   return bom.vulnerabilities.length;
+}
+
+/** pom 의 <organization><name>·<name>(주 component 메타데이터 기본값). */
+export function pomIdentity(projectDir: string): { organization?: string; name?: string; version?: string } {
+  try {
+    const pom = fs.readFileSync(path.join(projectDir, "pom.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, "");
+    const self = pom.replace(/<parent>[\s\S]*?<\/parent>/, "").replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/, "").replace(/<dependencies>[\s\S]*?<\/dependencies>/, "").replace(/<build>[\s\S]*?<\/build>/, "").replace(/<licenses>[\s\S]*?<\/licenses>/, "").replace(/<developers>[\s\S]*?<\/developers>/, "");
+    const organization = self.match(/<organization>[\s\S]*?<name>\s*([^<]+?)\s*<\/name>[\s\S]*?<\/organization>/)?.[1];
+    const noOrg = self.replace(/<organization>[\s\S]*?<\/organization>/, "");
+    const name = noOrg.match(/<name>\s*([^<]+?)\s*<\/name>/)?.[1];
+    const version = noOrg.match(/<version>\s*([^<\s]+)\s*<\/version>/)?.[1];
+    return { ...(organization ? { organization } : {}), ...(name && !name.includes("${") ? { name } : {}), ...(version && !version.includes("${") ? { version } : {}) };
+  } catch { return {}; }
+}
+
+/** 최소 요소 메타데이터를 채운다: 공급자·작성자·주 component 이름/버전·lifecycles. 이미 있는 값은 옵션이 있을 때만 덮어쓴다. */
+export function applySbomMetadata(bom: SbomDocument, meta: { supplier?: string; author?: string; componentName?: string; componentVersion?: string }): void {
+  const md = (bom.metadata ??= {});
+  if (meta.supplier) {
+    md.supplier = { name: meta.supplier };
+    if (md.component) md.component.supplier = { name: meta.supplier };
+  }
+  if (meta.author) md.authors = [{ name: meta.author }];
+  if (md.component && meta.componentName) md.component.name = meta.componentName;
+  if (md.component && meta.componentVersion) md.component.version = meta.componentVersion;
+  if (!Array.isArray(md.lifecycles)) md.lifecycles = [{ phase: "build" }];
+}
+
+/** supplier·publisher·manufacturer 가 모두 없는 component 에 공급자 표의 값을 넣고 출처를 properties 로 남긴다. 채운 수를 돌려준다. */
+export function fillComponentSuppliers(bom: SbomDocument): number {
+  const rules = loadSbomRules();
+  let filled = 0;
+  for (const c of bom.components ?? []) {
+    const has = (c.supplier as { name?: string } | undefined)?.name || c.publisher || (c.manufacturer as { name?: string } | undefined)?.name;
+    if (has || !c.group) continue;
+    const s = supplierFor(c.group, rules);
+    if (!s) continue;
+    c.supplier = { name: s.name, ...(s.url ? { url: [s.url] } : {}) };
+    c.properties = [...(c.properties ?? []).filter((p) => p.name !== "egovframe:supplierBasis"), { name: "egovframe:supplierBasis", value: "catalog" }];
+    filled++;
+  }
+  return filled;
 }
 
 function mavenRoot(projectDir: string): { name: string; group?: string; version?: string } {
@@ -205,7 +260,7 @@ function gradleRoot(projectDir: string): { name: string; group?: string; version
 }
 
 /** 프로젝트 parent 종류(기준 우선순위용) — pom 의 parent 좌표만 본다. */
-function parentKindOf(projectDir: string, buildTool: BuildTool): ParentInfo["kind"] {
+export function parentKindOf(projectDir: string, buildTool: BuildTool): ParentInfo["kind"] {
   if (buildTool !== "maven") return "none";
   try {
     const pom = fs.readFileSync(path.join(projectDir, "pom.xml"), "utf8");
@@ -278,6 +333,14 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   const directRefs = new Set((bom.dependencies ?? []).find((d) => d.ref === rootRef)?.dependsOn ?? []);
   const direct = comps.filter((c) => c["bom-ref"] && directRefs.has(c["bom-ref"])).length;
 
+  // v0.40: 최소 요소 메타데이터(공급자·작성자·주 component)와 component 공급자 보완
+  const ident = buildTool === "maven" ? pomIdentity(projectDir) : {};
+  const supplier = opts.supplier ?? ident.organization;
+  applySbomMetadata(bom, { supplier, author: opts.author ?? supplier, componentName: opts.componentName, componentVersion: opts.componentVersion });
+  const supplierFilled = (opts.fillSuppliers ?? opts.enrich !== false) ? fillComponentSuppliers(bom) : 0;
+  if (supplierFilled) notes.push(`공급자가 없던 component ${supplierFilled}종을 공급자 표(catalog/sbom-rules.json)로 보완했습니다(properties egovframe:supplierBasis=catalog).`);
+  if (!supplier) notes.push("공급자·작성자 미지정 — supplier·author 옵션 또는 pom <organization><name> 이 없으면 최소 요소 점검에서 '보완 필요'가 됩니다.");
+
   if (opts.enrich !== false) Object.assign(statuses, enrichBom(bom, parentKindOf(projectDir, buildTool)));
   let vulnerabilities = 0;
   let osvError: string | undefined;
@@ -287,7 +350,9 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
 
   const json = `${JSON.stringify(bom, null, 2)}\n`;
   await withFileTransaction(projectDir, "SBOM 생성", (tx) => { tx.writeFile(relPath, json, { mustNotExist: !exists }); });
-  return { ...base, written: true, overwritten: exists, durationMs, components: comps.length, direct, transitive: comps.length - direct, statuses, vulnerabilities, ...(osvError ? { osvError } : {}), bytes: Buffer.byteLength(json), bom, logTail };
+  const mr = checkMinimumElements(bom);
+  const minimum = { verdict: mr.verdict, missing: mr.elements.filter((e) => !e.ok).map((e) => e.id), componentsWithGaps: mr.componentsWithGaps, supplierFromCatalog: mr.supplierFromCatalog };
+  return { ...base, written: true, overwritten: exists, durationMs, components: comps.length, direct, transitive: comps.length - direct, statuses, vulnerabilities, ...(osvError ? { osvError } : {}), minimum, bytes: Buffer.byteLength(json), bom, logTail };
 }
 
 /** 결과 요약 Markdown. */
@@ -302,6 +367,7 @@ export function renderSbomMarkdown(r: GenerateSbomResult): string {
     const s = r.statuses;
     const total = Object.values(s).reduce((a, b) => a + b, 0);
     if (total) L.push(`- 기준 판정(egovframe:status): 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 벤더 ${s.vendor} · 기준 없음 ${s.unknown}`);
+    if (r.minimum) L.push(`- 최소 요소 7종: ${r.minimum.verdict === "ready" ? "✅ 제출 가능" : `⚠️ 보완 필요(${r.minimum.missing.join("·")}) — check_egovframe_sbom 으로 상세 확인`}`);
     L.push(`- 취약점(vulnerabilities[]): ${r.osvError ? r.osvError : r.vulnerabilities}${!r.osvError && r.vulnerabilities === 0 && r.bom?.vulnerabilities === undefined ? " (offline — 조회 안 함; offline=false 로 OSV 조회)" : ""}`);
     if (r.bom?.vulnerabilities?.length) for (const v of r.bom.vulnerabilities.slice(0, 15)) L.push(`  - ${v.id}: ${v.affects.map((a) => a.ref.replace(/^pkg:maven\//, "").replace(/\?type=.*$/, "")).join(", ")}`);
   }

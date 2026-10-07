@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "surveyedAt": "2026-10-07",
+  "sources": [
+    { "name": "NTIA, The Minimum Elements For a Software Bill of Materials (SBOM), 2021-07", "url": "https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom" },
+    { "name": "과학기술정보통신부·국가정보원·KISA, SW 공급망 보안 가이드라인 1.0, 2024-05 (형식 비특정, 핵심 구성요소는 NTIA 최소 요소와 같은 7종)" },
+    { "name": "과학기술정보통신부·국가정보원, SW 공급망 보안 로드맵, 2026-06-24 (공공분야 SBOM 제출 2027년까지 제도화)" }
+  ],
+  "elements": [
+    { "id": "supplier", "level": "component", "label": "공급자", "labelEn": "Supplier name", "fields": ["supplier.name", "manufacturer.name", "publisher", "authors[].name"], "primaryFields": ["metadata.supplier.name", "metadata.manufacturer.name"], "hint": "component 의 supplier(또는 publisher·manufacturer). 주 component 는 generate_egovframe_sbom(supplier=…) 또는 pom <organization><name> 으로 채웁니다." },
+    { "id": "name", "level": "component", "label": "구성요소명", "labelEn": "Component name", "fields": ["name"], "hint": "component.name" },
+    { "id": "version", "level": "component", "label": "버전", "labelEn": "Version", "fields": ["version"], "hint": "component.version" },
+    { "id": "identifier", "level": "component", "label": "고유식별자", "labelEn": "Unique identifier", "fields": ["purl", "cpe", "swid.tagId"], "hint": "purl(pkg:maven/…) 또는 cpe·swid" },
+    { "id": "dependencies", "level": "component", "label": "의존관계", "labelEn": "Dependency relationship", "check": "dependency-ref", "hint": "dependencies[] 에 그 component 의 bom-ref 항목(의존이 없으면 빈 dependsOn)" },
+    { "id": "author", "level": "document", "label": "작성자", "labelEn": "Author of SBOM data", "fields": ["metadata.authors[].name", "metadata.authors[].email", "metadata.manufacturer.name"], "hint": "metadata.authors — 생성 도구(metadata.tools)만으로는 작성 주체가 드러나지 않습니다. generate_egovframe_sbom(author=…)" },
+    { "id": "timestamp", "level": "document", "label": "생성 시각", "labelEn": "Timestamp", "check": "timestamp", "fields": ["metadata.timestamp"], "hint": "metadata.timestamp(ISO 8601)" }
+  ],
+  "suppliers": [
+    { "groupIdPrefix": "org.egovframe", "name": "eGovFramework", "url": "https://www.egovframe.go.kr", "basis": "pom <url> https://www.egovframe.go.kr (공식 GitHub 조직 eGovFramework)" },
+    { "groupIdPrefix": "egovframework.rte", "name": "eGovFramework", "url": "https://www.egovframe.go.kr", "basis": "3.x·4.x RTE 좌표 — 같은 공급 주체" },
+    { "groupIdPrefix": "org.aspectj", "name": "Eclipse Foundation", "url": "https://www.eclipse.org/aspectj/", "basis": "pom <url> https://www.eclipse.org/aspectj/ (Eclipse 프로젝트)" },
+    { "groupIdPrefix": "io.micrometer", "name": "Micrometer", "url": "https://github.com/micrometer-metrics/micrometer", "basis": "pom <url> https://github.com/micrometer-metrics/micrometer" },
+    { "groupIdPrefix": "org.apache.ibatis", "name": "The Apache Software Foundation", "url": "https://ibatis.apache.org", "basis": "groupId org.apache — iBATIS 2.x 는 ASF 프로젝트(은퇴)" },
+    { "groupIdPrefix": "org.reactivestreams", "name": "Reactive Streams SIG", "url": "http://www.reactive-streams.org/", "basis": "pom <developers> Reactive Streams SIG" },
+    { "groupIdPrefix": "com.googlecode.json-simple", "name": "Yidong Fang", "url": "http://code.google.com/p/json-simple/", "basis": "pom <developers> Yidong Fang (architect)" },
+    { "groupIdPrefix": "org.hibernate.validator", "name": "Red Hat, Inc.", "url": "https://hibernate.org/validator", "basis": "pom <organization> Red Hat, Inc." },
+    { "groupIdPrefix": "org.antlr", "name": "ANTLR Project", "url": "https://www.antlr.org", "basis": "pom <license><url> http://www.antlr.org/license.html" },
+    { "groupIdPrefix": "com.ibm.icu", "name": "Unicode, Inc.", "url": "https://icu.unicode.org/", "basis": "pom <url> https://icu.unicode.org/ (ICU 는 Unicode 프로젝트)" }
+  ]
+}
