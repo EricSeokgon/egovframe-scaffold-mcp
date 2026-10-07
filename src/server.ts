@@ -28,6 +28,7 @@ import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } f
 import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network.js";
 import { generateAgentsMd } from "./agents-md.js";
 import { generateSbom, renderSbomMarkdown } from "./sbom.js";
+import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
 import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
 import { toolAnnotations, toolTitle } from "./tool-meta.js";
@@ -662,6 +663,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       bomFormat: z.enum(["cyclonedx-json"]).default("cyclonedx-json").describe("SBOM 형식(현재 CycloneDX JSON)"),
       scope: z.enum(["runtime", "all"]).default("runtime").describe("runtime(compile+runtime, 기본) | all(test·provided 포함)"),
       enrich: z.boolean().default(true).describe("component 마다 기준 판정 속성 부착"),
+      supplier: z.string().min(1).max(200).optional().describe("공급자(주 component·문서 metadata.supplier) — 없으면 pom <organization><name>"),
+      author: z.string().min(1).max(200).optional().describe("SBOM 작성자(metadata.authors) — 없으면 supplier"),
+      componentName: z.string().min(1).max(200).optional().describe("주 component 이름 덮어쓰기(기본 artifactId)"),
+      componentVersion: z.string().min(1).max(100).optional().describe("주 component 버전 덮어쓰기(기본 pom version)"),
+      fillSuppliers: z.boolean().optional().describe("공급자가 없는 component 를 공급자 표(catalog/sbom-rules.json)로 보완(egovframe:supplierBasis=catalog) — 기본은 enrich 와 같음"),
       offline: z.boolean().default(true).describe("false 면 OSV 조회 결과를 vulnerabilities[] 로 포함"),
       overwrite: z.boolean().default(false).describe("기존 출력 파일 덮어쓰기 허용"),
       dryRun: z.boolean().default(true).describe("true(기본)면 실행 없이 명령·출력 경로만 보고"),
@@ -670,10 +676,30 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }, outputSchema: OUTPUT_SCHEMAS.generate_egovframe_sbom.shape, annotations: toolAnnotations("generate_egovframe_sbom") },
     async (args) => {
       enforceAllowedRoots(args);
-      const r = await generateSbom({ projectDir: args.projectDir, outputPath: args.outputPath, format: args.bomFormat, scope: args.scope, enrich: args.enrich, offline: args.offline, overwrite: args.overwrite, dryRun: args.dryRun, timeoutMs: args.timeoutMs });
+      const r = await generateSbom({ projectDir: args.projectDir, outputPath: args.outputPath, format: args.bomFormat, scope: args.scope, enrich: args.enrich, offline: args.offline, overwrite: args.overwrite, dryRun: args.dryRun, timeoutMs: args.timeoutMs, supplier: args.supplier, author: args.author, componentName: args.componentName, componentVersion: args.componentVersion, fillSuppliers: args.fillSuppliers });
       const { bom: _bom, ...structured } = r; // 문서 전체는 파일에 있으므로 구조화 출력에서 제외
       const text = args.format === "json" ? JSON.stringify(structured, null, 2) : renderSbomMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: structured as unknown as Record<string, unknown> };
+    },
+  );
+  // ── SBOM 운영 (v0.40) ─────────────────────────────────
+  server.registerTool(
+    "check_egovframe_sbom",
+    { title: t("check_egovframe_sbom"), description: d("check_egovframe_sbom", "이미 만든 CycloneDX SBOM 을 제출물로서 점검합니다(SBOM 파일은 바꾸지 않음). (1) 최소 요소 7종 — 공급자·구성요소명·버전·고유식별자(purl/cpe)·의존관계·작성자·생성 시각(NTIA 최소 요소 = 국내 SW 공급망 보안 가이드라인 핵심 구성요소)을 component 마다 세어 '제출 가능/보완 필요'와 빠진 component 를 보고 (2) 빌드 도구 없이 purl 만으로 기준 판정을 다시 해 생성 당시와 달라진 판정을, offline=false 면 OSV 를 다시 조회해 생성 이후 새로 알려진 취약점을 보고(운영 중 주기 점검) (3) baselinePath(이전 SBOM)를 주면 추가·제거·버전 변경·판정 변화·새 취약점을 비교 (4) vex=true 면 CycloneDX VEX 초안(기본 sbom/vex.cdx.json)을 씁니다 — 새 취약점은 analysis.state=in_triage, affects 는 BOM-Link 로 원본 SBOM 참조, 기존 VEX 에 사람이 적은 판단(not_affected·exploitable 등)은 보존하고 새 취약점만 추가합니다(dryRun=true 면 미리보기). 2027년 공공 SBOM 제출 제도화 대비."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      sbomPath: z.string().default("sbom/bom.cdx.json").describe("점검할 SBOM(프로젝트 상대 경로)"),
+      baselinePath: z.string().optional().describe("비교할 이전 SBOM(프로젝트 상대 경로)"),
+      offline: z.boolean().default(true).describe("false 면 OSV 재조회로 생성 이후 새 취약점 확인"),
+      vex: z.boolean().default(false).describe("true 면 VEX 초안 작성·갱신(판단 보존)"),
+      vexPath: z.string().default("sbom/vex.cdx.json").describe("VEX 파일(프로젝트 상대 경로)"),
+      dryRun: z.boolean().default(false).describe("vex=true 일 때 쓰지 않고 미리보기"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_sbom.shape, annotations: toolAnnotations("check_egovframe_sbom") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await checkSbom({ projectDir: args.projectDir, sbomPath: args.sbomPath, baselinePath: args.baselinePath, offline: args.offline, vex: args.vex, vexPath: args.vexPath, dryRun: args.dryRun });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderSbomCheckMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── 문서 검색 도구 (v0.15.0) ───────────────────────────

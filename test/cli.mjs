@@ -27,7 +27,7 @@ for (const [bad, re] of [["nope", /알 수 없는 지표/], ["supplyChain", /등
   let msg = ""; try { parseFailOn(bad, ["supplyChain", "manual"], ["supplyChain"]); } catch (e) { msg = e.message; }
   assert(re.test(msg), `parseFailOn 거부: ${bad}`);
 }
-assert(Object.keys(CLI_COMMANDS).join(",") === "assess,check,sbom,migrate,validate,diagnose,network" && cliUsage().includes("종료 코드: 0 통과 · 2 --fail-on 기준 초과 · 3 실행 실패 · 64 사용법 오류"), "명령 7종·사용법");
+assert(Object.keys(CLI_COMMANDS).join(",") === "assess,check,sbom,sbom-check,migrate,validate,diagnose,network" && cliUsage().includes("종료 코드: 0 통과 · 2 --fail-on 기준 초과 · 3 실행 실패 · 64 사용법 오류") && cliUsage().includes("sbom-check SBOM 점검"), "명령 8종(v0.40 sbom-check)·사용법");
 
 // ── runCli (같은 프로세스) ────────────────────────────────
 const proj = mkdtempSync(path.join(tmpdir(), "egovcli-"));
@@ -71,6 +71,18 @@ t = io(proj);
 assert((await runCli(["diagnose", "--project", path.join(proj, "missing")], t.io)) === CLI_EXIT.error, "실행 실패(없는 디렉터리) → 3");
 t = io(proj);
 assert((await runCli(["validate", "--fail-on", "invalid"], t.io)) === 2, "validate --fail-on invalid(매니페스트 없음) → 2");
+
+// v0.40: sbom-check — 읽기 전용 기본, --write 면 VEX, --vex 직접 지정은 차단
+write(proj, "sbom/bom.cdx.json", readFileSync(new URL("./fixtures/sbom-egov-web-plugin.cdx.json", import.meta.url), "utf8"));
+t = io(proj);
+assert((await runCli(["sbom-check", "--fail-on", "minimum"], t.io)) === 2 && t.o.out.includes("# SBOM 점검 (sbom/bom.cdx.json)") && t.o.err.includes("최소 요소 보완 필요") && t.o.err.includes("초과(minimum)"), "sbom-check --fail-on minimum → 2");
+t = io(proj);
+const sc = await runCli(["sbom-check", "--json", "--fail-on", "gaps>20,newVulns"], t.io);
+assert(sc === 0 && JSON.parse(t.o.out).minimum.componentsWithGaps === 18 && !existsSync(path.join(proj, "sbom/vex.cdx.json")), "sbom-check --json(gaps 18 ≤ 20, offline 이라 newVulns 0) → 0, VEX 없음");
+t = io(proj);
+assert((await runCli(["sbom-check", "--vex"], t.io)) === 64 && t.o.err.includes("vex"), "sbom-check --vex 직접 지정 차단(→ --write)");
+t = io(proj);
+assert((await runCli(["sbom-check", "--write", "--fail-on", "triage"], t.io)) === 0 && existsSync(path.join(proj, "sbom/vex.cdx.json")) && t.o.err.includes("VEX 기록 in_triage 0"), "sbom-check --write → VEX 기록(offline·취약점 없음: in_triage 0)");
 
 // ── 실제 프로세스: 인자 없으면 서버, 있으면 CLI ─────────────
 const entry = fileURLToPath(new URL("../dist/index.js", import.meta.url));

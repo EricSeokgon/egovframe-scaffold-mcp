@@ -10,6 +10,7 @@ import { diagnoseProject } from "./diagnose.js";
 import { migrateProject, type MigrateResult, type MigrationItem, type MigrationKind, type SourceEra } from "./migrate.js";
 import { checkDependencies, STATUS_LABEL, BASIS_LABEL, type CheckDependenciesResult, type DependencyFinding, type DependencyStatus, type OsvQuery, type ParentInfo, type SecurityCheck, type Vulnerability } from "./dependencies.js";
 import { DEFAULT_SBOM_PATH, type SbomDocument } from "./sbom.js";
+import { checkMinimumElements, DEFAULT_VEX_PATH, type VexDocument } from "./sbom-check.js";
 import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
@@ -130,7 +131,14 @@ export interface AssessmentResult {
     notes: string[];
   };
   security: { ok: number; missing: number; na: number; checks: SecurityCheck[] };
-  sbom: { present: boolean; path: string; components?: number; specVersion?: string; timestamp?: string; vulnerabilities?: number; note: string };
+  sbom: {
+    present: boolean; path: string; components?: number; specVersion?: string; timestamp?: string; vulnerabilities?: number;
+    /** v0.40: 최소 요소 7종 */
+    minimum?: { verdict: "ready" | "needs-work"; missing: string[] };
+    /** v0.40: VEX(같은 디렉터리의 vex.cdx.json) — timestamp 는 마지막 점검(check_egovframe_sbom vex=true) 시각 */
+    vex?: { path: string; present: boolean; timestamp?: string; vulnerabilities?: number; states?: Record<string, number> };
+    note: string;
+  };
   grades: { migration: GradeResult; supplyChain: GradeResult };
   notes: string[];
 }
@@ -169,13 +177,28 @@ export function actionFor(f: DependencyFinding): string {
   }
 }
 
+function readVex(projectDir: string, rel: string): NonNullable<AssessmentResult["sbom"]["vex"]> {
+  const abs = path.resolve(projectDir, rel);
+  if (!fs.existsSync(abs)) return { path: rel, present: false };
+  try {
+    const v = JSON.parse(fs.readFileSync(abs, "utf8")) as VexDocument;
+    const states: Record<string, number> = {};
+    for (const x of v.vulnerabilities ?? []) { const s = x.analysis?.state ?? "in_triage"; states[s] = (states[s] ?? 0) + 1; }
+    return { path: rel, present: true, ...(v.metadata?.timestamp ? { timestamp: v.metadata.timestamp } : {}), vulnerabilities: (v.vulnerabilities ?? []).length, states };
+  } catch { return { path: rel, present: false }; }
+}
+
 function readSbom(projectDir: string, rel: string): AssessmentResult["sbom"] {
   const abs = path.resolve(projectDir, rel);
   if (!fs.existsSync(abs)) return { present: false, path: rel, note: `SBOM 없음 — generate_egovframe_sbom(dryRun=false) 으로 ${rel} 에 CycloneDX 문서를 만들 수 있습니다.` };
   try {
     const doc = JSON.parse(fs.readFileSync(abs, "utf8")) as SbomDocument & { vulnerabilities?: unknown[] };
     if (doc.bomFormat !== "CycloneDX") return { present: false, path: rel, note: `${rel} 은 CycloneDX 문서가 아닙니다(bomFormat=${String(doc.bomFormat)}).` };
-    return { present: true, path: rel, components: (doc.components ?? []).length, specVersion: doc.specVersion, timestamp: doc.metadata?.timestamp, vulnerabilities: Array.isArray(doc.vulnerabilities) ? doc.vulnerabilities.length : 0, note: `CycloneDX ${doc.specVersion} · component ${(doc.components ?? []).length}종${doc.metadata?.timestamp ? ` · 생성 ${doc.metadata.timestamp}` : ""}` };
+    const m = checkMinimumElements(doc);
+    const minimum = { verdict: m.verdict, missing: m.elements.filter((e) => !e.ok).map((e) => e.label) };
+    const vexRel = path.posix.join(path.posix.dirname(rel), path.posix.basename(DEFAULT_VEX_PATH));
+    const vex = readVex(projectDir, vexRel);
+    return { present: true, path: rel, components: (doc.components ?? []).length, specVersion: doc.specVersion, timestamp: doc.metadata?.timestamp, vulnerabilities: Array.isArray(doc.vulnerabilities) ? doc.vulnerabilities.length : 0, minimum, vex, note: `CycloneDX ${doc.specVersion} · component ${(doc.components ?? []).length}종${doc.metadata?.timestamp ? ` · 생성 ${doc.metadata.timestamp}` : ""}` };
   } catch (e) {
     return { present: false, path: rel, note: `${rel} 을 읽지 못했습니다: ${e instanceof Error ? e.message : String(e)}` };
   }
@@ -326,6 +349,8 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
   }
 
   L.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? ` · vulnerabilities ${r.sbom.vulnerabilities}건` : ""}` : `➖ ${r.sbom.note}`}`);
+  if (r.sbom.minimum) L.push(`- 최소 요소 7종: ${r.sbom.minimum.verdict === "ready" ? "✅ 제출 가능" : `⚠️ 보완 필요(${r.sbom.minimum.missing.join("·")})`} — 상세는 \`check_egovframe_sbom\``);
+  if (r.sbom.vex) L.push(`- VEX: ${r.sbom.vex.present ? `${r.sbom.vex.path} · 항목 ${r.sbom.vex.vulnerabilities ?? 0}건(${Object.entries(r.sbom.vex.states ?? {}).map(([k, n]) => `${k} ${n}`).join(" · ") || "없음"})${r.sbom.vex.timestamp ? ` · 마지막 점검 ${r.sbom.vex.timestamp}` : ""}` : `없음 — check_egovframe_sbom(vex=true) 로 취약점별 판단 기록(${r.sbom.vex.path})을 시작할 수 있습니다`}`);
 
   L.push(``, `## 6. 등급과 근거`, ``);
   renderGrade(L, "전환 난이도", r.grades.migration);

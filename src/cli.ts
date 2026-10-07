@@ -54,6 +54,23 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => ({ components: num(s.components), vulnerabilities: num(s.vulnerabilities), unknown: num(rec(s.statuses).unknown), outdated: num(rec(s.statuses).outdated) }),
     line: (s) => (s.written ? `SBOM ${s.outputPath} — component ${num(s.components)} · 취약점 ${num(s.vulnerabilities)}` : `SBOM 계획만(dryRun) — ${s.outputPath}`),
   },
+  "sbom-check": {
+    tool: "check_egovframe_sbom", summary: "SBOM 점검(최소 요소·재점검·비교, --write 면 VEX)", blocked: ["vex", "dryRun"],
+    metrics: (s) => {
+      const m = rec(s.minimum), rc = rec(s.recheck), o = rec(rc.osv), df = rec(s.diff), vx = rec(s.vex);
+      const len = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+      return {
+        minimum: m.verdict === "needs-work" ? 1 : 0, gaps: num(m.componentsWithGaps), changed: len(rc.changed),
+        vulnerabilities: o.queried ? num(o.ids) : num(rec(s.document).vulnerabilities), newVulns: len(o.newIds),
+        added: len(df.added), removed: len(df.removed), versionChanged: len(df.versionChanged), diffVulns: len(df.newVulnerabilities),
+        triage: num(rec(vx.states).in_triage),
+      };
+    },
+    line: (s) => {
+      const m = rec(s.minimum), o = rec(rec(s.recheck).osv), df = s.diff ? rec(s.diff) : null, vx = s.vex ? rec(s.vex) : null;
+      return `${s.sbomPath} — 최소 요소 ${m.verdict === "ready" ? "제출 가능" : "보완 필요"}${o.queried ? ` · 새 취약점 ${Array.isArray(o.newIds) ? o.newIds.length : 0}` : ""}${df ? ` · 비교 +${Array.isArray(df.added) ? df.added.length : 0}/-${Array.isArray(df.removed) ? df.removed.length : 0}/버전 ${Array.isArray(df.versionChanged) ? df.versionChanged.length : 0}` : ""}${vx ? ` · VEX ${vx.written ? "기록" : "미기록"} in_triage ${num(rec(vx.states).in_triage)}` : ""}`;
+    },
+  },
   migrate: {
     tool: "migrate_egovframe_project", summary: "5.x 전환 진단(읽기 전용)", fixed: { apply: false, verify: false }, blocked: ["apply", "verify", "dryRun", "skipComponents"],
     metrics: (s) => { const sm = rec(s.summary); return { items: Array.isArray(s.items) ? s.items.length : 0, auto: num(sm.auto), manual: num(sm.manual), files: num(sm.files) }; },
@@ -155,7 +172,7 @@ export function usage(): string {
     `  npx egovframe-scaffold-mcp <명령> [옵션]          도구 하나를 실행하고 종료(CI·배치용)`,
     ``,
     `명령:`,
-    ...Object.entries(COMMANDS).map(([k, c]) => `  ${k.padEnd(9)} ${c.summary}  (${c.tool})`),
+    ...Object.entries(COMMANDS).map(([k, c]) => `  ${k.padEnd(10)} ${c.summary}  (${c.tool})`),
     ``,
     `공통 옵션:`,
     `  --project <dir>       대상 프로젝트(기본 현재 디렉터리)`,
@@ -163,7 +180,7 @@ export function usage(): string {
     `  --out <file>          출력을 파일로도 저장`,
     `  --step-summary        Markdown 을 $GITHUB_STEP_SUMMARY 에 덧붙임`,
     `  --fail-on <식>        기준을 넘으면 종료 코드 2 — 예: supplyChain:C · migration:D · vulnerabilities · manual>20`,
-    `  --write               sbom: 실제로 파일을 씀(기본은 계획만)`,
+    `  --write               sbom: 실제로 파일을 씀(기본은 계획만) · sbom-check: VEX 초안 작성·갱신(판단 보존)`,
     `  그 밖의 옵션은 도구 파라미터와 같은 이름(kebab-case 가능): --resolve --offline=false --resolve-scope all --top-n 10 …`,
     ``,
     `종료 코드: 0 통과 · 2 --fail-on 기준 초과 · 3 실행 실패 · 64 사용법 오류`,
@@ -203,6 +220,7 @@ export async function runCli(argv: string[], io: CliIo = defaultIo()): Promise<n
     if ("projectDir" in props) finalArgs.projectDir = path.resolve(io.cwd, typeof options.project === "string" ? options.project : ".");
     if ("format" in props) finalArgs.format = "markdown";
     if (command === "sbom" && options.write === true) finalArgs.dryRun = false;
+    if (command === "sbom-check" && options.write === true) finalArgs.vex = true;
     let conds: FailCondition[] = [];
     if (options["fail-on"] !== undefined) {
       if (typeof options["fail-on"] !== "string") { io.stderr(`--fail-on 에 식이 필요합니다\n`); return EXIT.usage; }

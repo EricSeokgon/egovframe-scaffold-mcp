@@ -87,6 +87,16 @@ const m2 = await generateSbom({ projectDir: proj, dryRun: false, runner: fakePlu
 assert(m2.written && m2.overwritten && Object.values(m2.statuses).every((v) => v === 0) && m2.vulnerabilities === 0 && calls[calls.length - 1].args.includes("-DincludeTestScope=true"), "overwrite·enrich=false·scope=all");
 const m2w = JSON.parse(readFileSync(path.join(proj, "sbom/bom.cdx.json"), "utf8"));
 assert(!m2w.components.some((c) => c.properties) && m2w.vulnerabilities === undefined, "enrich=false·offline 이면 속성·취약점 없음");
+// v0.40: 최소 요소 메타데이터 — supplier·author 옵션, pom organization, 공급자 표 보완, 결과의 minimum 요약
+assert(written.metadata.lifecycles[0].phase === "build" && !written.metadata.supplier && !written.metadata.authors && m.minimum.verdict === "needs-work" && m.minimum.missing.join() === "supplier,dependencies,author" && m.notes.some((x) => x.includes("공급자·작성자 미지정")), "옵션·organization 없으면 공급자·작성자 비움 → minimum 보완 필요(가짜 출력은 말단 의존 항목도 없음)");
+assert(ptl.supplier.name === "eGovFramework" && ptl.properties.some((p) => p.name === "egovframe:supplierBasis") && m.minimum.supplierFromCatalog === 1 && renderSbomMarkdown(m).includes("⚠️ 보완 필요(supplier·dependencies·author)"), "RTE 는 공급자 표로 보완, Markdown 에 최소 요소");
+const m3 = await generateSbom({ projectDir: proj, dryRun: false, runner: fakePlugin, platform: "linux", overwrite: true, supplier: "예시 기관", author: "예시 SI", componentName: "업무시스템" });
+const m3w = JSON.parse(readFileSync(path.join(proj, "sbom/bom.cdx.json"), "utf8"));
+assert(m3w.metadata.supplier.name === "예시 기관" && m3w.metadata.component.supplier.name === "예시 기관" && m3w.metadata.authors[0].name === "예시 SI" && m3w.metadata.component.name === "업무시스템" && m3.minimum.missing.join() === "supplier,dependencies" && m3.minimum.componentsWithGaps === 2, "supplier·author·componentName 반영(남은 공백: 공급자 표에 없는 말단 2종)");
+write(proj, "pom.xml", readFileSync(path.join(proj, "pom.xml"), "utf8").replace("</project>", "<organization><name>pom 기관</name></organization></project>"));
+const m4 = await generateSbom({ projectDir: proj, dryRun: false, runner: fakePlugin, platform: "linux", overwrite: true, fillSuppliers: false });
+const m4w = JSON.parse(readFileSync(path.join(proj, "sbom/bom.cdx.json"), "utf8"));
+assert(m4w.metadata.supplier.name === "pom 기관" && m4w.metadata.authors[0].name === "pom 기관" && !m4w.components.find((c) => c.name === "egovframe-rte-ptl-mvc").supplier && m4.minimum.supplierFromCatalog === 0, "pom <organization> 기본값 · fillSuppliers=false 면 표 보완 안 함");
 const mOsvFail = await generateSbom({ projectDir: proj, outputPath: "target/bom2.json", dryRun: false, runner: fakePlugin, platform: "linux", offline: false, osvQuery: async () => { throw new Error("network down"); } });
 assert(mOsvFail.written && /network down/.test(mOsvFail.osvError) && mOsvFail.vulnerabilities === 0, "OSV 실패는 osvError 로만 기록하고 파일은 씀");
 threw = false; try { await generateSbom({ projectDir: proj, outputPath: "target/fail.json", dryRun: false, runner: async (_c, o) => { o.onData("[ERROR] no plugin\n"); return { exitCode: 1, timedOut: false }; }, platform: "linux" }); } catch (e) { threw = /cyclonedx-maven-plugin 실패\(종료 코드 1\)/.test(e.message) && /no plugin/.test(e.message); }

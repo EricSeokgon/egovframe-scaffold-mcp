@@ -97,6 +97,11 @@ assert(a5.migration.items === 0 && a5.grades.migration.grade === "A" && a5.grade
 assert(a5.overview.parent.kind === "web" && a5.grades.supplyChain.factors.find((f) => f.id === "platform").value === 0, "5.x parent 최신·Java 관리 → 플랫폼 0점");
 assert(a5.sbom.present && a5.sbom.components === 2 && a5.sbom.specVersion === "1.6" && a5.sbom.vulnerabilities === 1 && a5.sbom.timestamp === "2026-10-04T00:00:00Z", "SBOM 요약(component 2·취약점 1)");
 assert(renderAssessmentMarkdown(a5).includes("전환 항목 없음") && renderAssessmentMarkdown(a5).includes("✅ sbom/bom.cdx.json"), "5.x Markdown: 전환 없음·SBOM 표시");
+// v0.40: 5절에 최소 요소·VEX
+assert(a5.sbom.minimum.verdict === "needs-work" && a5.sbom.minimum.missing.join() === "공급자,버전,고유식별자,의존관계,작성자" && !a5.sbom.vex.present && renderAssessmentMarkdown(a5).includes("최소 요소 7종: ⚠️ 보완 필요(공급자·버전·고유식별자·의존관계·작성자)") && renderAssessmentMarkdown(a5).includes("VEX: 없음 — check_egovframe_sbom(vex=true)"), "5절: 최소 요소 보완 필요·VEX 없음 안내");
+write(p5, "sbom/vex.cdx.json", JSON.stringify({ bomFormat: "CycloneDX", specVersion: "1.6", version: 2, metadata: { timestamp: "2026-10-07T00:00:00Z" }, vulnerabilities: [{ id: "V", analysis: { state: "not_affected" }, affects: [] }, { id: "W", affects: [] }] }));
+const a5v = await assessProject({ projectDir: p5 });
+assert(a5v.sbom.vex.present && a5v.sbom.vex.vulnerabilities === 2 && a5v.sbom.vex.states.not_affected === 1 && a5v.sbom.vex.states.in_triage === 1 && renderAssessmentMarkdown(a5v).includes("마지막 점검 2026-10-07T00:00:00Z"), "5절: VEX 상태 집계·마지막 점검 시각");
 const a5s = await assessProject({ projectDir: p5, sbomPath: "other\\bom.json" });
 assert(!a5s.sbom.present && a5s.sbom.path === "other/bom.json", "sbomPath 지정(역슬래시 정규화)·없음");
 write(p5, "bad.json", "{not json");

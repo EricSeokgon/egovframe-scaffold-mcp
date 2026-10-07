@@ -1,7 +1,8 @@
 // node test/sbom-live.mjs — 실제 Maven·Gradle 로 해석된 의존성 트리와 CycloneDX SBOM (네트워크·JDK 17·Maven·Gradle 필요, CI integration 전용)
 // 공식 egovframe-web 템플릿 pom(Initializr 고정 commit, 자리표시자만 채움)과 작은 Gradle 프로젝트로 v0.36 검증 기준을 확인한다.
-import { checkDependencies, generateSbom, loadTemplateCatalog } from "../dist/index.js";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
+import { checkDependencies, generateSbom, loadTemplateCatalog, checkSbom } from "../dist/index.js";
+import { validateCycloneDx } from "./cdx-schema.mjs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -35,6 +36,26 @@ try {
   assert(bom.components.some((c) => c.hashes?.length) && bom.components.some((c) => c.licenses?.length) && bom.metadata.tools.components.some((t) => t.name === "egovframe-scaffold-mcp"), "플러그인 해시·라이선스 보존 + 도구 목록");
   assert(Array.isArray(bom.vulnerabilities) && bom.vulnerabilities.length === s.vulnerabilities && bom.vulnerabilities.every((v) => v.id && v.affects.length >= 1 && v.source.name === "OSV"), `OSV 취약점 ${s.vulnerabilities}건이 vulnerabilities[] 로 (affects 참조)`);
   assert(s.vulnerabilities >= 1, "공식 web 템플릿 해석 집합에는 OSV 권고가 붙는 component 가 있다(선행 조사 8종)");
+  assert(validateCycloneDx(bom) === null, "생성 SBOM 이 CycloneDX 1.6 공식 스키마 통과");
+
+  // ── v0.40: SBOM 운영 — 최소 요소·재점검·비교·VEX ──
+  const c0 = await checkSbom({ projectDir: mvnDir, offline: false });
+  const sup = c0.minimum.elements.find((e) => e.id === "supplier"), au = c0.minimum.elements.find((e) => e.id === "author");
+  assert(c0.minimum.verdict === "needs-work" && !sup.ok && sup.missing[0].startsWith("(주) ") && !au.ok && c0.minimum.elements.filter((e) => !e.ok).length === 2, `옵션 없이 만든 SBOM: 보완 필요 — 공급자(주 component, ${sup.satisfied}/${sup.total})·작성자만 빔`);
+  assert(c0.minimum.supplierFromCatalog >= 10 && c0.recheck.components === s.components && c0.recheck.changed.length === 0 && c0.recheck.osv.queried && c0.recheck.osv.recorded && c0.recheck.osv.newIds.length === 0, `재점검: purl ${c0.recheck.components}종 판정 변화 0 · 방금 만든 SBOM 이라 새 취약점 0 (공급자 표 보완 ${c0.minimum.supplierFromCatalog}종)`);
+  copyFileSync(s.absolutePath, path.join(mvnDir, "sbom", "bom-before.cdx.json"));
+  const s2 = await generateSbom({ projectDir: mvnDir, dryRun: false, offline: false, overwrite: true, supplier: "예시 기관", author: "예시 SI", timeoutMs: 900_000 });
+  const c1 = await checkSbom({ projectDir: mvnDir, offline: false, baselinePath: "sbom/bom-before.cdx.json", vex: true });
+  assert(s2.minimum.verdict === "ready" && c1.minimum.verdict === "ready" && c1.minimum.componentsWithGaps === 0, "supplier·author 로 다시 만들면 최소 요소 7종 충족(제출 가능)");
+  assert(c1.diff.added.length === 0 && c1.diff.removed.length === 0 && c1.diff.versionChanged.length === 0 && c1.diff.statusChanged.length === 0 && c1.diff.unchanged === s2.components, `같은 프로젝트의 두 SBOM 비교: 의도한 차이 없음(같음 ${c1.diff.unchanged})`);
+  const vexPath = path.join(mvnDir, "sbom", "vex.cdx.json");
+  const vex = JSON.parse(readFileSync(vexPath, "utf8"));
+  assert(c1.vex.written && vex.vulnerabilities.length >= 1 && vex.vulnerabilities.every((v) => v.analysis.state === "in_triage" && v.affects.every((a) => /^urn:cdx:[0-9a-f-]{36}\/\d+#/.test(a.ref))) && validateCycloneDx(vex) === null, `VEX 초안 ${vex.vulnerabilities.length}건(in_triage·BOM-Link·공식 스키마 통과)`);
+  vex.vulnerabilities[0].analysis = { state: "not_affected", justification: "code_not_reachable", detail: "검토 완료" };
+  writeFileSync(vexPath, JSON.stringify(vex, null, 2));
+  const c2 = await checkSbom({ projectDir: mvnDir, offline: false, vex: true });
+  const vex2 = JSON.parse(readFileSync(vexPath, "utf8"));
+  assert(vex2.vulnerabilities[0].analysis.state === "not_affected" && vex2.vulnerabilities[0].analysis.detail === "검토 완료" && c2.vex.added === 0 && c2.vex.states.not_affected === 1, "VEX 재실행: 사람이 적은 판단 보존·새 항목 0");
 
   // ── Gradle: 작은 프로젝트 ──
   if (hasGradle) {

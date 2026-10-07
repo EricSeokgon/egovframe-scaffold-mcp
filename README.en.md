@@ -15,7 +15,7 @@ From an AI tool that speaks MCP (Claude, VS Code Copilot, Cursor, …) you can, 
 - assemble **common components** (190 catalog entries from the official v5.0.7 release) with sources, mappers, JSPs, messages, Spring/web fragments and per-database DDL/DML,
 - generate CRUD code (official Development wizard inputs), Spring configuration (21 official Initializr templates, offline) and a GitHub Actions workflow,
 - build and test with Maven/Gradle and get compiler errors and JUnit results structured by file and line,
-- diagnose an existing project, **migrate 3.x/4.x code to 5.x (Jakarta EE, Spring 6, Java 17)** — diagnosis first, then transactional apply, then compile-and-link verification —, check declared or fully resolved dependencies against the official 5.x parents, the full Spring Boot BOM and the RTE transitive versions (optionally with OSV), **generate a CycloneDX SBOM**, produce a one-call **migration readiness assessment** with A–D grades and the printed scoring formula, diagnose network/proxy problems, and generate `AGENTS.md` for AI coding tools.
+- diagnose an existing project, **migrate 3.x/4.x code to 5.x (Jakarta EE, Spring 6, Java 17)** — diagnosis first, then transactional apply, then compile-and-link verification —, check declared or fully resolved dependencies against the official 5.x parents, the full Spring Boot BOM and the RTE transitive versions (optionally with OSV), **generate a CycloneDX SBOM and check it as a submission artifact** (minimum elements, diff against a previous SBOM, VEX draft), produce a one-call **migration readiness assessment** with A–D grades and the printed scoring formula, diagnose network/proxy problems, and generate `AGENTS.md` for AI coding tools.
 
 Every write tool offers `dryRun`, runs inside a file transaction (rollback on failure), never overwrites user files silently, and honours an optional allowed-roots sandbox.
 
@@ -44,7 +44,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `EGOVFRAME_ALLOWED_ROOTS` | Optional sandbox: every directory argument (`projectDir`, `outputDir`) must be inside one of these roots (path-separator-delimited, realpath-checked). |
 | `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list`. Responses stay Korean. |
 
-## Tools (29)
+## Tools (30)
 
 | Tool | What it does |
 |---|---|
@@ -69,6 +69,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `check_egovframe_dependencies` | Compare dependencies (declared, or with `resolve=true` the whole tree resolved by Maven/Gradle — transitive artifacts with their path, declared-vs-resolved differences) with the official 5.x parent baseline (139 coordinates + BOM families), the full Spring Boot BOM (1,473 coordinates) and the transitive dependencies of the 18 RTE modules (58): ok / outdated / parent-managed / legacy / replace / vendor / unknown, each with the basis it was compared against; security-config presence checks; optional OSV lookup |
 | `reassemble_egovframe_components` | Reassemble the common-component sources copied into a 3.x/4.x project onto v5.0.7: identifies the original tag by git blob ids (no downloads), three-way classifies every file, keeps user changes as patches plus a worklist, backs up and removes files 5.x dropped, writes the manifest (then upgrade/validate/remove work); dryRun by default, one transaction, optional compile verify |
 | `generate_egovframe_sbom` | CycloneDX 1.6 JSON SBOM without touching build files — Maven via cyclonedx-maven-plugin (hashes, licenses), Gradle from the resolved tree; baseline verdict per component (`egovframe:*` properties), optional OSV `vulnerabilities[]`; writes inside the project only, `dryRun` by default |
+| `check_egovframe_sbom` | Check an existing CycloneDX SBOM without changing it: the 7 minimum elements (supplier, name, version, unique identifier, dependency relationship, author, timestamp) per component with a ready / needs-work verdict, a purl-only re-check (changed baseline verdicts, OSV findings published since generation), a diff against `baselinePath`, and with `vex=true` a CycloneDX VEX draft (`in_triage`, BOM-Link) that keeps human decisions |
 | `diagnose_egovframe_network` | Probe the hosts the server downloads from, classify failures (DNS, timeout, TLS, proxy auth) and prescribe environment settings as bash/cmd/PowerShell commands |
 | `generate_agents_md` | `AGENTS.md` for AI coding tools: build/test commands, RTE and migration status, components, rules, available MCP tools (ko/en) |
 
@@ -79,7 +80,7 @@ Resources: `egovframe://catalog/components`, `…/components/{id}`, `…/templat
 - **Pinned sources**: component catalog (official v5.0.7 tag, commit, archive sha256), Initializr zip templates (commit, sha256, size), config templates (commit, per-file sha256, CRLF-safe), migration rules derived from `egovframe-runtime` tags v3.10.0 / v4.3.0-Final / v5.0.2-Final and `egovframe-common-components` v3.10.0 / v5.0.7, dependency baseline extracted from the official 5.x parent poms (5.0.2), `spring-boot-dependencies` 3.5.6 and the RTE 5.0.2 module poms — every pom with url and sha256. `sync_egovframe_templates` reports when any of these drifts upstream.
 - **Release gate**: `npm run prepublishOnly` runs the build and ~28 offline suites (over 1,300 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, checks that every migration target coordinate exists in the Maven repositories, watches upstream drift of the bundled rules and baseline, and validates `server.json` against the MCP Registry.
 - **Automated releases** (v0.35+): once a PR is merged and CI passes on `main`, `release.yml` publishes to npm with OIDC trusted publishing (provenance attached, no tokens), tags the verified commit, creates the GitHub Release from the changelog and publishes to the MCP Registry with GitHub OIDC — only when the version in `package.json`, `server.json` and the changelog agree and the version is not released yet.
-- **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools, the SBOM generator and the report tool also declare `outputSchema` and return `structuredContent`.
+- **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools, the SBOM generator and checker, the report tool and the reassembly tool also declare `outputSchema` and return `structuredContent`.
 - **Regression corpus** (v0.37): CI runs diagnosis, dry-run apply, the dependency check and the assessment against the official `egovframe-common-components` **v3.10.0 and v4.3.2** source trees (pinned commits, sparse partial clones) and asserts the counts in `catalog/migration-corpus.json` within ±1% — so a rule or baseline change that moves real-world results is caught, and the 4.x→5.x path is verified on real assets.
 - **Resumable releases**: `release-check` looks at npm (including the published `gitHead`), the tag, the GitHub Release and the MCP Registry and runs only the missing steps, so an interrupted release continues on the next merge instead of needing manual tags.
 - **Safety**: transactions with structured rollback reports, `dryRun` everywhere, allowed roots with realpath checks, zip-slip guards, process-tree kill on build timeouts.
@@ -99,10 +100,14 @@ Auto items (coordinates, package prefixes and renames, javax→jakarta packages 
 
 ```text
 check_egovframe_dependencies(projectDir="/work/legacy-app", resolve=true, offline=false)   # resolved tree + OSV
-generate_egovframe_sbom(projectDir="/work/legacy-app", dryRun=false, offline=false)         # sbom/bom.cdx.json (CycloneDX 1.6)
+generate_egovframe_sbom(projectDir="/work/legacy-app", dryRun=false, offline=false, supplier="Agency", author="Vendor")  # sbom/bom.cdx.json (CycloneDX 1.6)
+check_egovframe_sbom(projectDir="/work/legacy-app", offline=false, vex=true)                  # minimum elements + new OSV findings + sbom/vex.cdx.json
+check_egovframe_sbom(projectDir="/work/legacy-app", baselinePath="sbom/bom-prev.cdx.json")   # diff against the previous submission
 ```
 
 The official `egovframe-web` template declares 19 dependencies and looks clean; resolving the tree shows 65 artifacts, 11 below the baseline and 24 OSV advisories. The SBOM carries the same verdict per component (`egovframe:status`, `egovframe:basis`, `egovframe:baseline`) and the OSV findings as `vulnerabilities[]`.
+
+Public-sector SBOM submission in Korea is to be institutionalised by 2027. `check_egovframe_sbom` checks the 7 minimum elements (rules as data in `catalog/sbom-rules.json`, NTIA minimum elements = the Korean SW supply-chain security guideline 1.0 core elements). The plugin output for the official web template misses the supplier on 18 of 68 components (no `<organization>` in their poms) and the SBOM author; `generate_egovframe_sbom(supplier, author)` plus a small supplier table with per-entry evidence (marked `egovframe:supplierBasis=catalog`) makes it pass. The VEX draft marks new findings `in_triage`; people record `not_affected`/`exploitable`/… and later runs keep those decisions and only add new findings. Generated SBOMs and VEX documents validate against the official CycloneDX 1.6.1 JSON schema in the tests.
 
 ## Running in CI (CLI mode)
 
@@ -110,9 +115,10 @@ The official `egovframe-web` template declares 19 dependencies and looks clean; 
 npx -y egovframe-scaffold-mcp assess --project . --offline=false --out assessment.md --fail-on supplyChain:C
 npx -y egovframe-scaffold-mcp check --project . --resolve --json --fail-on "vulnerabilities,outdated>10"
 npx -y egovframe-scaffold-mcp sbom --project . --write
+npx -y egovframe-scaffold-mcp sbom-check --project . --offline=false --fail-on "minimum,newVulns"
 ```
 
-With no arguments the package starts the MCP stdio server as before; with a command (`assess`, `check`, `sbom`, `migrate`, `validate`, `diagnose`, `network`) it runs that one tool through an in-memory MCP client and exits. Options use the tool parameter names (kebab-case allowed); `--json` prints the same object as MCP `structuredContent`; `--step-summary` appends the Markdown to `$GITHUB_STEP_SUMMARY`; `--fail-on` takes grade (`supplyChain:C`) or count (`vulnerabilities`, `manual>20`) conditions. Exit codes: 0 pass, 2 over the `--fail-on` threshold, 3 execution failure, 64 usage error. Write tools are not exposed. `generate_egovframe_ci(supplyChain=true)` adds a GitHub Actions job that builds the SBOM, runs the assessment with the grades in the PR summary, uploads both, and fails above `failOn`. Design notes: [docs/design-cli.md](docs/design-cli.md) (Korean).
+With no arguments the package starts the MCP stdio server as before; with a command (`assess`, `check`, `sbom`, `sbom-check`, `migrate`, `validate`, `diagnose`, `network`) it runs that one tool through an in-memory MCP client and exits. Options use the tool parameter names (kebab-case allowed); `--json` prints the same object as MCP `structuredContent`; `--step-summary` appends the Markdown to `$GITHUB_STEP_SUMMARY`; `--fail-on` takes grade (`supplyChain:C`) or count (`vulnerabilities`, `manual>20`) conditions. Exit codes: 0 pass, 2 over the `--fail-on` threshold, 3 execution failure, 64 usage error. Write tools are not exposed. `generate_egovframe_ci(supplyChain=true)` adds a GitHub Actions job that builds the SBOM, runs the assessment with the grades in the PR summary, uploads both, and fails above `failOn`. Design notes: [docs/design-cli.md](docs/design-cli.md) (Korean).
 
 ## Reassembling copied common components
 

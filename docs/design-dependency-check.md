@@ -74,14 +74,35 @@ generate_egovframe_sbom(projectDir, outputPath="sbom/bom.cdx.json", bomFormat="c
 
 실측(2026-10-04): 공식 `egovframe-web` 템플릿 → 해석 65 artifact(직접 14), SBOM 67 component·205KB·OSV 24건(spring-webmvc/-core/-web/-webflux/-expression 6.2.11, log4j-core/-api 2.25.3, commons-configuration2 2.11.0 등); Gradle 샘플(ptl-mvc·h2) → 40~46 artifact. 공통컴포넌트 4.3.2 pom 은 `project:*` system scope 좌표를 `vendor` 로, `javax.faces` 를 Jakarta 규칙으로 소급해 기준 없음 11 → 1.
 
+## SBOM 운영 (v0.40, `check_egovframe_sbom`)
+
+2027년까지 공공 분야 SBOM 제출이 제도화되면(SW 공급망 보안 로드맵 2026-06) 제출물은 "만들었다"가 아니라 빠진 요소가 없고, 이전 제출본과의 차이가 설명되고, 알려진 취약점에 대한 판단이 붙어 있어야 한다. 생성기(v0.36)에 그 세 가지를 붙인다. 코드는 `src/sbom-check.ts`, 규칙은 `catalog/sbom-rules.json`.
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 최소 요소 | NTIA 최소 요소 7종(공급자·구성요소명·버전·고유식별자·의존관계·작성자·생성 시각)을 기본 규칙으로 둔다. 문서 요소 2(작성자·생성 시각)와 component 요소 5(주 component 포함). 요소마다 인정하는 CycloneDX 필드 경로 목록(`supplier.name`·`publisher`·`manufacturer.name`·`authors[].name` 등, `[]` 는 배열 원소)을 데이터로 두고, 의존관계(`dependencies[]` 에 그 `bom-ref` 항목)와 생성 시각(날짜 해석)만 특수 검사 | 국내 SW 공급망 보안 가이드라인 1.0 은 형식을 특정하지 않고 핵심 구성요소가 NTIA 7종과 같다. 국내 지침이 요소를 더하면 코드 변경 없이 데이터로 추가 |
+| 판정 | 모든 요소가 모든 대상에서 충족해야 `ready`, 아니면 `needs-work` + 요소별 충족 수·빠진 component(최대 20)·힌트 | 제출물은 일부 충족이 의미가 없다. 무엇을 채우면 되는지가 결과의 핵심 |
+| 작성자 | `metadata.authors`(또는 `metadata.manufacturer`). `metadata.tools` 만으로는 미충족 | 생성 도구는 작성 주체가 아니다(NTIA "Author of SBOM data") |
+| 공급자 보완 | `generate_egovframe_sbom(supplier, author)`(기본 pom `<organization><name>`)이 문서·주 component 를 채우고, 라이브러리는 **공급자 표**(`suppliers`: groupId 접두어 → 이름·URL·근거)로 비어 있는 것만 채운 뒤 `egovframe:supplierBasis=catalog` 로 표시 | cyclonedx-maven-plugin 은 pom `<organization>` 이 있는 라이브러리만 `publisher` 를 넣는다(공식 web 템플릿 67 중 50). 나머지(RTE·AspectJ·Micrometer 등)는 옵션으로 채울 수 없으므로 근거를 적은 표로 보완하고 출처를 드러낸다. 표에 없는 좌표는 비워 두고 점검이 보고한다 — 공급자를 추측하지 않는다 |
+| 재점검 | SBOM 의 purl(`pkg:maven/g/a@v`)만으로 v0.34 분류기를 다시 돌려 기록된 `egovframe:status` 와 다른 것을 보고, `offline=false` 면 OSV `querybatch` 로 `newIds`(SBOM 에 없던 ID)·`goneIds`(SBOM 에 있으나 지금 조회되지 않음). parent 종류는 프로젝트 pom 이 있으면 그 parent 로 | 운영 중 주기 점검에 빌드 도구·저장소 접근이 필요 없다. SBOM 에 `vulnerabilities[]` 가 아예 없으면(offline 생성) "새로 알려진 것"이 아니라 "미기록"으로 표시해 오해를 막는다 |
+| 비교 | `groupId:artifactId` 를 키로 추가·제거·버전 변경(여러 버전은 정렬해 합침)·판정 변화, 취약점은 이전 SBOM 대비 새 ID(지금 SBOM + 재조회)·사라진 ID | 같은 좌표의 버전 변경을 추가+제거로 보이지 않게 한다 |
+| VEX | `vex=true` 면 별도 파일(기본 `sbom/vex.cdx.json`, SBOM 과 같은 경로 거부)에 CycloneDX 1.6 문서: `vulnerabilities[]` 마다 `analysis.state=in_triage`(+ 안내 `detail`, `firstIssued`), `source` OSV, `affects[].ref` 는 BOM-Link `urn:cdx:<serial>/<version>#<인코딩된 bom-ref>`(serial 이 urn:uuid 가 아니면 bom-ref 그대로 + 노트). 탐지 집합 = SBOM `vulnerabilities[]` ∪ 재조회 | VEX 상태는 사람의 결정이다(자동 판단은 범위 밖). BOM-Link 로 어느 SBOM 판본에 대한 판단인지 남는다 |
+| VEX 보존 | 기존 항목의 `analysis`·임의 필드는 건드리지 않는다. 같은 ID 에 새 영향 component 가 생기면 기존 항목이 `in_triage` 면 `affects` 에 덧붙이고, 판단이 끝난 항목이면 같은 ID 의 새 `in_triage` 항목(`vex:<id>:2`)을 만든다. 탐지되지 않는 ID 는 지우지 않고 `notDetected` 로 알린다. 추가할 것이 없으면 파일을 쓰지 않는다. 깨진 JSON·비 CycloneDX 면 덮어쓰지 않고 중단. 쓸 때마다 `version` +1, `metadata.timestamp` 갱신(평가서가 "마지막 점검"으로 표시) | `not_affected` 로 판단한 항목에 새 component 를 붙이면 검토하지 않은 판단이 생긴다 |
+| 쓰기·메타 | SBOM 은 읽기만. VEX 만 `withFileTransaction`, `dryRun` 은 미리보기. 도구 메타 비읽기(VEX)·비파괴(판단 보존)·openWorld(OSV), outputSchema | |
+
+실측(2026-10-07): 공식 `egovframe-web` 템플릿에 플러그인을 실제로 실행한 SBOM(67 component) → 공급자 50/68·작성자 0/1, 나머지 68/68 → "보완 필요". 공급자 표 17종 + `supplier`·`author` 로 다시 만들면 "제출 가능". OSV 재조회 25건·VEX 초안 25건, 사람이 한 건을 `not_affected` 로 바꾼 뒤 재실행해도 그대로. 생성 SBOM·VEX 는 CycloneDX specification 1.6.1 공식 JSON 스키마를 통과(테스트 고정물 `test/fixtures/cyclonedx-1.6/`).
+
+범위 밖: SPDX 출력·변환, 취약점 판단 자동화, 중앙 저장소 제출 API(제도 확정 전).
+
 ## drift 감시 (v0.34, `sync_egovframe_templates` 의 `catalogs` 절)
 
 `src/catalog-drift.ts` 의 `checkCatalogDrift` 가 (1) `egovframe-runtime`·`egovframe-common-components` 의 태그 목록(GitHub API, 실패하면 태그 페이지 HTML 로 대체 — 비인증 API 한도 60회/시간을 피하려 `GITHUB_TOKEN` 이 있으면 쓴다)에서 규칙의 `toTag` 보다 새 태그, (2) parent 2종의 다음 버전 후보 탐침, (3) parent pom·Boot BOM pom 의 sha256 변화를 보고한다. 조회 실패는 항목별 `error` 로 남고 drift 로 치지 않으며, 변화가 있으면 갱신 절차(아래 절과 같은 내용)를 결과에 붙인다. 파일은 고치지 않는다. 오프라인 테스트는 `fetchText`·`fetchStatus` 주입으로 최신·drift·실패 세 경로를 단언하고, CI 통합의 `test:catalog-drift-live` 가 실제 조회 성공과 고정 pom 재배포 없음을 확인한다.
 
 ## 검증
 
-- `test:sbom`(37단언, 오프라인; v0.36): purl·트리→문서 구성(머리말·도구·루트·component·의존 그래프)·보강(재실행 유지)·취약점 병합, 출력 경로 거부(`..`·절대·드라이브·symlink)·명령(플러그인 좌표·범위·Windows 래퍼), dryRun 무기록·스키마, 가짜 플러그인 출력으로 기록·보존·보강·취약점·overwrite 거부·enrich=false·OSV 실패·플러그인 실패·시간 초과, 가짜 Gradle 트리 문서
-- `test:sbom-live`(CI 통합, v0.36): 공식 `egovframe-web` 템플릿을 실제 Maven 으로 해석(≥60 artifact, 전이 경로)·SBOM 생성(≥60 component, purl·속성·해시·라이선스·OSV `vulnerabilities[]`), Gradle 샘플 해석·SBOM(런너에 gradle 이 있을 때)
+- `test:sbom`(41단언, 오프라인; v0.36, v0.40 메타데이터·공급자 표·`minimum`): purl·트리→문서 구성(머리말·도구·루트·component·의존 그래프)·보강(재실행 유지)·취약점 병합, 출력 경로 거부(`..`·절대·드라이브·symlink)·명령(플러그인 좌표·범위·Windows 래퍼), dryRun 무기록·스키마, 가짜 플러그인 출력으로 기록·보존·보강·취약점·overwrite 거부·enrich=false·OSV 실패·플러그인 실패·시간 초과, 가짜 Gradle 트리 문서
+- `test:sbom-check`(54단언, 오프라인; v0.40): 규칙 데이터·필드 경로·purl, 실제 플러그인 출력 고정물의 최소 요소(공급자 50/68·작성자 없음)와 빠진 항목별 감지(시각·purl·cpe·버전·의존관계·이름), 메타데이터·공급자 표 보완 후 ready, pom `<organization>` 읽기, 재판정(기록과 다른 판정)·가짜 OSV(새/사라진 ID·중복 제거·실패)·offline, 비교(추가·제거·버전·판정·취약점·같음), BOM-Link, VEX 생성·판단 보존·affects 덧붙임·같은 ID 새 항목·notDetected, 파일 단위(SBOM 없음·SPDX 거부·경로 이탈·dryRun·무변경 시 파일 유지·깨진 VEX 중단·vexPath 충돌·serial 없음), outputSchema, CycloneDX 1.6.1 공식 스키마
+- `test:sbom-live`(CI 통합, v0.36; v0.40 — 실제 SBOM 의 최소 요소 보완 필요 → supplier·author 로 ready, 두 SBOM 비교 차이 0, 실제 OSV VEX 초안·판단 보존, 공식 스키마): 공식 `egovframe-web` 템플릿을 실제 Maven 으로 해석(≥60 artifact, 전이 경로)·SBOM 생성(≥60 component, purl·속성·해시·라이선스·OSV `vulnerabilities[]`), Gradle 샘플 해석·SBOM(런너에 gradle 이 있을 때)
 - `test:dependencies`(129단언, 오프라인; v0.36 — Maven·Gradle 트리 파서(실제 출력 픽스처)·명령·가짜 runner 로 resolve 항목·경로·차이·parent 안내·OSV 포함·실패·시간 초과·Gradle all 범위 추가; v0.34 — 기준 스키마 2·Boot BOM import 전부 풀림·릴리스 트레인 분리·RTE 전이 모듈 sha256·파일 200KB·basis·Boot/RTE 우선순위·vendor·EOL 좌표 교체 규칙·Boot 템플릿형 pom unknown 0 추가): 기준 카탈로그 스키마·출처·RTE 5.x 모듈 포함·계열 규칙, 분류 함수(3.x/4.x/5.x RTE·javax·DBCP·Log4j·Spring 4/6.1/기준·parent 관리·버전 없음·기준 밖·미해결 속성), 3.10 픽스처(속성 해석·라인·scope·보안 근거·http 저장소), OSV 모의(질의 대상·결과 매핑·실패 처리), 5.x parent 픽스처(managed·outdated·Java parent 관리·보안 ok), gradle, 빈 디렉터리, 디스크 불변
 - `test:dependencies-live`(CI): log4j 1.2.17 픽스처를 `offline=false` 로 점검해 OSV 결과가 붙는지 확인; v0.34 — 공식 `egovframe-boot-web`·`egovframe-web` 템플릿 pom(Initializr 고정 commit)에서 기준 없음 0건, 공식 공통컴포넌트 v3.10.0 pom 에서 기준 없음 5건 이하
 - 실제 자산(v0.34): 공식 5.x `egovframe-boot-web` 템플릿 → parent 관리 15건(Boot BOM 기준 버전 표시)·기준 없음 0, `egovframe-web` → parent 관리 19·기준 없음 0, 공식 공통컴포넌트 v3.10.0 pom 66건 → 기준 없음 **17 → 1**(`xerces:xercesImpl`), 벤더 6(Altibase·Tibero·CUBRID·mGov·GPKI 2), 교체 3 → 12(옛 MySQL/Oracle 좌표·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social·DBCP1·Log4j1·fileupload), RTE 전이로 mybatis 3.1.1 → 3.5.19 기준 미만 판정
