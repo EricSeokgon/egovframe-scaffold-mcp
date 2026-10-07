@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-migration-rules.mjs",
-  "surveyedAt": "2026-10-06",
+  "surveyedAt": "2026-10-07",
   "source": {
     "repository": "eGovFramework/egovframe-runtime",
     "fromTag": "v3.10.0",
@@ -15,7 +15,7 @@
       "fromTag": "v3.10.0",
       "fromCommit": "aaebaa524baef45e391c54506a316b614a09f99d",
       "toTag": "v5.0.7",
-      "toCommit": "3756ab2cb6cd5b79c05d66976a0bb9eef74cd1f5"
+      "toCommit": "7912e13ca5a064a4dc81d5772582f928e985e653"
     },
     "samples": {
       "web": "eGovFramework/egovframe-vscode-initializr templates(egovframe-web)·egovframe-web-sample v5.0.x",
