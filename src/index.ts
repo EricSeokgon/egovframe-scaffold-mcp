@@ -52,7 +52,7 @@ export { classifyUpgrade, upgradeProject } from "./upgrade.js";
 export type { UpgradeClass, UpgradeItem, UpgradeResult, UpgradeOptions } from "./upgrade.js";
 export { explainComponent } from "./explain.js";
 export type { ComponentExplain } from "./explain.js";
-export { CI_JDK_RE, validateCiJdk, generateCiYaml, generateCiConfig } from "./ci-config.js";
+export { CI_JDK_RE, CI_FAIL_ON_RE, validateCiJdk, supplyChainJobYaml, generateCiYaml, generateCiConfig } from "./ci-config.js";
 export type { CiResult } from "./ci-config.js";
 export { SERVER_VERSION, buildServer } from "./server.js";
 export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
@@ -118,15 +118,24 @@ export function isMainModule(argv1: string | undefined = process.argv[1], module
 
 const isMain = isMainModule();
 if (isMain) {
-  const server = buildServer();
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("egovframe-scaffold-mcp: stdio에서 대기 중");
+  const cliArgs = process.argv.slice(2);
+  if (cliArgs.length > 0) {
+    // v0.39: 명령이 있으면 CLI 로 한 번 실행하고 종료(인자 없는 실행은 그대로 stdio 서버)
+    const { runCli } = await import("./cli.js");
+    process.exitCode = await runCli(cliArgs);
+  } else {
+    const server = buildServer();
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error("egovframe-scaffold-mcp: stdio에서 대기 중");
+  }
 }
 // v0.36 — 해석된 의존성 트리
 export { MAVEN_DEPENDENCY_PLUGIN, parseMavenCoord, parseMavenTree, parseGradleTree, dedupeArtifacts, treeCommand, resolveDependencyTree } from "./dependency-tree.js";
 export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveOutputPath, resolveSbomOutputPath, sbomCommand, purlOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";
 export { COMPONENTS_REPOSITORY, gitBlobId, blobIdsOf, tagVersionKey, compareTags, defaultCacheDir, GitOriginSource, MemoryOriginSource } from "./component-origin.js";
 export type { OriginSource } from "./component-origin.js";
+export { EXIT as CLI_EXIT, COMMANDS as CLI_COMMANDS, parseArgs, kebabToCamel, coerceArgs, parseFailOn, evaluateFailOn, usage as cliUsage, runCli } from "./cli.js";
+export type { ParsedArgs, FailCondition, CliIo } from "./cli.js";
 export { REASSEMBLE_STATES, REASSEMBLE_STATE_LABEL, unifiedPatch, reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 export type { ReassembleState, ReassembleAction, ReassembleFile, ReassembleWorkItem, ReassembleOptions, ReassembleResult } from "./reassemble.js";

@@ -84,8 +84,8 @@ export class GitOriginSource implements OriginSource {
       fs.mkdirSync(path.dirname(this.dir), { recursive: true });
       await git(["clone", "--quiet", "--bare", "--filter=blob:none", "--depth", "1", "--branch", tag, this.url, this.dir]);
     } else {
-      const has = await git(["rev-parse", "--quiet", "--verify", `refs/tags/${tag}^{commit}`], this.dir).then(() => true, () => false);
-      if (!has) await git(["fetch", "--quiet", "--depth", "1", "--filter=blob:none", "origin", `refs/tags/${tag}:refs/tags/${tag}`], this.dir);
+      // 프로세스마다 한 번은 원격 태그를 다시 받는다(+ 강제) — upstream 이 태그를 옮기면(v5.0.7, 2026-10-07) 캐시의 옛 커밋을 쓰지 않도록
+      await git(["fetch", "--quiet", "--force", "--depth", "1", "--filter=blob:none", "origin", `+refs/tags/${tag}:refs/tags/${tag}`], this.dir);
     }
     this.fetched.add(tag);
   }

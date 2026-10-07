@@ -104,6 +104,16 @@ generate_egovframe_sbom(projectDir="/work/legacy-app", dryRun=false, offline=fal
 
 The official `egovframe-web` template declares 19 dependencies and looks clean; resolving the tree shows 65 artifacts, 11 below the baseline and 24 OSV advisories. The SBOM carries the same verdict per component (`egovframe:status`, `egovframe:basis`, `egovframe:baseline`) and the OSV findings as `vulnerabilities[]`.
 
+## Running in CI (CLI mode)
+
+```bash
+npx -y egovframe-scaffold-mcp assess --project . --offline=false --out assessment.md --fail-on supplyChain:C
+npx -y egovframe-scaffold-mcp check --project . --resolve --json --fail-on "vulnerabilities,outdated>10"
+npx -y egovframe-scaffold-mcp sbom --project . --write
+```
+
+With no arguments the package starts the MCP stdio server as before; with a command (`assess`, `check`, `sbom`, `migrate`, `validate`, `diagnose`, `network`) it runs that one tool through an in-memory MCP client and exits. Options use the tool parameter names (kebab-case allowed); `--json` prints the same object as MCP `structuredContent`; `--step-summary` appends the Markdown to `$GITHUB_STEP_SUMMARY`; `--fail-on` takes grade (`supplyChain:C`) or count (`vulnerabilities`, `manual>20`) conditions. Exit codes: 0 pass, 2 over the `--fail-on` threshold, 3 execution failure, 64 usage error. Write tools are not exposed. `generate_egovframe_ci(supplyChain=true)` adds a GitHub Actions job that builds the SBOM, runs the assessment with the grades in the PR summary, uploads both, and fails above `failOn`. Design notes: [docs/design-cli.md](docs/design-cli.md) (Korean).
+
 ## Reassembling copied common components
 
 ```text

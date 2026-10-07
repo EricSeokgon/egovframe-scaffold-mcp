@@ -101,6 +101,13 @@ jobs:
         run: npm run test:migrate-corpus
       - name: Reassemble common components (git origin tag, verified v5.0.7 archive, patches, manifest)
         run: npm run test:reassemble-live
+      - name: CLI assessment on the 4.3.2 corpus tree (grades into this job summary)
+        run: node dist/index.js assess --project .corpus-cache/cc-4.3.2 --out cli-assessment.md --step-summary --fail-on migration:D || test $? -eq 2
+      - name: Generated supply-chain workflow passes actionlint
+        run: |
+          node -e 'import("./dist/index.js").then((m) => process.stdout.write(m.generateCiYaml("maven", "17", {})))' > generated-ci.yml
+          bash <(curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color generated-ci.yml
       - name: Dependency check with OSV lookup
         run: npm run test:dependencies-live
       - name: Resolved dependency tree and CycloneDX SBOM (Maven plugin, Gradle tree)
