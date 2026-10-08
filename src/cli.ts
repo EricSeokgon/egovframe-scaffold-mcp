@@ -71,6 +71,19 @@ export const COMMANDS: Record<string, CommandDef> = {
       return `${s.sbomPath} — 최소 요소 ${m.verdict === "ready" ? "제출 가능" : "보완 필요"}${o.queried ? ` · 새 취약점 ${Array.isArray(o.newIds) ? o.newIds.length : 0}` : ""}${df ? ` · 비교 +${Array.isArray(df.added) ? df.added.length : 0}/-${Array.isArray(df.removed) ? df.removed.length : 0}/버전 ${Array.isArray(df.versionChanged) ? df.versionChanged.length : 0}` : ""}${vx ? ` · VEX ${vx.written ? "기록" : "미기록"} in_triage ${num(rec(vx.states).in_triage)}` : ""}`;
     },
   },
+  rehearse: {
+    tool: "rehearse_egovframe_migration", summary: "전환 리허설(사본에서 재조립·적용·컴파일, 원본 불변)",
+    metrics: (s) => {
+      const ph = (p: unknown) => { const x = rec(p); return x.ran ? (x.success ? 0 : num(rec(x.analysis).errors)) : null; };
+      const a = ph(s.afterAutomation), b = ph(s.afterPomAlignment);
+      const last = rec(rec(s.afterPomAlignment).ran ? rec(s.afterPomAlignment).analysis : rec(s.afterAutomation).analysis);
+      return { errors: b ?? a ?? 0, automation: a ?? 0, aligned: b ?? 0, files: num(last.files), unlinked: num(rec(last.linked).unlinked), failedSteps: Array.isArray(s.steps) ? s.steps.filter((x) => rec(x).ran && !rec(x).ok).length : 0 };
+    },
+    line: (s) => {
+      const ph = (p: unknown) => { const x = rec(p); return !x.ran ? "—" : x.success ? "0" : String(num(rec(x.analysis).errors)); };
+      return `리허설 — 자동 단계 후 오류 ${ph(s.afterAutomation)} → pom 맞춤 후 ${ph(s.afterPomAlignment)} · 원본 ${rec(s.original).unchanged ? "불변" : "변경됨"}`;
+    },
+  },
   migrate: {
     tool: "migrate_egovframe_project", summary: "5.x 전환 진단(읽기 전용)", fixed: { apply: false, verify: false }, blocked: ["apply", "verify", "dryRun", "skipComponents"],
     metrics: (s) => { const sm = rec(s.summary); return { items: Array.isArray(s.items) ? s.items.length : 0, auto: num(sm.auto), manual: num(sm.manual), files: num(sm.files) }; },

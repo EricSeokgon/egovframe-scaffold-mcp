@@ -187,5 +187,26 @@
     "version": "0.37.0",
     "rulesTag": "v5.0.2-Final",
     "baselineSurveyedAt": "2026-10-02"
+  },
+  "rehearsal": {
+    "description": "전환 리허설(v0.41) 기대값 — 공식 공통컴포넌트 v4.3.2 전체 트리(단일 war 모듈)를 rehearse_egovframe_migration 으로 돌린 결과. test/rehearse-live.mjs 가 단언한다(CI 통합, JDK 17·Maven).",
+    "tag": "v4.3.2",
+    "commit": "bfa2ef5bf80ac9079f9c409af88ecf407b574c55",
+    "files": 6523,
+    "tolerance": {
+      "pct": 0.1
+    },
+    "expected": {
+      "origin": "v4.3.2",
+      "reassembleReplace": 2258,
+      "reassembleAdd": 69,
+      "reassembleDelete": 62,
+      "migrateApplied": 61,
+      "afterAutomationErrors": 6003,
+      "afterAutomationMissingShare": 0.95,
+      "afterPomAlignmentMaxErrors": 5
+    },
+    "measuredAt": "2026-10-08",
+    "measuredWith": "CI(ubuntu·JDK 17) 6,003건 · 로컬 JDK 21.0.10 6,335건 — javac 판본마다 연쇄 보고가 달라 ±10% 로 둔다, Maven 3.9.11"
   }
 }

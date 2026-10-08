@@ -34,6 +34,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   migrate_egovframe_project: { title: { ko: "5.x 전환 진단·적용", en: "Migrate to 5.x (diagnose / apply)" }, annotations: destructive() },
   // v0.38: 기존 공통컴포넌트 파일을 교체·삭제(백업 후) → destructive, 원본 태그 조회·아카이브 다운로드 → openWorld
   reassemble_egovframe_components: { title: { ko: "공통컴포넌트 재조립 (5.x)", en: "Reassemble common components (5.x)" }, annotations: destructive(true) },
+  // v0.41: 프로젝트는 읽기만 하지만 캐시 디렉터리에 사본을 만들고 빌드 도구를 실행(저장소 접근) → build 도구와 같은 성격
+  rehearse_egovframe_migration: { title: { ko: "5.x 전환 리허설 (사본에서 실측)", en: "Rehearse 5.x migration (on a copy)" }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
   check_egovframe_dependencies: { title: { ko: "의존성 점검", en: "Check dependencies" }, annotations: ro(true) },
   diagnose_egovframe_network: { title: { ko: "네트워크 진단", en: "Diagnose network" }, annotations: ro(true) },
   generate_agents_md: { title: { ko: "AGENTS.md 생성", en: "Generate AGENTS.md" }, annotations: destructive() },

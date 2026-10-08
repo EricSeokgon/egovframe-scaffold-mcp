@@ -25,6 +25,8 @@ export interface ResolvedCommand {
   args: string[];
   cwd: string;
   usedWrapper: boolean;
+  /** v0.41: 추가 환경 변수(예: JDK_JAVAC_OPTIONS) */
+  env?: Record<string, string>;
 }
 
 export interface RunnerResult {
@@ -128,9 +130,16 @@ export function parseBuildErrors(buildTool: BuildTool, output: string): BuildErr
     // 예) [ERROR] /abs/Foo.java:[12,5] cannot find symbol
     //     /abs/Foo.java:[12,5] cannot find symbol
     //     [ERROR] C:\work\Foo.java:[12,5] cannot find symbol  (Windows 드라이브 문자는 경로의 일부)
+    //     [ERROR] /abs/Foo.java:[12,5] error: cannot find symbol  (maven.compiler.fork=true 면 javac 형식 "error:" 접두)
+    //     [WARNING] /abs/Foo.java:[3,1] [removal] …  ← 경고는 오류가 아니다(v0.41 수정: 예전에는 "WARNING] /abs/…" 를 파일로 읽었다)
     const re = /(?:\[ERROR\]\s*)?((?:[A-Za-z]:)?[^\s\[:][^:\n]*?\.(?:java|kt|xml)):\[(\d+)(?:,(\d+))?\]\s*(.+)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(output)) !== null) {
+      const lineStart = output.lastIndexOf("\n", m.index) + 1;
+      const prefix = output.slice(lineStart, m.index + m[1].length);
+      if (/^\s*\[(WARNING|WARN|INFO|DEBUG)\]/.test(prefix) || /^(WARNING|WARN|INFO|DEBUG)\]/.test(m[1])) continue;
+      // javac 린트 경고(예: "[removal] X has been deprecated")는 [WARNING] 접두가 앞 줄에 붙어 나오기도 한다
+      if (/^(\[[a-z-]+\]|warning:)/.test(m[4].trim())) continue;
       const key = `${m[1]}:${m[2]}:${m[3] ?? ""}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -138,7 +147,7 @@ export function parseBuildErrors(buildTool: BuildTool, output: string): BuildErr
         file: m[1].trim(),
         line: Number(m[2]),
         column: m[3] ? Number(m[3]) : undefined,
-        message: m[4].trim(),
+        message: m[4].trim().replace(/^error:\s*/, ""),
       };
       attachJavacDetails(err, output.slice(m.index + m[0].length, m.index + m[0].length + 400));
       errors.push(err);
@@ -222,6 +231,7 @@ export const defaultRunner: Runner = (cmd, opts) =>
     const isWin = process.platform === "win32";
     const child = spawn(cmd.command, cmd.args, {
       cwd: cmd.cwd,
+      ...(cmd.env ? { env: { ...process.env, ...cmd.env } } : {}),
       shell: isWin,
       // POSIX: 새 프로세스 그룹의 리더로 띄워 그룹 단위로 종료할 수 있게 한다.
       detached: !isWin,
@@ -267,6 +277,10 @@ export async function runBuild(opts: {
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   now?: () => number;
+  /** v0.41: 빌드 도구 인자 추가(예: -Dmaven.compiler.fork=true) */
+  extraArgs?: string[];
+  /** v0.41: 빌드 프로세스 환경 변수 추가 */
+  env?: Record<string, string>;
 }): Promise<BuildRunResult> {
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) {
@@ -279,7 +293,8 @@ export async function runBuild(opts: {
     );
   }
   const goal: BuildGoal = opts.goal ?? "compile";
-  const resolved = resolveCommand(projectDir, buildTool, goal, { platform: opts.platform });
+  const base = resolveCommand(projectDir, buildTool, goal, { platform: opts.platform });
+  const resolved: ResolvedCommand = { ...base, args: [...base.args, ...(opts.extraArgs ?? [])], ...(opts.env ? { env: opts.env } : {}) };
   const command = [resolved.command, ...resolved.args].join(" ");
 
   if (opts.dryRun) {

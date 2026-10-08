@@ -198,6 +198,7 @@ export const AssessmentOutput = loose({
   security: loose({ ok: z.number().int(), missing: z.number().int(), na: z.number().int(), checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })) }),
   sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
+  rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable() }).optional(),
   notes: z.array(z.string()),
 });
 export const ReportOutput = loose({
@@ -233,6 +234,32 @@ export const ReassembleOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v0.41: rehearse_egovframe_migration
+const ErrorAnalysisSchema = loose({
+  errors: z.number().int(), files: z.number().int(), missingPackage: z.number().int(), cascade: z.number().int(), other: z.number().int(),
+  missingPackages: z.array(loose({ package: z.string(), direct: z.number().int(), cascade: z.number().int(), errors: z.number().int(), files: z.number().int(), hint: z.string().nullable() })),
+  byDirectory: z.array(loose({ dir: z.string(), errors: z.number().int() })),
+  linked: loose({ manual: z.number().int(), rules: z.number().int(), unlinked: z.number().int() }),
+  capped: z.boolean(),
+  topFiles: z.array(loose({ file: z.string(), errors: z.number().int(), sample: z.string() })),
+});
+const RehearsalPhaseSchema = loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), timedOut: z.boolean().optional(), analysis: ErrorAnalysisSchema.optional(), reason: z.string().optional() });
+export const RehearseOutput = loose({
+  projectDir: z.string(),
+  buildTool: z.enum(["maven", "gradle"]).nullable(),
+  startedAt: z.string(),
+  workspace: loose({ path: z.string().nullable(), kept: z.boolean(), files: z.number().int(), bytes: z.number().int(), copyMs: z.number() }),
+  original: loose({ files: z.number().int(), bytes: z.number().int(), sha256: z.string(), unchanged: z.boolean() }),
+  steps: z.array(loose({ step: z.enum(["reassemble", "migrate", "verify", "align-pom"]), ran: z.boolean(), ok: z.boolean(), durationMs: z.number(), summary: z.string(), error: z.string().optional() })),
+  reassemble: loose({ origin: z.string().nullable(), components: z.number().int(), actions: z.record(z.number().int()), worklist: z.number().int() }).optional(),
+  migrate: loose({ applied: loose({ items: z.number().int(), edits: z.number().int(), files: z.number().int() }), manualRemaining: z.number().int(), byKind: z.record(z.number().int()) }).optional(),
+  afterAutomation: RehearsalPhaseSchema.optional(),
+  afterPomAlignment: RehearsalPhaseSchema.extend({ reference: z.string().optional(), parent: z.string().nullable().optional(), added: z.array(z.string()).optional(), versionsChanged: z.array(z.string()).optional(), scopesChanged: z.array(z.string()).optional(), propertiesSet: z.array(z.string()).optional(), propertiesRemoved: z.array(z.string()).optional(), patch: z.string().optional() }).optional(),
+  worklist: z.array(loose({ kind: z.enum(["align-pom", "missing-package", "manual-item", "file"]), title: z.string(), errors: z.number().int(), detail: z.string() })),
+  savedTo: z.string().optional(),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -241,6 +268,7 @@ export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_network: NetworkOutput,
   generate_egovframe_sbom: SbomOutput,
   check_egovframe_sbom: SbomCheckOutput,
+  rehearse_egovframe_migration: RehearseOutput,
   generate_egovframe_report: ReportOutput,
   reassemble_egovframe_components: ReassembleOutput,
 } as const;
