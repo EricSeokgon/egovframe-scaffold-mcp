@@ -118,6 +118,29 @@ assert(an.errors === 6 && an.files === 3 && an.missingPackage === 2 && an.cascad
 assert(an.missingPackages[0].package === "org.jsoup" && an.missingPackages[0].errors === 3 && an.missingPackages[0].cascade === 2 && an.missingPackages[0].hint === "org.jsoup:jsoup" && an.missingPackages[1].errors === 1, "연쇄는 그 파일의 첫 누락 패키지(라인 순)에 귀속");
 assert(an.linked.manual === 1 && an.linked.unlinked === 1 && an.topFiles.map((f) => f.file).join() === "src/main/java/b/B.java,src/main/java/b/C.java" && an.byDirectory[0].dir === "src/main/java/a", "기타 오류는 수동 항목과 연결, 상위 파일은 코드 작업(누락·연쇄 제외)만");
 
+// JDK 17 형식: import 한 타입을 쓰는 곳마다 "cannot find symbol / class X"(package does not exist 없이), 다른 파일의 타입 멤버, Lombok
+const W2 = mkdtempSync(path.join(tmpdir(), "egovreh-an-"));
+write(W2, "src/main/java/a/Ctl.java", "package a;\nimport jakarta.annotation.Resource;\nimport a.vo.LoginVO;\nclass Ctl {}\n");
+write(W2, "src/main/java/a/vo/LoginVO.java", "package a.vo;\nimport org.egovframe.rte.ptl.reactive.validation.EgovNullCheck;\nimport lombok.Getter;\n@Getter class LoginVO {}\n");
+write(W2, "src/main/java/a/vo/CodeVO.java", "package a.vo;\nimport lombok.Setter;\n@Setter class CodeVO {}\n");
+write(W2, "src/main/java/a/Job.java", "package a;\nimport lombok.extern.slf4j.Slf4j;\n@Slf4j class Job {}\n");
+const errs17 = [
+  { file: `${W2}/src/main/java/a/Ctl.java`, line: 9, message: "cannot find symbol", symbol: "class Resource", location: "class Ctl" },
+  { file: `${W2}/src/main/java/a/Ctl.java`, line: 12, message: "cannot find symbol", symbol: "method getUniqId()", location: "variable user of type LoginVO" },
+  { file: `${W2}/src/main/java/a/vo/LoginVO.java`, line: 2, message: "cannot find symbol", symbol: "package org.egovframe.rte.ptl.reactive.validation", location: "" },
+  { file: `${W2}/src/main/java/a/Other.java`, line: 5, message: "cannot find symbol", symbol: "method getId()", location: "variable u of type a.vo.LoginVO" },
+  { file: `${W2}/src/main/java/a/Other.java`, line: 6, message: "cannot find symbol", symbol: "method setCodeId(String)", location: "variable vo of type CodeVO" },
+  { file: `${W2}/src/main/java/a/Job.java`, line: 7, message: "cannot find symbol", symbol: "variable log", location: "class Job" },
+  { file: `${W2}/src/main/java/a/Other.java`, line: 9, message: "cannot find symbol", symbol: "class Thing", location: "class Other" },
+];
+const an17 = analyzeErrors(errs17, W2, [], refDeps, false);
+const grp = (p) => an17.missingPackages.find((m) => m.package === p);
+assert(grp("jakarta.annotation")?.direct === 1 && grp("org.egovframe.rte.ptl.reactive.validation")?.direct === 1, "JDK 17 형식: import 문으로 찾은 타입의 패키지·symbol 의 package 를 누락 패키지로");
+assert(grp("org.egovframe.rte.ptl.reactive.validation").cascade === 1 && an17.missingPackage === 2, "다른 파일 타입(LoginVO, 패키지 한정 이름 포함)의 멤버를 못 찾음 → 그 타입 파일의 누락 패키지 연쇄");
+assert(grp("lombok (annotation processing 중단)")?.cascade === 2 && /Lombok/.test(grp("lombok (annotation processing 중단)").hint), "Lombok 생성 멤버(setter·log)를 못 찾음 → annotation processing 중단 연쇄");
+assert(an17.other === 1 && an17.topFiles[0].file === "src/main/java/a/Other.java" && an17.cascade === 4, "import 도 Lombok 도 아닌 오류만 기타(코드 작업)");
+rmSync(W2, { recursive: true, force: true });
+
 // ── 빌드 오류 파서(v0.41 수정) ─────────────────────────────
 const out = ["[INFO] Compiling 3 source files with javac [forked debug target 17]", "[WARNING] /w/A.java:[3,1] [removal] X has been deprecated", "/w/A.java:[4,2] [removal] Y has been deprecated", "[ERROR] /w/B.java:[5,6] error: cannot find symbol", "  symbol:   class Z", "  location: class B", "/w/B.java:[5,6] error: cannot find symbol", "[ERROR] /w/C.java:[1,1] error: package a.b does not exist", "[ERROR] /w/C.java:[1,1] package a.b does not exist"].join("\n");
 const pe = parseBuildErrors("maven", out);
@@ -171,7 +194,7 @@ assert(r.reassemble.origin === "v4.3.2" && r.reassemble.actions.replace === 2 &&
 assert(calls.length === 2 && calls[0].a.includes("5.0.7") && calls[0].n && calls[0].mainAfterApply.includes("jakarta.servlet.http") && !calls[0].aligned && calls[1].aligned, "순서: 재조립 → 적용(javax→jakarta) → 컴파일 → pom 맞춤 → 컴파일");
 assert(calls.every((x) => x.args.includes("-Dmaven.compiler.fork=true") && x.env.JDK_JAVAC_OPTIONS === `-Xmaxerrs ${JAVAC_MAX_ERRORS}`), "Maven: javac fork + -Xmaxerrs(오류 100개 상한 해제)");
 const A = r.afterAutomation.analysis, B = r.afterPomAlignment.analysis;
-assert(A.errors === 4 && A.missingPackage === 2 && A.cascade === 1 && A.other === 1 && B.errors === 1 && B.other === 1, "자동 단계 후 4건(누락 2·연쇄 1·기타 1) → pom 맞춤 후 1건");
+assert(A.errors === 4 && A.missingPackage === 3 && A.cascade === 0 && A.other === 1 && B.errors === 1 && B.other === 1, "자동 단계 후 4건(누락 패키지 3 — import 로 찾은 Resource 포함·기타 1) → pom 맞춤 후 1건");
 assert(r.afterPomAlignment.parent.startsWith("org.egovframe.web:egovframe-web-config-parent:5.0.2") && r.afterPomAlignment.added.some((x) => x.startsWith("org.jsoup:jsoup")) && r.afterPomAlignment.patch.includes("+++ b/pom.xml") && r.afterPomAlignment.patch.includes("+\t\t<groupId>org.egovframe.web</groupId>"), "pom 맞춤 내역·사본 패치");
 assert(r.worklist[0].kind === "align-pom" && r.worklist[0].errors === 3 && r.worklist.some((w) => w.kind === "file" && w.title.endsWith("Other.java")), "작업 목록: pom 맞춤(오류 3건 해소) 먼저, 남은 파일");
 assert(r.notes.some((x) => x.includes("재조립을 전환 적용보다 먼저")) && r.notes.some((x) => x.includes("-Xmaxerrs")), "노트: 순서 이유·오류 상한");

@@ -135,7 +135,7 @@ export { MAVEN_DEPENDENCY_PLUGIN, parseMavenCoord, parseMavenTree, parseGradleTr
 export { CYCLONEDX_MAVEN_PLUGIN, CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, resolveOutputPath, resolveSbomOutputPath, sbomCommand, purlOf, pomIdentity, applySbomMetadata, fillComponentSuppliers, parentKindOf, buildBomFromTree, enrichBom, attachVulnerabilities, generateSbom, renderSbomMarkdown } from "./sbom.js";
 export { DEFAULT_VEX_PATH, loadSbomRules, valuesAt, parseMavenPurl, coordinateOf, supplierFor, checkMinimumElements, recheckSbom, diffSboms, bomLink, mergeVex, checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
 export type { SbomRules, SbomElementRule, MinimumElementsReport, RecheckResult, SbomDiff, VexDocument, VexMergeResult, CheckSbomOptions, CheckSbomResult } from "./sbom-check.js";
-export { REHEARSAL_STEPS, JAVAC_MAX_ERRORS, fingerprintTree, copyProject, mainDependencies, alignPomToReference, packageHint, analyzeErrors, rehearsalRecordPath, readRehearsalRecord, rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
+export { REHEARSAL_STEPS, JAVAC_MAX_ERRORS, fingerprintTree, copyProject, mainDependencies, alignPomToReference, missingPackageOf, packageHint, analyzeErrors, rehearsalRecordPath, readRehearsalRecord, rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 export type { RehearsalStep, PomAlignment, ErrorAnalysis, RehearseOptions, RehearseResult } from "./rehearse.js";
 export { COMPONENTS_REPOSITORY, gitBlobId, blobIdsOf, tagVersionKey, compareTags, defaultCacheDir, GitOriginSource, MemoryOriginSource } from "./component-origin.js";
 export type { OriginSource } from "./component-origin.js";

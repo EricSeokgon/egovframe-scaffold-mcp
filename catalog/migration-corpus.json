@@ -202,11 +202,11 @@
       "reassembleAdd": 69,
       "reassembleDelete": 62,
       "migrateApplied": 61,
-      "afterAutomationErrors": 6335,
-      "afterAutomationMissingShare": 0.9,
+      "afterAutomationErrors": 6003,
+      "afterAutomationMissingShare": 0.95,
       "afterPomAlignmentMaxErrors": 5
     },
     "measuredAt": "2026-10-08",
-    "measuredWith": "JDK 21.0.10 · Maven 3.9.11 (CI 는 JDK 17)"
+    "measuredWith": "CI(ubuntu·JDK 17) 6,003건 · 로컬 JDK 21.0.10 6,335건 — javac 판본마다 연쇄 보고가 달라 ±10% 로 둔다, Maven 3.9.11"
   }
 }

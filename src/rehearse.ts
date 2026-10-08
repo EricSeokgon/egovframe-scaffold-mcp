@@ -206,8 +206,20 @@ export interface ErrorAnalysis {
   /** 누락 패키지·연쇄 밖 오류(코드 작업)가 많은 파일 */
   topFiles: { file: string; errors: number; sample: string }[];
 }
+/**
+ * 오류가 "패키지(또는 그 안의 타입)를 찾지 못함" 이면 그 패키지.
+ * JDK 21 javac 는 없는 패키지의 import 를 "package X does not exist" 로, JDK 17 은 같은 상황의 상당수를
+ * "cannot find symbol / location: package X" 로 보고한다(실측: 같은 트리에서 514 대 184) — 둘 다 같은 원인으로 센다.
+ */
+export function missingPackageOf(e: BuildError): string | null {
+  const direct = e.message.match(/package ([\w.]+) does not exist/)?.[1];
+  if (direct) return direct;
+  if (/^cannot find symbol/.test(e.message)) return e.symbol?.match(/^package ([\w.]+)$/)?.[1] ?? e.location?.match(/^package ([\w.]+)$/)?.[1] ?? null;
+  return null;
+}
 /** 누락 패키지 → 기준 pom 좌표 추정(groupId 가 패키지 접두어인 것 중 artifactId 토큰이 가장 많이 겹치는 것). */
 export function packageHint(pkg: string, reference: PomDep[]): string | null {
+  if (pkg.startsWith("lombok ")) return "다른 컴파일 오류로 Lombok 이 getter·setter·log 를 만들지 못함 — 누락 의존성을 풀면 함께 사라짐";
   if (pkg.startsWith("jakarta.")) {
     const j = reference.find((d) => d.groupId.startsWith("jakarta.") && pkg.startsWith(d.groupId)) ?? null;
     return j ? `${j.groupId}:${j.artifactId}` : "Jakarta EE API — 5.x parent(egovframe-web-config-parent)가 관리";
@@ -225,12 +237,53 @@ export function packageHint(pkg: string, reference: PomDep[]): string | null {
 export function analyzeErrors(errors: BuildError[], workspace: string, items: MigrationItem[], reference: PomDep[], capped: boolean): ErrorAnalysis {
   const rules = loadMigrationRules();
   const rel = (f: string) => { const abs = path.isAbsolute(f) ? f : path.join(workspace, f); return path.relative(workspace, abs).split(path.sep).join("/"); };
+  // JDK 17 은 없는 패키지를 import 한 파일 대부분에서 "package does not exist" 대신 쓰는 곳마다 "cannot find symbol / class X" 를 낸다
+  // — 그 파일의 import 문으로 X 의 패키지를 찾아 누락 패키지로 센다.
+  const importCache = new Map<string, Map<string, string>>();
+  const importsOf = (abs: string) => {
+    if (!importCache.has(abs)) {
+      const m = new Map<string, string>();
+      try { for (const x of fs.readFileSync(abs, "utf8").matchAll(/^\s*import\s+(?:static\s+)?([\w.]+)\.(\w+)\s*;/gm)) m.set(x[2], x[1]); } catch { /* 읽기 실패 무시 */ }
+      importCache.set(abs, m);
+    }
+    return importCache.get(abs)!;
+  };
+  const absOf = (f: string) => (path.isAbsolute(f) ? f : path.join(workspace, f));
+  const missingOf = (e: BuildError): string | null => {
+    const p = missingPackageOf(e);
+    if (p) return p;
+    const cls = /^cannot find symbol/.test(e.message) ? e.symbol?.match(/^(?:class|interface|enum|annotation)\s+(\w+)/)?.[1] : undefined;
+    if (!cls) return null;
+    const pkg = importsOf(absOf(e.file)).get(cls);
+    return pkg && !pkg.startsWith("java.") && !pkg.startsWith("javax.") ? pkg : null;
+  };
   const missingIn = new Map<string, { pkg: string; line: number }[]>();
   for (const e of errors) {
-    const pkg = e.message.match(/package ([\w.]+) does not exist/)?.[1];
+    const pkg = missingOf(e);
     if (pkg) { const f = rel(e.file); missingIn.set(f, [...(missingIn.get(f) ?? []), { pkg, line: e.line }]); }
   }
   for (const v of missingIn.values()) v.sort((a, b) => a.line - b.line);
+  // 누락 패키지가 있는 파일이 선언한 타입(파일 이름) → 그 파일의 첫 누락 패키지.
+  // 다른 파일에서 그 타입의 멤버를 못 찾는 오류(예: Lombok 이 없어 VO 의 getter 가 없음 → 호출부마다 cannot find symbol)도 같은 원인이다.
+  const typeToPkg = new Map<string, string>();
+  for (const [f, v] of missingIn) typeToPkg.set(path.posix.basename(f).replace(/\.java$/, ""), v[0].pkg);
+  const referencedType = (e: BuildError): string | null => {
+    const loc = e.location ?? "";
+    const t = loc.match(/of type ([\w.$]+)/)?.[1] ?? loc.match(/^(?:class|interface|enum|record) ([\w.$]+)/)?.[1] ?? null;
+    return t ? t.split(".").pop()!.split("$")[0] : null;
+  };
+  // Lombok 이 만드는 멤버(getter/setter/log)를 못 찾는 오류: 다른 컴파일 오류가 있으면 javac 가 annotation processing 을
+  // 끝까지 돌리지 않아(JDK 17 에서 두드러짐) Lombok 이 코드를 만들지 못한다 — 누락 의존성이 풀리면 함께 사라지는 연쇄다.
+  const javaIndex = new Map<string, string>();
+  const walkJava = (dir: string) => { let ents: fs.Dirent[] = []; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; } for (const d of ents) { if (COPY_SKIP.has(d.name)) continue; const p = path.join(dir, d.name); if (d.isDirectory()) walkJava(p); else if (d.name.endsWith(".java") && !javaIndex.has(d.name.slice(0, -5))) javaIndex.set(d.name.slice(0, -5), p); } };
+  if (errors.some((e) => /^cannot find symbol/.test(e.message))) walkJava(path.join(workspace, "src"));
+  const lombokCache = new Map<string, boolean>();
+  const usesLombok = (type: string | null) => {
+    if (!type) return false;
+    if (!lombokCache.has(type)) { const p = javaIndex.get(type); let v = false; try { v = !!p && /^\s*import\s+lombok\./m.test(fs.readFileSync(p, "utf8")); } catch { v = false; } lombokCache.set(type, v); }
+    return lombokCache.get(type)!;
+  };
+  const LOMBOK = "lombok (annotation processing 중단)";
   const groups = new Map<string, { direct: number; cascade: number; files: Set<string> }>();
   const g = (pkg: string) => { if (!groups.has(pkg)) groups.set(pkg, { direct: 0, cascade: 0, files: new Set() }); return groups.get(pkg)!; };
   let missingPackage = 0, cascade = 0, other = 0;
@@ -240,10 +293,13 @@ export function analyzeErrors(errors: BuildError[], workspace: string, items: Mi
     const f = rel(e.file);
     const dir = path.posix.dirname(f);
     byDir.set(dir, (byDir.get(dir) ?? 0) + 1);
-    const pkg = e.message.match(/package ([\w.]+) does not exist/)?.[1];
+    const pkg = missingOf(e);
     if (pkg) { missingPackage++; const x = g(pkg); x.direct++; x.files.add(f); continue; }
     const miss = missingIn.get(f);
     if (miss?.length) { cascade++; const x = g(miss[0].pkg); x.cascade++; x.files.add(f); continue; }
+    const viaType = /^cannot find symbol/.test(e.message) ? typeToPkg.get(referencedType(e) ?? "") : undefined;
+    if (viaType) { cascade++; const x = g(viaType); x.cascade++; x.files.add(f); continue; }
+    if (/^cannot find symbol/.test(e.message) && /^(method|variable) /.test(e.symbol ?? "") && (usesLombok(referencedType(e)) || usesLombok(path.posix.basename(f).replace(/\.java$/, "")))) { cascade++; const x = g(LOMBOK); x.cascade++; x.files.add(f); continue; }
     other++;
     const bf = byFile.get(f) ?? { n: 0, sample: e.message };
     bf.n++; byFile.set(f, bf);
@@ -343,9 +399,14 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
     steps: [], worklist: [], notes,
   };
   const timeoutMs = opts.timeoutMs ?? 900_000;
+  // pom 에 소스 인코딩이 없으면 fork 된 javac 가 플랫폼 기본 인코딩(JDK 17 + POSIX 로케일이면 US-ASCII)을 써서
+  // 한글 주석이 "unmappable character" 오류로 쏟아진다 — JDK 18+ 의 기본값과 같은 UTF-8 을 지정한다.
+  const pomText = buildTool === "maven" ? fs.readFileSync(path.join(projectDir, "pom.xml"), "utf8") : "";
+  const noEncoding = buildTool === "maven" && !/<project\.build\.sourceEncoding>/.test(pomText) && !/<encoding>[^<]+<\/encoding>/.test(pomText);
   const compileOpts = buildTool === "maven"
-    ? { extraArgs: ["-Dmaven.compiler.fork=true"], env: { JDK_JAVAC_OPTIONS: `-Xmaxerrs ${JAVAC_MAX_ERRORS}` } }
+    ? { extraArgs: ["-Dmaven.compiler.fork=true", ...(noEncoding ? ["-Dproject.build.sourceEncoding=UTF-8"] : [])], env: { JDK_JAVAC_OPTIONS: `-Xmaxerrs ${JAVAC_MAX_ERRORS}` } }
     : {};
+  if (noEncoding) notes.push("pom 에 소스 인코딩이 없어 컴파일에 -Dproject.build.sourceEncoding=UTF-8 을 줬습니다(JDK 18+ 기본값과 같음). 실제 pom 에도 지정하기를 권합니다.");
   let reference: string | null = null;
   const loadReference = async () => {
     if (reference !== null) return reference;

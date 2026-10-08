@@ -143,20 +143,21 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 | 순서 | **재조립 → 전환 적용 → 컴파일 → pom 맞춤 → 컴파일** | 적용(javax→jakarta 등)이 컴포넌트 소스를 바꾸면 git blob 지문으로 원본 태그를 찾을 수 없다. 실측: 공식 4.3.2 트리를 적용 → 재조립 순으로 돌리면 원본이 v5.0.1 로 오인되고 1,489개 파일이 "사용자 수정"으로 분류됐다(재조립 3분 20초). 순서를 바꾸면 v4.3.2 식별·사용자 수정 0·18초 |
 | 오류 수 | Maven 은 `-Dmaven.compiler.fork=true` + 환경 변수 `JDK_JAVAC_OPTIONS=-Xmaxerrs 100000`(javac 실행 파일이 읽음) | javac 는 기본 100개에서 보고를 멈추고 maven-compiler-plugin 에는 이를 바꾸는 사용자 속성이 없다. fork 하면 javac 실행 파일이 환경 변수를 읽는다. Gradle 은 정확히 100건이면 상한 가능성을 노트로 알린다 |
 | pom 맞춤 | 기준 = 카탈로그 고정 태그의 공식 공통컴포넌트 `pom.xml`(재조립과 같은 sha256 검증 아카이브). parent 를 기준 parent 로(없으면 추가, 다르면 교체), 기준의 주 의존성 중 없는 것 추가(test 제외), 있는 것은 버전 표기·scope 를 기준과 같게(기준에 버전이 없으면 프로젝트의 `<version>` 제거 → parent 관리), 기준 의존성이 parent 의 속성을 쓰는데 프로젝트가 같은 속성을 재정의하면(예: `spring.maven.artifact.version`=5.3.37) 그 정의 삭제. 주석·`dependencyManagement`·`build`(plugin)·`profiles` 안은 건드리지 않음. 멱등 | 자동 단계 뒤 오류의 대부분은 코드가 아니라 의존성이다(실측 94%). pom 을 기준에 맞춘 뒤 남는 오류가 "코드 작업"이다. 사본에만 적용하고 패치로 돌려줘 사람이 검토해 반영한다 |
-| 오류 분석 | "package X does not exist" = 누락 패키지, 같은 파일의 다른 오류 = 연쇄(그 파일의 첫 누락 패키지에 귀속), 나머지는 `linkBuildError` 로 수동 항목·규칙과 연결. 누락 패키지마다 기준 pom 에서 후보 좌표(groupId 접두어 + artifactId 토큰) | 연쇄를 따로 세지 않으면 "cannot find symbol 5,000건"이 코드 문제처럼 보인다 |
+| 오류 분석 | 누락 패키지 = "package X does not exist" · symbol 이 `package X` · `cannot find symbol class Y` 인데 그 파일이 `import X.Y` 한 경우. 연쇄 = 누락 패키지가 있는 파일의 다른 오류 · 그런 파일이 선언한 타입의 멤버를 못 찾는 오류(예: `LoginVO.getUniqId()`) · Lombok 을 쓰는 타입의 생성 멤버(getter·setter·`log`)를 못 찾는 오류. 연쇄는 원인 파일의 첫 누락 패키지에 귀속. 나머지는 `linkBuildError` 로 수동 항목·규칙과 연결. 누락 패키지마다 기준 pom 에서 후보 좌표(groupId 접두어 + artifactId 토큰) | 연쇄를 따로 세지 않으면 "cannot find symbol 5,000건"이 코드 문제처럼 보인다. javac 판본마다 같은 원인의 모양이 다르다 — JDK 17 은 없는 패키지 import 를 대부분 사용처의 `cannot find symbol` 로만 보고하고, 다른 오류가 있으면 annotation processing 을 끝까지 돌리지 않아 Lombok getter 가 사라진다(같은 트리 기준 "package does not exist" 가 JDK 21 514건 대 JDK 17 184건). import·타입 파일·Lombok 규칙으로 두 JDK 모두 99.9% 를 같은 원인으로 묶는다 |
+| 인코딩 | pom 에 `project.build.sourceEncoding` 도 `<encoding>` 도 없으면 `-Dproject.build.sourceEncoding=UTF-8` 을 주고 노트로 알림 | fork 된 javac 는 플랫폼 기본 인코딩을 쓴다 — JDK 17 + POSIX 로케일이면 US-ASCII 라 한글 주석이 "unmappable character" 오류가 된다(JDK 18+ 기본값은 UTF-8) |
 | 기록 | 최근 결과를 `EGOVFRAME_CACHE_DIR/rehearsal/records/<프로젝트 경로 sha256 16자>.json`(패치 본문 제외)에 저장하고 평가서 6절이 읽어 "실측"으로 표시(등급 산식에는 넣지 않음) | 프로젝트 읽기 전용을 지키면서 평가서와 연결 |
 | 메타 | 비읽기(캐시에 사본·빌드 실행)·비파괴(프로젝트 불변)·멱등·openWorld(원본 태그 미러·아카이브·Maven 저장소), outputSchema | |
 
-실측(2026-10-08, 공식 공통컴포넌트 v4.3.2 `bfa2ef5` 전체 트리 6,523 파일, JDK 21·Maven 3.9.11, 약 1분):
+실측(2026-10-08, 공식 공통컴포넌트 v4.3.2 `bfa2ef5` 전체 트리 6,523 파일, JDK 17·21, Maven 3.9.11, 약 1분):
 
 | 단계 | 결과 |
 |---|---|
 | 재조립 | 원본 v4.3.2 식별, 컴포넌트 165종, 교체 2,258·추가 69·삭제 62·유지 1,784 |
 | 전환 적용 | 자동 61건(26파일), 수동 38건 남음(xml-namespace 13·class-removed 13·library 8·parent·spring-version·removed-module·component-class-removed) |
-| 컴파일 ① | 오류 6,335건 / 503파일 = 누락 패키지 514 + 연쇄 5,465 + 기타 356 (`jakarta.annotation` 664·`org.egovframe.rte.ptl.reactive.validation` 312 …) |
+| 컴파일 ① | 오류 6,003건(CI·JDK 17) / 6,335건(JDK 21), 503파일 — 기타 4건을 뺀 전부가 누락 패키지와 연쇄(`jakarta.annotation` ≈4,800·`org.egovframe.rte.ptl.reactive.validation` 801·Lombok 미실행 280·`jakarta.websocket` 81 …) |
 | pom 맞춤 | parent `org.egovframe.web:egovframe-web-config-parent:5.0.2` 추가, 좌표 25 추가, 버전 44·scope 3 정리 |
 | 컴파일 ② | 오류 1건 — `EgovCertInfoUtil`(GPKI 벤더 jar 가 `javax.servlet.http.HttpServletRequest` 를 참조) |
 
-CI 통합(`test:rehearse-live`)은 이 값을 `catalog/migration-corpus.json` 의 `rehearsal` 에 기대값으로 두고(오류 ±10%, pom 맞춤 후 ≤5) 매번 확인합니다. 전체 트리(≈220MB)는 코퍼스 캐시에 넣지 않고 커밋 고정 아카이브(≈38MB)를 임시 디렉터리에 받습니다.
+CI 통합(`test:rehearse-live`)은 이 값을 `catalog/migration-corpus.json` 의 `rehearsal` 에 기대값으로 두고(오류 6,003 ±10%, 누락 패키지·연쇄 95% 이상, pom 맞춤 후 ≤5) 매번 확인합니다. 전체 트리(≈220MB)는 코퍼스 캐시에 넣지 않고 커밋 고정 아카이브(≈38MB)를 임시 디렉터리에 받습니다.
 
 범위 밖: 남은 오류의 자동 수정, 테스트 실행(컴파일까지), Gradle 의 pom 맞춤.
