@@ -11,6 +11,7 @@ import { migrateProject, type MigrateResult, type MigrationItem, type MigrationK
 import { checkDependencies, STATUS_LABEL, BASIS_LABEL, type CheckDependenciesResult, type DependencyFinding, type DependencyStatus, type OsvQuery, type ParentInfo, type SecurityCheck, type Vulnerability } from "./dependencies.js";
 import { DEFAULT_SBOM_PATH, type SbomDocument } from "./sbom.js";
 import { checkMinimumElements, DEFAULT_VEX_PATH, type VexDocument } from "./sbom-check.js";
+import { readRehearsalRecord } from "./rehearse.js";
 import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
@@ -140,6 +141,8 @@ export interface AssessmentResult {
     note: string;
   };
   grades: { migration: GradeResult; supplyChain: GradeResult };
+  /** v0.41: 최근 리허설(rehearse_egovframe_migration) 실측 — 등급 산식에는 넣지 않는다 */
+  rehearsal?: { at: string; afterAutomation: number | null; afterPomAlignment: number | null; projectUnchanged: boolean; origin: string | null };
   notes: string[];
 }
 
@@ -267,6 +270,12 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
     },
     security, sbom,
     grades: { migration, supplyChain },
+    ...(() => {
+      const rec = readRehearsalRecord(projectDir);
+      if (!rec) return {};
+      const cnt = (p?: { ran: boolean; success: boolean | null; analysis?: { errors: number } }) => (p?.ran ? (p.success ? 0 : p.analysis?.errors ?? null) : null);
+      return { rehearsal: { at: rec.startedAt, afterAutomation: cnt(rec.afterAutomation), afterPomAlignment: cnt(rec.afterPomAlignment), projectUnchanged: rec.original.unchanged, origin: rec.reassemble?.origin ?? null } };
+    })(),
     notes,
   };
 }
@@ -355,9 +364,11 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
   L.push(``, `## 6. 등급과 근거`, ``);
   renderGrade(L, "전환 난이도", r.grades.migration);
   renderGrade(L, "공급망 상태", r.grades.supplyChain);
+  if (r.rehearsal) L.push(`**실측(리허설 ${r.rehearsal.at})**: 재조립·전환 적용 후 컴파일 오류 ${r.rehearsal.afterAutomation ?? "—"}건 → pom 맞춤 후 ${r.rehearsal.afterPomAlignment ?? "—"}건${r.rehearsal.origin ? ` · 원본 태그 ${r.rehearsal.origin}` : ""} — 등급 산식과 별개로 rehearse_egovframe_migration 이 프로젝트 사본에서 잰 값입니다.`, ``);
+  else L.push(`실측 없음 — \`rehearse_egovframe_migration\` 으로 프로젝트 사본에서 자동 단계 후 남는 컴파일 오류를 잴 수 있습니다.`, ``);
   renderFormula(L, MIGRATION_RUBRIC);
   renderFormula(L, SUPPLY_CHAIN_RUBRIC);
   L.push(`벤더 배포·기준 없음·버전 없음 의존성과 공통컴포넌트 수 자체는 등급에 넣지 않습니다. 비용·공수는 산정하지 않습니다 — 건수와 등급까지가 이 평가서의 범위입니다.`);
-  L.push(``, `---`, `읽기 전용 분석입니다. 자동 항목은 \`migrate_egovframe_project\`(apply), 재조립은 \`add_egovframe_components\`, SBOM 은 \`generate_egovframe_sbom\` 으로 진행합니다.`);
+  L.push(``, `---`, `읽기 전용 분석입니다. 리허설은 \`rehearse_egovframe_migration\`, 재조립은 \`reassemble_egovframe_components\`(전환 적용보다 먼저), 자동 항목은 \`migrate_egovframe_project\`(apply), SBOM 은 \`generate_egovframe_sbom\` 으로 진행합니다.`);
   return L.join("\n");
 }

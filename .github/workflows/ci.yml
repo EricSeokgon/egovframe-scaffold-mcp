@@ -101,6 +101,8 @@ jobs:
         run: npm run test:migrate-corpus
       - name: Reassemble common components (git origin tag, verified v5.0.7 archive, patches, manifest)
         run: npm run test:reassemble-live
+      - name: Migration rehearsal on the full official v4.3.2 tree (reassemble, apply, compile, align pom, compile)
+        run: npm run test:rehearse-live
       - name: CLI assessment on the 4.3.2 corpus tree (grades into this job summary)
         run: node dist/index.js assess --project .corpus-cache/cc-4.3.2 --out cli-assessment.md --step-summary --fail-on migration:D || test $? -eq 2
       - name: Generated supply-chain workflow passes actionlint

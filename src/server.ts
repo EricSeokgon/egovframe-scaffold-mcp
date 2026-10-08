@@ -29,6 +29,7 @@ import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network
 import { generateAgentsMd } from "./agents-md.js";
 import { generateSbom, renderSbomMarkdown } from "./sbom.js";
 import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
+import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
 import { toolAnnotations, toolTitle } from "./tool-meta.js";
@@ -680,6 +681,26 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const { bom: _bom, ...structured } = r; // 문서 전체는 파일에 있으므로 구조화 출력에서 제외
       const text = args.format === "json" ? JSON.stringify(structured, null, 2) : renderSbomMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: structured as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 전환 리허설 (v0.41) ───────────────────────────────
+  server.registerTool(
+    "rehearse_egovframe_migration",
+    { title: t("rehearse_egovframe_migration"), description: d("rehearse_egovframe_migration", "프로젝트를 건드리지 않고 사본에서 5.x 전환을 미리 돌려 봅니다. 사본(EGOVFRAME_CACHE_DIR/rehearsal, 빌드 산출물·VCS·백업 제외)에서 (1) 공통컴포넌트 재조립(원본 태그 식별이 깨지지 않도록 전환 적용보다 먼저) (2) 전환 자동 항목 적용 (3) 컴파일 — Maven 은 javac 를 fork 해 -Xmaxerrs 로 오류 100개 상한 없이 모두 셈 (4) 사본 pom 을 공식 공통컴포넌트 고정 태그 pom 기준(parent·누락 좌표·버전·scope·parent 관리 속성)으로 맞춘 뒤 다시 컴파일합니다. 두 시점의 오류 수, 누락 패키지와 후보 좌표, 같은 파일의 연쇄 오류, 남는 수동 항목·파일, 사라지는 오류 순 작업 목록, 사본에 적용한 pom 패치를 돌려주고, 실행 전후 디렉터리 지문으로 원본 불변을 확인합니다. 최근 결과는 평가서 6절에 실측으로 표시됩니다. keepWorkspace=true 면 사본을 남깁니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장) — 읽기만 함"),
+      steps: z.array(z.enum(["reassemble", "migrate", "verify", "align-pom"])).min(1).default(["reassemble", "migrate", "verify", "align-pom"]).describe("실행할 단계(순서는 고정)"),
+      components: z.array(z.string()).optional().describe("재조립 대상 컴포넌트 id(기본: 감지된 전부)"),
+      sourceTag: z.string().default("auto").describe("재조립 원본 태그(기본 auto = 식별)"),
+      keepWorkspace: z.boolean().default(false).describe("true 면 사본을 지우지 않고 경로를 돌려줌"),
+      timeoutMs: z.number().int().min(30_000).max(3_600_000).default(900_000).describe("컴파일 1회 타임아웃(ms)"),
+      topN: z.number().int().min(1).max(100).default(20).describe("작업 목록 수"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.rehearse_egovframe_migration.shape, annotations: toolAnnotations("rehearse_egovframe_migration") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await rehearseMigration({ projectDir: args.projectDir, steps: args.steps, components: args.components, sourceTag: args.sourceTag === "auto" ? undefined : args.sourceTag, keepWorkspace: args.keepWorkspace, timeoutMs: args.timeoutMs, topN: args.topN });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderRehearsalMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── SBOM 운영 (v0.40) ─────────────────────────────────

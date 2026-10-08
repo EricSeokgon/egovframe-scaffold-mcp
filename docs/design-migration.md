@@ -132,3 +132,31 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 모든 변경은 하나의 transaction 이다(새로 추가한 `ProjectFileTransaction.removeFile` 로 삭제도 rollback 대상). `migration-backup/<시각>-reassemble-*/` 에 `originals/`(교체·삭제 전 원본), `patches/<컴포넌트>/<경로>.patch`(`git diff --no-index` 결과, 원문 바이트 보존 — EUC-KR 소스 대응), `reference/`(유지한 설정·자산의 목표본), `reassemble-plan.json` 을 남기고 매니페스트(`.egovframe-components.json`, 파일별 hash·srcHash)를 기록해 이후 `upgrade_egovframe_project`·`validate_egovframe_project`·`remove_egovframe_components` 가 그대로 동작하게 한다. 사용자 패치는 자동으로 다시 적용하지 않는다 — 5.x 소스가 크게 바뀌어 fuzz 적용은 조용한 오동작을 만들 수 있다. 대신 작업 목록(`reapply-patch`·`removed-in-5x`·`unverified-replaced`·`review-config`)을 돌려주고, `verify=true` 면 compile 오류 수를 그 파일에 붙인다.
 
 검증: `test:reassemble`(메모리 원본 저장소, 46단언), `test:reassemble-live`(공식 v3.10.0 트리의 `cmm`·`bbs` + 수정 2파일 → 원본 v3.10.0 99%, 교체·추가 780개 파일 = v5.0.7 tree blob, 패치 2, `validate` 누락 0, `upgrade` 미리보기 변경 0), `test:migrate-corpus`(공식 3.10.0·4.3.2 트리 자체의 재조립 미리보기 — 원본 100%·사용자 수정 0). 단독 `mvn compile` 은 넣지 않았다: `cmm`·`bbs` 만으로는 5.0.7 의 다른 컴포넌트 참조 때문에 컴파일이 성립하지 않으며, 쓴 파일이 공식 tree 와 바이트 단위로 같다는 단언이 더 강한 근거다.
+
+## 5단계(v0.41.0): 전환 리허설 (`rehearse_egovframe_migration`)
+
+평가서는 난이도를 등급으로, 재조립·적용 도구는 각 단계의 실행을 맡지만 "자동 단계를 전부 돌리면 컴파일 오류가 몇 개 남는가"는 실제로 컴파일해 봐야 압니다. 리허설은 프로젝트 사본에서 전 과정을 돌려 그 수를 재고, 프로젝트는 읽기만 합니다. 코드는 `src/rehearse.ts`, 테스트는 `test/rehearse.mjs`(오프라인)·`test/rehearse-live.mjs`(CI 통합)입니다.
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 사본 | `EGOVFRAME_CACHE_DIR/rehearsal/<이름>-*` 에 `fs.cpSync`(`.git`·`target`·`build`·`node_modules`·`.gradle`·`.idea`·`*-backup` 제외, symlink 는 링크 그대로). 작업 디렉터리가 프로젝트 안이면 거부(재귀 복사). 기본은 끝나고 삭제, `keepWorkspace=true` 면 경로 반환 | 원본을 건드리지 않는 것이 리허설의 전제. 실행 전후 `fingerprintTree`(경로·크기·mtime 의 sha256)로 확인해 결과에 적는다 |
+| 순서 | **재조립 → 전환 적용 → 컴파일 → pom 맞춤 → 컴파일** | 적용(javax→jakarta 등)이 컴포넌트 소스를 바꾸면 git blob 지문으로 원본 태그를 찾을 수 없다. 실측: 공식 4.3.2 트리를 적용 → 재조립 순으로 돌리면 원본이 v5.0.1 로 오인되고 1,489개 파일이 "사용자 수정"으로 분류됐다(재조립 3분 20초). 순서를 바꾸면 v4.3.2 식별·사용자 수정 0·18초 |
+| 오류 수 | Maven 은 `-Dmaven.compiler.fork=true` + 환경 변수 `JDK_JAVAC_OPTIONS=-Xmaxerrs 100000`(javac 실행 파일이 읽음) | javac 는 기본 100개에서 보고를 멈추고 maven-compiler-plugin 에는 이를 바꾸는 사용자 속성이 없다. fork 하면 javac 실행 파일이 환경 변수를 읽는다. Gradle 은 정확히 100건이면 상한 가능성을 노트로 알린다 |
+| pom 맞춤 | 기준 = 카탈로그 고정 태그의 공식 공통컴포넌트 `pom.xml`(재조립과 같은 sha256 검증 아카이브). parent 를 기준 parent 로(없으면 추가, 다르면 교체), 기준의 주 의존성 중 없는 것 추가(test 제외), 있는 것은 버전 표기·scope 를 기준과 같게(기준에 버전이 없으면 프로젝트의 `<version>` 제거 → parent 관리), 기준 의존성이 parent 의 속성을 쓰는데 프로젝트가 같은 속성을 재정의하면(예: `spring.maven.artifact.version`=5.3.37) 그 정의 삭제. 주석·`dependencyManagement`·`build`(plugin)·`profiles` 안은 건드리지 않음. 멱등 | 자동 단계 뒤 오류의 대부분은 코드가 아니라 의존성이다(실측 94%). pom 을 기준에 맞춘 뒤 남는 오류가 "코드 작업"이다. 사본에만 적용하고 패치로 돌려줘 사람이 검토해 반영한다 |
+| 오류 분석 | "package X does not exist" = 누락 패키지, 같은 파일의 다른 오류 = 연쇄(그 파일의 첫 누락 패키지에 귀속), 나머지는 `linkBuildError` 로 수동 항목·규칙과 연결. 누락 패키지마다 기준 pom 에서 후보 좌표(groupId 접두어 + artifactId 토큰) | 연쇄를 따로 세지 않으면 "cannot find symbol 5,000건"이 코드 문제처럼 보인다 |
+| 기록 | 최근 결과를 `EGOVFRAME_CACHE_DIR/rehearsal/records/<프로젝트 경로 sha256 16자>.json`(패치 본문 제외)에 저장하고 평가서 6절이 읽어 "실측"으로 표시(등급 산식에는 넣지 않음) | 프로젝트 읽기 전용을 지키면서 평가서와 연결 |
+| 메타 | 비읽기(캐시에 사본·빌드 실행)·비파괴(프로젝트 불변)·멱등·openWorld(원본 태그 미러·아카이브·Maven 저장소), outputSchema | |
+
+실측(2026-10-08, 공식 공통컴포넌트 v4.3.2 `bfa2ef5` 전체 트리 6,523 파일, JDK 21·Maven 3.9.11, 약 1분):
+
+| 단계 | 결과 |
+|---|---|
+| 재조립 | 원본 v4.3.2 식별, 컴포넌트 165종, 교체 2,258·추가 69·삭제 62·유지 1,784 |
+| 전환 적용 | 자동 61건(26파일), 수동 38건 남음(xml-namespace 13·class-removed 13·library 8·parent·spring-version·removed-module·component-class-removed) |
+| 컴파일 ① | 오류 6,335건 / 503파일 = 누락 패키지 514 + 연쇄 5,465 + 기타 356 (`jakarta.annotation` 664·`org.egovframe.rte.ptl.reactive.validation` 312 …) |
+| pom 맞춤 | parent `org.egovframe.web:egovframe-web-config-parent:5.0.2` 추가, 좌표 25 추가, 버전 44·scope 3 정리 |
+| 컴파일 ② | 오류 1건 — `EgovCertInfoUtil`(GPKI 벤더 jar 가 `javax.servlet.http.HttpServletRequest` 를 참조) |
+
+CI 통합(`test:rehearse-live`)은 이 값을 `catalog/migration-corpus.json` 의 `rehearsal` 에 기대값으로 두고(오류 ±10%, pom 맞춤 후 ≤5) 매번 확인합니다. 전체 트리(≈220MB)는 코퍼스 캐시에 넣지 않고 커밋 고정 아카이브(≈38MB)를 임시 디렉터리에 받습니다.
+
+범위 밖: 남은 오류의 자동 수정, 테스트 실행(컴파일까지), Gradle 의 pom 맞춤.

@@ -440,7 +440,8 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     }
     if (ix.toArtifacts.has(key)) {
       ctx.hasRte = true;
-      ctx.eras.add("5.x");
+      // 4.x 도 org.egovframe.rte 좌표를 쓴다 — 해석된 버전이 4.* 면 4.x (v0.41 수정: 예전에는 5.x 로 보아 재조립 후보가 5.x 태그로만 좁혀졌다)
+      ctx.eras.add(ver && /^4\./.test(ver) ? "4.x" : "5.x");
       if (ver && versionBelow(ver, t.runtimeVersion) === true)
         push({ file: rel, line: d.line, kind: "rte-version", from: `${key}${verText}`, to: `${key}:${t.runtimeVersion}`, action: "auto", reason: `RTE ${t.runtimeVersion} 기준`, edits: rteVersionEdit() });
       continue;
