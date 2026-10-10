@@ -14,6 +14,7 @@ import { loadMigrationRules, parsePomProperties } from "./migrate.js";
 import { withFileTransaction } from "./file-transaction.js";
 import { SERVER_VERSION } from "./version.js";
 import { checkMinimumElements, loadSbomRules, supplierFor } from "./sbom-check.js";
+import { osvProvenanceNote } from "./offline-bundle.js";
 
 export const CYCLONEDX_MAVEN_PLUGIN = "org.cyclonedx:cyclonedx-maven-plugin:2.9.3";
 export const CYCLONEDX_SPEC_VERSION = "1.6";
@@ -345,7 +346,7 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   let vulnerabilities = 0;
   let osvError: string | undefined;
   if (opts.offline === false) {
-    try { vulnerabilities = await attachVulnerabilities(bom, opts.osvQuery ?? defaultOsvQuery); } catch (e) { osvError = `OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`; }
+    try { vulnerabilities = await attachVulnerabilities(bom, opts.osvQuery ?? defaultOsvQuery); if (!opts.osvQuery) { const n = osvProvenanceNote(); if (n) notes.push(n); } } catch (e) { osvError = `OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`; }
   }
 
   const json = `${JSON.stringify(bom, null, 2)}\n`;

@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { bundleOriginDir } from "./offline-bundle.js";
 
 export const COMPONENTS_REPOSITORY = "eGovFramework/egovframe-common-components";
 
@@ -66,20 +67,32 @@ export class GitOriginSource implements OriginSource {
   private readonly url: string;
   private tagsCache: string[] | null = null;
   private readonly fetched = new Set<string>();
+  /** v0.42: 오프라인 번들의 원본 미러를 쓰는 중(원격 조회 없음) */
+  readonly offline: boolean;
   constructor(opts: { cacheDir?: string; repository?: string } = {}) {
     const repository = opts.repository ?? COMPONENTS_REPOSITORY;
     this.url = `https://github.com/${repository}.git`;
-    this.dir = path.join(opts.cacheDir ?? defaultCacheDir(), `${repository.replace(/[^A-Za-z0-9._-]/g, "_")}.git`);
+    const bundled = bundleOriginDir(repository);
+    this.offline = !!bundled;
+    this.dir = bundled ?? path.join(opts.cacheDir ?? defaultCacheDir(), `${repository.replace(/[^A-Za-z0-9._-]/g, "_")}.git`);
   }
   async listTags(): Promise<string[]> {
     if (this.tagsCache) return this.tagsCache;
-    const out = (await git(["ls-remote", "--tags", "--refs", this.url])).toString("utf8");
-    this.tagsCache = out.split("\n").map((l) => l.split("\trefs/tags/")[1]).filter((t): t is string => !!t).sort(compareTags);
+    const out = this.offline
+      ? (await git(["for-each-ref", "--format=%(refname:short)", "refs/tags"], this.dir)).toString("utf8").split("\n").filter(Boolean)
+      : (await git(["ls-remote", "--tags", "--refs", this.url])).toString("utf8").split("\n").map((l) => l.split("\trefs/tags/")[1]).filter((t): t is string => !!t);
+    this.tagsCache = out.sort(compareTags);
     return this.tagsCache;
   }
   private async ensureTag(tag: string): Promise<void> {
     if (this.fetched.has(tag)) return;
     if (!/^[A-Za-z0-9._-]+$/.test(tag)) throw new Error(`허용되지 않는 태그 이름: ${tag}`);
+    if (this.offline) {
+      try { await git(["rev-parse", "--verify", "--quiet", `refs/tags/${tag}^{commit}`], this.dir); }
+      catch { throw new Error(`오프라인 번들의 원본 미러에 태그 ${tag} 가 없습니다 — 인터넷 PC 에서 번들을 새로 만드세요`); }
+      this.fetched.add(tag);
+      return;
+    }
     if (!fs.existsSync(path.join(this.dir, "HEAD"))) {
       fs.mkdirSync(path.dirname(this.dir), { recursive: true });
       await git(["clone", "--quiet", "--bare", "--filter=blob:none", "--depth", "1", "--branch", tag, this.url, this.dir]);

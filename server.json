@@ -6,14 +6,14 @@
     "url": "https://github.com/EricSeokgon/egovframe-scaffold-mcp",
     "source": "github"
   },
-  "version": "0.41.0",
+  "version": "0.42.0",
   "websiteUrl": "https://github.com/EricSeokgon/egovframe-scaffold-mcp#readme",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "egovframe-scaffold-mcp",
-      "version": "0.41.0",
+      "version": "0.42.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
@@ -36,6 +36,13 @@
         {
           "name": "EGOVFRAME_CACHE_DIR",
           "description": "Optional. Cache directory for the blobless git mirror of official common-component tags used by reassemble (default ~/.cache/egovframe-scaffold-mcp).",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "EGOVFRAME_OFFLINE_BUNDLE",
+          "description": "Optional. Directory of an offline bundle made by prepare_egovframe_offline_bundle for air-gapped networks: downloads, OSV lookups and reassembly origin tags are served from it after sha256 checks.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"

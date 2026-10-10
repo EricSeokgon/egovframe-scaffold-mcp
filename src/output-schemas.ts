@@ -260,6 +260,19 @@ export const RehearseOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v0.42: prepare_egovframe_offline_bundle
+export const OfflineBundleOutput = loose({
+  outputDir: z.string(),
+  dryRun: z.boolean(),
+  written: z.boolean(),
+  items: z.array(loose({ kind: z.enum(["osv", "components", "template", "origin"]), id: z.string(), url: z.string(), path: z.string(), bytes: z.number().int().nullable(), sha256: z.string().nullable(), verified: z.boolean().nullable(), note: z.string().optional() })),
+  origin: loose({ repository: z.string(), tags: z.number().int(), bytes: z.number().int(), path: z.string() }).optional(),
+  totalBytes: z.number().int(),
+  manifestPath: z.string().optional(),
+  usage: z.array(z.string()),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -269,6 +282,7 @@ export const OUTPUT_SCHEMAS = {
   generate_egovframe_sbom: SbomOutput,
   check_egovframe_sbom: SbomCheckOutput,
   rehearse_egovframe_migration: RehearseOutput,
+  prepare_egovframe_offline_bundle: OfflineBundleOutput,
   generate_egovframe_report: ReportOutput,
   reassemble_egovframe_components: ReassembleOutput,
 } as const;

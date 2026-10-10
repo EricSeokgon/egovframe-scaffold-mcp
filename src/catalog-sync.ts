@@ -1,3 +1,4 @@
+import { bundleResponseFor } from "./offline-bundle.js";
 import AdmZip from "adm-zip";
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
@@ -77,6 +78,9 @@ function repositoryOf(source: CatalogSourceMetadata): string {
 }
 
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  // v0.42: 오프라인 번들에 고정 아카이브가 있으면 지문 검증 후 그 파일을 쓴다
+  const bundled = bundleResponseFor(url);
+  if (bundled) return bundled;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   // api.github.com 은 비인증 60회/시간(IP 기준) — CI 러너처럼 IP 를 공유하는 곳에서 403 이 난다. GITHUB_TOKEN 이 있으면 쓴다(catalog-drift 와 같은 규칙).

@@ -7,6 +7,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { diagnoseProject } from "./diagnose.js";
 import { DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
+import { bundleOsvQuery, osvProvenanceNote } from "./offline-bundle.js";
 import { lineAt, loadMigrationRules, parsePomDeps, parsePomProperties, resolveProp, versionBelow, walkProjectFiles, type MigrationRules } from "./migrate.js";
 import { resolveDependencyTree, type DependencyTreeResult, type ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
@@ -121,6 +122,9 @@ export interface CheckDependenciesOptions {
 
 const OSV_URL = "https://api.osv.dev/v1/querybatch";
 export const defaultOsvQuery: OsvQuery = async (queries) => {
+  // v0.42: 오프라인 번들에 OSV 덤프가 있으면 로컬로 판정(querybatch 와 같은 모양)
+  const local = bundleOsvQuery(queries);
+  if (local) return local;
   const res = await fetchWithTimeout(OSV_URL, DOWNLOAD_TIMEOUT_MS, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ queries }) });
   if (!res.ok) throw new Error(`OSV ${res.status} ${res.statusText}`);
   return (await res.json()) as { results: { vulns?: { id: string }[] }[] };
@@ -363,6 +367,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
         });
       }
       result.vulnerabilities = vulns;
+      if (!opts.osvQuery) { const note = osvProvenanceNote(); if (note) result.notes.push(note); }
     } catch (e) {
       result.osvError = `OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`;
     }

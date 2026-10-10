@@ -137,6 +137,9 @@ export { DEFAULT_VEX_PATH, loadSbomRules, valuesAt, parseMavenPurl, coordinateOf
 export type { SbomRules, SbomElementRule, MinimumElementsReport, RecheckResult, SbomDiff, VexDocument, VexMergeResult, CheckSbomOptions, CheckSbomResult } from "./sbom-check.js";
 export { REHEARSAL_STEPS, JAVAC_MAX_ERRORS, fingerprintTree, copyProject, mainDependencies, alignPomToReference, missingPackageOf, packageHint, analyzeErrors, rehearsalRecordPath, readRehearsalRecord, rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 export type { RehearsalStep, PomAlignment, ErrorAnalysis, RehearseOptions, RehearseResult } from "./rehearse.js";
+export { BUNDLE_ENV, BUNDLE_MANIFEST, OSV_MAVEN_DUMP_URL, BUNDLE_MAX_AGE_DAYS, BUNDLE_INCLUDES, loadBundle, resetBundleCache, readBundleFile, bundleResponseFor, bundleOriginDir, compareMavenVersions, buildOsvIndex, inOsvRange, queryOsvIndex, bundleOsv, bundleOsvQuery, osvProvenanceNote, bundleSources, prepareOfflineBundle, renderBundleMarkdown } from "./offline-bundle.js";
+export type { BundleManifest, BundleFile, PrepareBundleOptions, PrepareBundleResult } from "./offline-bundle.js";
+export { bundleTemplateList, prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
 export { COMPONENTS_REPOSITORY, gitBlobId, blobIdsOf, tagVersionKey, compareTags, defaultCacheDir, GitOriginSource, MemoryOriginSource } from "./component-origin.js";
 export type { OriginSource } from "./component-origin.js";
 export { EXIT as CLI_EXIT, COMMANDS as CLI_COMMANDS, parseArgs, kebabToCamel, coerceArgs, parseFailOn, evaluateFailOn, usage as cliUsage, runCli } from "./cli.js";
