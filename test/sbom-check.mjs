@@ -131,9 +131,9 @@ write(proj, "pom.xml", `<project><groupId>egovframework.example</groupId><artifa
 let threw = "";
 try { await checkSbom({ projectDir: proj }); } catch (e) { threw = e.message; }
 assert(/SBOM 이 없습니다: sbom\/bom\.cdx\.json — generate_egovframe_sbom/.test(threw), "SBOM 없음 → 안내 오류");
-write(proj, "sbom/spdx.json", JSON.stringify({ spdxVersion: "SPDX-2.3" }));
-threw = ""; try { await checkSbom({ projectDir: proj, sbomPath: "sbom/spdx.json" }); } catch (e) { threw = e.message; }
-assert(/CycloneDX 문서가 아닙니다.*SPDX 는 지원하지 않습니다/.test(threw), "SPDX 등 비 CycloneDX 거부");
+write(proj, "sbom/other.json", JSON.stringify({ bomFormat: "Other", spdxVersion: "SPDX-3.0" }));
+threw = ""; try { await checkSbom({ projectDir: proj, sbomPath: "sbom/other.json" }); } catch (e) { threw = e.message; }
+assert(/CycloneDX·SPDX 2\.x JSON 문서가 아닙니다/.test(threw), "CycloneDX·SPDX 2.x 가 아닌 문서 거부(SPDX 3.0 포함)");
 threw = ""; try { await checkSbom({ projectDir: proj, sbomPath: "../x.json" }); } catch (e) { threw = e.message; }
 assert(/프로젝트 내부의 상대 경로/.test(threw), "프로젝트 밖 경로 거부");
 

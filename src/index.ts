@@ -13,7 +13,7 @@
  *   ai.ts          AI RAG 계층 조립        recipes.ts     레시피 조립
  *   validate.ts    무결성 진단             diagnose.ts    기존 프로젝트 진단·리포트
  *   upgrade.ts     3-way 업그레이드        explain.ts     컴포넌트 설명
- *   guide.ts       가이드 문서 조회·검색   ci-config.ts   CI 워크플로 생성
+ *   guide.ts       가이드 문서 조회·검색   ci-config.ts   CI 설정 생성(GitHub·GitLab·Jenkins)
  *   template-catalog.ts  공식 템플릿 통합 카탈로그·upstream 대조
  *   config-generator.ts  설정 파일 생성(Initializr 템플릿 동봉)
  *   crud.ts · catalog-sync.ts · build-runner.ts · test-runner.ts
@@ -52,8 +52,10 @@ export { classifyUpgrade, upgradeProject } from "./upgrade.js";
 export type { UpgradeClass, UpgradeItem, UpgradeResult, UpgradeOptions } from "./upgrade.js";
 export { explainComponent } from "./explain.js";
 export type { ComponentExplain } from "./explain.js";
-export { CI_JDK_RE, CI_FAIL_ON_RE, validateCiJdk, supplyChainJobYaml, generateCiYaml, generateCiConfig } from "./ci-config.js";
-export type { CiResult } from "./ci-config.js";
+export { CI_JDK_RE, CI_FAIL_ON_RE, CI_NPM_REGISTRY_RE, CI_BUNDLE_PATH_RE, CI_SUPPLIER_RE, CI_PATHS, validateCiJdk, jdkMajor, ciEnvEntries, supplyChainCommands, supplyChainJobYaml, generateCiYaml, generateGitlabCi, generateJenkinsfile, generateCiConfig } from "./ci-config.js";
+export type { CiResult, CiPlatform, CiSupplyChainOptions, CiEnvOptions, GenerateCiOptions } from "./ci-config.js";
+export { cdxToSpdx, spdxToCdx, isSpdxDocument, spdxAgent, spdxTimestamp, SPDX_VERSION, DEFAULT_SPDX_PATH } from "./spdx.js";
+export type { SpdxDocument, SpdxPackage, SpdxRelationship } from "./spdx.js";
 export { SERVER_VERSION, buildServer } from "./server.js";
 export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult } from "./crud.js";

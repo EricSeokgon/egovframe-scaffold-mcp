@@ -2,6 +2,7 @@
 // 공식 egovframe-web 템플릿 pom(Initializr 고정 commit, 자리표시자만 채움)과 작은 Gradle 프로젝트로 v0.36 검증 기준을 확인한다.
 import { checkDependencies, generateSbom, loadTemplateCatalog, checkSbom } from "../dist/index.js";
 import { validateCycloneDx } from "./cdx-schema.mjs";
+import { validateSpdx } from "./spec-schemas.mjs";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -62,6 +63,15 @@ try {
   const c2 = await checkSbom({ projectDir: mvnDir, offline: false, vex: true });
   const vex2 = JSON.parse(readFileSync(vexPath, "utf8"));
   assert(vex2.vulnerabilities[0].analysis.state === "not_affected" && vex2.vulnerabilities[0].analysis.detail === "검토 완료" && c2.vex.added === 0 && c2.vex.states.not_affected === 1, "VEX 재실행: 사람이 적은 판단 보존·새 항목 0");
+
+  // ── v0.43: SPDX 2.3 — 같은 프로젝트를 SPDX 로 만들어도 최소 요소 판정·component 수가 같고 공식 스키마 통과 ──
+  const sp = await generateSbom({ projectDir: mvnDir, format: "spdx-json", dryRun: false, offline: false, supplier: "예시 기관", author: "예시 SI", timeoutMs: 900_000 });
+  const spdx = JSON.parse(readFileSync(sp.absolutePath, "utf8"));
+  assert(sp.written && sp.outputPath === "sbom/bom.spdx.json" && spdx.spdxVersion === "SPDX-2.3" && validateSpdx(spdx) === null, `SPDX 2.3 SBOM: 공식 spdx-spec v2.3 스키마 통과${validateSpdx(spdx) ? `: ${validateSpdx(spdx)}` : ""} (패키지 ${spdx.packages.length}, 관계 ${spdx.relationships.length})`);
+  const cs = await checkSbom({ projectDir: mvnDir, sbomPath: "sbom/bom.spdx.json", baselinePath: "sbom/bom.cdx.json" });
+  const elems = (c) => c.minimum.elements.map((e) => `${e.id}:${e.satisfied}/${e.total}`).join(" ");
+  assert(cs.document.format === "spdx" && cs.document.components === c1.document.components && elems(cs) === elems(c1) && cs.minimum.verdict === c1.minimum.verdict, `SPDX 점검 = CycloneDX 점검: component ${cs.document.components}·최소 요소 ${cs.minimum.verdict} (${elems(cs)})`);
+  assert(cs.diff.added.length === 0 && cs.diff.removed.length === 0 && cs.diff.versionChanged.length === 0 && cs.recheck.unrecorded === 0, "SPDX ↔ CycloneDX 비교 차이 0·판정 annotations 보존");
 
   // ── Gradle: 작은 프로젝트 ──
   if (hasGradle) {

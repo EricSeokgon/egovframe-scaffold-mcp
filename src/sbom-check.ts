@@ -13,6 +13,7 @@ import { withFileTransaction } from "./file-transaction.js";
 import { CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, parentKindOf, resolveOutputPath, type SbomComponent, type SbomDocument } from "./sbom.js";
 import { SERVER_VERSION } from "./version.js";
 import { osvProvenanceNote } from "./offline-bundle.js";
+import { isSpdxDocument, spdxToCdx } from "./spdx.js";
 
 export const DEFAULT_VEX_PATH = "sbom/vex.cdx.json";
 
@@ -341,7 +342,7 @@ export interface CheckSbomResult {
   projectDir: string;
   sbomPath: string;
   absolutePath: string;
-  document: { specVersion: string; serialNumber: string | null; version: number; timestamp: string | null; components: number; tools: string[]; vulnerabilities: number };
+  document: { format: "cyclonedx" | "spdx"; specVersion: string; serialNumber: string | null; version: number; timestamp: string | null; components: number; tools: string[]; vulnerabilities: number };
   minimum: MinimumElementsReport;
   recheck: RecheckResult;
   diff?: SbomDiff;
@@ -349,13 +350,19 @@ export interface CheckSbomResult {
   notes: string[];
 }
 
-function readBom(projectDir: string, rel: string, what: string): { relPath: string; absolutePath: string; bom: SbomDocument } {
+/** SBOM 을 읽는다. CycloneDX 는 그대로, SPDX 2.x JSON(v0.43)은 같은 점검 규칙을 쓰도록 내부 CycloneDX 모양으로 옮긴다. */
+function readBom(projectDir: string, rel: string, what: string): { relPath: string; absolutePath: string; bom: SbomDocument; format: "cyclonedx" | "spdx"; notes: string[] } {
   const { relPath, absolutePath } = resolveOutputPath(projectDir, rel);
   if (!fs.existsSync(absolutePath)) throw new Error(`${what} 이 없습니다: ${relPath}${what === "SBOM" ? " — generate_egovframe_sbom(dryRun=false) 으로 먼저 만드세요." : ""}`);
-  let bom: SbomDocument;
-  try { bom = JSON.parse(fs.readFileSync(absolutePath, "utf8")) as SbomDocument; } catch (e) { throw new Error(`${what}(${relPath}) JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`); }
-  if (bom.bomFormat !== "CycloneDX") throw new Error(`${what}(${relPath}) 이 CycloneDX 문서가 아닙니다(bomFormat=${String(bom.bomFormat)}). SPDX 는 지원하지 않습니다.`);
-  return { relPath, absolutePath, bom };
+  let raw: unknown;
+  try { raw = JSON.parse(fs.readFileSync(absolutePath, "utf8")); } catch (e) { throw new Error(`${what}(${relPath}) JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`); }
+  if (isSpdxDocument(raw)) {
+    const { bom, notes } = spdxToCdx(raw);
+    return { relPath, absolutePath, bom, format: "spdx", notes: [`${what}(${relPath}) 은 ${raw.spdxVersion} 문서입니다 — 최소 요소를 SPDX 필드(PackageSupplier·PackageName·PackageVersion·externalRefs purl·DEPENDS_ON·creators·created)로 점검합니다.`, ...notes] };
+  }
+  const bom = raw as SbomDocument;
+  if (!bom || bom.bomFormat !== "CycloneDX") throw new Error(`${what}(${relPath}) 이 CycloneDX·SPDX 2.x JSON 문서가 아닙니다(bomFormat=${String(bom?.bomFormat)}).`);
+  return { relPath, absolutePath, bom, format: "cyclonedx", notes: [] };
 }
 const toolNames = (bom: SbomDocument): string[] => {
   const t = bom.metadata?.tools as { components?: { name?: string; version?: string }[] } | { name?: string; version?: string }[] | undefined;
@@ -367,8 +374,9 @@ const toolNames = (bom: SbomDocument): string[] => {
 export async function checkSbom(opts: CheckSbomOptions): Promise<CheckSbomResult> {
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
-  const { relPath, absolutePath, bom } = readBom(projectDir, opts.sbomPath ?? DEFAULT_SBOM_PATH, "SBOM");
-  const notes: string[] = [];
+  const { relPath, absolutePath, bom, format, notes: readNotes } = readBom(projectDir, opts.sbomPath ?? DEFAULT_SBOM_PATH, "SBOM");
+  const notes: string[] = [...readNotes];
+  if (opts.vex && format === "spdx") throw new Error("VEX 초안은 CycloneDX SBOM 에서만 만듭니다 — generate_egovframe_sbom 기본 형식(sbom/bom.cdx.json)을 sbomPath 로 지정하세요.");
   const minimum = checkMinimumElements(bom);
   const parentKind = fs.existsSync(path.join(projectDir, "pom.xml")) ? parentKindOf(projectDir, "maven") : "none";
   const recheck = await recheckSbom(bom, { parentKind, offline: opts.offline ?? true, osvQuery: opts.osvQuery });
@@ -379,6 +387,7 @@ export async function checkSbom(opts: CheckSbomOptions): Promise<CheckSbomResult
   let diff: SbomDiff | undefined;
   if (opts.baselinePath) {
     const base = readBom(projectDir, opts.baselinePath, "이전 SBOM");
+    if (base.format !== format) notes.push(`이전 SBOM 은 ${base.format === "spdx" ? "SPDX" : "CycloneDX"} 문서입니다 — 좌표(purl) 기준으로 비교합니다.`);
     if (base.absolutePath === absolutePath) notes.push("baselinePath 가 sbomPath 와 같아 차이가 없습니다.");
     diff = diffSboms(bom, base.bom, base.relPath, recheck.osv);
   }
@@ -412,7 +421,7 @@ export async function checkSbom(opts: CheckSbomOptions): Promise<CheckSbomResult
 
   return {
     projectDir, sbomPath: relPath, absolutePath,
-    document: { specVersion: bom.specVersion, serialNumber: bom.serialNumber ?? null, version: bom.version ?? 1, timestamp: bom.metadata?.timestamp ?? null, components: (bom.components ?? []).length, tools: toolNames(bom), vulnerabilities: (bom.vulnerabilities ?? []).length },
+    document: { format, specVersion: bom.specVersion, serialNumber: bom.serialNumber ?? null, version: bom.version ?? 1, timestamp: bom.metadata?.timestamp ?? null, components: (bom.components ?? []).length, tools: toolNames(bom), vulnerabilities: (bom.vulnerabilities ?? []).length },
     minimum, recheck, ...(diff ? { diff } : {}), ...(vex ? { vex } : {}), notes,
   };
 }
@@ -424,7 +433,7 @@ export function renderSbomCheckMarkdown(r: CheckSbomResult): string {
   const L: string[] = [];
   const d = r.document;
   L.push(`# SBOM 점검 (${r.sbomPath})`, ``);
-  L.push(`- CycloneDX ${d.specVersion} · component ${d.components}종 · 생성 ${d.timestamp ?? "(시각 없음)"} · 도구 ${d.tools.join(", ") || "(없음)"}`);
+  L.push(`- ${d.format === "spdx" ? d.specVersion : `CycloneDX ${d.specVersion}`} · component ${d.components}종 · 생성 ${d.timestamp ?? "(시각 없음)"} · 도구 ${d.tools.join(", ") || "(없음)"}`);
   L.push(`- **최소 요소: ${r.minimum.verdict === "ready" ? "✅ 제출 가능" : "⚠️ 보완 필요"}** — 요소가 빠진 component ${r.minimum.componentsWithGaps}/${r.minimum.components}${r.minimum.supplierFromCatalog ? ` · 공급자 카탈로그 보완 ${r.minimum.supplierFromCatalog}종` : ""}`);
   L.push(``, `## 1. 최소 요소 7종`, ``, `| 요소 | 대상 | 충족 | 빠진 항목(최대 20) |`, `|---|---|---|---|`);
   for (const e of r.minimum.elements) L.push(`| ${e.ok ? "✅" : "⚠️"} ${e.label} | ${e.level === "document" ? "문서" : "component"} | ${e.satisfied}/${e.total} | ${e.missing.length ? e.missing.slice(0, 8).join(", ") + (e.missing.length > 8 ? ` 외 ${e.missing.length - 8}` : "") : "—"} |`);
