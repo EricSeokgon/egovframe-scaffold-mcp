@@ -47,6 +47,13 @@ jobs:
     name: integration (official templates & components)
     needs: gate
     runs-on: ubuntu-latest
+    env:
+      # Maven 기본 설정은 502·500·504 를 재시도하지 않아 원격 저장소(maven.egovframe.go.kr)의 일시 장애 한 번에 job 이 떨어진다.
+      # 이 job 의 모든 mvn 호출(테스트가 띄우는 것 포함)이 5xx 를 3초 간격으로 최대 5회 다시 받도록 한다.
+      MAVEN_ARGS: >-
+        -Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504
+        -Daether.connector.http.retryHandler.count=5
+        -Daether.connector.http.retryHandler.interval=3000
     steps:
       - name: Checkout
         uses: actions/checkout@v5
