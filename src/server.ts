@@ -30,6 +30,8 @@ import { generateAgentsMd } from "./agents-md.js";
 import { generateSbom, renderSbomMarkdown } from "./sbom.js";
 import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
+import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
+import { renderBundleMarkdown } from "./offline-bundle.js";
 import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
 import { toolAnnotations, toolTitle } from "./tool-meta.js";
@@ -681,6 +683,23 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const { bom: _bom, ...structured } = r; // 문서 전체는 파일에 있으므로 구조화 출력에서 제외
       const text = args.format === "json" ? JSON.stringify(structured, null, 2) : renderSbomMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: structured as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 폐쇄망 오프라인 번들 (v0.42) ──────────────────────
+  server.registerTool(
+    "prepare_egovframe_offline_bundle",
+    { title: t("prepare_egovframe_offline_bundle"), description: d("prepare_egovframe_offline_bundle", "망분리(폐쇄망) 개발 환경용 오프라인 번들을 인터넷 PC 에서 만듭니다. OSV Maven 취약점 전체 덤프·고정 공통컴포넌트 아카이브(sha256 검증)·Initializr zip 템플릿(고정 지문)·재조립용 공식 공통컴포넌트 태그 미러를 한 디렉터리에 담고 bundle-manifest.json(파일별 sha256·크기·출처 URL·받은 시각)을 씁니다. 새(또는 빈) 디렉터리에만 쓰며 dryRun(기본)은 받을 목록만 보여 줍니다. 폐쇄망 PC 에서 환경변수 EGOVFRAME_OFFLINE_BUNDLE 에 옮긴 경로를 지정하면 다운로드는 번들 파일을 지문 검증 후 쓰고, offline=false 의 OSV 조회는 로컬 덤프로 판정하며(스냅숏 기준일 표시·30일 넘으면 경고), 재조립은 번들 미러를 씁니다. Maven 의존성 jar 는 담지 않습니다(기관 저장소 미러 사용)."), inputSchema: {
+      outputDir: z.string().describe("번들을 만들 디렉터리(없거나 비어 있어야 함)"),
+      include: z.array(z.enum(["osv", "components", "templates", "origin"])).min(1).default(["osv", "components", "templates", "origin"]).describe("담을 항목"),
+      templates: z.array(z.string()).optional().describe("담을 템플릿 id(기본: 고정 지문이 있는 Initializr zip 템플릿 전부, 저장소 템플릿은 지정할 때만)"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 받을 목록만"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.prepare_egovframe_offline_bundle.shape, annotations: toolAnnotations("prepare_egovframe_offline_bundle") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await prepareEgovframeOfflineBundle({ outputDir: args.outputDir, include: args.include, templates: args.templates, dryRun: args.dryRun });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderBundleMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── 전환 리허설 (v0.41) ───────────────────────────────

@@ -12,6 +12,7 @@ import { loadMigrationRules } from "./migrate.js";
 import { withFileTransaction } from "./file-transaction.js";
 import { CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, parentKindOf, resolveOutputPath, type SbomComponent, type SbomDocument } from "./sbom.js";
 import { SERVER_VERSION } from "./version.js";
+import { osvProvenanceNote } from "./offline-bundle.js";
 
 export const DEFAULT_VEX_PATH = "sbom/vex.cdx.json";
 
@@ -372,6 +373,7 @@ export async function checkSbom(opts: CheckSbomOptions): Promise<CheckSbomResult
   const parentKind = fs.existsSync(path.join(projectDir, "pom.xml")) ? parentKindOf(projectDir, "maven") : "none";
   const recheck = await recheckSbom(bom, { parentKind, offline: opts.offline ?? true, osvQuery: opts.osvQuery });
   if (opts.offline !== false) notes.push("offline — OSV 재조회 안 함(offline=false 로 생성 이후 새로 알려진 취약점 확인)");
+  else if (!opts.osvQuery) { const n = osvProvenanceNote(); if (n) notes.push(n); }
   if (recheck.unrecorded) notes.push(`egovframe:status 가 없는 component ${recheck.unrecorded}종 — 판정 변화 비교에서 제외(enrich=false 로 만든 SBOM 이거나 다른 생성기 출력)`);
 
   let diff: SbomDiff | undefined;

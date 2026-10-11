@@ -1,6 +1,7 @@
 // 네트워크 진단 (diagnose_egovframe_network, v0.31.0 — 읽기 전용).
 // 도구가 내려받는 호스트들에 대해 DNS 조회와 HEAD 요청을 실제로 해 보고, 실패를 종류별(DNS·타임아웃·TLS·프록시 인증·거부·재설정)로
 // 분류한 뒤 환경변수 처방을 안내한다. 폐쇄망·프록시·IPv6 문제로 다운로드가 실패했을 때 가장 먼저 돌리는 도구다.
+import { BUNDLE_ENV } from "./offline-bundle.js";
 import * as dns from "node:dns";
 import * as os from "node:os";
 
@@ -194,6 +195,15 @@ export async function diagnoseNetwork(opts: NetworkOptions = {}): Promise<Networ
       reason: `폐쇄망이면 네트워크 담당자에게 다음 호스트의 허용을 요청하세요: ${NETWORK_HOSTS.map((h) => h.host).join(", ")}. 프록시 환경에서는 DNS 실패가 아니라 프록시 미설정일 수도 있습니다(위 처방 참조).`,
     });
   }
+  if (failed.length > 0) {
+    // v0.42: 망분리 환경이면 허용 요청 대신 인터넷 PC 에서 만든 오프라인 번들을 반입할 수 있다
+    prescriptions.push({
+      id: "offline-bundle", title: "폐쇄망이면 오프라인 번들 반입 — 인터넷 PC 에서 만들어 옮긴 뒤 EGOVFRAME_OFFLINE_BUNDLE 지정",
+      commands: both("npx -y egovframe-scaffold-mcp bundle --output-dir ./egov-bundle --write   # 인터넷 PC\nexport EGOVFRAME_OFFLINE_BUNDLE=/path/to/egov-bundle   # 폐쇄망 PC", "npx -y egovframe-scaffold-mcp bundle --output-dir .\\egov-bundle --write\nsetx EGOVFRAME_OFFLINE_BUNDLE D:\\egov-bundle", "npx -y egovframe-scaffold-mcp bundle --output-dir .\\egov-bundle --write\n$env:EGOVFRAME_OFFLINE_BUNDLE=\"D:\\egov-bundle\""),
+      reason: "번들에는 OSV 취약점 덤프·고정 공통컴포넌트 아카이브·Initializr zip 템플릿·재조립 원본 태그 미러가 들어 있고, 지문을 검증해 다운로드 대신 씁니다. Maven 의존성 jar 는 기관 저장소 미러로 해결하세요.",
+    });
+  }
+  if (process.env[BUNDLE_ENV]) notes.push(`오프라인 번들 사용 중(${BUNDLE_ENV}=${process.env[BUNDLE_ENV]}) — 번들에 있는 파일은 네트워크 없이 받습니다.`);
   if (failed.length > 0 && failed.length === hosts.length && !hasProxy) notes.push("모든 호스트가 실패했습니다 — 개별 사이트 차단이 아니라 프록시·DNS 등 공통 원인일 가능성이 큽니다.");
   if (isWin && hasProxy) notes.push("Windows 에서 환경변수는 새 터미널·새 MCP 클라이언트 프로세스에만 적용됩니다. `setx` 로 영구 설정한 뒤 클라이언트를 재시작하세요.");
   notes.push("MCP 클라이언트(Claude Desktop·VS Code 등) 설정의 `env` 항목에 같은 변수를 넣어야 서버 프로세스에도 적용됩니다.");

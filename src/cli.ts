@@ -84,6 +84,11 @@ export const COMMANDS: Record<string, CommandDef> = {
       return `리허설 — 자동 단계 후 오류 ${ph(s.afterAutomation)} → pom 맞춤 후 ${ph(s.afterPomAlignment)} · 원본 ${rec(s.original).unchanged ? "불변" : "변경됨"}`;
     },
   },
+  bundle: {
+    tool: "prepare_egovframe_offline_bundle", summary: "폐쇄망 오프라인 번들(--write 없으면 목록만)", defaults: { dryRun: true }, blocked: ["dryRun"],
+    metrics: (s) => ({ files: Array.isArray(s.items) ? s.items.length : 0, bytes: num(s.totalBytes) }),
+    line: (s) => (s.written ? `번들 ${s.outputDir} — 파일 ${Array.isArray(s.items) ? s.items.length : 0}개 + 원본 미러, ${(num(s.totalBytes) / 1048576).toFixed(1)}MB` : `번들 계획만(dryRun) — ${s.outputDir}`),
+  },
   migrate: {
     tool: "migrate_egovframe_project", summary: "5.x 전환 진단(읽기 전용)", fixed: { apply: false, verify: false }, blocked: ["apply", "verify", "dryRun", "skipComponents"],
     metrics: (s) => { const sm = rec(s.summary); return { items: Array.isArray(s.items) ? s.items.length : 0, auto: num(sm.auto), manual: num(sm.manual), files: num(sm.files) }; },
@@ -193,7 +198,7 @@ export function usage(): string {
     `  --out <file>          출력을 파일로도 저장`,
     `  --step-summary        Markdown 을 $GITHUB_STEP_SUMMARY 에 덧붙임`,
     `  --fail-on <식>        기준을 넘으면 종료 코드 2 — 예: supplyChain:C · migration:D · vulnerabilities · manual>20`,
-    `  --write               sbom: 실제로 파일을 씀(기본은 계획만) · sbom-check: VEX 초안 작성·갱신(판단 보존)`,
+    `  --write               sbom: 실제로 파일을 씀(기본은 계획만) · sbom-check: VEX 초안 작성·갱신(판단 보존) · bundle: 번들 내려받기`,
     `  그 밖의 옵션은 도구 파라미터와 같은 이름(kebab-case 가능): --resolve --offline=false --resolve-scope all --top-n 10 …`,
     ``,
     `종료 코드: 0 통과 · 2 --fail-on 기준 초과 · 3 실행 실패 · 64 사용법 오류`,
@@ -234,6 +239,8 @@ export async function runCli(argv: string[], io: CliIo = defaultIo()): Promise<n
     if ("format" in props) finalArgs.format = "markdown";
     if (command === "sbom" && options.write === true) finalArgs.dryRun = false;
     if (command === "sbom-check" && options.write === true) finalArgs.vex = true;
+    if (command === "bundle" && options.write === true) finalArgs.dryRun = false;
+    if (command === "bundle" && typeof finalArgs.outputDir === "string") finalArgs.outputDir = path.resolve(io.cwd, finalArgs.outputDir);
     let conds: FailCondition[] = [];
     if (options["fail-on"] !== undefined) {
       if (typeof options["fail-on"] !== "string") { io.stderr(`--fail-on 에 식이 필요합니다\n`); return EXIT.usage; }
