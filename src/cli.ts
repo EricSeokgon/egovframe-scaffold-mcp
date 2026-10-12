@@ -50,12 +50,12 @@ export const COMMANDS: Record<string, CommandDef> = {
     line: (s) => { const sm = rec(s.summary); return `의존성 ${Array.isArray(s.findings) ? s.findings.length : 0}건 — 기준 미만 ${num(sm.outdated)} · 전환 대상 ${num(sm.legacy)} · 교체 필요 ${num(sm.replace)} · 취약 ${Array.isArray(s.vulnerabilities) ? s.vulnerabilities.length : "미조회"}`; },
   },
   sbom: {
-    tool: "generate_egovframe_sbom", summary: "CycloneDX 1.6 SBOM(--write 없으면 계획만)", defaults: { dryRun: true }, blocked: ["dryRun"],
+    tool: "generate_egovframe_sbom", summary: "SBOM — CycloneDX 1.6(기본)·SPDX 2.3(--bom-format spdx-json), --write 없으면 계획만", defaults: { dryRun: true }, blocked: ["dryRun"],
     metrics: (s) => ({ components: num(s.components), vulnerabilities: num(s.vulnerabilities), unknown: num(rec(s.statuses).unknown), outdated: num(rec(s.statuses).outdated) }),
     line: (s) => (s.written ? `SBOM ${s.outputPath} — component ${num(s.components)} · 취약점 ${num(s.vulnerabilities)}` : `SBOM 계획만(dryRun) — ${s.outputPath}`),
   },
   "sbom-check": {
-    tool: "check_egovframe_sbom", summary: "SBOM 점검(최소 요소·재점검·비교, --write 면 VEX)", blocked: ["vex", "dryRun"],
+    tool: "check_egovframe_sbom", summary: "SBOM 점검(CycloneDX·SPDX, 최소 요소·재점검·비교, --write 면 VEX)", blocked: ["vex", "dryRun"],
     metrics: (s) => {
       const m = rec(s.minimum), rc = rec(s.recheck), o = rec(rc.osv), df = rec(s.diff), vx = rec(s.vex);
       const len = (v: unknown) => (Array.isArray(v) ? v.length : 0);

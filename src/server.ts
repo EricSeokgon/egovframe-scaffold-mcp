@@ -19,7 +19,7 @@ import { diagnoseProject } from "./diagnose.js";
 import { generateProjectReport } from "./report.js";
 import { upgradeProject } from "./upgrade.js";
 import { explainComponent } from "./explain.js";
-import { CI_FAIL_ON_RE, CI_JDK_RE, generateCiConfig } from "./ci-config.js";
+import { CI_BUNDLE_PATH_RE, CI_FAIL_ON_RE, CI_JDK_RE, CI_NPM_REGISTRY_RE, CI_SUPPLIER_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
@@ -660,10 +660,10 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
 
   server.registerTool(
     "generate_egovframe_sbom",
-    { title: t("generate_egovframe_sbom"), description: d("generate_egovframe_sbom", "Maven/Gradle 프로젝트의 SBOM 을 CycloneDX 1.6 JSON 으로 만듭니다(빌드 파일 변경 없음). Maven 은 cyclonedx-maven-plugin(makeAggregateBom, 해시·라이선스 포함), Gradle 은 해석된 의존성 트리로 문서를 구성합니다. enrich=true(기본)면 component 마다 기준 판정(egovframe:status·basis·baseline)을 properties 로 붙이고, offline=false 면 OSV 로 알려진 취약점을 vulnerabilities[] 로 넣습니다. 출력은 프로젝트 안 경로(기본 sbom/bom.cdx.json)만 허용하고 기존 파일은 overwrite=true 가 아니면 거부하며, dryRun(기본)은 실행 없이 계획만 돌려줍니다. 2027년부터 단계화되는 공공기관 SBOM 등록·제출에 쓸 수 있는 표준 형식입니다."), inputSchema: {
+    { title: t("generate_egovframe_sbom"), description: d("generate_egovframe_sbom", "Maven/Gradle 프로젝트의 SBOM 을 CycloneDX 1.6 JSON(기본) 또는 SPDX 2.3 JSON(bomFormat=spdx-json — 패키지·DEPENDS_ON 관계·purl·공급자·작성자·생성 시각)으로 만듭니다(빌드 파일 변경 없음). Maven 은 cyclonedx-maven-plugin(makeAggregateBom, 해시·라이선스 포함), Gradle 은 해석된 의존성 트리로 문서를 구성합니다. enrich=true(기본)면 component 마다 기준 판정(egovframe:status·basis·baseline)을 properties 로 붙이고, offline=false 면 OSV 로 알려진 취약점을 vulnerabilities[] 로 넣습니다. 출력은 프로젝트 안 경로(기본 sbom/bom.cdx.json)만 허용하고 기존 파일은 overwrite=true 가 아니면 거부하며, dryRun(기본)은 실행 없이 계획만 돌려줍니다. 2027년부터 단계화되는 공공기관 SBOM 등록·제출에 쓸 수 있는 표준 형식입니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
-      outputPath: z.string().default("sbom/bom.cdx.json").describe("프로젝트 상대 출력 경로"),
-      bomFormat: z.enum(["cyclonedx-json"]).default("cyclonedx-json").describe("SBOM 형식(현재 CycloneDX JSON)"),
+      outputPath: z.string().optional().describe("프로젝트 상대 출력 경로(기본 sbom/bom.cdx.json, spdx-json 이면 sbom/bom.spdx.json)"),
+      bomFormat: z.enum(["cyclonedx-json", "spdx-json"]).default("cyclonedx-json").describe("SBOM 형식: cyclonedx-json(CycloneDX 1.6, 기본) | spdx-json(SPDX 2.3 — CycloneDX 로 만든 뒤 변환)"),
       scope: z.enum(["runtime", "all"]).default("runtime").describe("runtime(compile+runtime, 기본) | all(test·provided 포함)"),
       enrich: z.boolean().default(true).describe("component 마다 기준 판정 속성 부착"),
       supplier: z.string().min(1).max(200).optional().describe("공급자(주 component·문서 metadata.supplier) — 없으면 pom <organization><name>"),
@@ -680,7 +680,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     async (args) => {
       enforceAllowedRoots(args);
       const r = await generateSbom({ projectDir: args.projectDir, outputPath: args.outputPath, format: args.bomFormat, scope: args.scope, enrich: args.enrich, offline: args.offline, overwrite: args.overwrite, dryRun: args.dryRun, timeoutMs: args.timeoutMs, supplier: args.supplier, author: args.author, componentName: args.componentName, componentVersion: args.componentVersion, fillSuppliers: args.fillSuppliers });
-      const { bom: _bom, ...structured } = r; // 문서 전체는 파일에 있으므로 구조화 출력에서 제외
+      const { bom: _bom, spdx: _spdx, ...structured } = r; // 문서 전체는 파일에 있으므로 구조화 출력에서 제외
       const text = args.format === "json" ? JSON.stringify(structured, null, 2) : renderSbomMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: structured as unknown as Record<string, unknown> };
     },
@@ -725,7 +725,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── SBOM 운영 (v0.40) ─────────────────────────────────
   server.registerTool(
     "check_egovframe_sbom",
-    { title: t("check_egovframe_sbom"), description: d("check_egovframe_sbom", "이미 만든 CycloneDX SBOM 을 제출물로서 점검합니다(SBOM 파일은 바꾸지 않음). (1) 최소 요소 7종 — 공급자·구성요소명·버전·고유식별자(purl/cpe)·의존관계·작성자·생성 시각(NTIA 최소 요소 = 국내 SW 공급망 보안 가이드라인 핵심 구성요소)을 component 마다 세어 '제출 가능/보완 필요'와 빠진 component 를 보고 (2) 빌드 도구 없이 purl 만으로 기준 판정을 다시 해 생성 당시와 달라진 판정을, offline=false 면 OSV 를 다시 조회해 생성 이후 새로 알려진 취약점을 보고(운영 중 주기 점검) (3) baselinePath(이전 SBOM)를 주면 추가·제거·버전 변경·판정 변화·새 취약점을 비교 (4) vex=true 면 CycloneDX VEX 초안(기본 sbom/vex.cdx.json)을 씁니다 — 새 취약점은 analysis.state=in_triage, affects 는 BOM-Link 로 원본 SBOM 참조, 기존 VEX 에 사람이 적은 판단(not_affected·exploitable 등)은 보존하고 새 취약점만 추가합니다(dryRun=true 면 미리보기). 2027년 공공 SBOM 제출 제도화 대비."), inputSchema: {
+    { title: t("check_egovframe_sbom"), description: d("check_egovframe_sbom", "이미 만든 CycloneDX 또는 SPDX 2.x JSON SBOM 을 제출물로서 점검합니다(SBOM 파일은 바꾸지 않음, 형식은 자동 판별). (1) 최소 요소 7종 — 공급자·구성요소명·버전·고유식별자(purl/cpe)·의존관계·작성자·생성 시각(NTIA 최소 요소 = 국내 SW 공급망 보안 가이드라인 핵심 구성요소)을 component 마다 세어 '제출 가능/보완 필요'와 빠진 component 를 보고 (2) 빌드 도구 없이 purl 만으로 기준 판정을 다시 해 생성 당시와 달라진 판정을, offline=false 면 OSV 를 다시 조회해 생성 이후 새로 알려진 취약점을 보고(운영 중 주기 점검) (3) baselinePath(이전 SBOM)를 주면 추가·제거·버전 변경·판정 변화·새 취약점을 비교 (4) vex=true 면(CycloneDX 입력만) CycloneDX VEX 초안(기본 sbom/vex.cdx.json)을 씁니다 — 새 취약점은 analysis.state=in_triage, affects 는 BOM-Link 로 원본 SBOM 참조, 기존 VEX 에 사람이 적은 판단(not_affected·exploitable 등)은 보존하고 새 취약점만 추가합니다(dryRun=true 면 미리보기). 2027년 공공 SBOM 제출 제도화 대비."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
       sbomPath: z.string().default("sbom/bom.cdx.json").describe("점검할 SBOM(프로젝트 상대 경로)"),
       baselinePath: z.string().optional().describe("비교할 이전 SBOM(프로젝트 상대 경로)"),
@@ -1038,21 +1038,27 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── CI 설정 생성 도구 (v0.19.0) ────────────────────────
   server.registerTool(
     "generate_egovframe_ci",
-    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 GitHub Actions CI 워크플로(빌드·테스트)를 생성합니다. 빌드도구(maven/gradle) 자동 감지, JDK 지정. supplyChain=true 면 이 서버의 CLI(npx egovframe-scaffold-mcp sbom·assess)로 SBOM 과 전환 준비도 평가서를 만들어 PR 요약에 등급을 남기고 failOn 기준(기본 supplyChain:D)을 넘으면 실패하는 공급망 게이트 job 을 추가합니다. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다."), inputSchema: {
+    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 CI 설정을 생성합니다 — platform=github(.github/workflows/egovframe-ci.yml, 기본)·gitlab(.gitlab-ci.yml)·jenkins(Jenkinsfile, Declarative). 빌드도구(maven/gradle) 자동 감지, JDK 지정, 빌드·테스트(GitLab 은 JUnit 리포트). supplyChain=true 면 이 서버의 CLI(npx egovframe-scaffold-mcp)로 SBOM 생성 → 최소 요소 7종 점검(sbom-check --fail-on minimum) → 전환 준비도 평가서(failOn 기준, 기본 supplyChain:D)를 돌려 기준을 넘으면 실패하고 보고서·SBOM 을 아티팩트로 남기는 공급망 게이트를 추가합니다(GitHub 은 PR 요약에 등급, GitLab 은 CycloneDX 리포트). npmRegistry(사내 npm 레지스트리)·offlineBundle(러너에서 본 오프라인 번들 경로)은 환경 변수로 넣습니다. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      platform: z.enum(["github", "gitlab", "jenkins"]).default("github").describe("CI 플랫폼: github(GitHub Actions, 기본) | gitlab(.gitlab-ci.yml) | jenkins(Jenkinsfile, Declarative)"),
       jdk: z.string().regex(CI_JDK_RE, "숫자와 점으로 된 버전만 허용 (예: 17, 21, 1.8)").default("17").describe("JDK 버전 (기본 17, 숫자·점만 허용)"),
       dryRun: z.boolean().default(false).describe("true면 파일 생성 없이 내용만 반환"),
-      supplyChain: z.boolean().default(false).describe("true 면 공급망 게이트 job 추가(v0.39): SBOM 생성 → 전환 준비도 평가서(등급을 PR 요약에) → 아티팩트, failOn 기준 초과 시 실패"),
-      failOn: z.string().regex(CI_FAIL_ON_RE, "예: supplyChain:D 또는 migration:C,vulnerabilities").default("supplyChain:D").describe("공급망 게이트의 --fail-on 식"),
+      supplyChain: z.boolean().default(false).describe("true 면 공급망 게이트 추가: SBOM 생성 → 최소 요소 점검(--fail-on minimum) → 전환 준비도 평가서(failOn) → 아티팩트"),
+      failOn: z.string().regex(CI_FAIL_ON_RE, "예: supplyChain:D 또는 migration:C,vulnerabilities").default("supplyChain:D").describe("공급망 게이트(평가서)의 --fail-on 식"),
       osv: z.boolean().default(true).describe("공급망 게이트에서 OSV 취약점 조회(--offline=false)"),
+      supplier: z.string().regex(CI_SUPPLIER_RE, "문자·숫자·공백·.,&()_- 100자 이하").optional().describe("SBOM 공급자(pom <organization><name> 이 없으면 최소 요소 '공급자'가 빠져 게이트가 실패하므로 지정)"),
+      npmRegistry: z.string().regex(CI_NPM_REGISTRY_RE, "http(s) URL").optional().describe("사내 npm 레지스트리 URL(NPM_CONFIG_REGISTRY 로 설정 — npx 가 이 서버를 받는 곳)"),
+      offlineBundle: z.string().regex(CI_BUNDLE_PATH_RE, "러너에서 본 절대 경로").optional().describe("폐쇄망 러너·에이전트에서 본 오프라인 번들 경로(EGOVFRAME_OFFLINE_BUNDLE 로 설정)"),
     }, annotations: toolAnnotations("generate_egovframe_ci") },
     async (args) => {
       enforceAllowedRoots(args);
       const r = generateCiConfig(args);
       const head = r.dryRun
-        ? `🔍 CI 설정 미리보기(dryRun): ${r.path} (${r.buildTool})`
-        : `✅ CI 설정 생성: ${r.path} (${r.buildTool})`;
-      return { content: [{ type: "text", text: `${head}\n\n\`\`\`yaml\n${r.content}\`\`\`` }] };
+        ? `🔍 CI 설정 미리보기(dryRun): ${r.path} (${r.platform} · ${r.buildTool})`
+        : `✅ CI 설정 생성: ${r.path} (${r.platform} · ${r.buildTool})`;
+      const lang = r.platform === "jenkins" ? "groovy" : "yaml";
+      const notes = r.notes.length ? `\n\n${r.notes.map((x) => `⚠️ ${x}`).join("\n")}` : "";
+      return { content: [{ type: "text", text: `${head}\n\n\`\`\`${lang}\n${r.content}\`\`\`${notes}` }] };
     },
   );
   // ── 프로젝트 빌드 실행 도구 (v0.23.0) ────────────────────────

@@ -53,7 +53,28 @@ CLI 는 같은 프로세스에 서버(`buildServer()`)를 만들고 SDK 의 `InM
 
 기존 빌드 job 옆에 `supply-chain` job 을 추가합니다: checkout → setup-java(빌드 도구 캐시) → setup-node 22 → `npx -y egovframe-scaffold-mcp@<이 버전> sbom --write --overwrite --offline=false` → `assess --offline=false --out egovframe-assessment.md --step-summary --fail-on <failOn>` → 아티팩트 업로드(`if: always()`). 패키지 버전을 생성 시점의 서버 버전으로 고정해 규칙·기준이 바뀌어도 게이트 결과가 저절로 바뀌지 않게 합니다. `failOn` 은 YAML 에 그대로 들어가므로 `CI_FAIL_ON_RE` 로 형식을 제한합니다(주입 거부 테스트). 생성 결과는 CI 통합에서 `actionlint` 로 검사합니다.
 
+v0.43 에서 `sbom` 과 `assess` 사이에 `sbom-check --out egovframe-sbom-check.md --step-summary --fail-on minimum` 단계가 들어갔습니다(최소 요소 7종이 빠지면 종료 코드 2). 아티팩트에 `egovframe-sbom-check.md` 가 더해집니다.
+
+## 6.1 플랫폼 (v0.43: `platform="github"|"gitlab"|"jenkins"`)
+
+세 플랫폼은 **같은 게이트 명령 목록**(`supplyChainCommands` — sbom → sbom-check → assess)을 공유하고, 플랫폼마다 그것을 실행하는 껍데기만 다릅니다. 그래서 규칙·종료 코드·아티팩트 이름이 플랫폼 사이에 어긋나지 않습니다. `--step-summary` 는 GitHub 에서만 붙입니다.
+
+| | GitHub Actions | GitLab CI | Jenkins (Declarative) |
+|---|---|---|---|
+| 파일 | `.github/workflows/egovframe-ci.yml` | `.gitlab-ci.yml` | `Jenkinsfile` |
+| 실행 환경 | `ubuntu-latest` + setup-java·setup-node | `maven:3.9-eclipse-temurin-<JDK 주 버전>`(Gradle: `eclipse-temurin:<JDK>`), 게이트 job 은 Node 가 없으면 apt 로 설치 시도 | `agent any` — 에이전트에 JDK·Maven·Node.js |
+| 빌드 | `mvn -B verify` / `./gradlew build` | 같음 + JUnit 리포트, 로컬 저장소 캐시(`MAVEN_OPTS`·`GRADLE_USER_HOME`) | 같음, `isUnix()` 로 `sh`/`bat` |
+| 게이트 | 별도 job | `supply-chain` job(`needs: []` 로 빌드와 병렬) | `SBOM` → `SBOM check` → `Assessment` 단계 |
+| 보관 | upload-artifact(`if: always()`) | `artifacts: when: always` + `reports: cyclonedx` | `post { always { archiveArtifacts allowEmptyArchive: true } }` |
+| 환경 변수 | job `env` | `variables` | `environment` |
+
+입력값은 설정 파일에 그대로 들어가므로 모두 형식을 제한합니다: `jdk`(숫자·점), `failOn`(`CI_FAIL_ON_RE`), `supplier`(문자·숫자·공백·`.,&()_-`, 명령줄에 큰따옴표로), `npmRegistry`(http(s) URL, 따옴표·공백·`$` 불가), `offlineBundle`(절대 경로, 영문·숫자·`._-/\:`·공백). YAML 은 작은따옴표 스칼라, Groovy 는 작은따옴표 문자열(역슬래시 이스케이프)로 씁니다.
+
+검증: 생성 `.gitlab-ci.yml` 은 GitLab 공식 CI JSON 스키마(gitlab `v19.4.1-ee` 의 `app/assets/javascripts/editor/schema/ci.json`, 테스트 고정물)로, `Jenkinsfile` 은 구조 단언(pipeline·agent·options·stages·post, 문자열 밖 괄호 짝, 단계 순서)으로 확인합니다. GitHub 워크플로는 기존대로 CI 통합에서 `actionlint` 로 검사합니다. Jenkins 의 실제 실행은 보류입니다.
+
 ## 7. 범위 밖
+
+- Azure DevOps·Bamboo 등 다른 CI, Jenkins 플러그인 설치·서버 설정(v0.43 범위 밖).
 
 - `--lang en`(평가서·점검 결과의 라벨 영문화)은 넣지 않았습니다. 응답 본문의 영문화는 도구마다 렌더러를 바꾸는 일이라 별도 버전에서 다룹니다.
 - MCP 프로토콜 `2025-11-25` 의 `tasks`(장시간 도구의 비동기 실행)는 SDK 에서 실험 단계라 쓰지 않습니다. SDK 는 1.32.1 로 올렸고, 기존 테스트는 변화 없이 통과했습니다.

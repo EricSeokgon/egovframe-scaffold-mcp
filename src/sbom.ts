@@ -15,11 +15,12 @@ import { withFileTransaction } from "./file-transaction.js";
 import { SERVER_VERSION } from "./version.js";
 import { checkMinimumElements, loadSbomRules, supplierFor } from "./sbom-check.js";
 import { osvProvenanceNote } from "./offline-bundle.js";
+import { cdxToSpdx, spdxToCdx, DEFAULT_SPDX_PATH, SPDX_VERSION, type SpdxDocument } from "./spdx.js";
 
 export const CYCLONEDX_MAVEN_PLUGIN = "org.cyclonedx:cyclonedx-maven-plugin:2.9.3";
 export const CYCLONEDX_SPEC_VERSION = "1.6";
 export const DEFAULT_SBOM_PATH = "sbom/bom.cdx.json";
-export type SbomFormat = "cyclonedx-json";
+export type SbomFormat = "cyclonedx-json" | "spdx-json";
 
 export interface SbomComponent {
   type: string;
@@ -49,7 +50,7 @@ export interface SbomDocument {
 export interface GenerateSbomOptions {
   projectDir: string;
   format?: SbomFormat;
-  /** 프로젝트 상대 경로(기본 sbom/bom.cdx.json) */
+  /** 프로젝트 상대 경로(기본 sbom/bom.cdx.json, spdx-json 이면 sbom/bom.spdx.json) */
   outputPath?: string;
   /** runtime(기본) | all(test·provided 포함) */
   scope?: ResolveScope;
@@ -100,6 +101,8 @@ export interface GenerateSbomResult {
   bytes: number;
   /** dryRun 이 아니면 문서 전체 */
   bom?: SbomDocument;
+  /** v0.43: bomFormat=spdx-json 이면 쓴 SPDX 문서 */
+  spdx?: SpdxDocument;
   notes: string[];
   logTail?: string;
 }
@@ -280,9 +283,10 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   const buildTool = detectBuildToolAt(projectDir);
   if (!buildTool) throw new Error(`빌드 파일(pom.xml·build.gradle)을 찾지 못했습니다: ${projectDir}`);
   const format: SbomFormat = opts.format ?? "cyclonedx-json";
-  if (format !== "cyclonedx-json") throw new Error(`지원하지 않는 format: ${format}`);
+  if (format !== "cyclonedx-json" && format !== "spdx-json") throw new Error(`지원하지 않는 format: ${format}`);
+  const spdx = format === "spdx-json";
   const scope = opts.scope ?? "runtime";
-  const { relPath, absolutePath } = resolveSbomOutputPath(projectDir, opts.outputPath ?? DEFAULT_SBOM_PATH);
+  const { relPath, absolutePath } = resolveSbomOutputPath(projectDir, opts.outputPath ?? (spdx ? DEFAULT_SPDX_PATH : DEFAULT_SBOM_PATH));
   const exists = fs.existsSync(absolutePath);
   const dryRun = opts.dryRun !== false;
   const notes: string[] = [];
@@ -291,11 +295,11 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   const cmd = sbomCommand(projectDir, buildTool, scope, tmpDir, opts.platform);
   const command = [cmd.command, ...cmd.args].join(" ");
   const generator: GenerateSbomResult["generator"] = buildTool === "maven" ? "cyclonedx-maven-plugin" : "egovframe-scaffold-mcp";
-  const base: GenerateSbomResult = { projectDir, buildTool, format, specVersion: CYCLONEDX_SPEC_VERSION, outputPath: relPath, absolutePath, dryRun, written: false, overwritten: false, command, generator, components: 0, direct: 0, transitive: 0, statuses, vulnerabilities: 0, bytes: 0, notes };
+  const base: GenerateSbomResult = { projectDir, buildTool, format, specVersion: spdx ? SPDX_VERSION : CYCLONEDX_SPEC_VERSION, outputPath: relPath, absolutePath, dryRun, written: false, overwritten: false, command, generator, components: 0, direct: 0, transitive: 0, statuses, vulnerabilities: 0, bytes: 0, notes };
   if (exists && !opts.overwrite && !dryRun) { fs.rmSync(tmpDir, { recursive: true, force: true }); throw new Error(`${relPath} 이 이미 있습니다. 덮어쓰려면 overwrite=true 를 쓰세요.`); }
   if (dryRun) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    notes.push(`dryRun — 실행하지 않았습니다. dryRun=false 로 ${buildTool === "maven" ? "cyclonedx-maven-plugin 을 실행해" : "의존성 트리를 해석해"} ${relPath} 에 CycloneDX ${CYCLONEDX_SPEC_VERSION} JSON 을 씁니다.${exists ? ` 기존 파일이 있어 overwrite=true 가 필요합니다.` : ""}`);
+    notes.push(`dryRun — 실행하지 않았습니다. dryRun=false 로 ${buildTool === "maven" ? "cyclonedx-maven-plugin 을 실행해" : "의존성 트리를 해석해"} ${relPath} 에 ${spdx ? `SPDX 2.3 JSON(CycloneDX ${CYCLONEDX_SPEC_VERSION} 로 만든 뒤 변환)` : `CycloneDX ${CYCLONEDX_SPEC_VERSION} JSON`} 을 씁니다.${exists ? ` 기존 파일이 있어 overwrite=true 가 필요합니다.` : ""}`);
     return base;
   }
 
@@ -314,6 +318,12 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
       if (r.exitCode !== 0 || !fs.existsSync(bomFile)) throw new Error(`cyclonedx-maven-plugin 실패(종료 코드 ${r.exitCode}). 로그 끝:\n${logTail}`);
       bom = JSON.parse(fs.readFileSync(bomFile, "utf8")) as SbomDocument;
       if (bom.bomFormat !== "CycloneDX") throw new Error("플러그인 출력이 CycloneDX 문서가 아닙니다");
+      // 플러그인이 metadata.timestamp 를 빼는 환경이 있다(CI 실측) — 최소 요소 '생성 시각'은 이 서버가 생성 시각으로 채운다
+      const ts = bom.metadata?.timestamp;
+      if (!ts || Number.isNaN(Date.parse(ts))) {
+        (bom.metadata ??= {}).timestamp = new Date(now()).toISOString().replace(/\.\d{3}Z$/, "Z");
+        notes.push("플러그인 출력에 metadata.timestamp 가 없어 생성 시각을 넣었습니다(최소 요소 '생성 시각').");
+      }
       const tools = (bom.metadata ??= {}).tools as { components?: unknown[] } | undefined;
       const mine = { type: "application", name: "egovframe-scaffold-mcp", version: SERVER_VERSION };
       if (tools && Array.isArray(tools.components)) tools.components.push(mine); else if (!tools) bom.metadata.tools = { components: [mine] };
@@ -349,17 +359,24 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
     try { vulnerabilities = await attachVulnerabilities(bom, opts.osvQuery ?? defaultOsvQuery); if (!opts.osvQuery) { const n = osvProvenanceNote(); if (n) notes.push(n); } } catch (e) { osvError = `OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`; }
   }
 
-  const json = `${JSON.stringify(bom, null, 2)}\n`;
+  // v0.43: SPDX 2.3 — CycloneDX 로 만든 문서를 변환해 쓰고, 최소 요소는 SPDX 를 다시 읽은 모양으로 점검(점검 도구와 같은 경로)
+  let spdxDoc: SpdxDocument | undefined;
+  if (spdx) {
+    const conv = cdxToSpdx(bom, { now });
+    spdxDoc = conv.doc;
+    notes.push(...conv.notes, `SPDX 2.3 으로 변환했습니다 — 패키지 ${conv.doc.packages?.length ?? 0} · 관계 ${conv.doc.relationships?.length ?? 0}. VEX 초안(check_egovframe_sbom vex=true)은 CycloneDX SBOM 에서만 만듭니다.`);
+  }
+  const json = `${JSON.stringify(spdxDoc ?? bom, null, 2)}\n`;
   await withFileTransaction(projectDir, "SBOM 생성", (tx) => { tx.writeFile(relPath, json, { mustNotExist: !exists }); });
-  const mr = checkMinimumElements(bom);
+  const mr = checkMinimumElements(spdxDoc ? spdxToCdx(spdxDoc).bom : bom);
   const minimum = { verdict: mr.verdict, missing: mr.elements.filter((e) => !e.ok).map((e) => e.id), componentsWithGaps: mr.componentsWithGaps, supplierFromCatalog: mr.supplierFromCatalog };
-  return { ...base, written: true, overwritten: exists, durationMs, components: comps.length, direct, transitive: comps.length - direct, statuses, vulnerabilities, ...(osvError ? { osvError } : {}), minimum, bytes: Buffer.byteLength(json), bom, logTail };
+  return { ...base, written: true, overwritten: exists, durationMs, components: comps.length, direct, transitive: comps.length - direct, statuses, vulnerabilities, ...(osvError ? { osvError } : {}), minimum, bytes: Buffer.byteLength(json), bom, ...(spdxDoc ? { spdx: spdxDoc } : {}), logTail };
 }
 
 /** 결과 요약 Markdown. */
 export function renderSbomMarkdown(r: GenerateSbomResult): string {
   const L: string[] = [];
-  L.push(`# SBOM 생성 (CycloneDX ${r.specVersion} JSON)`, ``);
+  L.push(r.format === "spdx-json" ? `# SBOM 생성 (SPDX 2.3 JSON)` : `# SBOM 생성 (CycloneDX ${r.specVersion} JSON)`, ``);
   L.push(`- 경로: ${r.projectDir} · 빌드 ${r.buildTool} · 생성기 ${r.generator}`);
   L.push(`- 출력: ${r.outputPath}${r.written ? ` (${r.bytes} bytes${r.overwritten ? ", 덮어씀" : ""})` : r.dryRun ? " (dryRun — 쓰지 않음)" : ""}`);
   L.push(`- 명령: \`${r.command}\``);
@@ -373,6 +390,6 @@ export function renderSbomMarkdown(r: GenerateSbomResult): string {
     if (r.bom?.vulnerabilities?.length) for (const v of r.bom.vulnerabilities.slice(0, 15)) L.push(`  - ${v.id}: ${v.affects.map((a) => a.ref.replace(/^pkg:maven\//, "").replace(/\?type=.*$/, "")).join(", ")}`);
   }
   for (const n of r.notes) L.push(`- ${n}`);
-  L.push(``, `---`, `SBOM 은 공공 SW 공급망 보안 로드맵(2027년 공공기관 SBOM 등록)에 맞춘 CycloneDX 형식입니다. 기준 판정은 check_egovframe_dependencies 와 같은 규칙입니다.`);
+  L.push(``, `---`, `SBOM 은 공공 SW 공급망 보안 로드맵(2027년 공공기관 SBOM 등록)에 맞춘 표준 형식(CycloneDX 1.6 · SPDX 2.3)입니다. 기준 판정은 check_egovframe_dependencies 와 같은 규칙입니다.`);
   return L.join("\n");
 }

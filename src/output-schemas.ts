@@ -105,7 +105,7 @@ export const NetworkOutput = loose({
 export const SbomOutput = loose({
   projectDir: z.string(),
   buildTool: z.enum(["maven", "gradle"]),
-  format: z.enum(["cyclonedx-json"]),
+  format: z.enum(["cyclonedx-json", "spdx-json"]),
   specVersion: z.string(),
   outputPath: z.string(),
   absolutePath: z.string(),
@@ -139,7 +139,7 @@ export const SbomCheckOutput = loose({
   projectDir: z.string(),
   sbomPath: z.string(),
   absolutePath: z.string(),
-  document: loose({ specVersion: z.string(), serialNumber: z.string().nullable(), version: z.number().int(), timestamp: z.string().nullable(), components: z.number().int(), tools: z.array(z.string()), vulnerabilities: z.number().int() }),
+  document: loose({ format: z.enum(["cyclonedx", "spdx"]), specVersion: z.string(), serialNumber: z.string().nullable(), version: z.number().int(), timestamp: z.string().nullable(), components: z.number().int(), tools: z.array(z.string()), vulnerabilities: z.number().int() }),
   minimum: MinimumElements,
   recheck: loose({
     components: z.number().int(),
