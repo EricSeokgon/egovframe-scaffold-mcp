@@ -318,6 +318,12 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
       if (r.exitCode !== 0 || !fs.existsSync(bomFile)) throw new Error(`cyclonedx-maven-plugin 실패(종료 코드 ${r.exitCode}). 로그 끝:\n${logTail}`);
       bom = JSON.parse(fs.readFileSync(bomFile, "utf8")) as SbomDocument;
       if (bom.bomFormat !== "CycloneDX") throw new Error("플러그인 출력이 CycloneDX 문서가 아닙니다");
+      // 플러그인이 metadata.timestamp 를 빼는 환경이 있다(CI 실측) — 최소 요소 '생성 시각'은 이 서버가 생성 시각으로 채운다
+      const ts = bom.metadata?.timestamp;
+      if (!ts || Number.isNaN(Date.parse(ts))) {
+        (bom.metadata ??= {}).timestamp = new Date(now()).toISOString().replace(/\.\d{3}Z$/, "Z");
+        notes.push("플러그인 출력에 metadata.timestamp 가 없어 생성 시각을 넣었습니다(최소 요소 '생성 시각').");
+      }
       const tools = (bom.metadata ??= {}).tools as { components?: unknown[] } | undefined;
       const mine = { type: "application", name: "egovframe-scaffold-mcp", version: SERVER_VERSION };
       if (tools && Array.isArray(tools.components)) tools.components.push(mine); else if (!tools) bom.metadata.tools = { components: [mine] };

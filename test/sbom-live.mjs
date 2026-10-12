@@ -48,6 +48,7 @@ try {
   // (실제 플러그인 출력에 대한 "보강 후 제출 가능" 판정은 고정물로 test:sbom-check 가 결정적으로 단언한다).
   console.log(`info: 옵션 없이 만든 SBOM 의 빠진 요소 — ${gaps(c0)}`);
   assert(c0.minimum.verdict === "needs-work" && !sup.ok && sup.missing.some((m) => m.startsWith("(주) ")) && !au.ok, `옵션 없이 만든 SBOM: 보완 필요 — 주 component 공급자(${sup.satisfied}/${sup.total})·작성자 빔`);
+  assert(elOf(c0, "timestamp").ok && bom.metadata.timestamp, `생성 시각 충족(플러그인이 빼는 환경이면 생성기가 채움): ${bom.metadata.timestamp}${s.notes.some((x) => x.includes("metadata.timestamp 가 없어")) ? " — 생성기가 채움" : ""}`);
   assert(c0.minimum.supplierFromCatalog >= 10 && c0.recheck.components === s.components && c0.recheck.changed.length === 0 && c0.recheck.osv.queried && c0.recheck.osv.recorded && c0.recheck.osv.newIds.length === 0, `재점검: purl ${c0.recheck.components}종 판정 변화 0 · 방금 만든 SBOM 이라 새 취약점 0 (공급자 표 보완 ${c0.minimum.supplierFromCatalog}종)`);
   copyFileSync(s.absolutePath, path.join(mvnDir, "sbom", "bom-before.cdx.json"));
   const s2 = await generateSbom({ projectDir: mvnDir, dryRun: false, offline: false, overwrite: true, supplier: "예시 기관", author: "예시 SI", timeoutMs: 900_000 });
