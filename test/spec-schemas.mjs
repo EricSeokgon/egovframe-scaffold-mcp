@@ -29,3 +29,16 @@ sarifSchema.$id = sarifSchema.id; delete sarifSchema.id; delete sarifSchema.$sch
 const sarifFn = mk().compile(sarifSchema);
 /** SARIF 2.1.0 — 오류가 없으면 null */
 export function validateSarif(doc) { return sarifFn(doc) ? null : fmt(sarifFn); }
+
+// v0.45: Compose Specification(draft 2020-12)
+import Ajv2020 from "ajv/dist/2020.js";
+const composeAjv = new Ajv2020({ strict: false, allErrors: true, validateFormats: true });
+addFormats(composeAjv);
+composeAjv.addFormat("duration", true);
+const composeFn = composeAjv.compile(load("./fixtures/compose-spec/compose-spec.json"));
+/** docker-compose.yml 텍스트 — YAML 해석 후 Compose 스키마. 오류가 없으면 null */
+export function validateCompose(text) {
+  let doc;
+  try { doc = parseYaml(text); } catch (e) { return `YAML 해석 실패: ${e.message}`; }
+  return composeFn(doc) ? null : fmt(composeFn);
+}
