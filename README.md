@@ -43,7 +43,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v0.41–v0.43 기획을 모두 마쳤습니다([기획 원문과 결과](#다음-버전-기획-v041v043)). 다음 세 버전 기획은 아직 없습니다.
+- **다음 계획**: v0.44 보안약점 점검(SARIF) → v0.45 컨테이너·배포 산출물 → v0.46 5.x 최신 유지 + 생성 CI 실행 검증. [다음 버전 기획](#다음-버전-기획-v044v046) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 제공 도구
@@ -541,7 +541,7 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Eri
 
 v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
 
-v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#다음-버전-기획-v041v043) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
+v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). 다음 세 버전(v0.44–v0.46)의 범위는 [다음 버전 기획](#다음-버전-기획-v044v046)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -569,10 +569,94 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v0.41 완료** | 전환 리허설 | `rehearse_egovframe_migration`: 프로젝트 사본에서 migrate apply → reassemble → JDK 17 compile 을 돌려 남는 컴파일 오류 수·분포와 "처리하면 오류가 가장 많이 줄어드는 작업" 목록을 실측(원본 불변), 평가서 등급 옆 실측 표시, CLI `rehearse` — 공식 공통컴포넌트 v4.3.2 전체 트리 기대값 고정 |
 | **v0.42 완료** | 폐쇄망 운영: 오프라인 번들 | `prepare_egovframe_offline_bundle`: OSV Maven 덤프·고정 컴포넌트 아카이브·Initializr zip·원본 태그 미러 + sha256 manifest, `EGOVFRAME_OFFLINE_BUNDLE` 로 모든 다운로드·OSV 조회를 번들로 대체(스냅숏 기준일 표시·오래됨 경고) |
 | **v0.43 완료** | CI·제출 형식 다변화 | `generate_egovframe_ci(platform=gitlab\|jenkins)`(GitLab 공식 스키마 통과·Declarative Jenkinsfile)와 세 플랫폼 게이트에 `sbom-check --fail-on minimum`, 사내 npm 레지스트리·오프라인 번들 변수, SBOM SPDX 2.3 JSON 출력·점검(공식 spdx-spec v2.3 스키마, 실제 Maven SBOM 에서 CycloneDX 와 판정 일치) |
+| **v0.44 계획** | 보안약점 점검 | `check_egovframe_secure_coding`: 행안부·KISA 개발보안 가이드 구현단계 보안약점 중 정적 패턴 항목(SQL 삽입·XSS·경로 조작·XXE·약한 암호·하드코드 정보·오류 노출 등)을 데이터 규칙으로, 공통컴포넌트 출처 구분, SARIF 2.1.0·CI 게이트·평가서 4절 |
+| **v0.45 계획** | 컨테이너·배포 산출물 | `generate_egovframe_deploy`: Classic war(Tomcat 10.1)·Boot jar 멀티 스테이지 Dockerfile, DbType 별 docker-compose, Kubernetes 매니페스트, 폐쇄망 레지스트리 — hadolint·kubeconform·실제 빌드·기동 검증 |
+| **v0.46 계획** | 5.x 최신 유지 + CI 실행 검증 | `migrate_egovframe_project(target="5.0.2")` 로 5.x 프로젝트 parent·RTE 갱신(적용·컴파일 검증), 생성 `Jenkinsfile`·`.gitlab-ci.yml` 을 실제 Jenkins·GitLab 실행기로 검증 |
 
-## 다음 버전 기획 (v0.41–v0.43)
+## 다음 버전 기획 (v0.44–v0.46)
 
-v0.40.0 까지 끝난 상태(2026-10-07, 도구 30종 + CLI 명령 8종, 테스트 약 1,600건, npm 0.40.0 자동 배포)에서 다음 세 릴리스를 아래 순서로 진행합니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 이번 세 버전의 공통 주제는 **현장에서 그대로 쓰기** 입니다 — 자동 단계를 모두 돌린 뒤 사람이 고칠 것이 실제로 얼마나 남는지를 사본에서 재고(v0.41), 망분리된 공공 개발 환경에서도 인터넷 없이 같은 결과를 내며(v0.42), GitHub Actions 와 CycloneDX 밖의 빌드 서버·제출 형식(Jenkins·GitLab, SPDX)으로 넓힙니다(v0.43). 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-07)"에 있습니다.
+v0.43.0 까지 끝난 상태(2026-10-12, 도구 32종 + CLI 명령 10종, npm 0.43.0 자동 배포)에서 다음 세 릴리스를 아래 순서로 진행합니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 문서·저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 이번 세 버전의 공통 주제는 **납품 품질** 입니다 — 감리·보안약점 진단에서 지적되는 코드 패턴을 미리 찾고(v0.44), 공공 클라우드 전환에 맞춰 컨테이너·배포 산출물을 같은 기준으로 만들며(v0.45), 만든 5.x 프로젝트를 최신 기준으로 유지하고 생성한 CI 를 실제 빌드 서버에서 돌려 확인합니다(v0.46). 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-12)"에 있습니다.
+
+### v0.44.0 — 보안약점 점검 (`check_egovframe_secure_coding`)
+
+**목표**: 행정안전부·KISA 「소프트웨어 개발보안 가이드」(2021, 설계단계 20개·구현단계 49개 보안약점)는 정보시스템 감리 대상 사업에 적용되고, 납품 전 보안약점 진단에서 지적된 항목은 그대로 재작업이 됩니다. 지금 서버는 의존성·보안 설정(`sec.security`·CSRF·XSS 필터·보안 헤더)까지만 보고 **소스 코드 패턴**은 보지 않습니다. 공통컴포넌트·생성 코드·사용자 코드에서 정적 패턴으로 근거 있게 잡을 수 있는 구현단계 항목을 먼저 찾아, 진단 전에 고칠 목록을 만듭니다.
+
+**범위 (포함)**
+- 새 도구 `check_egovframe_secure_coding(projectDir, rules?, paths?, baselinePath?, format="markdown"|"json"|"sarif", outputPath?)`(33번째, 읽기 전용): 규칙은 `catalog/secure-coding-rules.json` 데이터 — 항목마다 가이드의 보안약점 이름·유형(입력데이터 검증 및 표현·보안기능·에러처리·코드오류·캡슐화·API 오용), CWE 번호, 대상 파일 종류, 패턴, 예외 조건, 심각도, 조치 예시를 둡니다. 1차 규칙(구현단계 49개 중 정적 패턴으로 오탐을 통제할 수 있는 것):
+  - **SQL 삽입**: MyBatis·iBATIS 매퍼의 `${…}`(정렬 컬럼처럼 값 목록 검증이 필요한 경우를 구분해 안내), JDBC 문자열 연결 `executeQuery("…" + …)`
+  - **크로스사이트 스크립트**: JSP 의 `<%= request… %>`·`${param.…}` 직접 출력, `<c:out escapeXml="false">`
+  - **경로 조작**·**신뢰되지 않는 URL 리다이렉트**: `new File(request.getParameter(…))`, `sendRedirect(request.getParameter(…))`
+  - **XML 외부 개체 참조(XXE)**: 외부 엔티티를 막지 않은 `DocumentBuilderFactory`·`SAXParserFactory`·`XMLInputFactory`
+  - **취약한 암호화 알고리즘·해시**: `MessageDigest.getInstance("MD5"|"SHA-1")`, `Cipher.getInstance("DES…"|"…/ECB/…")`
+  - **적절하지 않은 난수**: 보안 문맥(토큰·비밀번호·세션)의 `java.util.Random`
+  - **하드코드된 중요정보**: 비밀번호·키 문자열 상수(테스트·예제 경로는 별도 등급)
+  - **오류 메시지 정보노출**·**오류 상황 대응 부재**: `printStackTrace()`, 빈 `catch`
+  - **신뢰할 수 없는 데이터의 역직렬화**: `ObjectInputStream.readObject` 직접 사용
+  - **쿠키·세션 보안 속성**: `HttpOnly`·`Secure` 없이 만드는 `Cookie`, `web.xml`/Boot 설정의 세션 쿠키 속성
+- 결과: 항목별 파일·라인·코드 한 줄·조치 예시, 공통컴포넌트 매니페스트로 **공통컴포넌트 출처**(upstream 원본 그대로인지·사용자 수정인지)를 표시해 "공통컴포넌트 업그레이드로 해결" 과 "직접 수정" 을 나눕니다. `baselinePath` 와 비교(새로 생긴 것만), 예외 처리 파일(`.egovframe-secure-ignore.json` — 규칙·경로·사유·검토자, 사유 없는 예외 거부).
+- **SARIF 2.1.0** 출력 — GitHub code scanning(`upload-sarif`)과 GitLab 보안 리포트에 그대로 올라가게 합니다. `generate_egovframe_ci(supplyChain=true)` 게이트에 `secure --fail-on high` 단계(세 플랫폼)를 선택으로 더합니다.
+- 평가서 4절(보안)에 보안약점 건수·심각도·출처 요약, 공급망 등급 산식에 반영할지는 실측 후 결정(산식 변경 시 문서화). CLI `secure`(지표 `high`·`medium`·`total`·`new`).
+
+**범위 (제외)**: 설계단계 20개 항목(요구사항·설계 문서 대상), 데이터 흐름(taint) 분석 — 패턴 기반이며 공인 진단도구를 대체하지 않는다는 점을 결과에 명시, 자동 수정(조치 예시까지)
+
+**검증 기준**: 규칙마다 양성·음성 픽스처(오탐 방지 사례 포함), 공식 공통컴포넌트 v3.10.0·v4.3.2 회귀 코퍼스와 공식 5.x 템플릿 2종의 규칙별 건수를 `catalog/migration-corpus.json` 에 기대값으로 고정(±1%), 공식 템플릿에서 높음 등급 0건이 아니면 근거를 README 에 기록, SARIF 출력이 OASIS SARIF 2.1.0 공식 JSON 스키마(테스트 고정물) 통과, Windows 게이트 통과
+
+**완료 정의**: 도구 33종, `docs/design-secure-coding.md`(규칙 표·근거·오탐 통제), README 「납품 전 보안약점 점검」 절과 CI 예시(SARIF 업로드)
+
+### v0.45.0 — 컨테이너·배포 산출물 (`generate_egovframe_deploy`)
+
+**목표**: 공공 정보시스템의 클라우드 네이티브 전환이 진행되면서 표준프레임워크 프로젝트도 컨테이너 이미지와 쿠버네티스 매니페스트를 함께 납품하는 일이 늘었습니다. 지금은 사업마다 Dockerfile 을 손으로 쓰며 Classic(war)·Boot(jar)·DB 종류·`globals.properties` 설정 주입이 매번 달라집니다. 진단 결과(빌드 도구·패키징·DbType·템플릿 종류)로 같은 기준의 배포 산출물을 만듭니다.
+
+**범위 (포함)**
+- 새 도구 `generate_egovframe_deploy(projectDir, targets=["docker","compose","k8s"], jdk="17", imageRegistry?, appName?, dryRun=true)`(34번째, 새 파일만):
+  - **Dockerfile**(멀티 스테이지): 빌드 스테이지(Maven/Gradle·래퍼, 의존성 캐시 레이어) → 실행 스테이지 — Classic `war` 는 `tomcat:10.1-jdk17-temurin`(Jakarta EE 9+ 를 지원하는 Tomcat 10.1, ROOT 배포), Boot `jar` 는 `eclipse-temurin:17-jre`. 비루트 사용자, `HEALTHCHECK`, 시간대(`Asia/Seoul`)·인코딩, `.dockerignore`.
+  - **docker-compose**: 앱 + DbType 에 맞는 DB(mysql·mariadb·postgres; oracle·tibero·altibase·cubrid 는 외부 DB 로 연결 정보만), `globals.properties`·`application.yml` 의 DB 키를 환경 변수로 덮어쓰는 방법(템플릿별 키 표를 데이터로).
+  - **Kubernetes**: Deployment(readiness·liveness 프로브, 리소스 요청·제한, 비루트 securityContext)·Service·ConfigMap·Secret(값은 자리표시자)·선택 Ingress.
+  - `imageRegistry` 로 기반 이미지 레지스트리를 바꿔 폐쇄망(사내 Harbor 등)에 대응하고, 오프라인 번들 문서에 이미지 반입 절차를 더합니다.
+- 템플릿 종류별 지원표: Classic web·template 4종(war), Boot web·simple-backend·batch-web(jar), 배치 commandline·scheduler(jar, Service 없음), MSA·모바일·프론트엔드 템플릿은 1차 제외(자체 배포 구성이 있거나 정적 자산)를 데이터로 두고 미지원이면 이유를 돌려줍니다.
+
+**범위 (제외)**: Helm 차트·Kustomize 오버레이, 레지스트리 push·클러스터 배포 실행, 운영 DB 이관
+
+**검증 기준**: 생성 Dockerfile 이 hadolint(고정 버전) 경고 0, 매니페스트가 kubeconform(쿠버네티스 1.31 공식 스키마) 통과, CI 통합에서 공식 `egov-web`(Classic war)·`egov-boot-web`(Boot jar) 템플릿으로 실제 `docker build` → 컨테이너 기동 → HTTP 200 과 HEALTHCHECK healthy, docker-compose(mysql) 기동 후 앱이 DB 에 연결, 게이트에서는 템플릿 종류별 생성 결과 구조 단언·dryRun 무기록·기존 파일 거부
+
+**완료 정의**: 도구 34종, `docs/design-deploy.md`, README 「컨테이너·배포 산출물」 절(폐쇄망 이미지 반입 포함)
+
+### v0.46.0 — 5.x 최신 유지 + 생성 CI 실행 검증
+
+**목표**: 공식 Initializr 템플릿은 여전히 parent 5.0.0 으로 만들어져(공식 parent 최신 5.0.2) 새 프로젝트가 만들어지는 순간부터 기준 미만입니다. 3.x/4.x → 5.x 전환(`migrate`)은 있지만 **5.x 안의 갱신**(parent·RTE 5.0.x·Spring Boot 패치, 공통컴포넌트 5.0.x → 5.0.7)은 사람이 합니다. 또 v0.43 의 GitLab·Jenkins 설정은 스키마·구조만 확인했고 실제 빌드 서버에서 돌려 보지 않았습니다.
+
+**범위 (포함)**
+- `migrate_egovframe_project(target="5.0.2")` — 이미 5.x 인 프로젝트의 갱신 모드: parent 버전, RTE 모듈 좌표, parent 관리 속성(`spring.version` 등)을 공식 parent 5.0.2 기준으로 맞추는 auto 항목과 5.0.0 → 5.0.2 사이 RTE 변경(공식 `egovframe-runtime` 태그 비교로 생성한 규칙 데이터)의 manual 항목, `apply=true`(transaction·백업)와 `verify=true`(compile). 공통컴포넌트는 기존 `upgrade_egovframe_project` 로 5.0.7 까지 이어 주는 안내와 평가서 2절 "5.x 최신 유지" 항목.
+- `create_egovframe_project(alignParent=true)` 선택 옵션 — 생성 직후 같은 갱신을 적용(기본은 공식 템플릿 그대로).
+- 생성 CI 실행 검증(CI 통합): (1) **Jenkins** — 공식 `jenkins/jenkins` LTS 컨테이너에 Pipeline 플러그인을 고정 버전으로 설치하고, 선언형 문법 검증(declarative linter) 후 생성 `Jenkinsfile` 을 공식 web 템플릿 작업공간에서 실제로 실행해 Build·SBOM·SBOM check·Assessment 단계와 보관 산출물을 확인, (2) **GitLab** — 생성 `.gitlab-ci.yml` 을 로컬 실행기로 돌려 build·supply-chain job 성공과 산출물을 확인(실행기 선택은 선행 조사에서 확정).
+- 보류였던 브랜치 보호 설정을 README 운영 절차로 확정.
+
+**범위 (제외)**: 5.x 의 마이너 이상 갱신(5.1 등 미출시), Jenkins·GitLab 서버 설정 자동화, 공통컴포넌트 사용자 수정의 자동 재적용
+
+**검증 기준**: Initializr 고정 commit 의 공식 web·boot-web 템플릿을 5.0.2 로 갱신 → JDK 17 `mvn compile` 통과·의존성 점검 기준 미만 감소(실측값 고정)·평가서 공급망 등급 변화 기록, 갱신 dryRun 무기록·fault-injection 롤백, Jenkins·GitLab 실행 검증 통과(CI 통합)
+
+**완료 정의**: 도구 34종(변화 없음), `docs/design-migration.md` 에 5.x 갱신 절, README 「CI 설정 생성」 절에 실행 검증 결과
+
+### 보류·운영 항목
+
+- **브랜치 보호(소유자 1회)**: `main` 에 "Require status checks to pass"(gate 6 + integration)를 켜면 실패 상태 병합이 재발하지 않습니다(v0.46 에서 운영 절차로 확정). `gh api -X PUT repos/EricSeokgon/egovframe-scaffold-mcp/branches/main/protection --input protection.json`(`required_status_checks.contexts` 에 체크 이름 7개, `enforce_admins: false`, `required_pull_request_reviews: null`, `restrictions: null`).
+- **Initializr upstream**: 템플릿 pom parent 5.0.0 문제를 포함한 기존 4건은 upstream 이슈로 제출할 가치가 있습니다(v0.46 의 갱신 모드는 그동안의 우회).
+- **기준 없음 잔여**: `xerces:xercesImpl` 은 공개 기준이 없어 그대로 둡니다.
+- **응답 본문 영문화**: 평가서·점검 결과의 라벨·헤더 영문화(`--lang en`)는 계속 후순위입니다.
+- **MCP 신기능**: `tasks`(장시간 도구의 비동기 실행)는 SDK 1.32.1 에서도 `experimental/tasks` 아래에 있어 보류합니다. 안정 API 로 올라오면 리허설·번들·배포 이미지 빌드처럼 수 분 걸리는 도구부터 적용합니다.
+
+### 선행 조사 결과 (2026-10-12)
+
+- **upstream 태그**: `egovframe-runtime` 최신 v5.0.2-Final, `egovframe-common-components` v5.0.7(`7912e13`), `egovframe-vscode-initializr` 최신 태그 v5.0.6(`84d3682`)·`main` `bc18641`, `egovframe-development` v5.0.2, `egovframe-ai-rag` v5.0.0 — 지난 기획(2026-10-07) 이후 새 태그 없음.
+- **개발보안 기준**: 행정안전부·KISA 「전자정부 SW 개발·운영자를 위한 소프트웨어 개발보안 가이드」(2021 개정)는 설계단계 보안요구 20개·구현단계 보안약점 49개를 두고, 정보시스템 감리 대상 사업에 적용됩니다(개발보안 의무화 2012-12). 항목 이름·유형은 가이드 원문 표기로 규칙 데이터에 옮깁니다.
+- **코퍼스 실측(패턴 빈도, 회귀 코퍼스 부분 트리)**: 공식 공통컴포넌트 v3.10.0 / v4.3.2 — MyBatis·iBATIS 매퍼 중 `${…}` 를 쓰는 파일 42 / 48개(84 / 96건), JSP 스크립틀릿 출력 `<%=` 192 / 195건, `printStackTrace()` 22 / 47건, 약한 해시·암호 호출 1 / 1건, `new Random(` 4 / 3건. 매퍼의 `${…}` 는 정렬 컬럼·테이블 접두어처럼 바인딩으로 바꿀 수 없는 경우가 섞여 있어 규칙의 예외 조건(허용 목록 검증 여부)이 오탐 통제의 핵심입니다.
+- **배포 기반 이미지**: Docker Hub 공식 `tomcat:10.1-jdk17-temurin`(Jakarta EE 9+ 서블릿 — 5.x 템플릿의 `jakarta.servlet-api` 5.0 과 호환)과 `eclipse-temurin:17-jre` 태그가 있습니다.
+- **Jenkins 실행 검증**: `jenkinsci/jenkinsfile-runner` 는 2022년 이후 이미지 갱신이 없어(마지막 태그 1.0-beta-32) 쓰지 않고, 공식 `jenkins/jenkins` LTS + 고정 플러그인 방식으로 검증합니다.
+- **도구 의존성**: `@modelcontextprotocol/sdk` 최신 1.32.1(동봉과 같음), `tasks` 는 여전히 `experimental` 경로.
+
+## 이전 기획 (v0.41–v0.43, 완료)
+
+v0.40.0 까지 끝난 상태(2026-10-07, 도구 30종 + CLI 명령 8종, 테스트 약 1,600건, npm 0.40.0 자동 배포)에서 다음 세 릴리스를 아래 순서로 진행했습니다. 세 버전 모두 2026-10-12 까지 완료했으며 기획 원문은 기록으로 남기고 결과를 항목 아래에 적었습니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 이번 세 버전의 공통 주제는 **현장에서 그대로 쓰기** 입니다 — 자동 단계를 모두 돌린 뒤 사람이 고칠 것이 실제로 얼마나 남는지를 사본에서 재고(v0.41), 망분리된 공공 개발 환경에서도 인터넷 없이 같은 결과를 내며(v0.42), GitHub Actions 와 CycloneDX 밖의 빌드 서버·제출 형식(Jenkins·GitLab, SPDX)으로 넓힙니다(v0.43). 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-07)"에 있습니다.
 
 ### v0.41.0 — 전환 리허설 (`rehearse_egovframe_migration`)
 
@@ -626,7 +710,7 @@ v0.40.0 까지 끝난 상태(2026-10-07, 도구 30종 + CLI 명령 8종, 테스�
 
 **결과(2026-10-11) — 완료**: `src/ci-config.ts`(세 플랫폼이 같은 게이트 명령 목록 `supplyChainCommands` 를 씀)와 `src/spdx.ts`(`cdxToSpdx`·`spdxToCdx`). 실측: 공식 web 템플릿을 실제 Maven·cyclonedx-maven-plugin 으로 만든 SBOM(67 component, OSV 27건)을 SPDX 2.3 으로 바꾸면 패키지 68·관계 165 로 공식 spdx-spec v2.3 스키마를 통과하고, SPDX 를 점검한 결과가 CycloneDX 점검과 **component 67·최소 요소 7종의 요소별 충족 수(68/68 …)·판정 ready 까지 같으며** 둘을 비교하면 차이 0 입니다. 생성 `.gitlab-ci.yml` 은 maven·gradle·게이트 유무·환경 변수 조합 4가지 모두 GitLab 공식 CI 스키마(v19.4.1-ee 고정물)를 통과합니다. 계획과 달라진 점: (a) **SPDX 점검은 별도 규칙을 두지 않고** SPDX 를 내부 CycloneDX 모양으로 옮겨 같은 최소 요소·재판정·비교 코드를 그대로 씁니다 — 대응(공급자 = `PackageSupplier`/`PackageOriginator`, 의존관계 = 그 패키지가 주어인 `DEPENDS_ON`, 작성자 = `creators` 의 Person·Organization)은 `src/spdx.ts` 머리 주석과 「SBOM 제출 준비」 표에 있습니다. (b) "의존 없음"과 "모름"을 구분하려고 의존이 없는 패키지는 `DEPENDS_ON NONE`(SPDX 2.3 §11.1)으로 쓰고, `NOASSERTION` 은 모름으로 읽습니다. (c) 기준 판정(`egovframe:*`)과 OSV 결과를 SPDX 의 annotations·`SECURITY`/`advisory` externalRefs 로 옮겨, SPDX 로 낸 뒤에도 재판정의 "생성 이후 바뀐 판정"·"새로 알려진 취약점"이 동작합니다. (d) 생성 시각은 SPDX 필수 항목이라 원본에 없으면 변환 시각을 넣고 알립니다(이 경우만 판정이 달라질 수 있음). (e) 게이트의 `sbom-check --fail-on minimum` 은 공급자 단서(`supplier` 또는 pom `<organization>`)가 없으면 실패하므로 `supplier` 파라미터를 더하고 생성 응답이 미리 알립니다. (f) GitLab 은 JUnit 리포트와 `artifacts:reports:cyclonedx`, Jenkins 는 Linux·Windows 에이전트 공용 실행(`isUnix()` 로 `sh`/`bat`)을 넣었습니다. Jenkins 실제 실행 검증은 보류 항목으로 남깁니다.
 
-### 보류·운영 항목
+### 보류·운영 항목 (당시)
 
 - **Jenkins 실행 검증**: 생성 `Jenkinsfile` 은 Declarative 구조만 단언합니다. 실제 Jenkins(컨테이너)에서 돌리는 통합 검증은 아직 없습니다.
 - **브랜치 보호(소유자 1회)**: `main` 에 "Require status checks to pass"(gate 6 + integration)를 켜면 실패 상태 병합이 재발하지 않습니다. `gh api -X PUT repos/EricSeokgon/egovframe-scaffold-mcp/branches/main/protection --input protection.json`(`required_status_checks.contexts` 에 체크 이름 7개, `enforce_admins: false`, `required_pull_request_reviews: null`, `restrictions: null`).
