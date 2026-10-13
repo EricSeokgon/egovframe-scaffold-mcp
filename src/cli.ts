@@ -71,6 +71,11 @@ export const COMMANDS: Record<string, CommandDef> = {
       return `${s.sbomPath} — 최소 요소 ${m.verdict === "ready" ? "제출 가능" : "보완 필요"}${o.queried ? ` · 새 취약점 ${Array.isArray(o.newIds) ? o.newIds.length : 0}` : ""}${df ? ` · 비교 +${Array.isArray(df.added) ? df.added.length : 0}/-${Array.isArray(df.removed) ? df.removed.length : 0}/버전 ${Array.isArray(df.versionChanged) ? df.versionChanged.length : 0}` : ""}${vx ? ` · VEX ${vx.written ? "기록" : "미기록"} in_triage ${num(rec(vx.states).in_triage)}` : ""}`;
     },
   },
+  secure: {
+    tool: "check_egovframe_secure_coding", summary: "보안약점 점검(개발보안 가이드 구현단계, --sarif-path 로 SARIF)",
+    metrics: (s) => { const sm = rec(s.summary); return { high: num(sm.high), medium: num(sm.medium), low: num(sm.low), total: num(sm.total), new: num(sm.new) }; },
+    line: (s) => { const sm = rec(s.summary); return `보안약점 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}${sm.new !== null && sm.new !== undefined ? ` · 새로 생김 ${num(sm.new)}` : ""}${s.sarif ? ` · SARIF ${rec(s.sarif).path}` : ""}`; },
+  },
   rehearse: {
     tool: "rehearse_egovframe_migration", summary: "전환 리허설(사본에서 재조립·적용·컴파일, 원본 불변)",
     metrics: (s) => {

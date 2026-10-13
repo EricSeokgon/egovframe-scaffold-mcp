@@ -22,3 +22,10 @@ export function validateGitlabCi(text) {
   return gitlabFn(doc) ? null : fmt(gitlabFn);
 }
 export { parseYaml };
+
+// v0.44: SARIF 2.1.0(OASIS, draft-04) — 최상위 id → $id, $schema 제거 후 ajv(draft-07)로 컴파일
+const sarifSchema = load("./fixtures/sarif-2.1.0/sarif-schema-2.1.0.json");
+sarifSchema.$id = sarifSchema.id; delete sarifSchema.id; delete sarifSchema.$schema;
+const sarifFn = mk().compile(sarifSchema);
+/** SARIF 2.1.0 — 오류가 없으면 null */
+export function validateSarif(doc) { return sarifFn(doc) ? null : fmt(sarifFn); }

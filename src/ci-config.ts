@@ -43,6 +43,8 @@ export interface CiSupplyChainOptions {
   version?: string;
   /** v0.43: SBOM 공급자(pom <organization><name> 이 없을 때 최소 요소 '공급자' 충족용) */
   supplier?: string;
+  /** v0.44: 보안약점 점검 단계(secure --fail-on high, SARIF) */
+  secureCoding?: boolean;
 }
 /** v0.43: 실행 환경 변수(세 플랫폼 공통) */
 export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string }
@@ -67,20 +69,23 @@ export function ciEnvEntries(env: CiEnvOptions = {}): [string, string][] {
 }
 
 /** 공급망 게이트의 CLI 명령(플랫폼 공통). stepSummary 는 GitHub 에서만. */
-export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary = false): { id: "sbom" | "sbom-check" | "assess"; name: string; command: string }[] {
+export type GateStepId = "sbom" | "sbom-check" | "secure" | "assess";
+export const SECURE_SARIF = "egovframe-secure.sarif";
+export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary = false): { id: GateStepId; name: string; command: string }[] {
   checkSupplyChain(opts);
   const failOn = opts.failOn ?? "supplyChain:D";
   const npx = `npx -y egovframe-scaffold-mcp@${opts.version ?? SERVER_VERSION}`;
   const offline = opts.osv === false ? "" : " --offline=false";
-  const out: { id: "sbom" | "sbom-check" | "assess"; name: string; command: string }[] = [];
+  const out: { id: GateStepId; name: string; command: string }[] = [];
   if (opts.sbom !== false) {
     out.push({ id: "sbom", name: "SBOM (CycloneDX 1.6)", command: `${npx} sbom --project . --write --overwrite${offline}${opts.supplier ? ` --supplier "${opts.supplier}"` : ""}` });
     out.push({ id: "sbom-check", name: "SBOM minimum elements (7)", command: `${npx} sbom-check --project . --out egovframe-sbom-check.md${stepSummary ? " --step-summary" : ""} --fail-on minimum` });
   }
+  if (opts.secureCoding) out.push({ id: "secure", name: "Secure coding weaknesses (SARIF)", command: `${npx} secure --project . --sarif-path ${SECURE_SARIF} --overwrite --out egovframe-secure.md${stepSummary ? " --step-summary" : ""} --fail-on high` });
   out.push({ id: "assess", name: "Migration readiness and supply-chain grades", command: `${npx} assess --project .${offline} --out egovframe-assessment.md${stepSummary ? " --step-summary" : ""} --fail-on ${failOn}` });
   return out;
 }
-const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : [])];
+const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : [])];
 
 // ── GitHub Actions ───────────────────────────────────────
 /** 공급망 게이트 job(v0.39, v0.43 에 sbom-check 단계): SBOM 생성 → 최소 요소 점검 → 평가서(등급을 PR 요약에) → 아티팩트. */
@@ -91,6 +96,7 @@ export function supplyChainJobYaml(buildTool: "maven" | "gradle", jdk: string, o
     "  supply-chain:",
     "    name: supply-chain gate (eGovFrame)",
     "    runs-on: ubuntu-latest",
+    ...(opts.secureCoding ? ["    permissions:", "      contents: read", "      security-events: write"] : []),
     ...(envs.length ? ["    env:", ...envs.map(([k, v]) => `      ${k}: '${v}'`)] : []),
     "    steps:",
     "      - uses: actions/checkout@v4",
@@ -104,6 +110,15 @@ export function supplyChainJobYaml(buildTool: "maven" | "gradle", jdk: string, o
     "          node-version: '22'",
   ];
   for (const c of cmds) lines.push(`      - name: ${c.name}`, `        run: ${c.command}`);
+  // v0.44: code scanning 업로드 — Advanced Security 가 없는 비공개 저장소에서는 실패하므로 게이트 판정에 넣지 않는다
+  if (opts.secureCoding) lines.push(
+    "      - uses: github/codeql-action/upload-sarif@v3",
+    "        if: always() && hashFiles('egovframe-secure.sarif') != ''",
+    "        continue-on-error: true",
+    "        with:",
+    `          sarif_file: ${SECURE_SARIF}`,
+    "          category: egovframe-secure-coding",
+  );
   lines.push(
     "      - uses: actions/upload-artifact@v4",
     "        if: always()",
@@ -229,7 +244,7 @@ export function generateJenkinsfile(buildTool: "maven" | "gradle", jdkInput: str
     ...stage("Build", build),
   ];
   if (supplyChain) {
-    const names: Record<string, string> = { "sbom": "SBOM", "sbom-check": "SBOM check", "assess": "Assessment" };
+    const names: Record<string, string> = { "sbom": "SBOM", "sbom-check": "SBOM check", "secure": "Secure coding", "assess": "Assessment" };
     for (const c of supplyChainCommands(supplyChain, false)) L.push(...stage(names[c.id], [`run(${gq(c.command)})`]));
   }
   L.push("  }", "  post {", "    always {");
@@ -244,6 +259,8 @@ export function generateJenkinsfile(buildTool: "maven" | "gradle", jdkInput: str
 export interface CiResult { projectDir: string; platform: CiPlatform; buildTool: "maven" | "gradle"; path: string; dryRun: boolean; content: string; notes: string[] }
 
 export interface GenerateCiOptions extends CiEnvOptions {
+  /** v0.44: 게이트에 보안약점 점검 단계(SARIF) */
+  secureCoding?: boolean;
   projectDir: string;
   platform?: CiPlatform;
   jdk?: string;
@@ -261,7 +278,8 @@ export function generateCiConfig(opts: GenerateCiOptions): CiResult {
   const platform = opts.platform ?? "github";
   if (!(platform in CI_PATHS)) throw new Error(`지원하지 않는 platform: ${platform} (github·gitlab·jenkins)`);
   const buildTool = detectBuildTool(projectDir);
-  const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}) } : false;
+  const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}), ...(opts.secureCoding ? { secureCoding: true } : {}) } : false;
+  if (opts.secureCoding && !opts.supplyChain) throw new Error("secureCoding 은 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
   const env: CiEnvOptions = { ...(opts.npmRegistry ? { npmRegistry: opts.npmRegistry } : {}), ...(opts.offlineBundle ? { offlineBundle: opts.offlineBundle } : {}) };
   const jdk = opts.jdk ?? "17";
   const content = platform === "gitlab" ? generateGitlabCi(buildTool, jdk, sc, env) : platform === "jenkins" ? generateJenkinsfile(buildTool, jdk, sc, env) : generateCiYaml(buildTool, jdk, sc, env);

@@ -15,6 +15,8 @@ import { readRehearsalRecord } from "./rehearse.js";
 import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
+import { checkSecureCoding } from "./secure-coding.js";
+const SECURE_ORIGIN_KO: Record<string, string> = { component: "공통컴포넌트 원본", "component-modified": "공통컴포넌트 수정본", "component-unmanaged": "공통컴포넌트(매니페스트 없음)", project: "프로젝트 코드", test: "테스트" };
 
 // ── 등급 산식 (데이터) ─────────────────────────────────
 export type Grade = "A" | "B" | "C" | "D";
@@ -132,6 +134,8 @@ export interface AssessmentResult {
     notes: string[];
   };
   security: { ok: number; missing: number; na: number; checks: SecurityCheck[] };
+  /** v0.44: 보안약점 점검(check_egovframe_secure_coding) 요약 — 등급 산식에는 넣지 않는다 */
+  secureCoding: { total: number; high: number; medium: number; low: number; byOrigin: Record<string, number>; byRule: { rule: string; guideItem: string; severity: string; count: number }[]; suppressed: number; error?: string };
   sbom: {
     present: boolean; path: string; components?: number; specVersion?: string; timestamp?: string; vulnerabilities?: number;
     /** v0.40: 최소 요소 7종 */
@@ -236,6 +240,14 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
 
   // 보안
   const security = { ok: dep.checks.filter((c) => c.status === "ok").length, missing: dep.checks.filter((c) => c.status === "missing").length, na: dep.checks.filter((c) => c.status === "n/a").length, checks: dep.checks };
+  // v0.44: 보안약점(패턴) — 실패해도 평가서는 계속
+  let secureCoding: AssessmentResult["secureCoding"];
+  try {
+    const sc = await checkSecureCoding({ projectDir, maxFindings: 1, maxFiles: opts.maxFiles });
+    secureCoding = { total: sc.summary.total, high: sc.summary.high, medium: sc.summary.medium, low: sc.summary.low, byOrigin: Object.fromEntries(Object.entries(sc.byOrigin).filter(([, n]) => n)), byRule: sc.byRule, suppressed: sc.summary.suppressed };
+  } catch (e) {
+    secureCoding = { total: 0, high: 0, medium: 0, low: 0, byOrigin: {}, byRule: [], suppressed: 0, error: e instanceof Error ? e.message : String(e) };
+  }
   // SBOM
   const sbom = readSbom(projectDir, (opts.sbomPath ?? DEFAULT_SBOM_PATH).replace(/\\/g, "/"));
 
@@ -268,7 +280,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       ...(dep.osvError ? { osvError: dep.osvError } : {}),
       notes: dep.notes,
     },
-    security, sbom,
+    security, secureCoding, sbom,
     grades: { migration, supplyChain },
     ...(() => {
       const rec = readRehearsalRecord(projectDir);
@@ -355,6 +367,15 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     const mark = c.status === "ok" ? "✅" : c.status === "missing" ? "⚠️" : "➖";
     L.push(`- ${mark} ${c.title}: ${c.status}${c.hint ? ` — ${c.hint}` : ""}`);
     for (const e of c.evidence.slice(0, 2)) L.push(`  - ${e.file}${e.line ? `:${e.line}` : ""} \`${e.text}\``);
+  }
+
+  const sc = r.secureCoding;
+  L.push(``, `### 보안약점 패턴 (개발보안 가이드 구현단계, \`check_egovframe_secure_coding\`)`, ``);
+  if (sc.error) L.push(`- 점검 실패: ${sc.error}`);
+  else {
+    L.push(`- 높음 ${sc.high} · 중간 ${sc.medium} · 낮음 ${sc.low} (합계 ${sc.total}${sc.suppressed ? ` · 예외 처리 ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — 출처 ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`);
+    for (const b of sc.byRule.slice(0, 6)) L.push(`  - ${b.guideItem} \`${b.rule}\` ${b.count}건`);
+    L.push(`- 등급 산식에는 넣지 않습니다(패턴 기반 진단 보조). 파일·라인·조치는 check_egovframe_secure_coding, CI 는 SARIF 로.`);
   }
 
   L.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? ` · vulnerabilities ${r.sbom.vulnerabilities}건` : ""}` : `➖ ${r.sbom.note}`}`);

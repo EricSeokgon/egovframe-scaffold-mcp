@@ -148,3 +148,5 @@ export { EXIT as CLI_EXIT, COMMANDS as CLI_COMMANDS, parseArgs, kebabToCamel, co
 export type { ParsedArgs, FailCondition, CliIo } from "./cli.js";
 export { REASSEMBLE_STATES, REASSEMBLE_STATE_LABEL, unifiedPatch, reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 export type { ReassembleState, ReassembleAction, ReassembleFile, ReassembleWorkItem, ReassembleOptions, ReassembleResult } from "./reassemble.js";
+export { loadSecureRules, compileRulePattern, stripJavaComments, stripMarkupComments, targetOf, checkSecureCoding, toSarif, renderSecureCodingMarkdown, IGNORE_FILE } from "./secure-coding.js";
+export type { SecureRule, SecureRules, SecureFinding, SecureCodingOptions, SecureCodingResult, SecureSeverity, SecureOrigin } from "./secure-coding.js";

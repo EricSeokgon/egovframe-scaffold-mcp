@@ -44,7 +44,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `EGOVFRAME_ALLOWED_ROOTS` | Optional sandbox: every directory argument (`projectDir`, `outputDir`) must be inside one of these roots (path-separator-delimited, realpath-checked). |
 | `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list`. Responses stay Korean. |
 
-## Tools (32)
+## Tools (33)
 
 | Tool | What it does |
 |---|---|
@@ -72,6 +72,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `prepare_egovframe_offline_bundle` | For air-gapped (network-separated) environments: on an internet PC, bundle the full OSV Maven dump, the pinned common-components archive, the Initializr zip templates and a mirror of the official common-components tags with a sha256 manifest. On the air-gapped PC set `EGOVFRAME_OFFLINE_BUNDLE`: downloads are served from the bundle after fingerprint checks, OSV lookups use the local dump (snapshot date noted, warning after 30 days) and reassembly uses the mirror. The local dump matched online OSV on 73/73 queries |
 | `generate_egovframe_sbom` | CycloneDX 1.6 JSON (default) or SPDX 2.3 JSON (`bomFormat="spdx-json"`) SBOM without touching build files — Maven via cyclonedx-maven-plugin (hashes, licenses), Gradle from the resolved tree; baseline verdict per component (`egovframe:*` properties), optional OSV `vulnerabilities[]`; writes inside the project only, `dryRun` by default |
 | `check_egovframe_sbom` | Check an existing CycloneDX or SPDX 2.x SBOM (format detected) without changing it: the 7 minimum elements (supplier, name, version, unique identifier, dependency relationship, author, timestamp) per component with a ready / needs-work verdict, a purl-only re-check (changed baseline verdicts, OSV findings published since generation), a diff against `baselinePath`, and with `vex=true` a CycloneDX VEX draft (`in_triage`, BOM-Link) that keeps human decisions |
+| `check_egovframe_secure_coding` | Scan sources for security weaknesses from the implementation-stage list of the Korean secure coding guide (MOIS/KISA 2021) that static patterns can find: SQL injection, XSS, path traversal, open redirect, OS commands, XXE, weak crypto, insecure random, hard-coded secrets, cookies, error exposure, empty catch, deserialization, debug code — file, line, CWE, severity, fix and origin (common component original/modified/unmanaged, project, test); exceptions need a reason and reviewer; baseline diff; SARIF 2.1.0. A pattern-based aid, not a certified diagnosis |
 | `diagnose_egovframe_network` | Probe the hosts the server downloads from, classify failures (DNS, timeout, TLS, proxy auth) and prescribe environment settings as bash/cmd/PowerShell commands |
 | `generate_agents_md` | `AGENTS.md` for AI coding tools: build/test commands, RTE and migration status, components, rules, available MCP tools (ko/en) |
 
@@ -115,6 +116,16 @@ Public-sector SBOM submission in Korea is to be institutionalised by 2027. `chec
 
 When SPDX is required, `bomFormat="spdx-json"` writes the same content as SPDX 2.3 JSON: packages, `DESCRIBES` and `DEPENDS_ON` relationships (`NONE` for "no dependencies", so it differs from "unknown"), purl/cpe/swid external refs, supplier/originator, creators and created, checksums, declared licenses, OSV advisories (`SECURITY`/`advisory`) and the baseline verdicts (`egovframe:*` annotations). `check_egovframe_sbom` reads SPDX by mapping it onto the same checks (supplier = `PackageSupplier`/`PackageOriginator`, dependency relationship = `DEPENDS_ON` with the package as subject, author = `Person`/`Organization` creators). For the official web template built with real Maven, the SPDX document passes the official spdx-spec v2.3 schema and checks exactly like the CycloneDX one (67 components, same per-element counts, diff 0). VEX stays CycloneDX-only.
 
+## Secure coding weaknesses before delivery
+
+```text
+check_egovframe_secure_coding(projectDir)                                                   # summary by severity, rule and origin
+check_egovframe_secure_coding(projectDir, sarifPath="egovframe-secure.sarif", overwrite=true) # SARIF 2.1.0 for code scanning
+check_egovframe_secure_coding(projectDir, baselinePath="reports/secure-prev.json")          # only new findings
+```
+
+Projects subject to information-system audits in Korea follow the MOIS/KISA software development security guide (2021: 20 design-stage requirements, 49 implementation-stage weaknesses). The tool checks the 14 implementation-stage items that static patterns can find with controlled false positives (20 rules as data in `catalog/secure-coding-rules.json`). Comments are stripped first — all 96 MyBatis `${…}` occurrences in the official common components v4.3.2 turned out to be comments saying they were changed to `#{…}` — and EL inside custom-tag attributes, `<c:out>`, placeholders and `ENC(…)` values are not reported. With the same rules the official common components drop from 516 findings (v4.3.2) to 38 (v5.0.7), and the official web and boot-web templates have none. Exceptions go into `.egovframe-secure-ignore.json` with a reason and reviewer. `generate_egovframe_ci(supplyChain=true, secureCoding=true)` adds a `secure --fail-on high` gate step and uploads the SARIF to GitHub code scanning. Design notes: [docs/design-secure-coding.md](docs/design-secure-coding.md).
+
 ## Running in CI (CLI mode)
 
 ```bash
@@ -124,7 +135,7 @@ npx -y egovframe-scaffold-mcp sbom --project . --write
 npx -y egovframe-scaffold-mcp sbom-check --project . --offline=false --fail-on "minimum,newVulns"
 ```
 
-With no arguments the package starts the MCP stdio server as before; with a command (`assess`, `check`, `sbom`, `sbom-check`, `rehearse`, `bundle`, `migrate`, `validate`, `diagnose`, `network`) it runs that one tool through an in-memory MCP client and exits. Options use the tool parameter names (kebab-case allowed); `--json` prints the same object as MCP `structuredContent`; `--step-summary` appends the Markdown to `$GITHUB_STEP_SUMMARY`; `--fail-on` takes grade (`supplyChain:C`) or count (`vulnerabilities`, `manual>20`) conditions. Exit codes: 0 pass, 2 over the `--fail-on` threshold, 3 execution failure, 64 usage error. Write tools are not exposed. `generate_egovframe_ci(platform, supplyChain=true)` adds the same gate on GitHub Actions, GitLab CI (JUnit and CycloneDX reports, validated against the official GitLab CI schema in the tests) or Jenkins (Declarative, `sh` on Linux and `bat` on Windows agents): SBOM → `sbom-check --fail-on minimum` → assessment above `failOn` fails, with the reports and SBOM kept as artifacts; `npmRegistry` and `offlineBundle` become `NPM_CONFIG_REGISTRY` and `EGOVFRAME_OFFLINE_BUNDLE`. Design notes: [docs/design-cli.md](docs/design-cli.md) (Korean).
+With no arguments the package starts the MCP stdio server as before; with a command (`assess`, `check`, `sbom`, `sbom-check`, `secure`, `rehearse`, `bundle`, `migrate`, `validate`, `diagnose`, `network`) it runs that one tool through an in-memory MCP client and exits. Options use the tool parameter names (kebab-case allowed); `--json` prints the same object as MCP `structuredContent`; `--step-summary` appends the Markdown to `$GITHUB_STEP_SUMMARY`; `--fail-on` takes grade (`supplyChain:C`) or count (`vulnerabilities`, `manual>20`) conditions. Exit codes: 0 pass, 2 over the `--fail-on` threshold, 3 execution failure, 64 usage error. Write tools are not exposed. `generate_egovframe_ci(platform, supplyChain=true)` adds the same gate on GitHub Actions, GitLab CI (JUnit and CycloneDX reports, validated against the official GitLab CI schema in the tests) or Jenkins (Declarative, `sh` on Linux and `bat` on Windows agents): SBOM → `sbom-check --fail-on minimum` → assessment above `failOn` fails, with the reports and SBOM kept as artifacts; `npmRegistry` and `offlineBundle` become `NPM_CONFIG_REGISTRY` and `EGOVFRAME_OFFLINE_BUNDLE`. Design notes: [docs/design-cli.md](docs/design-cli.md) (Korean).
 
 ## Reassembling copied common components
 

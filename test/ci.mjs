@@ -112,6 +112,26 @@ assert(generateCiConfig({ projectDir: pf, dryRun: true }).platform === "github",
 assert(rg.notes.some((x) => x.includes("sbom-check --fail-on minimum 단계가 실패")) && generateCiConfig({ projectDir: pf, dryRun: true, supplyChain: true, supplier: "예시 기관" }).notes.length === 0 && generateCiConfig({ projectDir: pf, dryRun: true }).notes.length === 0, "공급자 단서(supplier·pom <organization>)가 없으면 게이트 실패 예고");
 writeFileSync(path.join(pf, "pom.xml"), "<project><organization><name>예시 기관</name></organization></project>");
 assert(generateCiConfig({ projectDir: pf, dryRun: true, supplyChain: true }).notes.length === 0, "pom <organization> 이 있으면 예고 없음");
+// v0.44: 게이트에 보안약점 점검(SARIF)
+const sec = supplyChainCommands({ secureCoding: true }, true);
+assert(sec.map((c) => c.id).join() === "sbom,sbom-check,secure,assess" && sec[2].command === `${npx} secure --project . --sarif-path egovframe-secure.sarif --overwrite --out egovframe-secure.md --step-summary --fail-on high`, "secureCoding: sbom-check 다음·assess 앞에 secure --fail-on high(SARIF)");
+const ghSec = generateCiYaml("maven", "17", { secureCoding: true });
+const ghDoc = parseYaml(ghSec);
+const scJob = ghDoc.jobs["supply-chain"];
+const up = scJob.steps.find((x) => x.uses === "github/codeql-action/upload-sarif@v3");
+assert(scJob.permissions["security-events"] === "write" && scJob.permissions.contents === "read" && up && up["continue-on-error"] === true && up.if.startsWith("always()") && up.with.sarif_file === "egovframe-secure.sarif" && scJob.steps.at(-1).with.path.includes("egovframe-secure.sarif"), "GitHub: security-events 권한·SARIF 업로드(실패해도 게이트 판정 밖)·아티팩트");
+assert(!generateCiYaml("maven", "17", {}).includes("upload-sarif") && !generateCiYaml("maven", "17", {}).includes("permissions:"), "secureCoding 이 없으면 업로드·권한 없음(기존 출력 그대로)");
+const glSec = generateGitlabCi("gradle", "21", { secureCoding: true });
+assert(validateGitlabCi(glSec) === null && parseYaml(glSec)["supply-chain"].script.some((x) => x.includes(" secure --project . --sarif-path egovframe-secure.sarif")) && parseYaml(glSec)["supply-chain"].artifacts.paths.includes("egovframe-secure.sarif"), "GitLab: secure 단계·SARIF 보관·공식 스키마 통과");
+const jfSec = generateJenkinsfile("maven", "17", { secureCoding: true });
+assert([...jfSec.matchAll(/^    stage\('([^']+)'\)/gm)].map((x) => x[1]).join() === "Build,SBOM,SBOM check,Secure coding,Assessment" && jfSec.includes("egovframe-secure.sarif") && jfSec.includes("egovframe-secure.md"), "Jenkins: Secure coding 단계·보관");
+const pf2 = mkdtempSync(path.join(tmpdir(), "ci-sec-"));
+writeFileSync(path.join(pf2, "pom.xml"), "<project/>");
+assert(generateCiConfig({ projectDir: pf2, dryRun: true, platform: "jenkins", supplyChain: true, secureCoding: true }).content.includes("stage('Secure coding')"), "generateCiConfig secureCoding 전달");
+let threwS = false; try { generateCiConfig({ projectDir: pf2, dryRun: true, secureCoding: true }); } catch (e) { threwS = /supplyChain=true 와 함께/.test(e.message); }
+assert(threwS, "supplyChain 없이 secureCoding 만 주면 거부");
+rmSync(pf2, { recursive: true, force: true });
+
 rmSync(pf, { recursive: true, force: true });
 
 if (process.exitCode) console.error("ci FAIL"); else console.log("ci OK");
