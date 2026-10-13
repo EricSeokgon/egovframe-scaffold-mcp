@@ -273,6 +273,25 @@ export const OfflineBundleOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v0.44: check_egovframe_secure_coding
+const SecureSeverity = z.enum(["high", "medium", "low"]);
+export const SecureCodingOutput = loose({
+  projectDir: z.string(),
+  rulesVersion: loose({ surveyedAt: z.string(), rules: z.number().int(), source: z.string() }),
+  filesScanned: z.number().int(),
+  byTarget: z.record(z.number().int()),
+  summary: loose({ total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), new: z.number().int().nullable(), suppressed: z.number().int() }),
+  byRule: z.array(loose({ rule: z.string(), guideItem: z.string(), severity: SecureSeverity, count: z.number().int() })),
+  byOrigin: z.record(z.number().int()),
+  findings: z.array(loose({ rule: z.string(), guideItem: z.string(), category: z.string(), cwe: z.number().int(), severity: SecureSeverity, file: z.string(), line: z.number().int(), column: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), note: z.string().optional(), origin: z.enum(["component", "component-modified", "component-unmanaged", "project", "test"]), component: z.string().optional(), fingerprint: z.string(), isNew: z.boolean().optional() })),
+  truncated: z.boolean(),
+  suppressions: loose({ applied: z.number().int(), invalid: z.array(z.string()), file: z.string().nullable() }),
+  baseline: loose({ path: z.string(), findings: z.number().int(), resolved: z.number().int() }).optional(),
+  sarif: loose({ path: z.string(), written: z.boolean(), overwritten: z.boolean(), results: z.number().int() }).optional(),
+  notes: z.array(z.string()),
+  disclaimer: z.string(),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -281,6 +300,7 @@ export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_network: NetworkOutput,
   generate_egovframe_sbom: SbomOutput,
   check_egovframe_sbom: SbomCheckOutput,
+  check_egovframe_secure_coding: SecureCodingOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,
   generate_egovframe_report: ReportOutput,

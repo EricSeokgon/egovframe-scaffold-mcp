@@ -69,6 +69,8 @@ export async function measureEntry(api, dir) {
       checksMissing: d.checks.filter((c) => c.status === "missing").map((c) => c.id),
     },
     grades: { migration: s.grades.migration.grade, migrationScore: s.grades.migration.score, supplyChain: s.grades.supplyChain.grade, supplyChainScore: s.grades.supplyChain.score },
+    // v0.44: 보안약점 패턴(규칙별 건수)
+    secure: { total: s.secureCoding.total, high: s.secureCoding.high, medium: s.secureCoding.medium, low: s.secureCoding.low, byRule: Object.fromEntries(s.secureCoding.byRule.map((b) => [b.rule, b.count]).sort()) },
   };
 }
 

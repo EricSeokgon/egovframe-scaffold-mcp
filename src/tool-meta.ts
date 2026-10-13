@@ -44,6 +44,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   // v0.36: 새 파일만 만들고(overwrite 는 명시) 빌드 도구가 저장소에 접근하므로 openWorld; 같은 입력이면 같은 문서(serialNumber·timestamp 제외)
   generate_egovframe_sbom: { title: { ko: "SBOM 생성 (CycloneDX)", en: "Generate SBOM (CycloneDX)" }, annotations: create(true) },
   // v0.40: SBOM 은 읽기만 하고 vex=true 일 때만 VEX 파일을 새로 만들거나 판단을 보존하며 항목을 덧붙인다(비파괴), offline=false 는 OSV
+  // v0.44: 소스를 읽기만 하지만 sarifPath 를 주면 그 파일을 쓴다(overwrite 로 덮어쓸 수 있음)
+  check_egovframe_secure_coding: { title: { ko: "보안약점 점검 (개발보안 가이드)", en: "Check secure coding weaknesses" }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
   check_egovframe_sbom: { title: { ko: "SBOM 점검 (최소 요소·비교·VEX)", en: "Check SBOM (minimum elements, diff, VEX)" }, annotations: create(true) },
   search_egovframe_docs: { title: { ko: "가이드 문서 검색", en: "Search guide documents" }, annotations: ro(true) },
   // v0.37: outputPath 로 새 파일을 만들 수 있고(기존 파일 거부 → 비파괴) resolve/offline=false 는 네트워크를 쓴다 → 읽기 전용 힌트는 뗀다

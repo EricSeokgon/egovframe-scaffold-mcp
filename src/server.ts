@@ -29,6 +29,7 @@ import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network
 import { generateAgentsMd } from "./agents-md.js";
 import { generateSbom, renderSbomMarkdown } from "./sbom.js";
 import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
+import { checkSecureCoding, renderSecureCodingMarkdown, toSarif } from "./secure-coding.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
 import { renderBundleMarkdown } from "./offline-bundle.js";
@@ -722,6 +723,28 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
+  // ── 보안약점 점검 (v0.44) ─────────────────────────────
+  server.registerTool(
+    "check_egovframe_secure_coding",
+    { title: t("check_egovframe_secure_coding"), description: d("check_egovframe_secure_coding", "행정안전부·KISA 「소프트웨어 개발보안 가이드」(2021) 구현단계 보안약점 중 정적 패턴으로 오탐을 통제할 수 있는 항목을 소스에서 찾습니다 — SQL 삽입(MyBatis ${…}·iBATIS $…$·JDBC 문자열 연결), 크로스사이트 스크립트(요청 값·EL param/header/cookie 무이스케이프 출력, <c:out escapeXml=\"false\">), 경로 조작, 신뢰되지 않는 URL 자동접속, 운영체제 명령어, XML 외부개체, 취약한 해시·암호, 보안 문맥의 부적절한 난수, 코드·설정의 하드코드된 중요정보, HttpOnly·Secure 없는 쿠키, printStackTrace, 빈 catch, 역직렬화, 남은 디버그 출력. 규칙은 catalog/secure-coding-rules.json 데이터이고 주석은 무시합니다. 항목마다 파일·라인·CWE·등급·조치와 출처(공통컴포넌트 원본·수정본·매니페스트 없음·프로젝트 코드·테스트)를 냅니다. 예외는 .egovframe-secure-ignore.json(사유·검토자 필수), baselinePath(이전 JSON 결과·SARIF)와 비교해 새 항목 표시, format=sarif 또는 sarifPath 로 SARIF 2.1.0(GitHub code scanning 등). 패턴 기반 진단 보조이며 공인 진단을 대체하지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장) — 읽기만 함"),
+      rules: z.array(z.string()).optional().describe("점검할 규칙 id(기본 전체)"),
+      paths: z.array(z.string()).optional().describe("프로젝트 상대 경로 접두어로 좁히기(예: src/main/java/egovframework/example)"),
+      includeTests: z.boolean().default(true).describe("src/test 도 점검(등급은 낮음으로)"),
+      baselinePath: z.string().optional().describe("이전 결과(format=json 출력 또는 SARIF, 프로젝트 상대 경로) — 새로 생긴 항목만 표시"),
+      sarifPath: z.string().optional().describe("SARIF 2.1.0 을 쓸 프로젝트 상대 경로(예: egovframe-secure.sarif)"),
+      overwrite: z.boolean().default(false).describe("sarifPath 가 있으면 덮어쓰기"),
+      maxFindings: z.number().int().min(1).max(20_000).default(2000).describe("응답에 담을 최대 항목 수(SARIF 파일에는 전부)"),
+      top: z.number().int().min(1).max(500).default(40).describe("Markdown 상세 항목 수"),
+      format: z.enum(["markdown", "json", "sarif"]).default("markdown").describe("응답 형식(sarif 는 SARIF 2.1.0 JSON 본문)"),
+    }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_secure_coding.shape, annotations: toolAnnotations("check_egovframe_secure_coding") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await checkSecureCoding({ projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeTests: args.includeTests, baselinePath: args.baselinePath, sarifPath: args.sarifPath, overwrite: args.overwrite, maxFindings: args.maxFindings });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "sarif" ? JSON.stringify(toSarif(r), null, 2) : renderSecureCodingMarkdown(r, args.top);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
   // ── SBOM 운영 (v0.40) ─────────────────────────────────
   server.registerTool(
     "check_egovframe_sbom",
@@ -1049,6 +1072,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       supplier: z.string().regex(CI_SUPPLIER_RE, "문자·숫자·공백·.,&()_- 100자 이하").optional().describe("SBOM 공급자(pom <organization><name> 이 없으면 최소 요소 '공급자'가 빠져 게이트가 실패하므로 지정)"),
       npmRegistry: z.string().regex(CI_NPM_REGISTRY_RE, "http(s) URL").optional().describe("사내 npm 레지스트리 URL(NPM_CONFIG_REGISTRY 로 설정 — npx 가 이 서버를 받는 곳)"),
       offlineBundle: z.string().regex(CI_BUNDLE_PATH_RE, "러너에서 본 절대 경로").optional().describe("폐쇄망 러너·에이전트에서 본 오프라인 번들 경로(EGOVFRAME_OFFLINE_BUNDLE 로 설정)"),
+      secureCoding: z.boolean().default(false).describe("v0.44: 게이트에 보안약점 점검 단계 추가(secure --fail-on high, SARIF 를 GitHub code scanning 에 업로드·GitLab·Jenkins 는 보관)"),
     }, annotations: toolAnnotations("generate_egovframe_ci") },
     async (args) => {
       enforceAllowedRoots(args);

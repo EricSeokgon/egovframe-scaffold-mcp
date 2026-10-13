@@ -95,6 +95,23 @@
           "migrationScore": 11,
           "supplyChain": "D",
           "supplyChainScore": 9
+        },
+        "secure": {
+          "total": 495,
+          "high": 0,
+          "medium": 330,
+          "low": 165,
+          "byRule": {
+            "cookie-flags": 2,
+            "debug-code": 140,
+            "empty-catch": 3,
+            "hardcoded-config-password": 11,
+            "hardcoded-secret": 5,
+            "os-command": 18,
+            "print-stack-trace": 13,
+            "xss-cout-unescaped": 302,
+            "xxe": 1
+          }
         }
       }
     },
@@ -178,6 +195,21 @@
           "migrationScore": 10,
           "supplyChain": "D",
           "supplyChainScore": 8
+        },
+        "secure": {
+          "total": 516,
+          "high": 0,
+          "medium": 314,
+          "low": 202,
+          "byRule": {
+            "debug-code": 155,
+            "empty-catch": 3,
+            "hardcoded-config-password": 18,
+            "hardcoded-secret": 5,
+            "os-command": 2,
+            "print-stack-trace": 29,
+            "xss-cout-unescaped": 304
+          }
         }
       }
     }
@@ -208,5 +240,66 @@
     },
     "measuredAt": "2026-10-08",
     "measuredWith": "CI(ubuntu·JDK 17) 6,003건 · 로컬 JDK 21.0.10 6,335건 — javac 판본마다 연쇄 보고가 달라 ±10% 로 둔다, Maven 3.9.11"
+  },
+  "secureTemplates": {
+    "description": "v0.44: 공식 템플릿(create_egovframe_project, database=mysql)의 보안약점 패턴 건수(2026-10-13 실측). pinned=true(Initializr 고정 commit)는 test:secure-live 가 기대값으로 단언하고, 저장소 브랜치 템플릿은 upstream 변경으로 달라질 수 있어 차이를 로그로만 남긴다",
+    "entries": {
+      "web": {
+        "total": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "byRule": {},
+        "pinned": true
+      },
+      "boot-web": {
+        "total": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "byRule": {},
+        "pinned": true
+      },
+      "simple-backend": {
+        "total": 11,
+        "high": 0,
+        "medium": 0,
+        "low": 11,
+        "byRule": {
+          "debug-code": 11
+        },
+        "pinned": false
+      },
+      "simple-homepage": {
+        "total": 7,
+        "high": 0,
+        "medium": 7,
+        "low": 0,
+        "byRule": {
+          "xss-cout-unescaped": 7
+        },
+        "pinned": false
+      },
+      "portal-site": {
+        "total": 6,
+        "high": 0,
+        "medium": 6,
+        "low": 0,
+        "byRule": {
+          "hardcoded-config-password": 6
+        },
+        "pinned": false
+      },
+      "enterprise-business": {
+        "total": 1,
+        "high": 0,
+        "medium": 1,
+        "low": 0,
+        "byRule": {
+          "hardcoded-config-password": 1
+        },
+        "pinned": false
+      }
+    }
   }
 }

@@ -1,0 +1,344 @@
+{
+  "schemaVersion": 1,
+  "surveyedAt": "2026-10-13",
+  "sources": [
+    {
+      "name": "행정안전부·한국인터넷진흥원, 전자정부 SW 개발·운영자를 위한 소프트웨어 개발보안 가이드, 2021 개정 (설계단계 보안요구 20개·구현단계 보안약점 49개, 정보시스템 감리 대상 사업에 적용)"
+    },
+    {
+      "name": "MITRE CWE",
+      "url": "https://cwe.mitre.org/"
+    }
+  ],
+  "disclaimer": "패턴 기반 진단 보조입니다. 데이터 흐름(taint) 분석을 하지 않으며 공인 진단도구·보안약점 진단원의 진단을 대체하지 않습니다.",
+  "categories": [
+    {
+      "id": "input",
+      "label": "입력데이터 검증 및 표현",
+      "labelEn": "Input validation and representation"
+    },
+    {
+      "id": "security",
+      "label": "보안기능",
+      "labelEn": "Security features"
+    },
+    {
+      "id": "time",
+      "label": "시간 및 상태",
+      "labelEn": "Time and state"
+    },
+    {
+      "id": "error",
+      "label": "에러처리",
+      "labelEn": "Error handling"
+    },
+    {
+      "id": "code",
+      "label": "코드오류",
+      "labelEn": "Code quality"
+    },
+    {
+      "id": "encapsulation",
+      "label": "캡슐화",
+      "labelEn": "Encapsulation"
+    },
+    {
+      "id": "api",
+      "label": "API 오용",
+      "labelEn": "API misuse"
+    }
+  ],
+  "rules": [
+    {
+      "id": "sql-mybatis-dollar",
+      "guideItem": "SQL 삽입",
+      "category": "input",
+      "cwe": 89,
+      "severity": "high",
+      "targets": [
+        "mapper"
+      ],
+      "pattern": "\\$\\{[^}]+\\}",
+      "downgrade": {
+        "near": "\\b(ORDER|GROUP)\\s+BY\\b",
+        "window": 1,
+        "severity": "medium",
+        "note": "정렬·그룹 컬럼 — 바인딩(#{})으로 바꿀 수 없으면 허용 목록(화이트리스트)으로 값을 검증하세요"
+      },
+      "message": "MyBatis 매퍼의 ${…} 는 값을 SQL 문자열에 그대로 붙입니다",
+      "fix": "#{…} 바인딩으로 바꾸고, 컬럼·정렬 방향처럼 바인딩할 수 없는 값은 서버에서 허용 목록으로 검증"
+    },
+    {
+      "id": "sql-ibatis-dollar",
+      "guideItem": "SQL 삽입",
+      "category": "input",
+      "cwe": 89,
+      "severity": "high",
+      "targets": [
+        "sqlmap"
+      ],
+      "pattern": "\\$[A-Za-z_][\\w.\\[\\]]*\\$",
+      "downgrade": {
+        "near": "\\b(ORDER|GROUP)\\s+BY\\b",
+        "window": 1,
+        "severity": "medium",
+        "note": "정렬·그룹 컬럼 — 허용 목록으로 값을 검증하세요"
+      },
+      "message": "iBATIS sqlMap 의 $…$ 는 값을 SQL 문자열에 그대로 붙입니다",
+      "fix": "#…# 바인딩으로 바꾸고, 바인딩할 수 없는 값은 허용 목록으로 검증"
+    },
+    {
+      "id": "sql-jdbc-concat",
+      "guideItem": "SQL 삽입",
+      "category": "input",
+      "cwe": 89,
+      "severity": "high",
+      "targets": [
+        "java"
+      ],
+      "pattern": "\\b(executeQuery|executeUpdate|execute|prepareStatement|prepareCall|addBatch)\\s*\\(\\s*\"[^\"]*\"\\s*\\+",
+      "message": "JDBC 호출에 문자열 연결로 만든 SQL 을 넘깁니다",
+      "fix": "PreparedStatement 의 ? 자리표시자와 setXxx 로 값을 바인딩"
+    },
+    {
+      "id": "xss-jsp-request",
+      "guideItem": "크로스사이트 스크립트",
+      "category": "input",
+      "cwe": 79,
+      "severity": "high",
+      "targets": [
+        "jsp"
+      ],
+      "pattern": "<%=\\s*request\\.(getParameter|getHeader|getQueryString|getRequestURI)\\b",
+      "message": "요청 값을 JSP 표현식으로 그대로 출력합니다",
+      "fix": "<c:out value=\"${param.x}\"/> 처럼 HTML 이스케이프해 출력"
+    },
+    {
+      "id": "xss-jsp-el-param",
+      "guideItem": "크로스사이트 스크립트",
+      "category": "input",
+      "cwe": 79,
+      "severity": "high",
+      "targets": [
+        "jsp"
+      ],
+      "pattern": "\\$\\{\\s*(param|paramValues|header|cookie)\\s*[.\\[]",
+      "unless": "fn:escapeXml\\(\\s*(param|paramValues|header|cookie)\\b",
+      "message": "요청 값(EL param·header·cookie)을 이스케이프 없이 출력합니다(HTML·JavaScript 문맥) — JSP EL 은 자동 이스케이프하지 않습니다",
+      "fix": "<c:out value=\"${param.x}\"/> 또는 ${fn:escapeXml(param.x)}",
+      "stripCustomTags": true
+    },
+    {
+      "id": "xss-cout-unescaped",
+      "guideItem": "크로스사이트 스크립트",
+      "category": "input",
+      "cwe": 79,
+      "severity": "medium",
+      "targets": [
+        "jsp"
+      ],
+      "pattern": "<c:out\\b(?:[^>\"']|\"[^\"]*\"|'[^']*')*escapeXml\\s*=\\s*[\"']false[\"']",
+      "message": "<c:out escapeXml=\"false\"> 는 값을 이스케이프하지 않습니다(저장형 XSS 위험 — 사용자가 입력한 게시물·이름 등)",
+      "fix": "escapeXml 을 지우거나, HTML 을 허용해야 하는 본문은 저장 시점에 허용 태그 필터(XSS 필터·Lucy 등)를 적용",
+      "unless": "<c:out\\b(?:[^>\"']|\"[^\"]*\"|'[^']*')*value\\s*=\\s*(\"[^\"$]*\"|'[^'$]*')"
+    },
+    {
+      "id": "path-traversal",
+      "guideItem": "경로 조작 및 자원 삽입",
+      "category": "input",
+      "cwe": 22,
+      "severity": "high",
+      "targets": [
+        "java"
+      ],
+      "pattern": "(new\\s+([\\w.]+\\.)?(File|FileInputStream|FileOutputStream|FileReader|FileWriter|RandomAccessFile)\\s*\\(|Paths\\.get\\s*\\(|Path\\.of\\s*\\()[^;]*request\\.getParameter\\s*\\(",
+      "message": "요청 파라미터로 파일 경로를 만듭니다",
+      "fix": "경로 구분자·'..' 를 제거하고(EgovWebUtil.filePathBlackList 등) 기준 디렉터리 밖으로 나가지 않는지 정규화 후 확인"
+    },
+    {
+      "id": "open-redirect",
+      "guideItem": "신뢰되지 않는 URL 주소로 자동접속 연결",
+      "category": "input",
+      "cwe": 601,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "(sendRedirect\\s*\\(|\"redirect:\"\\s*\\+)[^;]*request\\.getParameter\\s*\\(",
+      "message": "요청 파라미터의 URL 로 리다이렉트합니다",
+      "fix": "이동할 수 있는 URL 을 허용 목록으로 제한하거나 내부 경로(/로 시작, //·스킴 불가)만 허용"
+    },
+    {
+      "id": "os-command",
+      "guideItem": "운영체제 명령어 삽입",
+      "category": "input",
+      "cwe": 78,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "Runtime\\.getRuntime\\(\\)\\s*\\.\\s*exec\\s*\\(|new\\s+ProcessBuilder\\s*\\(",
+      "escalate": {
+        "near": "request\\.getParameter\\s*\\(",
+        "window": 0,
+        "severity": "high",
+        "note": "같은 줄에서 요청 파라미터를 씁니다"
+      },
+      "message": "운영체제 명령을 실행합니다 — 외부 입력이 명령·인자에 들어가는지 확인이 필요합니다",
+      "fix": "명령은 고정하고 인자는 허용 목록으로 검증, 셸(sh -c·cmd /c)을 거치지 않기"
+    },
+    {
+      "id": "xxe",
+      "guideItem": "부적절한 XML 외부개체 참조",
+      "category": "input",
+      "cwe": 611,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "\\b(DocumentBuilderFactory|SAXParserFactory|XMLInputFactory|SAXReader|SAXBuilder)\\s*\\.\\s*newInstance\\s*\\(|new\\s+(SAXReader|SAXBuilder)\\s*\\(",
+      "fileLacks": "disallow-doctype-decl|external-general-entities|FEATURE_SECURE_PROCESSING|ACCESS_EXTERNAL_DTD|IS_SUPPORTING_EXTERNAL_ENTITIES|SUPPORT_DTD|setExpandEntityReferences\\s*\\(\\s*false",
+      "message": "외부 개체(DTD·엔티티)를 막지 않은 XML 파서를 만듭니다",
+      "fix": "factory.setFeature(\"http://apache.org/xml/features/disallow-doctype-decl\", true) 또는 XMLConstants.ACCESS_EXTERNAL_DTD·ACCESS_EXTERNAL_SCHEMA 를 빈 값으로"
+    },
+    {
+      "id": "weak-hash",
+      "guideItem": "취약한 암호화 알고리즘 사용",
+      "category": "security",
+      "cwe": 327,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "MessageDigest\\.getInstance\\s*\\(\\s*\"(MD2|MD4|MD5|SHA|SHA-?1)\"",
+      "message": "충돌 공격이 알려진 해시(MD5·SHA-1)를 씁니다",
+      "fix": "SHA-256 이상을 쓰고, 비밀번호는 솔트와 반복을 갖춘 방식(PBKDF2·bcrypt 등)으로 저장"
+    },
+    {
+      "id": "weak-cipher",
+      "guideItem": "취약한 암호화 알고리즘 사용",
+      "category": "security",
+      "cwe": 327,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "Cipher\\.getInstance\\s*\\(\\s*\"(DES|DESede|TripleDES|RC2|RC4|ARCFOUR|Blowfish)\\b|Cipher\\.getInstance\\s*\\(\\s*\"[^\"]*/ECB/|Cipher\\.getInstance\\s*\\(\\s*\"AES\"\\s*\\)",
+      "message": "취약하거나 ECB 모드(\"AES\" 단독 지정 포함)인 암호를 씁니다",
+      "fix": "AES/GCM/NoPadding(또는 국내 기준 ARIA·SEED 의 안전한 운영 모드)과 무작위 IV 사용"
+    },
+    {
+      "id": "insecure-random",
+      "guideItem": "적절하지 않은 난수 값 사용",
+      "category": "security",
+      "cwe": 330,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "new\\s+(java\\.util\\.)?Random\\s*\\(|Math\\.random\\s*\\(\\s*\\)",
+      "requireNear": {
+        "near": "(?i)(password|passwd|pwd|token|session|salt|nonce|secret|otp|captcha|auth|crypt|key\\b|비밀번호|인증)",
+        "window": 2
+      },
+      "message": "보안 용도로 보이는 곳에서 예측 가능한 난수(java.util.Random·Math.random)를 씁니다",
+      "fix": "java.security.SecureRandom 사용"
+    },
+    {
+      "id": "hardcoded-secret",
+      "guideItem": "하드코드된 중요정보",
+      "category": "security",
+      "cwe": 798,
+      "severity": "high",
+      "targets": [
+        "java"
+      ],
+      "pattern": "(?i)\\b\\w*(password|passwd|pwd|secret|apikey|api_key|secretkey|privatekey|accesskey)\\w*\\s*=\\s*\"[^\"\\s]{4,}\"",
+      "unless": "(?i)\\$\\{|globals\\.|\"[a-z]+(\\.[a-z0-9]+){1,}\"|\\b(label|message|msg|name|param|field|column|key)\\w*\\s*=|=\\s*\"[^\"]*[/\\\\][^\"]*\"|\\w*(session|attr|param|_ids?|_path|_url|_jsp|_view)\\w*\\s*=",
+      "message": "비밀번호·키로 보이는 값을 소스에 상수로 둡니다",
+      "fix": "외부 설정(암호화된 프로퍼티·환경 변수·비밀 저장소)으로 옮기기"
+    },
+    {
+      "id": "hardcoded-config-password",
+      "guideItem": "하드코드된 중요정보",
+      "category": "security",
+      "cwe": 798,
+      "severity": "medium",
+      "targets": [
+        "config"
+      ],
+      "pattern": "(?i)^\\s*[\\w.\\-]*(password|passwd|pwd|secret)[\\w.\\-]*\\s*[=:]\\s*[^\\s$#{\"'][^\\s]*\\s*$",
+      "unless": "(?i)ENC\\(|algorithm|\\$\\{|[가-힣]|[=:]\\s*(\\*+|x{3,}|pw|password|changeme|your[_\\w-]*|example|sample|dummy|todo|change_me|secret|null|none|<[^>]+>)\\s*$|[=:]\\s*\\d+\\s*$",
+      "message": "설정 파일에 비밀번호·비밀 값이 평문(또는 고정 값)으로 있습니다",
+      "fix": "운영 값은 저장소 밖(환경 변수·암호화된 프로퍼티·비밀 저장소)에서 주입"
+    },
+    {
+      "id": "cookie-flags",
+      "guideItem": "쿠키를 통한 중요정보 노출",
+      "category": "security",
+      "cwe": 614,
+      "severity": "low",
+      "targets": [
+        "java"
+      ],
+      "pattern": "new\\s+(javax|jakarta)?\\.?(servlet\\.http\\.)?Cookie\\s*\\(",
+      "fileLacks": "setHttpOnly\\s*\\(\\s*true|setSecure\\s*\\(",
+      "message": "HttpOnly·Secure 속성 없이 쿠키를 만듭니다",
+      "fix": "cookie.setHttpOnly(true); cookie.setSecure(true); 중요 정보는 쿠키에 두지 않기"
+    },
+    {
+      "id": "print-stack-trace",
+      "guideItem": "오류 메시지 정보노출",
+      "category": "error",
+      "cwe": 209,
+      "severity": "low",
+      "targets": [
+        "java"
+      ],
+      "pattern": "\\.printStackTrace\\s*\\(\\s*\\)",
+      "message": "예외 스택을 표준 출력에 그대로 남깁니다",
+      "fix": "로거(EgovBasicLogger·SLF4J)로 필요한 정보만 기록하고 사용자에게는 일반 메시지"
+    },
+    {
+      "id": "empty-catch",
+      "guideItem": "오류상황 대응 부재",
+      "category": "error",
+      "cwe": 390,
+      "severity": "low",
+      "targets": [
+        "java"
+      ],
+      "scope": "file",
+      "pattern": "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}",
+      "message": "예외를 잡고 아무 처리도 하지 않습니다",
+      "fix": "로그를 남기거나 상위로 다시 던지고, 의도적으로 무시하면 사유를 주석으로"
+    },
+    {
+      "id": "deserialization",
+      "guideItem": "신뢰할 수 없는 데이터의 역직렬화",
+      "category": "code",
+      "cwe": 502,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "\\.readObject\\s*\\(\\s*\\)",
+      "fileHas": "ObjectInputStream",
+      "message": "ObjectInputStream 으로 객체를 역직렬화합니다 — 외부에서 온 데이터면 원격 코드 실행 위험",
+      "fix": "외부 데이터는 JSON 등 데이터 형식으로 받고, 불가피하면 ObjectInputFilter 로 허용 클래스를 제한"
+    },
+    {
+      "id": "debug-code",
+      "guideItem": "제거되지 않고 남은 디버그 코드",
+      "category": "encapsulation",
+      "cwe": 489,
+      "severity": "low",
+      "targets": [
+        "java"
+      ],
+      "pattern": "System\\.(out|err)\\.print(ln|f)?\\s*\\(",
+      "message": "System.out·err 출력이 남아 있습니다",
+      "fix": "로거로 바꾸거나 삭제"
+    }
+  ]
+}
