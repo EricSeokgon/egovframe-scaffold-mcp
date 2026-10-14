@@ -150,3 +150,5 @@ export { REASSEMBLE_STATES, REASSEMBLE_STATE_LABEL, unifiedPatch, reassembleComp
 export type { ReassembleState, ReassembleAction, ReassembleFile, ReassembleWorkItem, ReassembleOptions, ReassembleResult } from "./reassemble.js";
 export { loadSecureRules, compileRulePattern, stripJavaComments, stripMarkupComments, targetOf, checkSecureCoding, toSarif, renderSecureCodingMarkdown, IGNORE_FILE } from "./secure-coding.js";
 export type { SecureRule, SecureRules, SecureFinding, SecureCodingOptions, SecureCodingResult, SecureSeverity, SecureOrigin } from "./secure-coding.js";
+export { loadDeployRules, analyzeDeploy, parseProperties, parseJdbcUrl, envNameOf, renderDockerfile, renderDockerignore, renderCompose, renderEnvExample, renderKubernetes, renderClassicConfig, generateDeploy, renderDeployMarkdown, DEPLOY_IMAGE_REGISTRY_RE, DEPLOY_IMAGE_RE, DEPLOY_HOST_RE } from "./deploy.js";
+export type { DeployRules, DeployProfile, DeployDb, DeployTarget, DeployAnalysis, GenerateDeployOptions, GenerateDeployResult } from "./deploy.js";

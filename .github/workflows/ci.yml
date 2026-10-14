@@ -70,6 +70,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Retry mvn on transient repository failures (5xx, connection reset)
+        # MAVEN_ARGS 재시도보다 긴 원격 저장소 장애에 대비해, 테스트가 띄우는 mvn 전체를 30초·60초 뒤 다시 실행한다.
+        run: |
+          echo "REAL_MVN=$(command -v mvn)" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/mvn-retry"
+          ln -s "$GITHUB_WORKSPACE/scripts/mvn-retry.sh" "$RUNNER_TEMP/mvn-retry/mvn"
+          echo "$RUNNER_TEMP/mvn-retry" >> "$GITHUB_PATH"
+
       - name: Install dependencies
         run: npm ci
 
@@ -114,6 +122,15 @@ jobs:
         run: npm run test:bundle-live
       - name: CLI assessment on the 4.3.2 corpus tree (grades into this job summary)
         run: node dist/index.js assess --project .corpus-cache/cc-4.3.2 --out cli-assessment.md --step-summary --fail-on migration:D || test $? -eq 2
+      - name: Container and deployment files (hadolint, kubeconform, docker build and run, compose with MySQL)
+        run: |
+          curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-linux-x86_64
+          echo "6bf226944684f56c84dd014e8b979d27425c0148f61b3bd99bcc6f39e9dc5a47  /tmp/hadolint" | sha256sum -c -
+          chmod +x /tmp/hadolint
+          curl -sSfL -o /tmp/kubeconform.tgz https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz
+          echo "c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3  /tmp/kubeconform.tgz" | sha256sum -c -
+          tar xzf /tmp/kubeconform.tgz -C /tmp kubeconform
+          HADOLINT=/tmp/hadolint KUBECONFORM=/tmp/kubeconform npm run test:deploy-live
       - name: Secure coding weaknesses on official templates (pinned counts, SARIF schema)
         run: npm run test:secure-live
       - name: Generated supply-chain workflow passes actionlint

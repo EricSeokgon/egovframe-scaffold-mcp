@@ -45,6 +45,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   generate_egovframe_sbom: { title: { ko: "SBOM 생성 (CycloneDX)", en: "Generate SBOM (CycloneDX)" }, annotations: create(true) },
   // v0.40: SBOM 은 읽기만 하고 vex=true 일 때만 VEX 파일을 새로 만들거나 판단을 보존하며 항목을 덧붙인다(비파괴), offline=false 는 OSV
   // v0.44: 소스를 읽기만 하지만 sarifPath 를 주면 그 파일을 쓴다(overwrite 로 덮어쓸 수 있음)
+  // v0.45: 새 파일만 만든다(기존 파일 거부) — 로컬 파일만 읽음
+  generate_egovframe_deploy: { title: { ko: "컨테이너·배포 산출물 생성", en: "Generate container and deployment files" }, annotations: create() },
   check_egovframe_secure_coding: { title: { ko: "보안약점 점검 (개발보안 가이드)", en: "Check secure coding weaknesses" }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
   check_egovframe_sbom: { title: { ko: "SBOM 점검 (최소 요소·비교·VEX)", en: "Check SBOM (minimum elements, diff, VEX)" }, annotations: create(true) },
   search_egovframe_docs: { title: { ko: "가이드 문서 검색", en: "Search guide documents" }, annotations: ro(true) },

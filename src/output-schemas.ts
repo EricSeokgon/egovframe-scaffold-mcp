@@ -292,6 +292,23 @@ export const SecureCodingOutput = loose({
   disclaimer: z.string(),
 });
 
+// v0.45: generate_egovframe_deploy
+export const DeployOutput = loose({
+  projectDir: z.string(),
+  supported: z.boolean(),
+  unsupported: loose({ id: z.string(), reason: z.string() }).optional(),
+  profile: loose({
+    appName: z.string(), version: z.string(), buildTool: z.enum(["maven", "gradle"]), wrapper: z.boolean(), packaging: z.enum(["war", "jar"]), runtime: z.enum(["tomcat", "boot"]),
+    web: z.boolean(), actuator: z.boolean(), tomcat: z.enum(["10.1", "11.0"]), port: z.number().int(), contextPath: z.string(), liveness: z.string(), readiness: z.string(),
+    db: loose({ type: z.string(), inject: z.enum(["env", "file", "none"]), file: z.string(), url: z.string().nullable(), user: z.string().nullable(), host: z.string().nullable(), port: z.number().int().nullable(), database: z.string().nullable(), service: z.enum(["container", "external"]), initScripts: z.array(z.string()) }).nullable(),
+  }).optional(),
+  dryRun: z.boolean(),
+  written: z.boolean(),
+  files: z.array(loose({ path: z.string(), target: z.enum(["docker", "compose", "k8s"]), bytes: z.number().int(), content: z.string().optional() })),
+  usage: z.array(z.string()),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -301,6 +318,7 @@ export const OUTPUT_SCHEMAS = {
   generate_egovframe_sbom: SbomOutput,
   check_egovframe_sbom: SbomCheckOutput,
   check_egovframe_secure_coding: SecureCodingOutput,
+  generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,
   generate_egovframe_report: ReportOutput,

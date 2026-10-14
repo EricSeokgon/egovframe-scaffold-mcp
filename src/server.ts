@@ -30,6 +30,7 @@ import { generateAgentsMd } from "./agents-md.js";
 import { generateSbom, renderSbomMarkdown } from "./sbom.js";
 import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
 import { checkSecureCoding, renderSecureCodingMarkdown, toSarif } from "./secure-coding.js";
+import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
 import { renderBundleMarkdown } from "./offline-bundle.js";
@@ -720,6 +721,29 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       enforceAllowedRoots(args);
       const r = await rehearseMigration({ projectDir: args.projectDir, steps: args.steps, components: args.components, sourceTag: args.sourceTag === "auto" ? undefined : args.sourceTag, keepWorkspace: args.keepWorkspace, timeoutMs: args.timeoutMs, topN: args.topN });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderRehearsalMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 컨테이너·배포 산출물 (v0.45) ──────────────────────
+  server.registerTool(
+    "generate_egovframe_deploy",
+    { title: t("generate_egovframe_deploy"), description: d("generate_egovframe_deploy", "프로젝트 진단(빌드 도구·패키징·Boot 여부·웹·actuator·DbType·설정 파일)으로 컨테이너·배포 산출물을 만듭니다 — Dockerfile(멀티 스테이지: Maven/Gradle 빌드 → Classic war 는 Tomcat 10.1(Servlet 6.1 이상이면 11.0)에 ROOT 로 풀어서, Boot jar 는 eclipse-temurin JRE 로; 비루트·HEALTHCHECK·Asia/Seoul·UTF-8, buildInImage=false 면 미리 빌드한 산출물), .dockerignore, deploy/docker-compose.yml(앱 + DbType 별 DB 컨테이너 mysql·mariadb·postgres, 템플릿 DDL·DATA 초기화, 상용 DB 는 연결 정보만), Kubernetes 매니페스트(deploy/k8s/<app>.yaml — Deployment(startup·readiness·liveness 프로브, 비루트 securityContext, 리소스)·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 는 Spring 환경 변수(Globals.mysql.Url → GLOBALS_MYSQL_URL), Classic 은 globals.properties 사본을 볼륨·Secret 으로 덮어씁니다. imageRegistry 로 기반 이미지를 사내 레지스트리(폐쇄망)에서 받습니다. 새 파일만 쓰고(기존 파일 거부) dryRun(기본)은 내용만 보여 줍니다. 멀티 모듈·라이브러리 jar·빌드 파일 없는 프로젝트는 이유를 돌려줍니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      targets: z.array(z.enum(["docker", "compose", "k8s"])).min(1).default(["docker", "compose", "k8s"]).describe("만들 산출물(compose 는 Dockerfile 도 함께)"),
+      jdk: z.enum(["17", "21"]).default("17").describe("JDK(빌드·실행 이미지)"),
+      imageRegistry: z.string().regex(DEPLOY_IMAGE_REGISTRY_RE, "예: docker.io/library, harbor.example.go.kr/dockerhub").default("docker.io/library").describe("기반 이미지 레지스트리(폐쇄망 사내 레지스트리·프록시 캐시) — Dockerfile ARG BASE_REGISTRY 기본값"),
+      image: z.string().regex(DEPLOY_IMAGE_RE).optional().describe("앱 이미지 이름(기본 <appName>:<version>)"),
+      appName: z.string().regex(/^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/).optional().describe("앱 이름(기본 artifactId)"),
+      buildInImage: z.boolean().default(true).describe("true: 이미지 안에서 빌드(멀티 스테이지) · false: 미리 빌드한 target/*.war·jar 를 담음(폐쇄망에서 컨테이너 안 Maven 접근이 어려울 때)"),
+      dockerfilePath: z.string().default("Dockerfile").describe("Dockerfile 경로(프로젝트 상대) — 템플릿에 이미 Dockerfile 이 있으면 deploy/Dockerfile 등"),
+      ingressHost: z.string().regex(DEPLOY_HOST_RE).optional().describe("Kubernetes Ingress 호스트(주면 Ingress 추가)"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 쓰지 않고 내용만"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.generate_egovframe_deploy.shape, annotations: toolAnnotations("generate_egovframe_deploy") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await generateDeploy({ projectDir: args.projectDir, targets: args.targets, jdk: args.jdk, imageRegistry: args.imageRegistry, image: args.image, appName: args.appName, buildInImage: args.buildInImage, dockerfilePath: args.dockerfilePath, ingressHost: args.ingressHost, dryRun: args.dryRun });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDeployMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );

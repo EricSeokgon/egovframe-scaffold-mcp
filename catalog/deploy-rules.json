@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "surveyedAt": "2026-10-13",
+  "note": "generate_egovframe_deploy(v0.45) 의 기반 이미지·DB 서비스·설정 주입 규칙. 이미지 태그는 Docker Hub 공식 이미지 기준이며 BASE_REGISTRY 로 사내 레지스트리(프록시 캐시)로 바꿀 수 있다.",
+  "jdks": [
+    "17",
+    "21"
+  ],
+  "images": {
+    "maven": "maven:3.9-eclipse-temurin-{jdk}",
+    "jdk": "eclipse-temurin:{jdk}-jdk",
+    "tomcat": "tomcat:10.1-jdk{jdk}-temurin",
+    "jre": "eclipse-temurin:{jdk}-jre",
+    "tomcat11": "tomcat:11.0-jdk{jdk}-temurin"
+  },
+  "runtime": {
+    "tomcat": {
+      "port": 8080,
+      "webapps": "/usr/local/tomcat/webapps",
+      "note": "Classic war — 기본 Tomcat 10.1(Servlet 6.0, 5.x 템플릿의 jakarta.servlet-api 5.0·6.0 과 commons-fileupload2-jakarta-servlet6 호환), pom 이 jakarta.servlet-api 6.1 이상을 직접 선언하면 Tomcat 11.0. ROOT 로 풀어서 배포"
+    },
+    "boot": {
+      "port": 8080,
+      "note": "Boot 실행 jar — java -jar"
+    }
+  },
+  "user": {
+    "uid": 10001,
+    "name": "app"
+  },
+  "timezone": "Asia/Seoul",
+  "databases": {
+    "mysql": {
+      "image": "mysql:8.4",
+      "port": 3306,
+      "rootUser": "root",
+      "env": {
+        "rootPassword": "MYSQL_ROOT_PASSWORD",
+        "database": "MYSQL_DATABASE",
+        "user": "MYSQL_USER",
+        "password": "MYSQL_PASSWORD"
+      },
+      "command": [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+        "--lower-case-table-names=1"
+      ],
+      "healthcheck": "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent",
+      "data": "/var/lib/mysql",
+      "initdb": "/docker-entrypoint-initdb.d"
+    },
+    "maria": {
+      "image": "mariadb:11.4",
+      "port": 3306,
+      "rootUser": "root",
+      "env": {
+        "rootPassword": "MARIADB_ROOT_PASSWORD",
+        "database": "MARIADB_DATABASE",
+        "user": "MARIADB_USER",
+        "password": "MARIADB_PASSWORD"
+      },
+      "command": [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+        "--lower-case-table-names=1"
+      ],
+      "healthcheck": "healthcheck.sh --connect --innodb_initialized",
+      "data": "/var/lib/mysql",
+      "initdb": "/docker-entrypoint-initdb.d"
+    },
+    "postgres": {
+      "image": "postgres:16",
+      "port": 5432,
+      "rootUser": "postgres",
+      "env": {
+        "rootPassword": "POSTGRES_PASSWORD",
+        "database": "POSTGRES_DB",
+        "user": "POSTGRES_USER",
+        "password": "POSTGRES_PASSWORD"
+      },
+      "command": [],
+      "healthcheck": "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"",
+      "data": "/var/lib/postgresql/data",
+      "initdb": "/docker-entrypoint-initdb.d"
+    }
+  },
+  "dbAliases": {
+    "mariadb": "maria",
+    "postgresql": "postgres",
+    "pgsql": "postgres"
+  },
+  "externalDatabases": {
+    "oracle": "라이선스로 공개 이미지를 쓰지 않습니다 — 기관 DB 또는 별도 컨테이너를 연결 정보로만 연결",
+    "tibero": "상용 DB — 연결 정보로만 연결",
+    "altibase": "상용 DB — 연결 정보로만 연결",
+    "cubrid": "공식 이미지 태그·초기화 방식이 템플릿 스크립트와 맞지 않아 연결 정보로만 연결",
+    "goldilocks": "상용 DB — 연결 정보로만 연결",
+    "hsql": "내장(메모리) DB — DB 컨테이너 없이 앱만 띄움"
+  },
+  "unsupported": [
+    {
+      "id": "no-build-file",
+      "reason": "pom.xml·build.gradle 이 없습니다(프론트엔드·정적 자산 템플릿은 각자의 배포 방식을 쓰세요)"
+    },
+    {
+      "id": "multi-module",
+      "reason": "멀티 모듈(pom <modules>·settings.gradle include) 프로젝트 — 모듈별로 이미지를 만들어야 해 1차 범위 밖입니다(MSA 템플릿은 저장소의 자체 배포 구성을 쓰세요)"
+    },
+    {
+      "id": "not-runnable",
+      "reason": "war 도 실행 jar(Spring Boot)도 아닌 라이브러리 jar — 실행할 수 있는 배포 단위가 없습니다"
+    }
+  ]
+}

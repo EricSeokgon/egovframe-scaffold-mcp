@@ -44,7 +44,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `EGOVFRAME_ALLOWED_ROOTS` | Optional sandbox: every directory argument (`projectDir`, `outputDir`) must be inside one of these roots (path-separator-delimited, realpath-checked). |
 | `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list`. Responses stay Korean. |
 
-## Tools (33)
+## Tools (34)
 
 | Tool | What it does |
 |---|---|
@@ -73,6 +73,7 @@ Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercont
 | `generate_egovframe_sbom` | CycloneDX 1.6 JSON (default) or SPDX 2.3 JSON (`bomFormat="spdx-json"`) SBOM without touching build files — Maven via cyclonedx-maven-plugin (hashes, licenses), Gradle from the resolved tree; baseline verdict per component (`egovframe:*` properties), optional OSV `vulnerabilities[]`; writes inside the project only, `dryRun` by default |
 | `check_egovframe_sbom` | Check an existing CycloneDX or SPDX 2.x SBOM (format detected) without changing it: the 7 minimum elements (supplier, name, version, unique identifier, dependency relationship, author, timestamp) per component with a ready / needs-work verdict, a purl-only re-check (changed baseline verdicts, OSV findings published since generation), a diff against `baselinePath`, and with `vex=true` a CycloneDX VEX draft (`in_triage`, BOM-Link) that keeps human decisions |
 | `check_egovframe_secure_coding` | Scan sources for security weaknesses from the implementation-stage list of the Korean secure coding guide (MOIS/KISA 2021) that static patterns can find: SQL injection, XSS, path traversal, open redirect, OS commands, XXE, weak crypto, insecure random, hard-coded secrets, cookies, error exposure, empty catch, deserialization, debug code — file, line, CWE, severity, fix and origin (common component original/modified/unmanaged, project, test); exceptions need a reason and reviewer; baseline diff; SARIF 2.1.0. A pattern-based aid, not a certified diagnosis |
+| `generate_egovframe_deploy` | Container and deployment files from the project diagnosis: multi-stage Dockerfile (Classic war unpacked as ROOT on Tomcat 10.1 or 11.0, Boot jar on the Temurin JRE; non-root, HEALTHCHECK; or a prebuilt artifact), `.dockerignore`, `deploy/docker-compose.yml` with a mysql/mariadb/postgres container initialised from the template SQL, and Kubernetes manifests (Deployment with probes and a hardened securityContext, Service, ConfigMap, Secret, optional Ingress). Database settings via Spring environment variables (Boot) or an overridden `globals.properties` (Classic); `imageRegistry` for air-gapped registries. New files only, `dryRun` by default |
 | `diagnose_egovframe_network` | Probe the hosts the server downloads from, classify failures (DNS, timeout, TLS, proxy auth) and prescribe environment settings as bash/cmd/PowerShell commands |
 | `generate_agents_md` | `AGENTS.md` for AI coding tools: build/test commands, RTE and migration status, components, rules, available MCP tools (ko/en) |
 
@@ -125,6 +126,15 @@ check_egovframe_secure_coding(projectDir, baselinePath="reports/secure-prev.json
 ```
 
 Projects subject to information-system audits in Korea follow the MOIS/KISA software development security guide (2021: 20 design-stage requirements, 49 implementation-stage weaknesses). The tool checks the 14 implementation-stage items that static patterns can find with controlled false positives (20 rules as data in `catalog/secure-coding-rules.json`). Comments are stripped first — all 96 MyBatis `${…}` occurrences in the official common components v4.3.2 turned out to be comments saying they were changed to `#{…}` — and EL inside custom-tag attributes, `<c:out>`, placeholders and `ENC(…)` values are not reported. With the same rules the official common components drop from 516 findings (v4.3.2) to 38 (v5.0.7), and the official web and boot-web templates have none. Exceptions go into `.egovframe-secure-ignore.json` with a reason and reviewer. `generate_egovframe_ci(supplyChain=true, secureCoding=true)` adds a `secure --fail-on high` gate step and uploads the SARIF to GitHub code scanning. Design notes: [docs/design-secure-coding.md](docs/design-secure-coding.md).
+
+## Container and deployment files
+
+```text
+generate_egovframe_deploy(projectDir, dryRun=false)
+generate_egovframe_deploy(projectDir, dryRun=false, imageRegistry="harbor.example.go.kr/dockerhub", buildInImage=false)
+```
+
+The tool writes a Dockerfile, `.dockerignore`, `deploy/docker-compose.yml` and `deploy/k8s/<app>.yaml` from the project diagnosis. Classic projects read `globals.properties` directly, so their WAR is unpacked into the image and a copy of that file (database host and password replaced) is mounted as a volume or Secret; Boot projects read settings through Spring's `Environment`, so `GLOBALS_MYSQL_URL`-style environment variables are enough. In CI, the official web (Classic) and boot-web (Boot) templates pass hadolint and kubeconform, build, start, answer HTTP 200 and report healthy as uid 10001; the official simple-backend starts with MySQL through `docker compose up` and serves the initialised data. Design notes: [docs/design-deploy.md](docs/design-deploy.md).
 
 ## Running in CI (CLI mode)
 
