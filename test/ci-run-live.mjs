@@ -163,7 +163,8 @@ try {
     }
     if (process.env.MAVEN_ARGS && !proxy) vars.push("--variable", `MAVEN_ARGS=${process.env.MAVEN_ARGS}`);
     const t0 = Date.now();
-    const r = sh("npx", ["-y", GITLAB_CI_LOCAL, "--no-color", ...(proxy ? ["--network", "host"] : []), ...vars, ...vols], { cwd: dir, timeout: 2_400_000 });
+    // gitlab-ci-local 4.7x 는 Node 22 의 Set.prototype.union 을 쓴다 — CI 통합 job(Node 20)에서도 돌도록 같은 npx 안에 node@22 를 함께 받아 그 node 로 실행
+    const r = sh("npx", ["-y", "-p", "node@22", "-p", GITLAB_CI_LOCAL, "--", "gitlab-ci-local", "--no-color", ...(proxy ? ["--network", "host"] : []), ...vars, ...vols], { cwd: dir, timeout: 2_400_000 });
     const out = r.out;
     assert(r.code === 0, `gitlab-ci-local(${GITLAB_CI_LOCAL.split("@")[1]}) 실행 ${Math.round((Date.now() - t0) / 1000)}초${r.code ? `\n${tail(out, 6000)}` : ""}`);
     // 끝의 요약 표: " PASS  build" · " FAIL  supply-chain"
