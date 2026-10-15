@@ -161,3 +161,55 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 CI 통합(`test:rehearse-live`)은 이 값을 `catalog/migration-corpus.json` 의 `rehearsal` 에 기대값으로 두고(오류 6,003 ±10%, 누락 패키지·연쇄 95% 이상, pom 맞춤 후 ≤5) 매번 확인합니다. 전체 트리(≈220MB)는 코퍼스 캐시에 넣지 않고 커밋 고정 아카이브(≈38MB)를 임시 디렉터리에 받습니다.
 
 범위 밖: 남은 오류의 자동 수정, 테스트 실행(컴파일까지), Gradle 의 pom 맞춤.
+
+## 6단계(v0.46.0): 5.x 최신 유지 (`migrate_egovframe_project(target="5.0.2")`)
+
+### 문제
+
+공식 Initializr 템플릿은 parent 5.0.0(web·boot-web) 또는 5.0.1(simple-backend·portal-site 등)으로 만들어집니다. 공식 parent 의 최신은 5.0.2 이므로 새 프로젝트도 만들어지는 순간부터 기준 미만입니다. 3.x/4.x → 5.x 전환(1–5단계)은 좌표·패키지를 바꾸는 일이지만, 5.x 안의 갱신은 바꿀 것이 다릅니다. 버전 몇 곳만 바꾸면 되고, 대신 그 사이 바뀐 RTE 의 API·동작을 프로젝트가 쓰는지 알아야 합니다.
+
+### 결정
+
+- **같은 도구에 target 으로 넣습니다.** `target` 이 `5.x`(기본)면 지금까지의 전환이고, `5.0.x` 면 갱신 모드입니다. 도구 수는 34종 그대로이고, `apply`·`dryRun`·`verify` 의 의미와 백업·transaction 도 같습니다. 3.x/4.x 프로젝트에 갱신 모드를 쓰면 항목 없이 `target="5.x"` 로 먼저 전환하라고 안내합니다.
+- **auto 항목**
+  - `parent-version`: 공식 parent(egovframe-web-config-parent·egovframe-boot-starter-parent)의 `<version>`.
+  - `rte-version`: RTE 버전 속성(`egovframe.rte.version` 등)과 `org.egovframe.rte` 의존성의 리터럴 버전. `${…}` 참조는 속성 쪽이 맡습니다. Gradle 좌표 문자열도 포함합니다.
+  - `parent-property`: 예전 parent 의 기본값을 그대로 복사해 덮어쓴 속성만 목표 parent 값으로 바꿉니다. 값이 예전 기본값과 다르면 의도한 고정으로 보고 건드리지 않습니다. 5.0.0–5.0.2 사이 parent 속성은 RTE 버전 하나만 달라 지금은 해당이 없지만, parent 가 Spring·Boot 버전을 올리는 다음 갱신에 대비한 규칙입니다.
+- **manual 항목**
+  - `rte-change`: 실효 RTE 버전 초과 ~ 목표 이하 구간에서 바뀐 API·동작을 프로젝트 소스가 참조하는 곳입니다. 참조는 FQN(Java·XML·JSP)이나 단순 이름 import 로 찾고, 파일마다 첫 줄 하나만 보고합니다. 구간에 있지만 참조하지 않는 변경은 수만 셉니다.
+  - `component-update`: 공통컴포넌트가 있으면 매니페스트 유무에 따라 `upgrade_egovframe_project` 나 `reassemble_egovframe_components` 를 안내합니다. 매니페스트가 카탈로그 고정 태그와 같으면 내지 않습니다.
+- **실효 RTE 버전**: (버전 속성 또는 parent 가 관리하는 버전)과 RTE 의존성 리터럴 버전 중 가장 낮은 것입니다. 하나라도 옛 버전이면 그 구간의 변경이 해당되기 때문입니다.
+- **create_egovframe_project(alignParent=true)**: 생성 staging 의 pom 에 같은 계획 함수(`planPomUpdate`)를 적용합니다. 기본은 공식 템플릿 그대로입니다.
+- **평가서**: 2절에 "5.x 최신 유지" 요약을 붙입니다. 등급 산식은 바꾸지 않습니다. 공급망 등급은 이미 parent 가 기준 미만이면 platform 요인으로 1점이 붙으므로, 갱신하면 그만큼 내려갑니다.
+
+### 규칙 데이터 (`catalog/update-rules.json`)
+
+`scripts/generate-update-rules.mjs` 가 다음 근거로 만듭니다.
+
+| 근거 | 내용 |
+|---|---|
+| `egovframe-runtime` 태그 `v5.0.0-Final`·`v5.0.1-Final`·`v5.0.2-Final` | 버전 목록과 단계별(직전 태그 → 태그) `src/main/java` 변경 클래스(5.0.1: 109개, 5.0.2: 66개). 두 단계 모두 클래스 추가 3개·삭제 0개 |
+| 공식 parent pom 5.0.0·5.0.1·5.0.2(2종) | `<properties>` 전체와 Spring Boot parent 버전(3.5.6, 세 버전 같음). 세 버전의 속성 차이는 `egovframe.rte.version` 하나이고, web parent 5.0.1 은 servlet·jsp API 에 `provided`, 테스트 라이브러리에 `test` scope 를 붙였습니다 |
+| `catalog/update-mapping.json`(큐레이션) | 바뀐 API·동작 11건의 요약·사유·since |
+
+생성기는 큐레이션 항목의 클래스가 최신 태그에 있고, 그 단계에서 실제로 바뀌었는지 확인합니다. 아니면 실패합니다. 공개 메서드 시그니처 차이(직접 비교)로 찾은 API 변경은 `EgovSecurityConfiguration` 의 `@Bean` 메서드 3개(5.0.1)와 `EgovStringUtil.getTokens` 반환 타입(5.0.2)입니다. 나머지는 보안점검 반영으로 동작이 바뀐 것입니다(엑셀 수식 주입 방지·XML XXE 차단·파일 경로 검증·약한 기본 암호 알고리즘 경고·테이블 ID 생성 행 잠금·날짜 유틸 입력 검증·리액티브 예외 메시지·엑셀 일괄 등록·HTMLTagFilter 허용 태그).
+
+`catalog/*-mapping.json` 은 생성기 입력이라 v0.46 부터 npm 패키지에 싣지 않습니다.
+
+### 실측 (Initializr 고정 commit)
+
+| 템플릿 | parent | 자동 | 참조하는 변경 | 의존성 기준 미만(resolve) | 공급망 등급 |
+|---|---|---|---|---|---|
+| web | 5.0.0 → 5.0.2 | 1 | HTMLTagFilter(web.xml)·테이블 ID 생성(context-idgen.xml) | 6 → 4 | C(4) → B(3) |
+| boot-web | 5.0.0 → 5.0.2 | 1 | 테이블 ID 생성 | 3 → 1 | C(4) → B(3) |
+| simple-backend | 5.0.1 → 5.0.2 | 1 | — (공통컴포넌트 재조립 안내) | | |
+| enterprise-business | 5.0.1 → 5.0.2 | 1 | 엑셀 일괄 등록(3파일)·`EgovStringUtil.getTokens` | | |
+
+기준 미만에서 빠지는 것은 RTE 전이 의존성(`egovframe-rte-fdl-cmmn`·`fdl-logging` 5.0.0)입니다. 남는 것은 Spring Boot·Hibernate 계열로, parent 5.0.2 도 같은 버전을 쓰므로 이 도구의 범위가 아닙니다. 갱신 뒤 JDK 17 `mvn compile` 은 두 템플릿 모두 통과합니다.
+
+### 검증
+
+- 게이트(`test:update`): 규칙 데이터 정합, pom·Gradle 계획(속성 참조·비 RTE 좌표 불변, 의도한 고정값 보존), 참조 탐지(접두어만 같은 클래스·와일드카드 import), 구간(target 5.0.1, from 5.0.1), 3.x 거부, dryRun 무기록, fault-injection 롤백, 적용·백업·재진단, 가짜 runner verify 의 오류 ↔ 변경 항목 연결, `alignPom`, 평가서 2절, outputSchema, MCP `tools/call`.
+- CI 통합(`test:update-live`): 위 실측표의 web·boot-web 값을 기대값으로 고정하고, 적용 → compile, alignParent 생성 → compile 을 확인합니다.
+
+범위 밖: 5.1 같은 마이너 이상 갱신(미출시), parent 를 쓰지 않는 프로젝트의 Spring·Boot 버전 맞춤(→ `check_egovframe_dependencies`), 바뀐 동작의 자동 수정.

@@ -107,6 +107,8 @@ jobs:
         run: npm run test:migration-rules-live
       - name: Migration apply then JDK 17 Maven compile
         run: npm run test:migrate-integration
+      - name: Keep 5.x current (official web and boot-web parent 5.0.0 to 5.0.2, compile, dependency and grade change)
+        run: npm run test:update-live
       - name: Restore the migration regression corpus (official common-components v3.10.0 / v4.3.2 partial trees)
         uses: actions/cache@v4
         with:
@@ -131,6 +133,8 @@ jobs:
           echo "c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3  /tmp/kubeconform.tgz" | sha256sum -c -
           tar xzf /tmp/kubeconform.tgz -C /tmp kubeconform
           HADOLINT=/tmp/hadolint KUBECONFORM=/tmp/kubeconform npm run test:deploy-live
+      - name: Generated Jenkinsfile and .gitlab-ci.yml run on Jenkins LTS and gitlab-ci-local
+        run: npm run test:ci-run-live
       - name: Secure coding weaknesses on official templates (pinned counts, SARIF schema)
         run: npm run test:secure-live
       - name: Generated supply-chain workflow passes actionlint

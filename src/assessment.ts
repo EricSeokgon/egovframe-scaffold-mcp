@@ -16,6 +16,7 @@ import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
 import { checkSecureCoding } from "./secure-coding.js";
+import { updateProject, type UpdateInfo } from "./update.js";
 const SECURE_ORIGIN_KO: Record<string, string> = { component: "공통컴포넌트 원본", "component-modified": "공통컴포넌트 수정본", "component-unmanaged": "공통컴포넌트(매니페스트 없음)", project: "프로젝트 코드", test: "테스트" };
 
 // ── 등급 산식 (데이터) ─────────────────────────────────
@@ -123,6 +124,8 @@ export interface AssessmentResult {
     manualTop: { kind: string; from: string; to: string | null; count: number; files: number; example: string; reason: string }[];
     manualTotalGroups: number;
     notes: string[];
+    /** v0.46: 이미 5.x 인 프로젝트의 최신 유지(migrate_egovframe_project target=최신 5.0.x) 요약 — 등급 산식에는 넣지 않는다 */
+    update?: { from: string | null; to: string; parentVersion: string | null; auto: number; manual: number; changes: UpdateInfo["changes"]; components: UpdateInfo["components"] };
   };
   dependencies: {
     offline: boolean; findings: number; declared: number; transitive: number; summary: Record<DependencyStatus, number>;
@@ -227,6 +230,13 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const reassemble = mig.items.filter((i) => i.kind === "component-reassemble").map((i) => i.from.replace(/\s.*$/, ""));
   const removedApiRefs = mig.items.filter((i) => REMOVED_API_KINDS.includes(i.kind)).length;
   const { top: manualTop, groups } = groupManualItems(mig.items, topN);
+  let update: AssessmentResult["migration"]["update"];
+  if (mig.sourceEra === "5.x") {
+    try {
+      const u = updateProject({ projectDir, maxFiles: opts.maxFiles });
+      update = { from: u.update.from, to: u.update.to, parentVersion: u.update.parent?.version ?? null, auto: u.summary.auto, manual: u.summary.manual, changes: u.update.changes, components: u.update.components };
+    } catch (e) { notes.push(`5.x 최신 유지 점검 실패: ${e instanceof Error ? e.message : String(e)}`); }
+  }
 
   // 의존성
   const actions: AssessmentAction[] = dep.findings
@@ -271,7 +281,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       buildSystem: diag.buildSystem, isEgovProject: diag.isEgovProject, rteVersion: mig.rteVersion, sourceEra: mig.sourceEra, parent: dep.parent, java: dep.java, database: diag.database,
       components: { count: diag.detectedComponents.length, ids: diag.detectedComponents.map((c) => c.id) }, aiLayer: diag.aiLayer, hasManifest: diag.hasManifest, filesScanned: mig.filesScanned,
     },
-    migration: { items: mig.items.length, auto: mig.summary.auto, manual: mig.summary.manual, files: mig.summary.files, byKind: mig.summary.byKind, manualByKind, reassemble, removedApiRefs, manualTop, manualTotalGroups: groups, notes: mig.notes },
+    migration: { items: mig.items.length, auto: mig.summary.auto, manual: mig.summary.manual, files: mig.summary.files, byKind: mig.summary.byKind, manualByKind, reassemble, removedApiRefs, manualTop, manualTotalGroups: groups, notes: mig.notes, ...(update ? { update } : {}) },
     dependencies: {
       offline: dep.offline, findings: dep.findings.length, declared: dep.findings.filter((f) => f.origin === "declared").length, transitive: dep.findings.filter((f) => f.origin === "transitive").length, summary: dep.summary,
       actions, unknown: dep.findings.filter((f) => f.status === "unknown").map(coord), vendor: dep.findings.filter((f) => f.status === "vendor").map(coord),
@@ -346,6 +356,16 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
 
   const d = r.dependencies;
   const s = d.summary;
+  if (m.update) {
+    const u = m.update;
+    L.push(``, `### 5.x 최신 유지 (\`migrate_egovframe_project(target="${u.to}")\`)`, ``);
+    if (u.auto === 0 && u.manual === 0) L.push(`- RTE ${u.from ?? "미검출"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} — ${u.to} 기준을 만족합니다.`);
+    else {
+      L.push(`- RTE ${u.from ?? "미검출"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} → ${u.to}: 자동 갱신 ${u.auto} · 확인할 항목 ${u.manual}`);
+      for (const c of u.changes) L.push(`- [${c.since} ${c.kind === "api" ? "API" : "동작"}] ${c.summary} — 참조 파일 ${c.files}개`);
+      if (u.components?.tool) L.push(`- 공통컴포넌트 ${u.components.detected}종 → \`${u.components.tool}\` 로 ${u.components.catalogTag} 기준 맞춤`);
+    }
+  }
   L.push(``, `## 3. 의존성`, ``);
   L.push(`- 의존성 ${d.findings}건(선언 ${d.declared}${d.transitive ? ` + 전이 ${d.transitive}` : ""}): 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · parent 관리 ${s.managed} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 벤더 배포 ${s.vendor} · 기준 없음 ${s.unknown} · 버전 없음 ${s.unversioned}`);
   if (d.resolution) L.push(d.resolution.success ? `- 해석된 트리(${d.resolution.scope}): artifact ${d.resolution.artifacts}종 = 직접 ${d.resolution.direct} + 전이 ${d.resolution.artifacts - d.resolution.direct} · 선언과 다르게 해석 ${d.resolution.differs}건` : `- 해석된 트리: 실패 (${d.resolution.error ?? "원인 미상"}) — 선언만 판정`);
