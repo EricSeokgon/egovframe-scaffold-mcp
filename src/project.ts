@@ -5,6 +5,17 @@ import * as path from "node:path";
 import { withDirectoryTransaction } from "./file-transaction.js";
 import { createHash } from "node:crypto";
 import { COMPONENTS_DOWNLOAD_TIMEOUT_MS, DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
+import { applyTextEdits } from "./migrate.js";
+import { loadUpdateRules, planPomUpdate } from "./update.js";
+
+/** v0.46 alignParent: pom 텍스트의 5.x parent·RTE 버전을 최신 5.0.x 로 맞춘다(순수 함수). */
+export function alignPom(pom: string): { text: string; aligned: { from: string; to: string }[] } {
+  const rules = loadUpdateRules();
+  const plan = planPomUpdate("pom.xml", pom, rules.latest, rules);
+  if (!plan.items.length) return { text: pom, aligned: [] };
+  const { text } = applyTextEdits(pom, plan.items.flatMap((i) => i.edits ?? []));
+  return { text, aligned: plan.items.map((i) => ({ from: i.from, to: i.to ?? "" })) };
+}
 
 /**
  * 저장소 아카이브가 아니라 "고정된 zip 파일"로 조달하는 템플릿의 출처.
@@ -296,12 +307,16 @@ export interface CreateOptions {
   ref?: string;
   /** true면 디스크에 쓰지 않고 수행 예정 내용만 미리보기로 반환한다. */
   dryRun?: boolean;
+  /** v0.46: true 면 생성 직후 pom 의 5.x parent·RTE 버전을 최신 5.0.x 로 맞춘다(기본 false = 공식 템플릿 그대로) */
+  alignParent?: boolean;
   /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
   faultInjection?: "after-extract" | "after-customize";
 }
 
 export interface CreateResult {
   projectPath: string;
+  /** v0.46 alignParent: pom 에서 바꾼(dryRun 이면 바꿀) 항목 */
+  aligned?: { from: string; to: string }[];
   filesExtracted: number;
   customized: string[];
   nextSteps: string[];
@@ -379,6 +394,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
   const buf = Buffer.from(await res.arrayBuffer());
 
   const customized: string[] = [];
+  const aligned: { from: string; to: string }[] = [];
   let archiveVerified: boolean | undefined;
   if (archive) {
     if (opts.ref) {
@@ -418,6 +434,14 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
       customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
     } else {
       if (hasPom) customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName}) — 적용 예정`);
+      if (hasPom && opts.alignParent) {
+        const pomEntry = entries.find((e) => rel(e.entryName) === "pom.xml");
+        const plan = pomEntry ? alignPom(pomEntry.getData().toString("utf8")) : null;
+        if (plan?.aligned.length) {
+          aligned.push(...plan.aligned);
+          customized.push(`pom.xml 5.x 최신 유지(alignParent): ${plan.aligned.map((x) => `${x.from} → ${x.to}`).join(", ")} — 적용 예정`);
+        } else if (plan) customized.push("pom.xml 5.x 최신 유지(alignParent): 이미 최신 — 바꿀 항목 없음");
+      }
       if (hasProps) customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database}) — 적용 예정`);
       if (hasGlobals) customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database}) — 적용 예정`);
       for (const g of extraGlobals) customized.push(`${g} (Globals.DbType=${opts.database}) — 파일에 설정이 있으면 적용 예정`);
@@ -430,6 +454,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
       ref: effectiveRef,
       dryRun: true,
       archiveVerified,
+      ...(opts.alignParent ? { aligned } : {}),
       nextSteps: [`미리보기 모드입니다. 실제 생성하려면 dryRun 없이 다시 호출하세요.`],
     };
   }
@@ -459,8 +484,16 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
       // Initializr zip 은 좌표가 ###GROUP_ID### 같은 자리표시자다 — 먼저 채운 뒤 공통 좌표 적용을 거친다.
       const filled = applyPomPlaceholders(pom, opts.groupId, opts.projectName);
       pom = customizePomCoordinates(filled.pom, opts.groupId, opts.projectName);
-      fs.writeFileSync(pomPath, pom);
       customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
+      if (opts.alignParent) {
+        const plan = alignPom(pom);
+        if (plan.aligned.length) {
+          pom = plan.text;
+          aligned.push(...plan.aligned);
+          customized.push(`pom.xml 5.x 최신 유지(alignParent): ${plan.aligned.map((x) => `${x.from} → ${x.to}`).join(", ")}`);
+        } else customized.push("pom.xml 5.x 최신 유지(alignParent): 이미 최신 — 바꿀 항목 없음");
+      }
+      fs.writeFileSync(pomPath, pom);
     }
 
     // 5) application.properties: DB 타입 적용
@@ -558,7 +591,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     "자바 패키지 구조 변경(groupId에 맞춘 소스 이동)은 PoC 범위 밖입니다 — IDE의 rename refactoring 사용을 권장합니다.",
   ];
 
-  return { projectPath, filesExtracted: count, customized, nextSteps, ref: effectiveRef, dryRun: false, archiveVerified };
+  return { projectPath, filesExtracted: count, customized, nextSteps, ref: effectiveRef, dryRun: false, archiveVerified, ...(opts.alignParent ? { aligned } : {}) };
 }
 
 /** 템플릿 zip 다운로드 → 압축 해제 → 사용자 값 적용 (dryRun이면 미리보기만) */

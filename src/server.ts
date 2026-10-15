@@ -23,6 +23,7 @@ import { CI_BUNDLE_PATH_RE, CI_FAIL_ON_RE, CI_JDK_RE, CI_NPM_REGISTRY_RE, CI_SUP
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
+import { applyUpdate, isUpdateTarget, renderUpdateMarkdown, updateProject, verifyUpdate } from "./update.js";
 import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, renderMigrationVerifyMarkdown, verifyMigration, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
 import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network.js";
@@ -62,7 +63,7 @@ function unifiedTemplateSummary():
 }
 
 /** structuredContent 용: 편집 오프셋(edits)은 적용 내부용이라 구조화 출력에서 뺀다 (json text 에는 그대로 남음) */
-function stripEdits(r: MigrateResult): Record<string, unknown> {
+function stripEdits(r: Pick<MigrateResult, "items">): Record<string, unknown> {
   return { ...r, items: r.items.map(({ edits: _e, ...rest }) => rest) } as unknown as Record<string, unknown>;
 }
 
@@ -89,7 +90,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "create_egovframe_project",
     { title: t("create_egovframe_project"), description: d("create_egovframe_project", "전자정부 표준프레임워크 공식 템플릿으로 새 프로젝트 골격을 생성합니다. " +
       "공식 GitHub 템플릿을 내려받아 projectName/groupId/DB 타입을 적용합니다. " +
-      "dryRun=true로 먼저 미리보기할 수 있습니다."), inputSchema: {
+      "dryRun=true로 먼저 미리보기할 수 있습니다. alignParent=true 면 생성 직후 5.x parent·RTE 버전을 최신 5.0.x 로 맞춥니다(공식 Initializr 템플릿은 parent 5.0.0·5.0.1)."), inputSchema: {
       projectName: z.string().describe("프로젝트명(artifactId). 소문자·숫자·하이픈, 예: my-egov-app"),
       groupId: z.string().describe("자바 groupId. 예: egovframework.example"),
       database: z.enum(DB_TYPES).default("hsql").describe("DB 타입 (템플릿 지원: hsql|mysql|oracle|altibase|tibero)"),
@@ -97,6 +98,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       outputDir: z.string().describe("프로젝트를 생성할 상위 디렉터리(절대경로 권장)"),
       ref: z.string().optional().describe("내려받을 브랜치/태그(미지정 시 템플릿 기본 브랜치). 예: main, v4.3.0"),
       dryRun: z.boolean().default(false).describe("true면 디스크에 쓰지 않고 생성 예정 내용만 미리보기"),
+      alignParent: z.boolean().default(false).describe("true면 생성 직후 pom 의 5.x parent·RTE 버전을 최신 5.0.x(공식 parent 기준)로 맞춤. 기본 false = 공식 템플릿 그대로(Initializr 템플릿은 parent 5.0.0·5.0.1)"),
     }, annotations: toolAnnotations("create_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
@@ -564,9 +566,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 5.x 전환 진단 도구 (v0.29.0, 1단계 읽기 전용) ──────
   server.registerTool(
     "migrate_egovframe_project",
-    { title: t("migrate_egovframe_project"), description: d("migrate_egovframe_project", "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단하고(1단계), apply=true 이면 auto 항목을 실제로 치환합니다(2단계). 진단: RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요). 적용: apply=true 는 dryRun=true(기본)면 파일별 변경 미리보기만 돌려주고, dryRun=false 면 auto 항목을 하나의 transaction 으로 치환하며 원본을 migration-backup/<시각>/ 에 보관하고 migration-plan.json 을 남깁니다(중간 실패 시 작업 전 상태로 복구). manual 항목은 건드리지 않고 결과에 남깁니다. verify=true 는 3단계(검증): 적용 뒤 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 \"이 항목을 처리하면 해결될 오류 수\" 순으로 작업 목록을 만듭니다. 3.x 공통컴포넌트 소스가 섞여 있으면 컴포넌트 단위 재조립 권고를 내고 skipComponents 로 치환에서 뺄 수 있습니다. 규칙은 egovframe-runtime·egovframe-common-components 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다."), inputSchema: {
+    { title: t("migrate_egovframe_project"), description: d("migrate_egovframe_project", "표준프레임워크 3.x/4.x 프로젝트를 5.x(Jakarta EE 9+, Spring 6, Java 17) 로 옮기기 위해 바꿔야 할 것을 파일·라인 단위로 진단하고(1단계), apply=true 이면 auto 항목을 실제로 치환합니다(2단계). 진단: RTE Maven 좌표(egovframework.rte → org.egovframe.rte:egovframe-rte-*)·패키지(egovframework.rte.* → org.egovframe.rte.*)·5.x 에서 이름이 바뀌거나 제거된 클래스·javax→jakarta 패키지와 의존성·web.xml 스키마·제거된 egov-* XML 네임스페이스·교체 필요 라이브러리, 항목마다 auto(기계 치환 가능)/manual(코드 수정 필요). 적용: apply=true 는 dryRun=true(기본)면 파일별 변경 미리보기만 돌려주고, dryRun=false 면 auto 항목을 하나의 transaction 으로 치환하며 원본을 migration-backup/<시각>/ 에 보관하고 migration-plan.json 을 남깁니다(중간 실패 시 작업 전 상태로 복구). manual 항목은 건드리지 않고 결과에 남깁니다. verify=true 는 3단계(검증): 적용 뒤 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 \"이 항목을 처리하면 해결될 오류 수\" 순으로 작업 목록을 만듭니다. 3.x 공통컴포넌트 소스가 섞여 있으면 컴포넌트 단위 재조립 권고를 내고 skipComponents 로 치환에서 뺄 수 있습니다. 규칙은 egovframe-runtime·egovframe-common-components 태그 비교로 만든 동봉 카탈로그(catalog/migration-rules.json)에서 읽습니다. target 에 5.0.2 같은 5.0.x 를 주면 이미 5.x 인 프로젝트의 갱신 모드가 됩니다: parent·RTE 버전 속성·RTE 의존성 리터럴 버전과 예전 parent 기본값을 그대로 덮어쓴 속성은 auto, 그 사이 바뀐 RTE API·동작(보안 설정 Bean 시그니처, 엑셀 수식 주입 방지, XML XXE 차단 등)을 프로젝트가 참조하는 곳과 공통컴포넌트 최신 유지(upgrade·reassemble 안내)는 manual 로 보고하며, apply·dryRun·verify 는 전환과 같게 동작합니다(백업에 update-plan.json, 규칙 catalog/update-rules.json)."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
-      target: z.enum(["5.x"]).default("5.x").describe("전환 목표 (현재 5.x 만 지원)"),
+      target: z.string().regex(/^(5\.x|5\.0\.\d+)$/).default("5.x").describe("전환 목표. 5.x(기본) = 3.x/4.x → 5.x 전환, 5.0.2 같은 5.0.x = 이미 5.x 인 프로젝트를 그 버전으로 갱신(parent·RTE 버전 auto, 그 사이 바뀐 RTE API·동작 참조 manual, 공통컴포넌트 최신 유지 안내)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식. markdown=사람이 읽는 요약, json=항목 배열 그대로"),
       apply: z.boolean().default(false).describe("true 면 2단계(적용). false(기본)면 진단만"),
       dryRun: z.boolean().default(true).describe("apply=true 일 때만 의미. true(기본)면 파일별 변경 미리보기만, false 면 실제로 치환(백업 생성)"),
@@ -575,17 +577,26 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }, outputSchema: OUTPUT_SCHEMAS.migrate_egovframe_project.shape, annotations: toolAnnotations("migrate_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
+      if (isUpdateTarget(args.target)) {
+        // v0.46: 5.x 안의 갱신
+        const r = args.verify ? await verifyUpdate({ projectDir: args.projectDir, target: args.target })
+          : args.apply ? await applyUpdate({ projectDir: args.projectDir, target: args.target, dryRun: args.dryRun })
+          : updateProject({ projectDir: args.projectDir, target: args.target });
+        const text = args.format === "json" ? JSON.stringify(stripEdits(r), null, 2) : renderUpdateMarkdown(r);
+        return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
+      }
+      const target = "5.x" as const;
       if (args.verify) {
-        const r = await verifyMigration({ projectDir: args.projectDir, target: args.target, skipComponents: args.skipComponents });
+        const r = await verifyMigration({ projectDir: args.projectDir, target, skipComponents: args.skipComponents });
         const text = args.format === "json" ? JSON.stringify(stripEdits(r), null, 2) : renderMigrationVerifyMarkdown(r);
         return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
       }
       if (args.apply) {
-        const r = await applyMigration({ projectDir: args.projectDir, target: args.target, dryRun: args.dryRun, skipComponents: args.skipComponents });
+        const r = await applyMigration({ projectDir: args.projectDir, target, dryRun: args.dryRun, skipComponents: args.skipComponents });
         const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationApplyMarkdown(r);
         return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
       }
-      const r = migrateProject({ projectDir: args.projectDir, target: args.target, skipComponents: args.skipComponents });
+      const r = migrateProject({ projectDir: args.projectDir, target, skipComponents: args.skipComponents });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderMigrationMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: stripEdits(r) };
     },

@@ -1,0 +1,583 @@
+{
+  "schemaVersion": 1,
+  "surveyedAt": "2026-10-15",
+  "generatedBy": "scripts/generate-update-rules.mjs",
+  "note": "5.x 안의 갱신(migrate_egovframe_project target=5.0.x) 규칙. parent·RTE 버전은 auto, 바뀐 API·동작은 프로젝트가 그 클래스를 참조할 때만 manual 로 보고한다.",
+  "source": {
+    "repository": "eGovFramework/egovframe-runtime",
+    "mavenRepository": "https://maven.egovframe.go.kr/maven/",
+    "tags": [
+      {
+        "tag": "v5.0.0-Final",
+        "version": "5.0.0",
+        "commit": "caf2bd2e6cb7446831dad17bb56b124a2908428c"
+      },
+      {
+        "tag": "v5.0.1-Final",
+        "version": "5.0.1",
+        "commit": "616317435d44270314dfdbe0d3453b42b57e0299"
+      },
+      {
+        "tag": "v5.0.2-Final",
+        "version": "5.0.2",
+        "commit": "8f47a567ec4a8d3969f423c195115648cf562ae0"
+      }
+    ]
+  },
+  "versions": [
+    "5.0.0",
+    "5.0.1",
+    "5.0.2"
+  ],
+  "latest": "5.0.2",
+  "rteVersionProperties": [
+    "egovframe.rte.version",
+    "org.egovframe.rte.version",
+    "egovframework.rte.version"
+  ],
+  "parents": [
+    {
+      "kind": "web",
+      "groupId": "org.egovframe.web",
+      "artifactId": "egovframe-web-config-parent",
+      "versions": {
+        "5.0.0": {
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.0.0",
+            "spring.framework.version": "6.2.11",
+            "jakarta.annotation-api.version": "3.0.0",
+            "jakarta.servlet-api.version": "5.0.0",
+            "jakarta.servlet.jsp-api.version": "4.0.0",
+            "jakarta.servlet.jsp.jstl-api.version": "3.0.2",
+            "jakarta.servlet.jsp.jstl.version": "3.0.1",
+            "jakarta.validation-api.version": "3.1.1",
+            "jakarta.websocket-api.version": "2.2.0",
+            "jakarta.faces-api.version": "4.1.2",
+            "jakarta.inject-api.version": "2.0.1",
+            "jakarta.json-api.version": "2.1.3",
+            "jakarta.mail.version": "2.0.2",
+            "jakarta.json.version": "2.0.1",
+            "jackson.version": "2.18.2",
+            "log4j2.version": "2.25.3",
+            "slf4j.version": "2.0.17",
+            "log4jdbc.version": "1.2",
+            "commons-beanutils.version": "1.11.0",
+            "commons-codec.version": "1.18.0",
+            "commons-compress.version": "1.28.0",
+            "commons-dbcp2.version": "2.13.0",
+            "commons-email.version": "1.6.0",
+            "commons-email2-jakarta.version": "2.0.0-M1",
+            "commons-fileupload2-jakarta-servlet6.version": "2.0.0-M5",
+            "commons-io.version": "2.18.0",
+            "commons-lang3.version": "3.18.0",
+            "commons-net.version": "3.11.1",
+            "commons-pool2.version": "2.12.1",
+            "mysql-connector-j.version": "8.4.0",
+            "mariadb-java-client.version": "3.4.0",
+            "postgresql.version": "42.7.3",
+            "hsqldb.version": "2.7.4",
+            "hibernate-validator.version": "8.0.3.Final",
+            "yasson.version": "3.0.4",
+            "parsson.version": "1.1.7",
+            "xmlbeans.version": "5.3.0",
+            "antlr4.version": "4.13.2",
+            "cglib.version": "3.3.0",
+            "jasypt.version": "1.9.3",
+            "icu4j.version": "77.1",
+            "quartz.version": "2.5.0",
+            "oro.version": "2.0.8",
+            "selenium.version": "4.38.0",
+            "httpclient5.version": "5.5.1",
+            "jaxws-rt.version": "4.0.2",
+            "jaxrpc-impl.version": "1.1.6",
+            "jaxrpc-api-osgi.version": "1.1-b01",
+            "jms-api.version": "1.1-rev-1",
+            "servicemix.jaxws-api.version": "2.9.0",
+            "ckeditor-java-core.version": "3.5.3",
+            "batik-ext.version": "1.17",
+            "ajaxtags-resources.version": "1.5.7",
+            "jodconverter.version": "2.2.1",
+            "json-simple.version": "1.1.1",
+            "json-lib.version": "2.4",
+            "scribejava.version": "8.3.3",
+            "twitter4j-core.version": "4.0.7",
+            "jp.takke.twitter4j-v2.version": "1.4.2",
+            "spring-ldap-core.version": "2.4.4",
+            "ldapsdk.version": "4.1",
+            "junit.version": "4.13.2",
+            "junit-jupiter.version": "5.12.1",
+            "javaparser-core.version": "3.26.1",
+            "lombok.version": "1.18.42",
+            "sndng-mail.version": "1.0",
+            "soap.version": "2.3.1",
+            "xalan.version": "2.7.3",
+            "langchain4j.version": "1.8.0",
+            "langchain4j-beta.version": "1.8.0-beta15",
+            "maven-compiler-plugin.version": "3.14.0",
+            "maven-war-plugin.version": "3.4.0",
+            "maven-pmd-plugin.version": "3.26.0",
+            "maven-surefire-plugin.version": "3.5.2",
+            "maven-javadoc-plugin.version": "3.11.2"
+          }
+        },
+        "5.0.1": {
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.0.1",
+            "spring.framework.version": "6.2.11",
+            "jakarta.annotation-api.version": "3.0.0",
+            "jakarta.servlet-api.version": "5.0.0",
+            "jakarta.servlet.jsp-api.version": "4.0.0",
+            "jakarta.servlet.jsp.jstl-api.version": "3.0.2",
+            "jakarta.servlet.jsp.jstl.version": "3.0.1",
+            "jakarta.validation-api.version": "3.1.1",
+            "jakarta.websocket-api.version": "2.2.0",
+            "jakarta.faces-api.version": "4.1.2",
+            "jakarta.inject-api.version": "2.0.1",
+            "jakarta.json-api.version": "2.1.3",
+            "jakarta.mail.version": "2.0.2",
+            "jakarta.json.version": "2.0.1",
+            "jackson.version": "2.18.2",
+            "log4j2.version": "2.25.3",
+            "slf4j.version": "2.0.17",
+            "log4jdbc.version": "1.2",
+            "commons-beanutils.version": "1.11.0",
+            "commons-codec.version": "1.18.0",
+            "commons-compress.version": "1.28.0",
+            "commons-dbcp2.version": "2.13.0",
+            "commons-email.version": "1.6.0",
+            "commons-email2-jakarta.version": "2.0.0-M1",
+            "commons-fileupload2-jakarta-servlet6.version": "2.0.0-M5",
+            "commons-io.version": "2.18.0",
+            "commons-lang3.version": "3.18.0",
+            "commons-net.version": "3.11.1",
+            "commons-pool2.version": "2.12.1",
+            "mysql-connector-j.version": "8.4.0",
+            "mariadb-java-client.version": "3.4.0",
+            "postgresql.version": "42.7.3",
+            "hsqldb.version": "2.7.4",
+            "hibernate-validator.version": "8.0.3.Final",
+            "yasson.version": "3.0.4",
+            "parsson.version": "1.1.7",
+            "xmlbeans.version": "5.3.0",
+            "antlr4.version": "4.13.2",
+            "cglib.version": "3.3.0",
+            "jasypt.version": "1.9.3",
+            "icu4j.version": "77.1",
+            "quartz.version": "2.5.0",
+            "oro.version": "2.0.8",
+            "selenium.version": "4.38.0",
+            "httpclient5.version": "5.5.1",
+            "jaxws-rt.version": "4.0.2",
+            "jaxrpc-impl.version": "1.1.6",
+            "jaxrpc-api-osgi.version": "1.1-b01",
+            "jms-api.version": "1.1-rev-1",
+            "servicemix.jaxws-api.version": "2.9.0",
+            "ckeditor-java-core.version": "3.5.3",
+            "batik-ext.version": "1.17",
+            "ajaxtags-resources.version": "1.5.7",
+            "jodconverter.version": "2.2.1",
+            "json-simple.version": "1.1.1",
+            "json-lib.version": "2.4",
+            "scribejava.version": "8.3.3",
+            "twitter4j-core.version": "4.0.7",
+            "jp.takke.twitter4j-v2.version": "1.4.2",
+            "spring-ldap-core.version": "2.4.4",
+            "ldapsdk.version": "4.1",
+            "junit.version": "4.13.2",
+            "junit-jupiter.version": "5.12.1",
+            "javaparser-core.version": "3.26.1",
+            "lombok.version": "1.18.42",
+            "sndng-mail.version": "1.0",
+            "soap.version": "2.3.1",
+            "xalan.version": "2.7.3",
+            "langchain4j.version": "1.8.0",
+            "langchain4j-beta.version": "1.8.0-beta15",
+            "maven-compiler-plugin.version": "3.14.0",
+            "maven-war-plugin.version": "3.4.0",
+            "maven-pmd-plugin.version": "3.26.0",
+            "maven-surefire-plugin.version": "3.5.2",
+            "maven-javadoc-plugin.version": "3.11.2"
+          }
+        },
+        "5.0.2": {
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.0.2",
+            "spring.framework.version": "6.2.11",
+            "jakarta.annotation-api.version": "3.0.0",
+            "jakarta.servlet-api.version": "5.0.0",
+            "jakarta.servlet.jsp-api.version": "4.0.0",
+            "jakarta.servlet.jsp.jstl-api.version": "3.0.2",
+            "jakarta.servlet.jsp.jstl.version": "3.0.1",
+            "jakarta.validation-api.version": "3.1.1",
+            "jakarta.websocket-api.version": "2.2.0",
+            "jakarta.faces-api.version": "4.1.2",
+            "jakarta.inject-api.version": "2.0.1",
+            "jakarta.json-api.version": "2.1.3",
+            "jakarta.mail.version": "2.0.2",
+            "jakarta.json.version": "2.0.1",
+            "jackson.version": "2.18.2",
+            "log4j2.version": "2.25.3",
+            "slf4j.version": "2.0.17",
+            "log4jdbc.version": "1.2",
+            "commons-beanutils.version": "1.11.0",
+            "commons-codec.version": "1.18.0",
+            "commons-compress.version": "1.28.0",
+            "commons-dbcp2.version": "2.13.0",
+            "commons-email.version": "1.6.0",
+            "commons-email2-jakarta.version": "2.0.0-M1",
+            "commons-fileupload2-jakarta-servlet6.version": "2.0.0-M5",
+            "commons-io.version": "2.18.0",
+            "commons-lang3.version": "3.18.0",
+            "commons-net.version": "3.11.1",
+            "commons-pool2.version": "2.12.1",
+            "mysql-connector-j.version": "8.4.0",
+            "mariadb-java-client.version": "3.4.0",
+            "postgresql.version": "42.7.3",
+            "hsqldb.version": "2.7.4",
+            "hibernate-validator.version": "8.0.3.Final",
+            "yasson.version": "3.0.4",
+            "parsson.version": "1.1.7",
+            "xmlbeans.version": "5.3.0",
+            "antlr4.version": "4.13.2",
+            "cglib.version": "3.3.0",
+            "jasypt.version": "1.9.3",
+            "icu4j.version": "77.1",
+            "quartz.version": "2.5.0",
+            "oro.version": "2.0.8",
+            "selenium.version": "4.38.0",
+            "httpclient5.version": "5.5.1",
+            "jaxws-rt.version": "4.0.2",
+            "jaxrpc-impl.version": "1.1.6",
+            "jaxrpc-api-osgi.version": "1.1-b01",
+            "jms-api.version": "1.1-rev-1",
+            "servicemix.jaxws-api.version": "2.9.0",
+            "ckeditor-java-core.version": "3.5.3",
+            "batik-ext.version": "1.17",
+            "ajaxtags-resources.version": "1.5.7",
+            "jodconverter.version": "2.2.1",
+            "json-simple.version": "1.1.1",
+            "json-lib.version": "2.4",
+            "scribejava.version": "8.3.3",
+            "twitter4j-core.version": "4.0.7",
+            "jp.takke.twitter4j-v2.version": "1.4.2",
+            "spring-ldap-core.version": "2.4.4",
+            "ldapsdk.version": "4.1",
+            "junit.version": "4.13.2",
+            "junit-jupiter.version": "5.12.1",
+            "javaparser-core.version": "3.26.1",
+            "lombok.version": "1.18.42",
+            "sndng-mail.version": "1.0",
+            "soap.version": "2.3.1",
+            "xalan.version": "2.7.3",
+            "langchain4j.version": "1.8.0",
+            "langchain4j-beta.version": "1.8.0-beta15",
+            "maven-compiler-plugin.version": "3.14.0",
+            "maven-war-plugin.version": "3.4.0",
+            "maven-pmd-plugin.version": "3.26.0",
+            "maven-surefire-plugin.version": "3.5.2",
+            "maven-javadoc-plugin.version": "3.11.2"
+          }
+        }
+      }
+    },
+    {
+      "kind": "boot",
+      "groupId": "org.egovframe.boot",
+      "artifactId": "egovframe-boot-starter-parent",
+      "versions": {
+        "5.0.0": {
+          "bootParent": "3.5.6",
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.0.0",
+            "egovframe.boot.starter.version": "5.0.0",
+            "spring.framework.version": "6.2.11",
+            "spring.security.version": "6.5.5",
+            "spring.cloud.version": "2025.0.0",
+            "spring.batch.version": "5.2.3",
+            "spring.ai.version": "1.0.1",
+            "huggingface.tokenizer.version": "0.32.0",
+            "onnx.runtime.version": "1.19.2",
+            "langchain4j.version": "1.8.0",
+            "langchain4j-beta.version": "1.8.0-beta15",
+            "postgresql.version": "42.7.3",
+            "jakarta.annotation-api.version": "3.0.0",
+            "log4j2.version": "2.25.3",
+            "slf4j.version": "2.0.17",
+            "log4jdbc.version": "1.2",
+            "commons-beanutils.version": "1.11.0",
+            "commons-dbcp2.version": "2.13.0",
+            "commons-io.version": "2.18.0",
+            "commons-lang3.version": "3.18.0",
+            "commons-net.version": "3.11.1",
+            "commons-pool2.version": "2.12.1",
+            "querydsl.version": "5.0.0",
+            "hsqldb.version": "2.7.4",
+            "lombok.version": "1.18.42",
+            "selenium.version": "4.38.0"
+          }
+        },
+        "5.0.1": {
+          "bootParent": "3.5.6",
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.0.1",
+            "egovframe.boot.starter.version": "5.0.0",
+            "spring.framework.version": "6.2.11",
+            "spring.security.version": "6.5.5",
+            "spring.cloud.version": "2025.0.0",
+            "spring.batch.version": "5.2.3",
+            "spring.ai.version": "1.0.1",
+            "huggingface.tokenizer.version": "0.32.0",
+            "onnx.runtime.version": "1.19.2",
+            "langchain4j.version": "1.8.0",
+            "langchain4j-beta.version": "1.8.0-beta15",
+            "postgresql.version": "42.7.3",
+            "jakarta.annotation-api.version": "3.0.0",
+            "log4j2.version": "2.25.3",
+            "slf4j.version": "2.0.17",
+            "log4jdbc.version": "1.2",
+            "commons-beanutils.version": "1.11.0",
+            "commons-dbcp2.version": "2.13.0",
+            "commons-io.version": "2.18.0",
+            "commons-lang3.version": "3.18.0",
+            "commons-net.version": "3.11.1",
+            "commons-pool2.version": "2.12.1",
+            "querydsl.version": "5.0.0",
+            "hsqldb.version": "2.7.4",
+            "lombok.version": "1.18.42",
+            "selenium.version": "4.38.0"
+          }
+        },
+        "5.0.2": {
+          "bootParent": "3.5.6",
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.0.2",
+            "egovframe.boot.starter.version": "5.0.0",
+            "spring.framework.version": "6.2.11",
+            "spring.security.version": "6.5.5",
+            "spring.cloud.version": "2025.0.0",
+            "spring.batch.version": "5.2.3",
+            "spring.ai.version": "1.0.1",
+            "huggingface.tokenizer.version": "0.32.0",
+            "onnx.runtime.version": "1.19.2",
+            "langchain4j.version": "1.8.0",
+            "langchain4j-beta.version": "1.8.0-beta15",
+            "postgresql.version": "42.7.3",
+            "jakarta.annotation-api.version": "3.0.0",
+            "log4j2.version": "2.25.3",
+            "slf4j.version": "2.0.17",
+            "log4jdbc.version": "1.2",
+            "commons-beanutils.version": "1.11.0",
+            "commons-dbcp2.version": "2.13.0",
+            "commons-io.version": "2.18.0",
+            "commons-lang3.version": "3.18.0",
+            "commons-net.version": "3.11.1",
+            "commons-pool2.version": "2.12.1",
+            "querydsl.version": "5.0.0",
+            "hsqldb.version": "2.7.4",
+            "lombok.version": "1.18.42",
+            "selenium.version": "4.38.0"
+          }
+        }
+      }
+    }
+  ],
+  "changes": [
+    {
+      "id": "security-config-beans",
+      "since": "5.0.1",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration"
+      ],
+      "summary": "EgovSecurityConfiguration 의 @Bean 메서드 시그니처 변경",
+      "reason": "authenticationManager(securityConfig, passwordEncoder)·usernamePasswordAuthenticationFilter(authenticationManager)·securityFilterChain(…, usernamePasswordAuthenticationFilter, securityConfig) 로 인자가 바뀌었다. 이 클래스를 상속하거나 메서드를 직접 호출하면 컴파일 오류가 난다. 또 roleHierarchy 가 null 대신 기본 계층(ROLE_ADMIN > ROLE_USER > ROLE_ANONYMOUS)을 돌려주고, 해시에 eccp·egov-sha256(아이디 솔트 SHA-256) 선택지가 생겼다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.0-Final",
+        "toTag": "v5.0.1-Final"
+      }
+    },
+    {
+      "id": "excel-formula-injection",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.excel.util.AbstractExcelView",
+        "org.egovframe.rte.fdl.excel.util.AbstractPOIExcelView"
+      ],
+      "summary": "엑셀 다운로드 셀 값의 수식 주입 방지",
+      "reason": "문자열 셀 값이 = + - @ 탭·CR 로 시작하면 앞에 작은따옴표(')를 붙여 수식으로 해석되지 않게 한다(CSV/수식 주입 방지). 음수·수식을 문자열로 넣어 엑셀에서 계산되게 하던 화면은 결과가 달라지므로 숫자 셀(setCellValue(double))로 바꿔야 한다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.0-Final",
+        "toTag": "v5.0.1-Final"
+      }
+    },
+    {
+      "id": "xml-validator-xxe",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.xml.EgovDOMValidatorService",
+        "org.egovframe.rte.fdl.xml.EgovSAXValidatorService"
+      ],
+      "summary": "XML 검증에서 외부 엔티티·DTD 차단(XXE 방지)",
+      "reason": "외부 일반·매개변수 엔티티와 외부 DTD 로딩을 막고 DOCTYPE 선언을 거부한다. DTD 를 참조하는 XML 을 검증하던 코드는 예외가 난다 — XSD 기반으로 바꾸거나 입력을 신뢰 경계 안에서만 다룬다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.0-Final",
+        "toTag": "v5.0.1-Final"
+      }
+    },
+    {
+      "id": "filehandling-path",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.filehandling.EgovFileUtil"
+      ],
+      "summary": "EgovFileUtil.writeFile(String …) 의 경로 검증",
+      "reason": "파일 이름이 문자열인 writeFile 은 '..'·널 바이트·절대 경로를 IllegalArgumentException 으로 거부한다. 신뢰할 수 있는 절대 경로에 써야 하면 writeFile(File, …) 오버로드를 쓴다. VFS 초기화 실패도 이제 IllegalStateException 으로 드러난다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.0-Final",
+        "toTag": "v5.0.1-Final"
+      }
+    },
+    {
+      "id": "crypto-weak-default",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.crypto.impl.EgovGeneralCryptoServiceImpl"
+      ],
+      "summary": "기본 PBE 알고리즘(PBEWithSHA1AndDESede) 사용 경고",
+      "reason": "하위 호환을 위해 기본값은 그대로지만 처음 사용할 때 WARN 로그를 남긴다. 새 시스템은 setAlgorithm 으로 PBEWithHmacSHA256AndAES_256 같은 강한 알고리즘을 지정한다(기존 암호문은 같은 알고리즘으로만 복호화되므로 데이터 이관 계획이 필요).",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.0-Final",
+        "toTag": "v5.0.1-Final"
+      }
+    },
+    {
+      "id": "idgnr-table-lock",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl"
+      ],
+      "summary": "테이블 ID 생성의 행 잠금(SELECT … FOR UPDATE)",
+      "reason": "ID 블록을 읽을 때 SELECT … FOR UPDATE 로 잠그고, 초기 행을 동시에 만들면 한 번 다시 시도한다. FOR UPDATE 를 지원하지 않는 DB·드라이버(일부 내장 DB 모드)나 읽기 전용 트랜잭션에서 호출하면 오류가 날 수 있다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.0-Final",
+        "toTag": "v5.0.1-Final"
+      }
+    },
+    {
+      "id": "date-util-validation",
+      "since": "5.0.2",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.string.EgovDateUtil"
+      ],
+      "summary": "EgovDateUtil 입력 검증 강화",
+      "reason": "null·짧은 값·없는 날짜·형식 오류를 IllegalArgumentException(또는 ParseException)으로 거부한다. 예전에 잘못된 입력에서 null·기본값을 돌려받던 호출부는 예외 처리를 넣어야 한다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.1-Final",
+        "toTag": "v5.0.2-Final"
+      }
+    },
+    {
+      "id": "reactive-exception-message",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.ptl.reactive.exception.EgovException",
+        "org.egovframe.rte.ptl.reactive.exception.EgovServiceException"
+      ],
+      "summary": "리액티브 예외의 getMessage 재정의 제거",
+      "reason": "EgovException·EgovServiceException 이 getMessage 를 재정의하지 않아 생성자에 넘긴 메시지가 그대로 쓰인다. 메시지 형식에 기대던 응답·로그 파서는 확인이 필요하다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.0-Final",
+        "toTag": "v5.0.1-Final"
+      }
+    },
+    {
+      "id": "excel-batch-insert",
+      "since": "5.0.2",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.excel.impl.EgovExcelServiceMapper",
+        "org.egovframe.rte.fdl.excel.impl.EgovExcelServiceImpl",
+        "org.egovframe.rte.fdl.excel.EgovExcelService"
+      ],
+      "summary": "엑셀 업로드 일괄 등록 방식 변경",
+      "reason": "트랜잭션 밖에서는 MyBatis BATCH 실행기로 한 번에 등록하고 반환값이 실제 반영 행 수가 된다(트랜잭션 안에서는 행 단위). 반환 건수로 성공을 판단하던 코드와 트리거·채번에 기대던 등록 순서를 확인한다. 인터페이스에 기본 메서드 uploadExcelAuto 가 추가됐다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.1-Final",
+        "toTag": "v5.0.2-Final"
+      }
+    },
+    {
+      "id": "html-tag-filter",
+      "since": "5.0.2",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.ptl.mvc.filter.HTMLTagFilter",
+        "org.egovframe.rte.ptl.mvc.filter.HTMLTagFilterRequestWrapper"
+      ],
+      "summary": "HTMLTagFilter 허용 태그·리치텍스트 파라미터 설정",
+      "reason": "필터 초기화 매개변수로 그대로 통과시킬 태그(속성 없는 것만)와 인코딩을 건너뛸 리치텍스트 파라미터를 지정할 수 있고, 요청 파라미터 배열을 제자리에서 바꾸지 않고 사본을 돌려준다. 에디터 입력을 우회하려고 직접 만든 래퍼·예외 경로가 있으면 이 설정으로 옮긴다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.1-Final",
+        "toTag": "v5.0.2-Final"
+      }
+    },
+    {
+      "id": "string-util-tokens",
+      "since": "5.0.2",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.fdl.string.EgovStringUtil"
+      ],
+      "summary": "EgovStringUtil.getTokens 반환 타입 List<String>",
+      "reason": "getTokens(String) 의 반환 타입이 List<?> 에서 List<String> 으로 바뀌었다. 대부분 그대로 컴파일되지만 이 메서드를 재정의하거나 List<Object> 변수에 받던 코드는 고쳐야 한다.",
+      "action": "manual",
+      "evidence": {
+        "fromTag": "v5.0.1-Final",
+        "toTag": "v5.0.2-Final"
+      }
+    }
+  ],
+  "stepClassCounts": {
+    "5.0.1": 109,
+    "5.0.2": 66
+  },
+  "components": {
+    "repository": "eGovFramework/egovframe-common-components",
+    "note": "공통컴포넌트는 RTE 와 별도 버전(v5.0.x)으로 나온다. 매니페스트가 있으면 upgrade_egovframe_project, 없으면 reassemble_egovframe_components 로 카탈로그 고정 버전까지 맞춘다."
+  }
+}

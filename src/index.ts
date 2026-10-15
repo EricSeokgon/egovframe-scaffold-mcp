@@ -26,7 +26,7 @@ import { buildServer } from "./server.js";
 
 // ── 공개 API — 모듈 분리 전과 동일한 표면을 유지한다 ──
 export { DOWNLOAD_TIMEOUT_MS, COMPONENTS_DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
-export { TEMPLATES, GLOBALS_PROPS_REL, DB_TYPES, INITIALIZR_REPO, INITIALIZR_COMMIT, archiveDownloadUrl, applyPomPlaceholders, isGlobalsPropertiesPath, customizePomCoordinates, createProject } from "./project.js";
+export { TEMPLATES, GLOBALS_PROPS_REL, DB_TYPES, INITIALIZR_REPO, INITIALIZR_COMMIT, archiveDownloadUrl, applyPomPlaceholders, isGlobalsPropertiesPath, customizePomCoordinates, createProject, alignPom } from "./project.js";
 export type { CreateOptions, CreateResult, TemplateArchive, TemplateDefinition } from "./project.js";
 export { loadCatalog, resolveComponents, searchComponents } from "./catalog.js";
 export type { CatalogComponent, Catalog, SearchResult } from "./catalog.js";
@@ -152,3 +152,5 @@ export { loadSecureRules, compileRulePattern, stripJavaComments, stripMarkupComm
 export type { SecureRule, SecureRules, SecureFinding, SecureCodingOptions, SecureCodingResult, SecureSeverity, SecureOrigin } from "./secure-coding.js";
 export { loadDeployRules, analyzeDeploy, parseProperties, parseJdbcUrl, envNameOf, renderDockerfile, renderDockerignore, renderCompose, renderEnvExample, renderKubernetes, renderClassicConfig, generateDeploy, renderDeployMarkdown, DEPLOY_IMAGE_REGISTRY_RE, DEPLOY_IMAGE_RE, DEPLOY_HOST_RE } from "./deploy.js";
 export type { DeployRules, DeployProfile, DeployDb, DeployTarget, DeployAnalysis, GenerateDeployOptions, GenerateDeployResult } from "./deploy.js";
+export { loadUpdateRules, isUpdateTarget, planPomUpdate, planGradleUpdate, findClassReference, updateProject, applyUpdate, verifyUpdate, renderUpdateMarkdown, updateKindLabel } from "./update.js";
+export type { UpdateRules, UpdateChange, UpdateParent, UpdateInfo, UpdateResult, UpdateOptions, UpdateApplyResult, UpdateApplyOptions, UpdateVerifyResult, UpdateVerifyOptions, PomUpdatePlan } from "./update.js";

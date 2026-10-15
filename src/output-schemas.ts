@@ -41,7 +41,8 @@ const MigrationItem = loose({
 const MigrateSummary = loose({ auto: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: z.record(z.number().int()) });
 export const MigrateOutput = loose({
   projectDir: z.string(),
-  target: z.literal("5.x"),
+  /** "5.x"(전환) 또는 "5.0.x"(v0.46 갱신 모드) */
+  target: z.string(),
   rules: loose({ toTag: z.string(), surveyedAt: z.string(), runtimeVersion: z.string() }),
   buildSystem: z.enum(["maven", "gradle", "unknown"]),
   rteVersion: z.string().nullable(),
@@ -64,6 +65,8 @@ export const MigrateOutput = loose({
   backupDir: z.string().optional(),
   planPath: z.string().optional(),
   remaining: MigrateSummary.optional(),
+  // v0.46 갱신 모드(target=5.0.x) 전용
+  update: loose({ from: z.string().nullable(), to: z.string(), parent: loose({ kind: z.string(), version: z.string(), to: z.string() }).nullable(), changes: z.array(loose({ id: z.string(), since: z.string(), summary: z.string(), files: z.number().int() })), unreferencedChanges: z.number().int(), components: loose({ detected: z.number().int(), catalogTag: z.string(), tool: z.string().nullable() }).nullable() }).optional(),
 });
 
 const DependencyStatus = z.enum(["ok", "outdated", "managed", "legacy", "replace", "vendor", "unknown", "unversioned"]);

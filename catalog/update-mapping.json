@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "note": "5.x 안의 갱신(migrate_egovframe_project target=5.0.x, v0.46) 큐레이션. scripts/generate-update-rules.mjs 가 egovframe-runtime 태그 비교로 각 항목의 클래스가 해당 단계(since 의 직전 태그 → since 태그)에서 실제로 바뀌었는지 확인한 뒤 catalog/update-rules.json 에 옮긴다. 근거 없는 항목(그 단계에서 바뀌지 않은 클래스)은 생성이 실패한다.",
+  "rteVersionProperties": [
+    "egovframe.rte.version",
+    "org.egovframe.rte.version",
+    "egovframework.rte.version"
+  ],
+  "parents": [
+    {
+      "kind": "web",
+      "groupId": "org.egovframe.web",
+      "artifactId": "egovframe-web-config-parent"
+    },
+    {
+      "kind": "boot",
+      "groupId": "org.egovframe.boot",
+      "artifactId": "egovframe-boot-starter-parent"
+    }
+  ],
+  "components": {
+    "repository": "eGovFramework/egovframe-common-components",
+    "note": "공통컴포넌트는 RTE 와 별도 버전(v5.0.x)으로 나온다. 매니페스트가 있으면 upgrade_egovframe_project, 없으면 reassemble_egovframe_components 로 카탈로그 고정 버전까지 맞춘다."
+  },
+  "changes": [
+    {
+      "id": "security-config-beans",
+      "since": "5.0.1",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration"
+      ],
+      "summary": "EgovSecurityConfiguration 의 @Bean 메서드 시그니처 변경",
+      "reason": "authenticationManager(securityConfig, passwordEncoder)·usernamePasswordAuthenticationFilter(authenticationManager)·securityFilterChain(…, usernamePasswordAuthenticationFilter, securityConfig) 로 인자가 바뀌었다. 이 클래스를 상속하거나 메서드를 직접 호출하면 컴파일 오류가 난다. 또 roleHierarchy 가 null 대신 기본 계층(ROLE_ADMIN > ROLE_USER > ROLE_ANONYMOUS)을 돌려주고, 해시에 eccp·egov-sha256(아이디 솔트 SHA-256) 선택지가 생겼다."
+    },
+    {
+      "id": "excel-formula-injection",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.excel.util.AbstractExcelView",
+        "org.egovframe.rte.fdl.excel.util.AbstractPOIExcelView"
+      ],
+      "summary": "엑셀 다운로드 셀 값의 수식 주입 방지",
+      "reason": "문자열 셀 값이 = + - @ 탭·CR 로 시작하면 앞에 작은따옴표(')를 붙여 수식으로 해석되지 않게 한다(CSV/수식 주입 방지). 음수·수식을 문자열로 넣어 엑셀에서 계산되게 하던 화면은 결과가 달라지므로 숫자 셀(setCellValue(double))로 바꿔야 한다."
+    },
+    {
+      "id": "xml-validator-xxe",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.xml.EgovDOMValidatorService",
+        "org.egovframe.rte.fdl.xml.EgovSAXValidatorService"
+      ],
+      "summary": "XML 검증에서 외부 엔티티·DTD 차단(XXE 방지)",
+      "reason": "외부 일반·매개변수 엔티티와 외부 DTD 로딩을 막고 DOCTYPE 선언을 거부한다. DTD 를 참조하는 XML 을 검증하던 코드는 예외가 난다 — XSD 기반으로 바꾸거나 입력을 신뢰 경계 안에서만 다룬다."
+    },
+    {
+      "id": "filehandling-path",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.filehandling.EgovFileUtil"
+      ],
+      "summary": "EgovFileUtil.writeFile(String …) 의 경로 검증",
+      "reason": "파일 이름이 문자열인 writeFile 은 '..'·널 바이트·절대 경로를 IllegalArgumentException 으로 거부한다. 신뢰할 수 있는 절대 경로에 써야 하면 writeFile(File, …) 오버로드를 쓴다. VFS 초기화 실패도 이제 IllegalStateException 으로 드러난다."
+    },
+    {
+      "id": "crypto-weak-default",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.crypto.impl.EgovGeneralCryptoServiceImpl"
+      ],
+      "summary": "기본 PBE 알고리즘(PBEWithSHA1AndDESede) 사용 경고",
+      "reason": "하위 호환을 위해 기본값은 그대로지만 처음 사용할 때 WARN 로그를 남긴다. 새 시스템은 setAlgorithm 으로 PBEWithHmacSHA256AndAES_256 같은 강한 알고리즘을 지정한다(기존 암호문은 같은 알고리즘으로만 복호화되므로 데이터 이관 계획이 필요)."
+    },
+    {
+      "id": "idgnr-table-lock",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl"
+      ],
+      "summary": "테이블 ID 생성의 행 잠금(SELECT … FOR UPDATE)",
+      "reason": "ID 블록을 읽을 때 SELECT … FOR UPDATE 로 잠그고, 초기 행을 동시에 만들면 한 번 다시 시도한다. FOR UPDATE 를 지원하지 않는 DB·드라이버(일부 내장 DB 모드)나 읽기 전용 트랜잭션에서 호출하면 오류가 날 수 있다."
+    },
+    {
+      "id": "date-util-validation",
+      "since": "5.0.2",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.string.EgovDateUtil"
+      ],
+      "summary": "EgovDateUtil 입력 검증 강화",
+      "reason": "null·짧은 값·없는 날짜·형식 오류를 IllegalArgumentException(또는 ParseException)으로 거부한다. 예전에 잘못된 입력에서 null·기본값을 돌려받던 호출부는 예외 처리를 넣어야 한다."
+    },
+    {
+      "id": "reactive-exception-message",
+      "since": "5.0.1",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.ptl.reactive.exception.EgovException",
+        "org.egovframe.rte.ptl.reactive.exception.EgovServiceException"
+      ],
+      "summary": "리액티브 예외의 getMessage 재정의 제거",
+      "reason": "EgovException·EgovServiceException 이 getMessage 를 재정의하지 않아 생성자에 넘긴 메시지가 그대로 쓰인다. 메시지 형식에 기대던 응답·로그 파서는 확인이 필요하다."
+    },
+    {
+      "id": "excel-batch-insert",
+      "since": "5.0.2",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.excel.impl.EgovExcelServiceMapper",
+        "org.egovframe.rte.fdl.excel.impl.EgovExcelServiceImpl",
+        "org.egovframe.rte.fdl.excel.EgovExcelService"
+      ],
+      "summary": "엑셀 업로드 일괄 등록 방식 변경",
+      "reason": "트랜잭션 밖에서는 MyBatis BATCH 실행기로 한 번에 등록하고 반환값이 실제 반영 행 수가 된다(트랜잭션 안에서는 행 단위). 반환 건수로 성공을 판단하던 코드와 트리거·채번에 기대던 등록 순서를 확인한다. 인터페이스에 기본 메서드 uploadExcelAuto 가 추가됐다."
+    },
+    {
+      "id": "html-tag-filter",
+      "since": "5.0.2",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.ptl.mvc.filter.HTMLTagFilter",
+        "org.egovframe.rte.ptl.mvc.filter.HTMLTagFilterRequestWrapper"
+      ],
+      "summary": "HTMLTagFilter 허용 태그·리치텍스트 파라미터 설정",
+      "reason": "필터 초기화 매개변수로 그대로 통과시킬 태그(속성 없는 것만)와 인코딩을 건너뛸 리치텍스트 파라미터를 지정할 수 있고, 요청 파라미터 배열을 제자리에서 바꾸지 않고 사본을 돌려준다. 에디터 입력을 우회하려고 직접 만든 래퍼·예외 경로가 있으면 이 설정으로 옮긴다."
+    },
+    {
+      "id": "string-util-tokens",
+      "since": "5.0.2",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.fdl.string.EgovStringUtil"
+      ],
+      "summary": "EgovStringUtil.getTokens 반환 타입 List<String>",
+      "reason": "getTokens(String) 의 반환 타입이 List<?> 에서 List<String> 으로 바뀌었다. 대부분 그대로 컴파일되지만 이 메서드를 재정의하거나 List<Object> 변수에 받던 코드는 고쳐야 한다."
+    }
+  ]
+}

@@ -223,6 +223,7 @@ export async function checkCatalogDrift(deps: CatalogDriftDeps = {}): Promise<Ca
   if (runtime.newerTags.length) {
     warnings.push(`egovframe-runtime 에 규칙 근거(${runtime.pinnedTag})보다 새 태그가 있습니다: ${runtime.newerTags.join(", ")} — 전환 규칙·목표 RTE 버전이 뒤처질 수 있습니다`);
     procedure.push(`catalog/migration-mapping.json 의 runtime.toTag 를 ${runtime.newerTags[0]} 로 올리고 \`node scripts/generate-migration-rules.mjs --runtime-dir <clone> --components-dir <clone>\` 로 규칙을 다시 생성(제거 클래스에 새 사유가 필요하면 생성기가 멈춥니다) → \`npm run test:migration-rules\``);
+    procedure.push(`5.x 최신 유지 규칙도 다시 생성: 새 단계(${runtime.newerTags[0]})에서 바뀐 API·동작을 catalog/update-mapping.json 의 changes 에 사유와 함께 적고 \`node scripts/generate-update-rules.mjs --runtime-dir <clone>\`(공식 parent 새 버전 pom 이 Maven 저장소에 있어야 함) → \`npm run test:update\``);
   }
   if (components?.newerTags.length) {
     warnings.push(`egovframe-common-components 에 대응표 근거(${components.pinnedTag})보다 새 태그가 있습니다: ${components.newerTags.join(", ")}`);

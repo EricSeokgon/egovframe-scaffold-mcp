@@ -79,10 +79,13 @@ try { info = pack.status === 0 ? parsePackJson(pack.stdout) : null; } catch (e) 
 assert(info && info.name === facts.name && info.version === facts.version, `npm pack --dry-run 실행 (${info?.filename ?? `exit ${pack.status}: ${(pack.stderr || pack.stdout || "").slice(0, 300)}`})`);
 assert(parsePackJson(JSON.stringify([{ name: "x", files: [] }])).name === "x" && parsePackJson(`npm warn something\n${JSON.stringify({ x: { name: "x", files: [] } })}`).name === "x" && parsePackJson("no json") === null, "parsePackJson: 배열(npm ≤11)·객체(npm 12)·앞선 경고 허용");
 const files = new Set((info?.files ?? []).map((f) => f.path));
-for (const must of ["package.json", "README.md", "README.en.md", "LICENSE", "dist/index.js", "dist/server.js", "catalog/components.json", "catalog/templates.json", "catalog/migration-rules.json", "catalog/dependency-baseline.json", "catalog/config-templates.json"])
+for (const must of ["package.json", "README.md", "README.en.md", "LICENSE", "dist/index.js", "dist/server.js", "catalog/components.json", "catalog/templates.json", "catalog/migration-rules.json", "catalog/dependency-baseline.json", "catalog/config-templates.json", "catalog/update-rules.json", "catalog/deploy-rules.json", "catalog/secure-coding-rules.json"])
   assert(files.has(must), `tarball 포함: ${must}`);
 assert([...files].some((f) => f.startsWith("catalog/config-templates/") && f.endsWith(".hbs")), "tarball 포함: 동봉 설정 템플릿(.hbs)");
 assert(![...files].some((f) => /^(test|scripts|src|\.github|node_modules)\//.test(f) || f.endsWith(".map") || f === "server.json" || f.startsWith(".")), "tarball 제외: test·scripts·src·.github·소스맵·숨김 파일");
-assert(info && info.unpackedSize <= 2 * 1024 * 1024 && info.size <= 600 * 1024, `tarball 크기 상한 (압축 ${info?.size} ≤ 600KB, 풀면 ${info?.unpackedSize} ≤ 2MB)`);
+// v0.46: 규칙 생성기의 입력(큐레이션 *-mapping.json)은 실행에 쓰지 않는다 — 생성 결과(*-rules.json·catalog)만 싣는다
+assert(![...files].some((f) => /^catalog\/[^/]*-mapping\.json$/.test(f)), "tarball 제외: 생성기 입력 catalog/*-mapping.json");
+// v0.46: 풀린 크기 상한 2MB → 2.5MB. 0.46.0 이 2.09MB(README 0.29MB·카탈로그 0.6MB·dist)로 여유가 10KB 뿐이었다. 압축 상한(600KB)은 그대로 둔다
+assert(info && info.unpackedSize <= 2.5 * 1024 * 1024 && info.size <= 600 * 1024, `tarball 크기 상한 (압축 ${info?.size} ≤ 600KB, 풀면 ${info?.unpackedSize} ≤ 2.5MB)`);
 
 if (process.exitCode) console.error(`release FAIL (${n} assertions)`); else console.log(`release OK (${n} assertions)`);
