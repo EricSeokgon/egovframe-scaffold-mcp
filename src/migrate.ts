@@ -60,7 +60,7 @@ export type MigrationKind =
   | "jakarta-package" | "web-xml" | "xml-namespace"
   | "component-class-removed" | "component-class-moved" | "component-reassemble"
   // v0.46: 5.x 안의 갱신(update.ts)
-  | "parent-version" | "parent-property" | "rte-change" | "component-update";
+  | "parent-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency";
 /** 파일 원문 오프셋 기준 치환(2단계 적용용). start==end 이면 삽입. */
 export interface TextEdit { start: number; end: number; replacement: string }
 export interface MigrationItem { file: string; line: number; kind: MigrationKind; from: string; to: string | null; action: MigrationAction; reason: string; edits?: TextEdit[] }
@@ -662,7 +662,7 @@ const KIND_LABEL: Record<MigrationKind, string> = {
   package: "RTE 패키지 접두어", "package-renamed": "RTE 패키지 이름 변경", "class-moved": "RTE 클래스 이동", "class-removed": "제거된 RTE 클래스", "class-unknown": "확인 필요 클래스",
   "jakarta-package": "javax → jakarta 패키지", "web-xml": "web.xml 스키마", "xml-namespace": "제거된 XML 네임스페이스",
   "component-class-removed": "제거된 공통컴포넌트 클래스", "component-class-moved": "이동한 공통컴포넌트 클래스", "component-reassemble": "공통컴포넌트 재조립 권고",
-  "parent-version": "parent 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지",
+  "parent-version": "parent 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지", "duplicate-dependency": "중복 의존성 선언",
 };
 
 /** 진단 결과를 Markdown 으로 렌더링한다. */

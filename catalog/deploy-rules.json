@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "surveyedAt": "2026-10-13",
-  "note": "generate_egovframe_deploy(v0.45) 의 기반 이미지·DB 서비스·설정 주입 규칙. 이미지 태그는 Docker Hub 공식 이미지 기준이며 BASE_REGISTRY 로 사내 레지스트리(프록시 캐시)로 바꿀 수 있다.",
+  "note": "generate_egovframe_deploy(v0.45) 의 기반 이미지·DB 서비스·설정 주입 규칙. 이미지 태그는 Docker Hub 공식 이미지 기준이며 BASE_REGISTRY 로 사내 레지스트리(프록시 캐시)로 바꿀 수 있다. v0.47: 멀티 모듈 작업공간의 localhost 참조(설정 서버·디스커버리·DB·메시지 브로커)를 compose 서비스 이름으로 바꾸는 데 infra 이미지를 쓴다.",
   "jdks": [
     "17",
     "21"
@@ -110,5 +110,24 @@
       "id": "not-runnable",
       "reason": "war 도 실행 jar(Spring Boot)도 아닌 라이브러리 jar — 실행할 수 있는 배포 단위가 없습니다"
     }
-  ]
+  ],
+  "infra": {
+    "rabbitmq": {
+      "image": "rabbitmq:3.13-management",
+      "port": 5672,
+      "healthcheck": "rabbitmq-diagnostics -q ping",
+      "user": "egov",
+      "env": {
+        "user": "RABBITMQ_DEFAULT_USER",
+        "password": "RABBITMQ_DEFAULT_PASS"
+      },
+      "note": "guest 계정은 원격 접속이 막혀 있어 egov 계정을 만들고 앱의 spring.rabbitmq.username·password 를 환경 변수로 덮어씁니다"
+    },
+    "redis": {
+      "image": "redis:7.4",
+      "port": 6379,
+      "healthcheck": "redis-cli ping",
+      "note": "인증 없음(로컬 실행용)"
+    }
+  }
 }

@@ -133,6 +133,8 @@ jobs:
           echo "c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3  /tmp/kubeconform.tgz" | sha256sum -c -
           tar xzf /tmp/kubeconform.tgz -C /tmp kubeconform
           HADOLINT=/tmp/hadolint KUBECONFORM=/tmp/kubeconform npm run test:deploy-live
+      - name: Multi-module and MSA templates (workspace, per-module checks, multi-service compose with Config, Eureka, Gateway, EgovBoard)
+        run: HADOLINT=/tmp/hadolint KUBECONFORM=/tmp/kubeconform npm run test:workspace-live
       - name: Generated Jenkinsfile and .gitlab-ci.yml run on Jenkins LTS and gitlab-ci-local
         run: npm run test:ci-run-live
       - name: Secure coding weaknesses on official templates (pinned counts, SARIF schema)

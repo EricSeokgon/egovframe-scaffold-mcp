@@ -84,6 +84,8 @@ export const DependenciesOutput = loose({
   vulnerabilities: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })).optional(),
   resolution: loose({ ran: z.boolean(), success: z.boolean(), scope: z.enum(["runtime", "all"]), command: z.string(), artifacts: z.number().int(), direct: z.number().int(), transitive: z.number().int(), differs: z.array(loose({ groupId: z.string(), artifactId: z.string(), declared: z.string(), resolved: z.string() })), summary: z.record(z.number().int()), error: z.string().optional() }).optional(),
   osvError: z.string().optional(),
+  // v0.47: 멀티 모듈 작업공간
+  workspace: loose({ kind: z.string(), modules: z.array(loose({ name: z.string(), dir: z.string(), buildTool: z.string(), findings: z.number().int(), summary: z.record(z.number().int()) })) }).optional(),
   notes: z.array(z.string()),
 });
 
@@ -286,6 +288,7 @@ export const SecureCodingOutput = loose({
   summary: loose({ total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), new: z.number().int().nullable(), suppressed: z.number().int() }),
   byRule: z.array(loose({ rule: z.string(), guideItem: z.string(), severity: SecureSeverity, count: z.number().int() })),
   byOrigin: z.record(z.number().int()),
+  byModule: z.array(loose({ module: z.string(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), total: z.number().int() })).optional(),
   findings: z.array(loose({ rule: z.string(), guideItem: z.string(), category: z.string(), cwe: z.number().int(), severity: SecureSeverity, file: z.string(), line: z.number().int(), column: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), note: z.string().optional(), origin: z.enum(["component", "component-modified", "component-unmanaged", "project", "test"]), component: z.string().optional(), fingerprint: z.string(), isNew: z.boolean().optional() })),
   truncated: z.boolean(),
   suppressions: loose({ applied: z.number().int(), invalid: z.array(z.string()), file: z.string().nullable() }),
@@ -310,6 +313,8 @@ export const DeployOutput = loose({
   files: z.array(loose({ path: z.string(), target: z.enum(["docker", "compose", "k8s"]), bytes: z.number().int(), content: z.string().optional() })),
   usage: z.array(z.string()),
   notes: z.array(z.string()),
+  // v0.47: 멀티 모듈 작업공간
+  workspace: loose({ kind: z.string(), appName: z.string(), services: z.array(loose({ name: z.string(), module: z.string(), runtime: z.string(), port: z.number().int(), web: z.boolean(), ownDockerfile: z.boolean(), image: z.string(), env: z.array(z.string()), dependsOn: z.array(z.string()) })), infra: z.array(loose({ name: z.string(), image: z.string() })), skipped: z.array(loose({ module: z.string(), reason: z.string() })), unresolved: z.array(loose({ service: z.string(), key: z.string(), value: z.string() })) }).optional(),
 });
 
 export const OUTPUT_SCHEMAS = {

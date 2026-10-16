@@ -12,6 +12,7 @@ import { sha256 } from "./shared.js";
 import { withFileTransaction } from "./file-transaction.js";
 import { resolveOutputPath } from "./sbom.js";
 import { SERVER_VERSION } from "./version.js";
+import { detectWorkspace, isMultiModule, moduleOf } from "./workspace.js";
 
 export type SecureSeverity = "high" | "medium" | "low";
 export type SecureTarget = "java" | "jsp" | "mapper" | "sqlmap" | "config";
@@ -127,6 +128,8 @@ export interface SecureCodingResult {
   summary: { total: number; high: number; medium: number; low: number; new: number | null; suppressed: number };
   byRule: { rule: string; guideItem: string; severity: SecureSeverity; count: number }[];
   byOrigin: Record<SecureOrigin, number>;
+  /** v0.47: 멀티 모듈 작업공간이면 모듈별 건수 */
+  byModule?: { module: string; high: number; medium: number; low: number; total: number }[];
   findings: SecureFinding[];
   truncated: boolean;
   suppressions: { applied: number; invalid: string[]; file: string | null };
@@ -289,6 +292,11 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
   if (byOrigin["component-unmanaged"]) notes.push(`매니페스트 없는 공통컴포넌트 경로(egovframework/com) ${byOrigin["component-unmanaged"]}건 — 원본 그대로인지 알 수 없습니다. reassemble_egovframe_components 로 재조립하면 원본·수정본이 구분됩니다.`);
 
   const maxFindings = opts.maxFindings ?? 2000;
+  const ws = detectWorkspace(projectDir);
+  const byModule = isMultiModule(ws) && ws.kind !== "single" ? ws.modules.map((m) => {
+    const mine = kept.filter((f) => moduleOf(ws, f.file)?.name === m.name);
+    return { module: m.dir, high: mine.filter((f) => f.severity === "high").length, medium: mine.filter((f) => f.severity === "medium").length, low: mine.filter((f) => f.severity === "low").length, total: mine.length };
+  }) : undefined;
   const result: SecureCodingResult = {
     projectDir,
     rulesVersion: { surveyedAt: all.surveyedAt, rules: rules.length, source: all.sources[0]?.name ?? "" },
@@ -296,6 +304,7 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
     summary: { total: kept.length, high: count("high"), medium: count("medium"), low: count("low"), new: baseline ? kept.filter((f) => f.isNew).length : null, suppressed },
     byRule: [...byRuleMap.values()].sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || b.count - a.count || a.rule.localeCompare(b.rule)),
     byOrigin,
+    ...(byModule ? { byModule } : {}),
     findings: kept.slice(0, maxFindings),
     truncated: kept.length > maxFindings,
     suppressions: { applied: suppressed, invalid: ign.invalid, file: ign.file },
@@ -368,6 +377,10 @@ export function renderSecureCodingMarkdown(r: SecureCodingResult, top = 40): str
   if (o.length) L.push(`- 출처: ${o.map(([k, n]) => `${ORIGIN_KO[k as SecureOrigin]} ${n}`).join(" · ")}`);
   if (r.baseline) L.push(`- 비교: ${r.baseline.path}(이전 ${r.baseline.findings}건) — 해결 ${r.baseline.resolved}건`);
   if (r.sarif) L.push(`- SARIF: ${r.sarif.path}(결과 ${r.sarif.results}건${r.sarif.overwritten ? ", 덮어씀" : ""})`);
+  if (r.byModule?.length) {
+    L.push(``, `## 모듈별`, ``, `| 모듈 | 높음 | 중간 | 낮음 | 합계 |`, `|---|---|---|---|---|`);
+    for (const m of r.byModule) L.push(`| ${m.module} | ${m.high} | ${m.medium} | ${m.low} | ${m.total} |`);
+  }
   if (r.byRule.length) {
     L.push(``, `## 항목별`, ``, `| 보안약점(가이드 항목) | 규칙 | 기본 등급 | 건수 |`, `|---|---|---|---|`);
     for (const b of r.byRule) L.push(`| ${b.guideItem} | \`${b.rule}\` | ${SEV_KO[b.severity]} | ${b.count} |`);

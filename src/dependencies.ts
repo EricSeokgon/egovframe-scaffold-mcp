@@ -8,6 +8,7 @@ import * as path from "node:path";
 import { diagnoseProject } from "./diagnose.js";
 import { DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
 import { bundleOsvQuery, osvProvenanceNote } from "./offline-bundle.js";
+import { detectWorkspace, isMultiModule, moduleOf, type Workspace } from "./workspace.js";
 import { lineAt, loadMigrationRules, parsePomDeps, parsePomProperties, resolveProp, versionBelow, walkProjectFiles, type MigrationRules } from "./migrate.js";
 import { resolveDependencyTree, type DependencyTreeResult, type ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
@@ -77,6 +78,8 @@ export interface DependencyFinding {
   depth?: number;
   /** 해석된 트리의 버전이 선언과 다를 때 트리 버전 */
   treeVersion?: string;
+  /** v0.47: 멀티 모듈 작업공간이면 이 항목이 속한 모듈 */
+  module?: string;
   note?: string;
 }
 export interface SecurityCheck { id: string; title: string; status: "ok" | "missing" | "n/a"; evidence: { file: string; line: number; text: string }[]; hint: string }
@@ -94,6 +97,8 @@ export interface CheckDependenciesResult {
   checks: SecurityCheck[];
   vulnerabilities?: Vulnerability[];
   osvError?: string;
+  /** v0.47: 멀티 모듈·다중 프로젝트 작업공간이면 모듈별 요약 */
+  workspace?: { kind: string; modules: { name: string; dir: string; buildTool: string; findings: number; summary: Record<DependencyStatus, number> }[] };
   /** resolve=true 의 해석 결과 요약 (v0.36) */
   resolution?: {
     ran: boolean; success: boolean; scope: ResolveScope; command: string; durationMs?: number;
@@ -189,7 +194,7 @@ export function classifyDependency(
   return withNote({ status: below ? "outdated" : "ok", baseline: m.version, basis: m.basis }, m.note);
 }
 
-interface RawDep { file: string; line: number; groupId: string; artifactId: string; version: string | null; resolvedVersion: string | null; scope: string | null }
+interface RawDep { file: string; line: number; groupId: string; artifactId: string; version: string | null; resolvedVersion: string | null; scope: string | null; /** v0.47: 이 빌드 파일의 parent 종류(모듈마다 다를 수 있음) */ parentKind?: ParentInfo["kind"] }
 
 function collectMaven(dir: string, files: string[], baseline: DependencyBaseline): { deps: RawDep[]; parent: ParentInfo; java: string | null; repoIssues: { file: string; line: number; text: string }[] } {
   const deps: RawDep[] = [];
@@ -198,10 +203,21 @@ function collectMaven(dir: string, files: string[], baseline: DependencyBaseline
   let java: string | null = null;
   const poms = files.filter((f) => path.basename(f) === "pom.xml").sort((a, b) => a.length - b.length);
   const rootProps = new Map<string, string>();
+  const moduleParents: ParentInfo[] = [];
+  const parentOf = (text: string): ParentInfo | null => {
+    const p = text.match(/<parent>([\s\S]*?)<\/parent>/)?.[1];
+    if (!p) return null;
+    const g = p.match(/<groupId>\s*([^<\s]+)/)?.[1] ?? null, a = p.match(/<artifactId>\s*([^<\s]+)/)?.[1] ?? null, v = p.match(/<version>\s*([^<\s]+)/)?.[1] ?? null;
+    const src = baseline.sources.find((s) => s.groupId === g && s.artifactId === a);
+    return { groupId: g, artifactId: a, version: v, kind: src ? src.kind : "other", status: src && v ? (versionBelow(v, src.version) ? "outdated" : "ok") : "n/a" };
+  };
   for (const abs of poms) {
     const rel = path.relative(dir, abs).split(path.sep).join("/");
     const text = fs.readFileSync(abs, "utf8");
     const props = new Map([...rootProps, ...parsePomProperties(text)]);
+    // v0.47: 모듈 pom 은 자기 parent 로 판정(공식 parent 가 아니면 루트의 것)
+    const own = rel === "pom.xml" ? null : parentOf(text);
+    if (own && (own.kind === "web" || own.kind === "boot")) moduleParents.push(own);
     if (rel === "pom.xml") {
       for (const [k, v] of props) rootProps.set(k, v);
       const p = text.match(/<parent>([\s\S]*?)<\/parent>/)?.[1];
@@ -220,26 +236,57 @@ function collectMaven(dir: string, files: string[], baseline: DependencyBaseline
     // dependencyManagement 안의 항목은 프로젝트가 직접 쓰는 의존성이 아닐 수 있으나 버전 결정에는 관여하므로 함께 본다
     for (const d of parsePomDeps(text)) {
       const resolved = resolveProp(d.version, props);
-      deps.push({ file: rel, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: resolved && !/\$\{/.test(resolved) ? resolved : null, scope: d.scope });
+      deps.push({ file: rel, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: resolved && !/\$\{/.test(resolved) ? resolved : null, scope: d.scope, parentKind: own && (own.kind === "web" || own.kind === "boot") ? own.kind : undefined });
     }
+  }
+  // 루트에 공식 parent 가 없고 모듈들이 공식 parent 를 쓰면 가장 낮은 모듈 parent 를 대표로(평가서 platform 요인)
+  if (parent.kind === "none" && moduleParents.length) {
+    parent = [...moduleParents].sort((a, b) => (versionBelow(a.version ?? "0", b.version ?? "0") ? -1 : 1))[0];
   }
   return { deps, parent, java, repoIssues };
 }
 
-function collectGradle(dir: string, files: string[]): { deps: RawDep[]; java: string | null; repoIssues: { file: string; line: number; text: string }[] } {
+const read = (p: string) => { try { return fs.readFileSync(p, "utf8"); } catch { return ""; } };
+/** v0.47: Gradle 빌드 스크립트의 버전 변수 — ext { set('x', 'v') } · ext.x = 'v' · x = 'v'(ext 블록) · def x = 'v' · gradle.properties */
+export function gradleVariables(build: string, properties = ""): Map<string, string> {
+  const vars = new Map<string, string>();
+  for (const l of properties.split(/\r?\n/)) { const m = l.match(/^\s*([\w.]+)\s*[=:]\s*(\S+)\s*$/); if (m) vars.set(m[1], m[2]); }
+  for (const m of build.matchAll(/\bset\(\s*['"](\w+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/g)) vars.set(m[1], m[2]);
+  for (const m of build.matchAll(/^\s*(?:ext\.|def\s+|val\s+)?(\w+)\s*=\s*['"]([^'"$]+)['"]\s*$/gm)) if (!/^(version|group|sourceCompatibility|targetCompatibility|description)$/.test(m[1])) vars.set(m[1], m[2]);
+  return vars;
+}
+
+function collectGradle(dir: string, files: string[], baseline: DependencyBaseline): { deps: RawDep[]; java: string | null; repoIssues: { file: string; line: number; text: string }[]; parent: ParentInfo } {
+  let parent: ParentInfo = { groupId: null, artifactId: null, version: null, kind: "none", status: "n/a" };
   const deps: RawDep[] = [];
   const repoIssues: { file: string; line: number; text: string }[] = [];
   let java: string | null = null;
   for (const abs of files.filter((f) => /^(build\.gradle|build\.gradle\.kts)$/.test(path.basename(f)))) {
     const rel = path.relative(dir, abs).split(path.sep).join("/");
     const text = fs.readFileSync(abs, "utf8");
-    for (const m of text.matchAll(/["']([\w.\-]+):([\w.\-]+)(?::([^"':\s]+))?["']/g))
-      deps.push({ file: rel, line: lineAt(text, m.index ?? 0), groupId: m[1], artifactId: m[2], version: m[3] ?? null, resolvedVersion: m[3] && !/\$/.test(m[3]) ? m[3] : null, scope: null });
+    // v0.47: ext 변수(set('x','v') · x = 'v' · def x = 'v')와 gradle.properties 로 ${x}·$x 를 푼다
+    const vars = gradleVariables(text, read(path.join(path.dirname(abs), "gradle.properties")));
+    const resolve = (v: string | undefined) => (v ? v.replace(/\$\{(\w+)\}|\$(\w+)/g, (all, a, b) => vars.get(a ?? b) ?? all) : v);
+    // Boot 플러그인 + dependency-management 또는 공식 parent BOM(mavenBom) → 버전 없는 좌표는 BOM 관리
+    // v0.47: 공식 parent 를 BOM 으로 가져오면(mavenBom) 그 버전을 parent 로 본다(여러 파일이면 가장 낮은 것)
+    const bom = text.match(/mavenBom\s*\(?\s*["']org\.egovframe\.boot:egovframe-boot-starter-parent:([^"']+)["']/);
+    if (bom) {
+      const v = resolve(bom[1]) ?? null;
+      const src = baseline.sources.find((x) => x.groupId === "org.egovframe.boot" && x.artifactId === "egovframe-boot-starter-parent");
+      if (v && !/\$/.test(v) && (parent.version === null || versionBelow(v, parent.version) === true))
+        parent = { groupId: "org.egovframe.boot", artifactId: "egovframe-boot-starter-parent", version: v, kind: "boot", status: src ? (versionBelow(v, src.version) ? "outdated" : "ok") : "n/a" };
+    }
+    const kind: ParentInfo["kind"] | undefined = /mavenBom\s*\(?\s*["']org\.egovframe\.boot:egovframe-boot-starter-parent/.test(text) || (/org\.springframework\.boot/.test(text) && /io\.spring\.dependency-management/.test(text)) ? "boot" : undefined;
+    for (const m of text.matchAll(/["']([\w.\-]+):([\w.\-]+)(?::([^"':\s]+))?(?::[\w.\-]+)?["']/g)) {
+      if (/^(org\.egovframe\.boot:egovframe-boot-starter-parent|org\.springframework\.cloud:spring-cloud-dependencies)$/.test(`${m[1]}:${m[2]}`) && /mavenBom/.test(text.slice(Math.max(0, (m.index ?? 0) - 20), m.index ?? 0))) continue; // BOM import 줄
+      const v = resolve(m[3]);
+      deps.push({ file: rel, line: lineAt(text, m.index ?? 0), groupId: m[1], artifactId: m[2], version: m[3] ?? null, resolvedVersion: v && !/\$/.test(v) ? v : null, scope: null, parentKind: kind });
+    }
     for (const m of text.matchAll(/(http:\/\/[^\s"']+)/g)) repoIssues.push({ file: rel, line: lineAt(text, m.index ?? 0), text: m[1] });
     const src = text.match(/sourceCompatibility\s*=?\s*["']?(?:JavaVersion\.VERSION_)?(1_8|1\.8|[0-9]+)/) ?? text.match(/languageVersion\s*=?\s*JavaLanguageVersion\.of\((\d+)\)/);
     if (src) java = src[1].replace("1_8", "1.8");
   }
-  return { deps, java, repoIssues };
+  return { deps, java, repoIssues, parent };
 }
 
 const CHECK_EXT = new Set([".xml", ".java", ".properties", ".yml", ".yaml"]);
@@ -268,14 +315,20 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   const diag = diagnoseProject({ projectDir: dir });
   const files = walkProjectFiles(dir, opts.maxFiles ?? 20_000);
   const notes: string[] = [];
+  const ws: Workspace = detectWorkspace(dir);
+  const multi = isMultiModule(ws);
+  // v0.47: 루트에 빌드 파일이 없어도 하위 독립 프로젝트가 있으면 그 빌드 도구로
+  const buildSystem: CheckDependenciesResult["buildSystem"] = diag.buildSystem !== "unknown" ? diag.buildSystem : ((ws.modules[0] as typeof ws.modules[number] | undefined)?.buildTool ?? "unknown") as CheckDependenciesResult["buildSystem"];
+  if (multi) notes.push(`작업공간(${ws.kind}) 모듈 ${ws.modules.length}개를 모듈별로 판정합니다${ws.notes.length ? ` — ${ws.notes.join(" ")}` : ""}.`);
 
   let raw: RawDep[] = [];
   let parent: ParentInfo = { groupId: null, artifactId: null, version: null, kind: "none", status: "n/a" };
   let javaValue: string | null = null;
   let repoIssues: { file: string; line: number; text: string }[] = [];
-  if (diag.buildSystem === "maven") ({ deps: raw, parent, java: javaValue, repoIssues } = collectMaven(dir, files, baseline));
-  else if (diag.buildSystem === "gradle") ({ deps: raw, java: javaValue, repoIssues } = collectGradle(dir, files));
+  if (buildSystem === "maven") ({ deps: raw, parent, java: javaValue, repoIssues } = collectMaven(dir, files, baseline));
+  else if (buildSystem === "gradle") ({ deps: raw, java: javaValue, repoIssues, parent } = collectGradle(dir, files, baseline));
   else notes.push("빌드 파일(pom.xml·build.gradle)을 찾지 못해 의존성 대조를 건너뜁니다.");
+  if (parent.kind !== "none" && multi && !fs.existsSync(path.join(dir, "pom.xml")) === false && !/<parent>/.test(read(path.join(dir, "pom.xml")))) notes.push(`루트 pom 에 parent 가 없어 모듈 parent(${parent.artifactId}:${parent.version})를 대표로 봅니다.`);
 
   const findings: DependencyFinding[] = [];
   const seen = new Set<string>();
@@ -284,15 +337,22 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
     const key = `${d.file}\u0000${d.groupId}:${d.artifactId}\u0000${d.version ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const c = classifyDependency(d, { baseline, rules, parentKind: parent.kind });
-    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "declared", ...(c.note ? { note: c.note } : {}) });
+    const c = classifyDependency(d, { baseline, rules, parentKind: d.parentKind ?? parent.kind });
+    const mod = multi ? moduleOf(ws, d.file) : null;
+    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "declared", ...(mod ? { module: mod.name } : {}), ...(c.note ? { note: c.note } : {}) });
   }
 
   // ── v0.36: 해석된 트리 — 선언에 없는 artifact 는 transitive 로 추가하고, 선언과 다른 버전으로 풀린 좌표는 differs 로 ──
   let resolution: CheckDependenciesResult["resolution"];
-  if (opts.resolve && diag.buildSystem !== "unknown") {
-    const tree: DependencyTreeResult = await resolveDependencyTree({ projectDir: dir, scope: opts.resolveScope ?? "runtime", timeoutMs: opts.resolveTimeoutMs, runner: opts.runner, platform: opts.platform });
-    const buildFile = diag.buildSystem === "maven" ? "pom.xml" : (files.find((f) => /build\.gradle(\.kts)?$/.test(f)) ? path.relative(dir, files.find((f) => /build\.gradle(\.kts)?$/.test(f))!).split(path.sep).join("/") : "build.gradle");
+  if (opts.resolve && buildSystem !== "unknown") {
+    // v0.47: 루트 빌드 파일이 없는 독립 프로젝트 묶음은 프로젝트마다 해석해 합친다
+    const targets = diag.buildSystem === "unknown" && ws.kind === "independent" ? ws.modules.map((m) => ({ dir: path.join(dir, m.dir), name: m.name, file: `${m.dir}/${m.buildTool === "maven" ? "pom.xml" : "build.gradle"}` })) : [{ dir, name: null as string | null, file: "" }];
+    const trees: (DependencyTreeResult & { module: string | null; file: string })[] = [];
+    for (const t of targets) trees.push({ ...(await resolveDependencyTree({ projectDir: t.dir, scope: opts.resolveScope ?? "runtime", timeoutMs: opts.resolveTimeoutMs, runner: opts.runner, platform: opts.platform })), module: t.name, file: t.file });
+    const byArt = new Map<string, DependencyTreeResult["artifacts"][number] & { module: string | null; file: string }>();
+    for (const t of trees) for (const a of t.artifacts) { const k = `${a.groupId}:${a.artifactId}:${a.version}`; if (!byArt.has(k)) byArt.set(k, { ...a, module: t.module, file: t.file }); }
+    const tree = { ran: trees.every((t) => t.ran), success: trees.every((t) => t.success), scope: trees[0].scope, command: [...new Set(trees.map((t) => t.command))].join(" · "), durationMs: trees.reduce((n, t) => n + (t.durationMs ?? 0), 0), artifacts: [...byArt.values()], error: trees.filter((t) => t.error).map((t) => `${t.module ?? "."}: ${t.error}`).join("; ") || undefined } as DependencyTreeResult & { artifacts: (DependencyTreeResult["artifacts"][number] & { module: string | null; file: string })[] };
+    const buildFileDefault = buildSystem === "maven" ? "pom.xml" : (files.find((f) => /build\.gradle(\.kts)?$/.test(f)) ? path.relative(dir, files.find((f) => /build\.gradle(\.kts)?$/.test(f))!).split(path.sep).join("/") : "build.gradle");
     const declaredByKey = new Map<string, DependencyFinding>();
     for (const f of findings) { const k = `${f.groupId}:${f.artifactId}`; if (!declaredByKey.has(k)) declaredByKey.set(k, f); }
     const differs: NonNullable<CheckDependenciesResult["resolution"]>["differs"] = [];
@@ -313,7 +373,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
       const c = classifyDependency({ groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version }, { baseline, rules, parentKind: parent.kind });
       rsum[c.status]++;
       transitive++;
-      findings.push({ file: buildFile, line: 0, groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version, scope: a.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "transitive", via: a.via, depth: a.depth, ...(c.note ? { note: c.note } : {}) });
+      findings.push({ file: a.file || buildFileDefault, line: 0, groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version, scope: a.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "transitive", via: a.via, depth: a.depth, ...(a.module ? { module: a.module } : {}), ...(c.note ? { note: c.note } : {}) });
     }
     resolution = { ran: tree.ran, success: tree.success, scope: tree.scope, command: tree.command, durationMs: tree.durationMs, artifacts: tree.artifacts.length, direct: tree.artifacts.filter((a) => a.depth === 1).length, transitive, differs, summary: rsum, ...(tree.error ? { error: tree.error } : {}) };
     if (!tree.success) notes.push(`의존성 트리 해석 실패(${tree.error ?? "원인 미상"}) — 선언된 의존성만 판정했습니다. 명령: ${tree.command}`);
@@ -345,12 +405,18 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   checks.push({ id: "xss-filter", title: "XSS 방어 필터(HTMLTagFilter 등)", status: xss.length ? "ok" : "missing", evidence: xss, hint: xss.length ? "" : "web.xml 에 org.egovframe.rte.ptl.mvc.filter.HTMLTagFilter 를 등록하거나 Lucy-XSS 등 필터를 적용하세요" });
   const headers = grepEvidence(dir, files, /HeaderWriterFilter|X-Frame-Options|Content-Security-Policy|X-Content-Type-Options|Strict-Transport-Security|\.headers\(|<headers\b|frameOptions|contentSecurityPolicy/i, (rel) => !rel.includes("/test/"));
   checks.push({ id: "security-headers", title: "보안 응답 헤더(X-Frame-Options·CSP·HSTS 등)", status: headers.length ? "ok" : "missing", evidence: headers, hint: headers.length ? "" : "Spring Security headers() 또는 web.xml 필터로 X-Frame-Options·Content-Security-Policy 등을 설정하세요" });
-  checks.push({ id: "https-repositories", title: "Maven 저장소 URL HTTPS", status: repoIssues.length ? "missing" : (diag.buildSystem === "unknown" ? "n/a" : "ok"), evidence: repoIssues, hint: repoIssues.length ? "http:// 저장소는 중간자 변조에 노출됩니다. https://maven.egovframe.go.kr/maven/ 등 HTTPS 로 바꾸세요(migrate_egovframe_project 가 자동 치환)" : "" });
+  checks.push({ id: "https-repositories", title: "Maven 저장소 URL HTTPS", status: repoIssues.length ? "missing" : (buildSystem === "unknown" ? "n/a" : "ok"), evidence: repoIssues, hint: repoIssues.length ? "http:// 저장소는 중간자 변조에 노출됩니다. https://maven.egovframe.go.kr/maven/ 등 HTTPS 로 바꾸세요(migrate_egovframe_project 가 자동 치환)" : "" });
 
   const result: CheckDependenciesResult = {
-    projectDir: dir, buildSystem: diag.buildSystem, offline,
+    projectDir: dir, buildSystem, offline,
     baseline: { surveyedAt: baseline.surveyedAt, rte: baseline.rte.version, springFramework: baseline.spring.framework, springBoot: baseline.spring.boot, java: baseline.java, bootBom: baseline.boot ? Object.keys(baseline.boot.managed).length : 0, rteTransitive: baseline.rteTransitive ? Object.keys(baseline.rteTransitive.managed).length : 0 },
     parent, java: { value: javaValue, status: javaStatus }, findings, summary, checks, ...(resolution ? { resolution } : {}), notes,
+    ...(multi ? { workspace: { kind: ws.kind, modules: ws.modules.map((m) => {
+      const fs_ = findings.filter((f) => f.module === m.name);
+      const sm: Record<DependencyStatus, number> = { ok: 0, outdated: 0, managed: 0, legacy: 0, replace: 0, vendor: 0, unknown: 0, unversioned: 0 };
+      for (const f of fs_) sm[f.status]++;
+      return { name: m.name, dir: m.dir, buildTool: m.buildTool, findings: fs_.length, summary: sm };
+    }) } } : {}),
   };
 
   if (!offline) {
@@ -399,6 +465,10 @@ export function renderDependencyMarkdown(r: CheckDependenciesResult): string {
     } else L.push(`- 해석된 트리: 실패 (${x.error ?? "원인 미상"}) — 선언만 판정`);
   }
   for (const n of r.notes) L.push(`- ${n}`);
+  if (r.workspace) {
+    L.push(``, `## 모듈별 (${r.workspace.kind}, ${r.workspace.modules.length}개)`, ``, `| 모듈 | 빌드 | 의존성 | 기준 충족 | 기준 미만 | 관리 | 전환·교체 | 기준 없음 | 버전 없음 |`, `|---|---|---|---|---|---|---|---|---|`);
+    for (const m of r.workspace.modules) L.push(`| ${m.dir || m.name} | ${m.buildTool} | ${m.findings} | ${m.summary.ok} | ${m.summary.outdated} | ${m.summary.managed} | ${m.summary.legacy + m.summary.replace} | ${m.summary.unknown} | ${m.summary.unversioned} |`);
+  }
   const attention = r.findings.filter((f) => f.status === "outdated" || f.status === "legacy" || f.status === "replace" || f.status === "unversioned");
   if (attention.length) {
     L.push(``, `## 조치 필요 (${attention.length})`, ``, `| 파일:라인 | 좌표 | 현재 | 기준/대체 | 상태 | 출처 | 비고 |`, `|---|---|---|---|---|---|---|`);

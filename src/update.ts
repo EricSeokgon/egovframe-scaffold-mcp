@@ -12,6 +12,7 @@ import { withFileTransaction } from "./file-transaction.js";
 import { detectBuildToolAt, runBuild, type Runner } from "./build-runner.js";
 import { readManifest } from "./manifest.js";
 import { loadCatalog } from "./catalog.js";
+import { detectWorkspace, isMultiModule, moduleOf } from "./workspace.js";
 import {
   applyTextEdits, lineAt, linkBuildError, loadMigrationRules, parsePomDeps, parsePomProperties, versionBelow, walkProjectFiles,
   type ApplyFilePlan, type MigrateResult, type MigrationItem, type SourceEra, type TextEdit, type VerifyLink, type VerifyWorkItem,
@@ -41,7 +42,7 @@ export function loadUpdateRules(): UpdateRules {
 export const isUpdateTarget = (target: string | undefined): boolean => !!target && /^5\.0\.\d+$/.test(target);
 
 // ── 결과 타입 ─────────────────────────────────────────
-export type UpdateKind = "parent-version" | "rte-version" | "parent-property" | "rte-change" | "component-update";
+export type UpdateKind = "parent-version" | "rte-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency";
 export interface UpdateInfo {
   /** 프로젝트의 실효 RTE 버전 — (버전 속성 또는 parent 관리 버전)과 RTE 의존성 리터럴 버전 중 가장 낮은 것 */
   from: string | null;
@@ -52,6 +53,8 @@ export interface UpdateInfo {
   /** 구간에 있지만 프로젝트가 참조하지 않는 변경 수 */
   unreferencedChanges: number;
   components: { detected: number; manifestTag: string | null; catalogTag: string; tool: "upgrade_egovframe_project" | "reassemble_egovframe_components" | null } | null;
+  /** v0.47: 멀티 모듈 작업공간이면 모듈별 항목 수 */
+  modules?: { name: string; dir: string; auto: number; manual: number }[];
 }
 export interface UpdateResult extends Omit<MigrateResult, "target"> { target: string; update: UpdateInfo }
 export interface UpdateOptions { projectDir: string; target?: string; maxFiles?: number; rules?: UpdateRules }
@@ -123,24 +126,88 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
     if (versionBelow(d.version, target) !== true) continue;
     items.push({ file: rel, line: d.line, kind: "rte-version", from: `${d.groupId}:${d.artifactId}:${d.version}`, to: `${d.groupId}:${d.artifactId}:${target}`, action: "auto", reason: `RTE ${target} 기준`, edits: [{ start: d.vSpan.start, end: d.vSpan.end, replacement: target }] });
   }
+  items.push(...duplicateDependencyItems(rel, text));
   // 실효 버전 = (버전 속성 또는 parent 가 관리하는 버전)과 리터럴 버전 중 가장 낮은 것
   const managed = propVersion ?? (parentVersion && /^5\./.test(parentVersion) ? parentVersion : null);
   const effective = [...(managed ? [managed] : []), ...literal].sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
   return { parent, effective, items };
 }
 
+/**
+ * 같은 <dependencies> 안의 중복 선언(groupId:artifactId:type:classifier). Maven 3.9 로컬은 경고지만
+ * GitHub Actions ubuntu-latest 의 Maven 은 "must be unique" 오류로 프로젝트를 읽지 않는다(공식 msa-common-components
+ * EgovQuestionnaire 의 commons-configuration2·commons-lang3, 2026-10-16 CI 실측). 내용이 같으면 뒤 선언을 지우는 auto,
+ * 버전·scope·exclusions 가 다르면 어느 쪽이 맞는지 사람이 정해야 하므로 manual.
+ */
+export function duplicateDependencyItems(rel: string, text: string): MigrationItem[] {
+  const skip: Array<[number, number]> = [];
+  for (const re of [/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, /<plugins>[\s\S]*?<\/plugins>/g, /<profiles>[\s\S]*?<\/profiles>/g, /<!--[\s\S]*?-->/g]) {
+    for (const m of text.matchAll(re)) skip.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  }
+  const inSkip = (i: number) => skip.some(([a, b]) => i >= a && i < b);
+  const norm = (s: string) => s.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, "");
+  const seen = new Map<string, { body: string; line: number }>();
+  const out: MigrationItem[] = [];
+  for (const d of parsePomDeps(text)) {
+    if (inSkip(d.block.start)) continue;
+    const body = text.slice(d.block.start, d.block.end);
+    const type = body.match(/<type>\s*([^<\s]+)/)?.[1] ?? "jar", cls = body.match(/<classifier>\s*([^<\s]+)/)?.[1] ?? "";
+    const key = `${d.groupId}:${d.artifactId}:${type}${cls ? `:${cls}` : ""}`;
+    const first = seen.get(key);
+    if (!first) { seen.set(key, { body: norm(body), line: d.line }); continue; }
+    if (first.body === norm(body)) {
+      const lineStart = text.lastIndexOf("\n", d.block.start) + 1;
+      const start = /^[ \t]*$/.test(text.slice(lineStart, d.block.start)) ? lineStart : d.block.start;
+      const nl = text.slice(d.block.end).match(/^[ \t]*\r?\n/);
+      const end = d.block.end + (start === lineStart && nl ? nl[0].length : 0);
+      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: `${key}${d.version ? `:${d.version}` : ""} (${first.line}행과 같음)`, to: null, action: "auto", reason: `같은 <dependencies> 에 같은 좌표가 두 번 선언됨 — Maven 이 "must be unique" 오류로 빌드를 거부할 수 있어(GitHub Actions ubuntu-latest 실측) 뒤 선언을 지움`, edits: [{ start, end, replacement: "" }] });
+    } else {
+      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: `${key} (${first.line}행과 다름)`, to: null, action: "manual", reason: `같은 좌표가 버전·scope·exclusions 를 달리해 두 번 선언됨 — Maven 은 뒤 선언을 쓰거나 "must be unique" 오류를 낸다. 맞는 하나만 남기세요` });
+    }
+  }
+  return out;
+}
+
 /** Gradle 빌드 파일의 org.egovframe.rte 좌표 리터럴 버전 */
-export function planGradleUpdate(rel: string, text: string, target: string): { effective: string | null; items: MigrationItem[] } {
+export function planGradleUpdate(rel: string, text: string, target: string): { effective: string | null; items: MigrationItem[]; parentVersion: string | null } {
   const items: MigrationItem[] = [];
   const found: string[] = [];
-  for (const m of text.matchAll(/["'](org\.egovframe\.rte[\w.]*):([\w.\-]+):(5\.[^"':\s]+)["']/g)) {
+  let parentVersion: string | null = null;
+  // 1) 리터럴: RTE 좌표, 공식 parent BOM(mavenBom "org.egovframe.boot:egovframe-boot-starter-parent:5.0.0")
+  for (const m of text.matchAll(/["'](org\.egovframe\.rte[\w.]*|org\.egovframe\.boot):([\w.\-]+):(5\.[^"':\s$]+)["']/g)) {
+    const isParent = m[1] === "org.egovframe.boot" && m[2] === "egovframe-boot-starter-parent";
+    if (m[1] === "org.egovframe.boot" && !isParent) continue;
     found.push(m[3]);
+    if (isParent) parentVersion = m[3];
     if (versionBelow(m[3], target) !== true) continue;
     const start = (m.index ?? 0) + 1 + m[1].length + 1 + m[2].length + 1;
-    items.push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "rte-version", from: `${m[1]}:${m[2]}:${m[3]}`, to: `${m[1]}:${m[2]}:${target}`, action: "auto", reason: `RTE ${target} 기준`, edits: [{ start, end: start + m[3].length, replacement: target }] });
+    items.push({ file: rel, line: lineAt(text, m.index ?? 0), kind: isParent ? "parent-version" : "rte-version", from: `${m[1]}:${m[2]}:${m[3]}`, to: `${m[1]}:${m[2]}:${target}`, action: "auto", reason: isParent ? `공식 parent BOM 최신 ${target}` : `RTE ${target} 기준`, edits: [{ start, end: start + m[3].length, replacement: target }] });
+  }
+  // 2) v0.47: 버전 변수 — set('egovframeBootParentVersion', '5.0.0') · egovframeBootParentVersion = '5.0.0'
+  //    공식 parent BOM·RTE 좌표에만 쓰이면 정의를 바꾸고(auto), 다른 좌표(예: 직접 배포한 공통 모듈)에도 쓰이면 수동으로 둔다 — 그 좌표의 목표 버전이 저장소에 없을 수 있다
+  const defs = [...text.matchAll(/\bset\(\s*['"](\w+)['"]\s*,\s*['"](5\.\d+\.\d+)['"]\s*\)|^\s*(?:ext\.|def\s+)?(\w+)\s*=\s*['"](5\.\d+\.\d+)['"]\s*$/gm)];
+  for (const d of defs) {
+    const name = d[1] ?? d[3], value = d[2] ?? d[4];
+    if (/^(version)$/.test(name)) continue;
+    const useRe = new RegExp(`["']([\\w.\\-]+):([\\w.\\-]+):\\$\\{?${name}\\}?["']`, "g");
+    const uses = [...text.matchAll(useRe)].map((u) => `${u[1]}:${u[2]}`);
+    const egovUses = uses.filter((u) => u === "org.egovframe.boot:egovframe-boot-starter-parent" || u.startsWith("org.egovframe.rte"));
+    if (!egovUses.length) continue;
+    found.push(value);
+    if (egovUses.includes("org.egovframe.boot:egovframe-boot-starter-parent")) parentVersion = value;
+    if (versionBelow(value, target) !== true) continue;
+    const others = [...new Set(uses.filter((u) => !egovUses.includes(u)))];
+    const vStart = (d.index ?? 0) + d[0].indexOf(value, d[0].indexOf(name) + name.length);
+    const line = lineAt(text, d.index ?? 0);
+    const kind = egovUses.includes("org.egovframe.boot:egovframe-boot-starter-parent") ? "parent-version" : "rte-version";
+    if (others.length) {
+      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: `${target} (공식 parent·RTE 용 변수를 따로 두고)`, action: "manual", reason: `버전 변수 ${name} 가 공식 parent·RTE(${egovUses.join(", ")}) 말고 ${others.join(", ")} 에도 쓰입니다 — 그대로 ${target} 로 바꾸면 그 좌표의 ${target} 이 저장소에 있어야 합니다. 공식 parent·RTE 용 변수를 따로 두고 그것만 ${target} 로 올리세요` });
+    } else {
+      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: `${name} = ${target}`, action: "auto", reason: `버전 변수 ${name}(${egovUses.join(", ")} 에만 쓰임) — 공식 parent 최신 ${target}`, edits: [{ start: vStart, end: vStart + value.length, replacement: target }] });
+    }
   }
   const effective = found.sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
-  return { effective, items };
+  return { effective, items, parentVersion };
 }
 
 /** 소스 한 파일에서 변경 클래스 참조를 찾는다(FQN, 또는 import 한 단순 이름·와일드카드 import + 단순 이름). 첫 줄만 돌려준다. */
@@ -175,6 +242,7 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
   const items: MigrationItem[] = [];
   const notes: string[] = [];
   let parent: UpdateInfo["parent"] = null;
+  let rootParent: UpdateInfo["parent"] = null, modParent: UpdateInfo["parent"] = null;
   const effectives: string[] = [];
   let legacy = false;
   const sources: { rel: string; text: string }[] = [];
@@ -192,7 +260,7 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
     if (base === "pom.xml") {
       if (/<groupId>\s*egovframework\.rte\s*<\/groupId>/.test(text)) legacy = true;
       const plan = planPomUpdate(rel, text, target, rules);
-      if (rel === "pom.xml" && plan.parent) parent = plan.parent;
+      if (plan.parent) { if (rel === "pom.xml") rootParent = plan.parent; else if (!modParent || versionBelow(plan.parent.version, modParent.version) === true) modParent = plan.parent; }
       if (plan.effective) effectives.push(plan.effective);
       items.push(...plan.items);
       continue;
@@ -201,11 +269,13 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
       if (/egovframework\.rte/.test(text)) legacy = true;
       const plan = planGradleUpdate(rel, text, target);
       if (plan.effective) effectives.push(plan.effective);
+      if (plan.parentVersion && (!parent || versionBelow(plan.parentVersion, parent.version) === true)) parent = { kind: "boot", groupId: "org.egovframe.boot", artifactId: "egovframe-boot-starter-parent", version: plan.parentVersion, to: target };
       items.push(...plan.items);
       continue;
     }
     if (SOURCE_EXT.has(path.extname(abs)) && text.includes("org.egovframe.rte")) sources.push({ rel, text });
   }
+  parent = rootParent ?? modParent ?? parent;
   const from = effectives.sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
 
   // 3.x/4.x 프로젝트면 갱신이 아니라 전환
@@ -258,6 +328,8 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
     list.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.kind.localeCompare(b.kind));
     const byKind: Record<string, number> = {};
     for (const i of list) byKind[i.kind] = (byKind[i.kind] ?? 0) + 1;
+    const ws = detectWorkspace(dir);
+    if (isMultiModule(ws)) update.modules = ws.modules.map((m) => { const mine = list.filter((i) => moduleOf(ws, i.file)?.name === m.name); return { name: m.name, dir: m.dir, auto: mine.filter((i) => i.action === "auto").length, manual: mine.filter((i) => i.action === "manual").length }; });
     return {
       projectDir: dir, target,
       rules: { toTag: `v${target}-Final`, surveyedAt: rules.surveyedAt, runtimeVersion: target },
@@ -358,7 +430,7 @@ export async function verifyUpdate(opts: UpdateVerifyOptions): Promise<UpdateVer
 
 // ── 렌더링 ────────────────────────────────────────────
 const KIND_LABEL: Record<string, string> = {
-  "parent-version": "parent 버전", "rte-version": "RTE 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지",
+  "parent-version": "parent 버전", "rte-version": "RTE 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지", "duplicate-dependency": "중복 의존성 선언",
 };
 export const updateKindLabel = (k: string): string => KIND_LABEL[k] ?? k;
 
@@ -373,6 +445,7 @@ export function renderUpdateMarkdown(r: UpdateResult | UpdateApplyResult | Updat
   L.push(`- 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${u.unreferencedChanges ? ` · 이 구간의 다른 변경 ${u.unreferencedChanges}건은 프로젝트가 참조하지 않음` : ""}`);
   if (u.components) L.push(`- 공통컴포넌트 ${u.components.detected}종 · ${u.components.manifestTag ? `매니페스트 ${u.components.manifestTag}` : "매니페스트 없음"} · 카탈로그 ${u.components.catalogTag}${u.components.tool ? ` → ${u.components.tool}` : " (최신)"}`);
   for (const n of r.notes) L.push(`- ${n}`);
+  if (u.modules?.length) L.push(`- 모듈 ${u.modules.length}개: ${u.modules.map((m) => `${m.name} ${m.auto}/${m.manual}`).join(" · ")} (자동/수동)`);
   if (mode === "apply") {
     const a = r as UpdateApplyResult;
     L.push(`- ${a.dryRun ? "적용 예정" : "적용"} ${a.applied.items}항목 · 편집 ${a.applied.edits}곳 · 파일 ${a.applied.files}개`);

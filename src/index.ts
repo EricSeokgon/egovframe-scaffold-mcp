@@ -152,5 +152,10 @@ export { loadSecureRules, compileRulePattern, stripJavaComments, stripMarkupComm
 export type { SecureRule, SecureRules, SecureFinding, SecureCodingOptions, SecureCodingResult, SecureSeverity, SecureOrigin } from "./secure-coding.js";
 export { loadDeployRules, analyzeDeploy, parseProperties, parseJdbcUrl, envNameOf, renderDockerfile, renderDockerignore, renderCompose, renderEnvExample, renderKubernetes, renderClassicConfig, generateDeploy, renderDeployMarkdown, DEPLOY_IMAGE_REGISTRY_RE, DEPLOY_IMAGE_RE, DEPLOY_HOST_RE } from "./deploy.js";
 export type { DeployRules, DeployProfile, DeployDb, DeployTarget, DeployAnalysis, GenerateDeployOptions, GenerateDeployResult } from "./deploy.js";
-export { loadUpdateRules, isUpdateTarget, planPomUpdate, planGradleUpdate, findClassReference, updateProject, applyUpdate, verifyUpdate, renderUpdateMarkdown, updateKindLabel } from "./update.js";
+export { detectWorkspace, isMultiModule, moduleOf, flattenYaml } from "./workspace.js";
+export { planWorkspaceDeploy, workspaceDeployFiles, rewriteLocal, springEnvName, serviceName, slf4jProviderConflict } from "./deploy-workspace.js";
+export { gradleVariables } from "./dependencies.js";
+export { mergeModuleBoms } from "./sbom.js";
+export type { Workspace, WorkspaceModule, WorkspaceKind } from "./workspace.js";
+export { loadUpdateRules, isUpdateTarget, planPomUpdate, planGradleUpdate, duplicateDependencyItems, findClassReference, updateProject, applyUpdate, verifyUpdate, renderUpdateMarkdown, updateKindLabel } from "./update.js";
 export type { UpdateRules, UpdateChange, UpdateParent, UpdateInfo, UpdateResult, UpdateOptions, UpdateApplyResult, UpdateApplyOptions, UpdateVerifyResult, UpdateVerifyOptions, PomUpdatePlan } from "./update.js";

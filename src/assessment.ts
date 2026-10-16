@@ -125,7 +125,7 @@ export interface AssessmentResult {
     manualTotalGroups: number;
     notes: string[];
     /** v0.46: 이미 5.x 인 프로젝트의 최신 유지(migrate_egovframe_project target=최신 5.0.x) 요약 — 등급 산식에는 넣지 않는다 */
-    update?: { from: string | null; to: string; parentVersion: string | null; auto: number; manual: number; changes: UpdateInfo["changes"]; components: UpdateInfo["components"] };
+    update?: { from: string | null; to: string; parentVersion: string | null; auto: number; manual: number; changes: UpdateInfo["changes"]; components: UpdateInfo["components"]; modules?: UpdateInfo["modules"] };
   };
   dependencies: {
     offline: boolean; findings: number; declared: number; transitive: number; summary: Record<DependencyStatus, number>;
@@ -148,6 +148,8 @@ export interface AssessmentResult {
     note: string;
   };
   grades: { migration: GradeResult; supplyChain: GradeResult };
+  /** v0.47: 멀티 모듈 작업공간이면 모듈별 요약(등급은 전체 합산) */
+  modules?: { name: string; dir: string; buildTool: string; dependencies: number; outdated: number; legacyReplace: number; updateAuto: number; updateManual: number; secure: number }[];
   /** v0.41: 최근 리허설(rehearse_egovframe_migration) 실측 — 등급 산식에는 넣지 않는다 */
   rehearsal?: { at: string; afterAutomation: number | null; afterPomAlignment: number | null; projectUnchanged: boolean; origin: string | null };
   notes: string[];
@@ -231,10 +233,10 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const removedApiRefs = mig.items.filter((i) => REMOVED_API_KINDS.includes(i.kind)).length;
   const { top: manualTop, groups } = groupManualItems(mig.items, topN);
   let update: AssessmentResult["migration"]["update"];
-  if (mig.sourceEra === "5.x") {
+  if (mig.sourceEra === "5.x" || (mig.sourceEra === "unknown" && (dep.parent.kind === "web" || dep.parent.kind === "boot"))) {
     try {
       const u = updateProject({ projectDir, maxFiles: opts.maxFiles });
-      update = { from: u.update.from, to: u.update.to, parentVersion: u.update.parent?.version ?? null, auto: u.summary.auto, manual: u.summary.manual, changes: u.update.changes, components: u.update.components };
+      update = { from: u.update.from, to: u.update.to, parentVersion: u.update.parent?.version ?? null, auto: u.summary.auto, manual: u.summary.manual, changes: u.update.changes, components: u.update.components, ...(u.update.modules ? { modules: u.update.modules } : {}) };
     } catch (e) { notes.push(`5.x 최신 유지 점검 실패: ${e instanceof Error ? e.message : String(e)}`); }
   }
 
@@ -252,8 +254,10 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const security = { ok: dep.checks.filter((c) => c.status === "ok").length, missing: dep.checks.filter((c) => c.status === "missing").length, na: dep.checks.filter((c) => c.status === "n/a").length, checks: dep.checks };
   // v0.44: 보안약점(패턴) — 실패해도 평가서는 계속
   let secureCoding: AssessmentResult["secureCoding"];
+  let secureByModule: { module: string; total: number }[] | undefined;
   try {
     const sc = await checkSecureCoding({ projectDir, maxFindings: 1, maxFiles: opts.maxFiles });
+    secureByModule = sc.byModule;
     secureCoding = { total: sc.summary.total, high: sc.summary.high, medium: sc.summary.medium, low: sc.summary.low, byOrigin: Object.fromEntries(Object.entries(sc.byOrigin).filter(([, n]) => n)), byRule: sc.byRule, suppressed: sc.summary.suppressed };
   } catch (e) {
     secureCoding = { total: 0, high: 0, medium: 0, low: 0, byOrigin: {}, byRule: [], suppressed: 0, error: e instanceof Error ? e.message : String(e) };
@@ -292,6 +296,10 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
     },
     security, secureCoding, sbom,
     grades: { migration, supplyChain },
+    ...(dep.workspace ? { modules: dep.workspace.modules.map((m) => {
+      const u = update?.modules?.find((x) => x.name === m.name);
+      return { name: m.name, dir: m.dir, buildTool: m.buildTool, dependencies: m.findings, outdated: m.summary.outdated, legacyReplace: m.summary.legacy + m.summary.replace, updateAuto: u?.auto ?? 0, updateManual: u?.manual ?? 0, secure: secureByModule?.find((x) => x.module === m.dir)?.total ?? 0 };
+    }) } : {}),
     ...(() => {
       const rec = readRehearsalRecord(projectDir);
       if (!rec) return {};
@@ -337,6 +345,10 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
   L.push(`| 공통컴포넌트 | ${o.components.count}종${o.components.count ? `: ${o.components.ids.slice(0, 12).join(", ")}${o.components.count > 12 ? " …" : ""}` : ""} |`);
   L.push(`| AI 계층 / 매니페스트 | ${o.aiLayer ? "있음" : "없음"} / ${o.hasManifest ? "있음" : "없음"} |`);
   L.push(`| 스캔 파일 | ${o.filesScanned}개 |`);
+  if (r.modules?.length) {
+    L.push(``, `### 모듈 (${r.modules.length}개 — 등급은 전체 합산)`, ``, `| 모듈 | 빌드 | 의존성 | 기준 미만 | 전환·교체 | 최신 유지 자동/수동 | 보안약점 |`, `|---|---|---|---|---|---|---|`);
+    for (const m of r.modules) L.push(`| ${m.dir || m.name} | ${m.buildTool} | ${m.dependencies} | ${m.outdated} | ${m.legacyReplace} | ${m.updateAuto}/${m.updateManual} | ${m.secure} |`);
+  }
 
   const m = r.migration;
   L.push(``, `## 2. 전환 범위`, ``);
