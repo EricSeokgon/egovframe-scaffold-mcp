@@ -47,7 +47,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v0.48 납품 패키지 → v0.49 응답 영문화·진행 알림. [다음 버전 기획](#다음-버전-기획-v047v049) 참조.
+- **다음 계획**: v1.0.0 안정화(버전 정책·공개 API 고정·Node 22 이상) → v1.1 납품 패키지 → v1.2 응답 영문화·진행 알림. [다음 버전 기획](#다음-버전-기획-v10v12) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 제공 도구
@@ -617,7 +617,7 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Eri
 
 v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
 
-v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). 다음 세 버전(v0.47–v0.49)의 범위는 [다음 버전 기획](#다음-버전-기획-v047v049)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
+v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). v0.47 로 멀티 모듈·MSA 대응을 마쳤습니다([v0.47](#이전-기획-v047-완료)). 다음은 0.x 를 끝내는 v1.0.0 안정화와 v1.1–v1.2 이며 범위는 [다음 버전 기획](#다음-버전-기획-v10v12)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -649,34 +649,44 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v0.45 완료** | 컨테이너·배포 산출물 | `generate_egovframe_deploy`: Classic war(Tomcat 10.1)·Boot jar 멀티 스테이지 Dockerfile, DbType 별 docker-compose, Kubernetes 매니페스트, 폐쇄망 레지스트리 — hadolint·kubeconform·실제 빌드·기동 검증 |
 | **v0.46 완료** | 5.x 최신 유지 + CI 실행 검증 | `migrate_egovframe_project(target="5.0.2")`: parent·RTE 버전 auto, 바뀐 RTE API·동작 참조 manual(규칙 `catalog/update-rules.json`), `create(alignParent=true)`, 평가서 2절 — 공식 web·boot-web 갱신 후 compile·기준 미만 감소·등급 C → B. 생성 `Jenkinsfile`(Jenkins LTS·고정 플러그인)·`.gitlab-ci.yml`(gitlab-ci-local) 실제 실행 검증 |
 | **v0.47 완료** | 멀티 모듈·MSA 대응 | 공식 MSA 템플릿 3종(Maven 11 모듈·Gradle 독립 10·9)의 모듈 탐지, 의존성(0 → 280·256건)·SBOM·5.x 최신 유지·보안약점·평가서 모듈별 판정, 다중 서비스 compose·Kubernetes, `msa-common-components` 실제 기동(Eureka·Gateway UP) |
-| **v0.48 계획** | 납품 패키지 | 새 도구 `prepare_egovframe_delivery`(35종): 평가서·SBOM·VEX·보안약점·배포 검증을 한 묶음 + sha256 manifest·목차·이전 차수 비교, `deliver --verify` |
-| **v0.49 계획** | 응답 영문화 + 진행 알림 | `--lang en` 응답 본문·규칙 사유 영문, 장시간 도구의 MCP 진행 알림과 취소 시 정리 |
+| **v1.0 계획** | 안정화: 버전 정책 + 공개 API 고정 | `docs/versioning.md`(SemVer, 공개 API 범위·폐기 절차), API 계약 스냅샷 테스트와 버전 증가 폭 검사, 1.0 전 파라미터 이름 정리(별칭 유지), Node 22 이상 |
+| **v1.1 계획** | 납품 패키지 | 새 도구 `prepare_egovframe_delivery`(35종): 평가서·SBOM·VEX·보안약점·배포 검증을 한 묶음 + sha256 manifest·목차·이전 차수 비교, `deliver --verify` |
+| **v1.2 계획** | 응답 영문화 + 진행 알림 | `--lang en` 응답 본문·규칙 사유 영문, 장시간 도구의 MCP 진행 알림과 취소 시 정리 |
 
-## 다음 버전 기획 (v0.47–v0.49)
+## 다음 버전 기획 (v1.0–v1.2)
 
-v0.46.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종, npm 0.46.0 자동 배포)에서 다음 세 릴리스를 아래 순서로 진행합니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 문서·저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 이번 세 버전의 공통 주제는 **실제 사업 구조로 넓히기** 입니다 — 지금까지 단일 프로젝트를 기준으로 만든 도구를 공식 MSA 템플릿 같은 멀티 모듈·다중 서비스 구조에 적용하고(v0.47), 각 도구의 결과를 감리·검수에 내는 한 묶음의 납품 패키지로 모으며(v0.48), 영문 응답과 장시간 도구의 진행 보고로 운영 환경을 넓힙니다(v0.49). 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-16)"에 있습니다.
+v0.47.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종)에서 다음 세 릴리스를 아래 순서로 진행합니다. 도구 34종의 이름·파라미터·구조화 출력이 사실상 굳어 있고 npm 으로 자동 배포되고 있어, **0.x 를 끝내고 v1.0.0 으로 공개 API 를 고정**합니다. 원래 v0.48(납품 패키지)·v0.49(응답 영문화·진행 알림)로 잡았던 기획은 호환을 깨지 않는 추가 기능이라 버전 정책에 따라 v1.1·v1.2 로 번호만 바꿨습니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 문서·저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-16)"에 있습니다.
 
-### v0.47.0 — 멀티 모듈·MSA 프로젝트 대응
+### v1.0.0 — 안정화: 버전 정책 + 공개 API 고정
 
-**목표**: 공식 MSA 템플릿 3종은 지금 도구에서 대부분 비어 보입니다. Gradle 독립 프로젝트 묶음인 `msa-edu`(백엔드 10개)·`msa-portal-backend`(9개)는 루트에 빌드 파일이 없어 의존성 점검이 0건이고, 5.x 최신 유지는 Gradle 의 `egovframeBootParentVersion` 변수(18개 프로젝트 모두 5.0.0)를 읽지 못해 버전을 미검출로 봅니다. Maven 멀티 모듈인 `msa-common-components`(11 모듈)는 배포 산출물 생성이 "멀티 모듈 — 범위 밖"으로 거부됩니다. 공공 클라우드 전환 사업이 MSA 구조를 쓰는 만큼, 모듈 구조를 알아보고 모듈별로 같은 판정을 내리게 합니다.
+**목표**: SemVer 에서 0.x 는 "공개 API 가 아직 안정되지 않았다"는 뜻이라, 이용자는 MINOR 마다 깨질 수 있다고 봐야 합니다. 실제로는 v0.32 이후 도구 이름·파라미터를 지우거나 바꾼 적이 없습니다. 무엇을 지키는지 문서로 정하고, 테스트로 강제하고, 1.0 이후 고치기 어려운 이름은 지금 정리합니다. 새 기능은 넣지 않습니다.
 
 **범위 (포함)**
-- **작업공간 탐지(`src/workspace.ts`)**: Maven `<modules>`(재귀), Gradle `settings.gradle(.kts)` 의 `include`, 빌드 파일 없는 루트 아래의 독립 프로젝트(`backend/*`·`msa-*`)를 모듈 목록(경로·빌드 도구·packaging·Boot 여부·자체 Dockerfile 유무·라이브러리 모듈 여부)으로 만듭니다.
-- **의존성 점검·SBOM**: 모듈별 판정과 합산(결과에 모듈 열), `resolve=true` 도 모듈별로 실행합니다. Gradle 의 `set('…Version', …)`·`ext` 버전 변수를 읽고, SBOM 은 모듈별 문서와 합본(CycloneDX 주 component 아래 모듈 component)을 냅니다.
-- **5.x 최신 유지**: Gradle 버전 변수(`egovframeBootParentVersion`)를 parent 버전과 같은 auto 항목으로 다룹니다. Maven 모듈 parent 는 이미 처리되므로(실측 11건) 모듈별 요약만 더합니다.
-- **배포 산출물**: 서비스 모듈마다 이미지(자체 Dockerfile 이 있으면 그대로 쓰고 없으면 생성)와 하나의 `deploy/docker-compose.yml`·서비스별 Kubernetes 매니페스트를 만듭니다. Spring Cloud 구성(config → discovery → gateway → 서비스)은 헬스체크 기반 기동 순서를 줍니다. 라이브러리 모듈(`egovframe-cloud-module-common` 등)은 이미지에서 뺍니다.
-- **평가서·보안약점**: 모듈별 표를 더합니다(등급 산식은 전체 합산 그대로).
-- 각 도구에 선택 파라미터 `modules`(모듈 일부만) — 도구 수는 그대로입니다.
+- **버전 정책 `docs/versioning.md`**(SemVer 2.0)
+  - **공개 API**: MCP 도구 이름과 입력 파라미터(이름·타입·필수 여부·기본값), 구조화 출력(`structuredContent`) 스키마의 필드, CLI 명령·옵션·종료 코드(0·2·3·64), 환경 변수(`EGOVFRAME_*`), 지원 Node 버전.
+  - **공개 API 가 아닌 것**: Markdown 응답 문구, 카탈로그·규칙 데이터의 내용(판정 건수가 바뀔 수 있음), `dist/` 의 내부 모듈 export, 테스트·스크립트.
+  - **MAJOR**: 공개 API 의 삭제·이름 변경·타입 변경, 결과가 달라지는 기본값 변경, 종료 코드 변경, Node 최소 버전 상향.
+  - **MINOR**: 새 도구·선택 파라미터·출력 필드·CLI 명령, 새 템플릿·대응 범위 확대, 응답 문구·언어 추가.
+  - **PATCH**: 버그 수정, 카탈로그·규칙·기준 데이터 갱신(공식 태그 추적), 문서.
+  - **폐기 절차**: MINOR 에서 deprecated 로 표시합니다. 도구 설명에 `[deprecated]` 와 대체 수단을 적고, 쓰면 응답에 경고를 남깁니다. 실제 제거는 다음 MAJOR 에서만 합니다.
+- **API 계약 테스트(`test:api-contract`, 게이트)**: 도구 34종의 이름·파라미터·출력 스키마 필드, CLI 명령·옵션·종료 코드를 `test/fixtures/api-contract.json` 스냅샷과 비교합니다.
+  - 다르면 실패하면서 변경을 추가(MINOR)·삭제·변경(MAJOR)으로 분류합니다.
+  - `test:release` 는 그 분류와 `package.json` 의 버전 증가 폭이 맞는지 봅니다. 예를 들어 MAJOR 변경인데 MINOR 만 올렸으면 릴리스하지 않습니다.
+  - 스냅샷은 `npm run api-contract:update` 로만 갱신하고, PR 에서 diff 로 검토합니다.
+- **1.0 전 이름 정리(마지막 기회)**: 점검한 뒤 바꿀지는 이 버전에서 결정합니다. 바꾸는 것은 옛 이름을 1.x 동안 deprecated 별칭으로 계속 받습니다.
+  - 개수 제한 파라미터가 `top`·`topN`·`limit`·`maxFindings`·`fetchTop` 으로 섞여 있습니다.
+  - 출력 경로 파라미터가 `outputDir`·`outputPath` 로 섞여 있습니다.
+  - `format=json` 과 구조화 출력이 겹칩니다. 지금 출력 스키마가 있는 도구는 34종 중 13종이며, 1.0 에서 계약으로 둘 범위를 확정합니다.
+- **Node 22 이상**: Node 18(2025-04)과 Node 20(2026-04)은 지원이 끝났습니다. `engines` 를 `>=22` 로 올리고, CI 매트릭스를 ubuntu·windows × Node 22·24 로 바꿉니다. 오프라인 번들·CLI·README 설치 안내의 Node 요구 버전도 맞춥니다.
+- README·README.en 의 0.x 표현과 「진행 현황」을 정리하고, 「버전 정책」 절을 만들어 `docs/versioning.md` 로 연결합니다.
 
-**범위 (제외)**: 프론트엔드(React) 이미지, 서비스 메시·Helm 차트, 모듈 간 순환 의존 해소, 템플릿에 이미 있는 k8s 매니페스트(`msa-edu/k8s`, 80개) 수정
+**범위 (제외)**: 새 도구·새 기능, LTS 브랜치 운영(1.x 만 유지하고 백포트 없음), 패키지 이름 변경
 
-**검증 기준**: 공식 `msa-common-components`·`msa-edu`·`msa-portal-backend` 에서 모듈 수와 모듈별 의존성 판정 수(실측 고정, 0건이던 두 템플릿 포함), 5.x 최신 유지가 Gradle 18개 프로젝트의 5.0.0 을 auto 로 보고하고 적용 뒤 한 서비스가 compile, 생성 compose 가 공식 Compose 스키마·`docker compose config` 를 통과하고 매니페스트가 kubeconform 을 통과, CI 통합에서 `msa-common-components` 를 빌드해 ConfigServer·EurekaServer·GatewayServer·EgovBoard 를 compose 로 띄워 health UP(DB 는 템플릿의 MySQL compose 사용)
+**검증 기준**: 계약 스냅샷이 0.47.0 의 실제 API 와 같음. 파라미터 하나를 지운 사본은 MAJOR 로, 선택 파라미터 하나를 더한 사본은 MINOR 로 분류됨. 버전 증가 폭이 모자라면 `test:release` 가 실패함. deprecated 별칭으로 부르면 새 이름과 같은 결과에 경고가 붙음. Node 22·24 매트릭스와 CI 통합이 모두 통과함.
 
-**완료 정의**: 도구 34종(변화 없음), `docs/design-workspace.md`(모듈 탐지 규칙·도구별 동작), README 각 도구 절에 `modules`
+**완료 정의**: 도구 34종(변화 없음), `docs/versioning.md`, README 「버전 정책」 절, npm `1.0.0` 자동 배포·MCP Registry 1.0.0
 
-**결과 (2026-10-16 완료)**: 작업공간 탐지·모듈별 판정·다중 서비스 배포 산출물을 넣었습니다. 공식 템플릿 실측 — `msa-common-components`(Maven 11 모듈, 라이브러리 0): 의존성 373건·버전 없음 152 → 0, 최신 유지 자동 13(모듈 parent 11·중복 의존성 선언 2), kubeconform 40개 리소스 통과, compose 로 4개 서비스 + MySQL·RabbitMQ healthy·Eureka 에 GATEWAYSERVER·EGOVBOARD UP·Gateway health UP. `msa-edu`(Gradle 독립 10, 라이브러리 1): 의존성 0 → 280건, 최신 유지 자동 4·수동 6, 보안약점 89. `msa-portal-backend`(9): 0 → 256건, 자동 3·수동 6, 보안약점 16. 기획과 달라진 점: (1) Gradle 버전 변수 `egovframeBootParentVersion` 은 공식 템플릿이 직접 배포한 `egovframe-cloud-module-common`(저장소에 5.0.0 만 있음)의 버전에도 쓰여, 모두 auto 로 올리면 빌드가 깨집니다. 그래서 공식 parent·RTE 에만 쓰이는 변수만 auto 이고 나머지는 이유를 단 manual 입니다("18개 프로젝트 auto" 대신). 같은 이유로 Gradle 서비스의 갱신 뒤 compile 은 검증 기준에서 빼고 Maven 템플릿의 실제 빌드·기동으로 대신했습니다. (2) 선택 파라미터 `modules` 는 산출물을 고르는 `generate_egovframe_deploy` 에만 넣었습니다. 점검 도구는 결과의 모듈 열로 거를 수 있어 파라미터를 늘리지 않았습니다. (3) 설정 서버가 내주는 설정은 환경 변수로 덮을 수 없어(원격 속성 우선) native 저장소 사본(`deploy/config-repo`)을 만듭니다. (4) 공식 `msa-common-components` 의 `EgovQuestionnaire` pom 은 `commons-configuration2`·`commons-lang3` 를 같은 `<dependencies>` 에 두 번 선언합니다. 로컬 Maven 3.9.11 은 경고만 내지만 GitHub Actions 의 Maven 은 "must be unique" 오류로 프로젝트를 읽지 않아, 5.x 최신 유지에 `duplicate-dependency` 항목을 더했습니다(내용이 같으면 뒤 선언을 지우는 auto, 버전·scope 가 다르면 manual). (5) 같은 템플릿의 10개 서비스는 `log4j-slf4j2-impl` 을 선언하면서 `spring-boot-starter-logging`(logback·`log4j-to-slf4j`)도 함께 실어 SLF4J 공급자가 둘입니다. 로컬에서는 logback 이 잡혀 뜨지만 GitHub Actions 에서는 log4j 쪽이 잡혀 ConfigServer 가 "log4j-slf4j2-impl cannot be present with log4j-to-slf4j" 로 기동에 실패했습니다. 그래서 배포 산출물이 그런 서비스에 `JAVA_TOOL_OPTIONS=-Dslf4j.provider=ch.qos.logback.classic.spi.LogbackServiceProvider` 를 넣고 안내를 남깁니다(공식 `msa-edu` 는 `egovframe-rte-fdl-logging` 을 빼서 같은 충돌을 피하고 있어 해당 없음). 설계: [docs/design-workspace.md](docs/design-workspace.md).
-
-### v0.48.0 — 납품 패키지 (`prepare_egovframe_delivery`)
+### v1.1.0 — 납품 패키지 (`prepare_egovframe_delivery`)
 
 **목표**: 감리·검수 때 내는 산출물(전환 준비도 평가서, SBOM 의 CycloneDX·SPDX, VEX, 보안약점 결과와 SARIF, 의존성 조치 목록, 배포 산출물 검증 결과, 빌드·테스트 결과)은 지금 도구마다 따로 만들고 사람이 모읍니다. 차수마다 같은 묶음을 내야 하고, 이전 차수와 무엇이 달라졌는지(새 취약점·새 보안약점·버전 변화)를 설명해야 합니다.
 
@@ -695,7 +705,7 @@ v0.46.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종, npm 0.
 
 **완료 정의**: 도구 35종, `docs/design-delivery.md`, README 「납품 패키지」 절
 
-### v0.49.0 — 응답 영문화 + 장시간 도구 진행 알림
+### v1.2.0 — 응답 영문화 + 장시간 도구 진행 알림
 
 **목표**: 영문 도구 설명(v0.31)은 있지만 응답 본문(평가서·전환·의존성·SBOM 점검·보안약점·배포 결과)은 한국어뿐입니다. 해외 협력사·영문 클라이언트에서 쓰기 어렵습니다. 또 리허설·오프라인 번들·`resolve=true` 점검·빌드처럼 수 분 걸리는 도구가 끝날 때까지 아무 보고가 없어, 클라이언트가 멈춘 것인지 알 수 없습니다.
 
@@ -712,11 +722,11 @@ v0.46.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종, npm 0.
 
 **검증 기준**: 영문 모드에서 대상 렌더러 출력에 한글이 없음(고유명사·원문 인용 제외 목록으로 단언), 한국어 출력은 바이트 단위로 이전과 같음, 규칙 데이터의 `reason_en` 누락 0, 진행 알림 순서·단계 수 단언, 취소 시 자식 프로세스가 남지 않고 파일이 작업 전 상태(Windows 포함)
 
-**완료 정의**: 도구 35종(변화 없음), README.en 에 영문 응답 예시, `docs/design-i18n.md`
+**완료 정의**: 도구 35종(변화 없음), README.en 에 영문 응답 예시, `docs/design-i18n.md`. Markdown 응답 문구는 공개 API 가 아니므로(v1.0 버전 정책) MINOR 입니다
 
 ### 보류·운영 항목
 
-- **MCP `tasks`**: SDK 1.32.1(최신, 2026-10-05)에서도 `experimental/tasks` 아래에 있습니다. v0.49 에서 다시 확인합니다.
+- **MCP `tasks`**: SDK 1.32.1(최신, 2026-10-05)에서도 `experimental/tasks` 아래에 있습니다. v1.2 에서 다시 확인합니다.
 - **Initializr upstream**: 템플릿 parent 5.0.0·5.0.1 문제(v0.46 의 `alignParent` 가 우회)를 포함한 기존 4건은 upstream 이슈로 제출할 가치가 있습니다.
 - **기준 없음 잔여**: `xerces:xercesImpl` 은 공개 기준이 없어 그대로 둡니다.
 - **브랜치 보호**: v0.46 에서 운영 절차를 [브랜치 보호](#브랜치-보호-소유자-1회)로 확정했습니다. 적용했는지 확인하고 이 항목을 지웁니다.
@@ -738,6 +748,30 @@ v0.46.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종, npm 0.
   | `msa-portal-backend` | 빌드 도구 미검출, 0건 | RTE 미검출, 0건 | — | 16건 |
 
 - **진행 알림·영문 응답**: 서버 코드에 `notifications/progress` 송신이 없고(0건), 응답 Markdown 은 한국어만 있습니다. SDK 1.32.1 은 progress·cancellation 을 안정 API 로 제공합니다.
+
+## 이전 기획 (v0.47, 완료)
+
+v0.46.0 까지 끝난 상태(2026-10-16)에서 v0.47–v0.49 세 버전을 기획했고, v0.47 을 2026-10-16 에 완료했습니다. 이후 버전 정책을 정하면서 v0.48·v0.49 는 v1.1·v1.2 로 번호를 바꿔 [다음 버전 기획](#다음-버전-기획-v10v12)으로 옮겼습니다. 기획 원문과 결과는 아래와 같습니다.
+
+### v0.47.0 — 멀티 모듈·MSA 프로젝트 대응
+
+**목표**: 공식 MSA 템플릿 3종은 지금 도구에서 대부분 비어 보입니다. Gradle 독립 프로젝트 묶음인 `msa-edu`(백엔드 10개)·`msa-portal-backend`(9개)는 루트에 빌드 파일이 없어 의존성 점검이 0건이고, 5.x 최신 유지는 Gradle 의 `egovframeBootParentVersion` 변수(18개 프로젝트 모두 5.0.0)를 읽지 못해 버전을 미검출로 봅니다. Maven 멀티 모듈인 `msa-common-components`(11 모듈)는 배포 산출물 생성이 "멀티 모듈 — 범위 밖"으로 거부됩니다. 공공 클라우드 전환 사업이 MSA 구조를 쓰는 만큼, 모듈 구조를 알아보고 모듈별로 같은 판정을 내리게 합니다.
+
+**범위 (포함)**
+- **작업공간 탐지(`src/workspace.ts`)**: Maven `<modules>`(재귀), Gradle `settings.gradle(.kts)` 의 `include`, 빌드 파일 없는 루트 아래의 독립 프로젝트(`backend/*`·`msa-*`)를 모듈 목록(경로·빌드 도구·packaging·Boot 여부·자체 Dockerfile 유무·라이브러리 모듈 여부)으로 만듭니다.
+- **의존성 점검·SBOM**: 모듈별 판정과 합산(결과에 모듈 열), `resolve=true` 도 모듈별로 실행합니다. Gradle 의 `set('…Version', …)`·`ext` 버전 변수를 읽고, SBOM 은 모듈별 문서와 합본(CycloneDX 주 component 아래 모듈 component)을 냅니다.
+- **5.x 최신 유지**: Gradle 버전 변수(`egovframeBootParentVersion`)를 parent 버전과 같은 auto 항목으로 다룹니다. Maven 모듈 parent 는 이미 처리되므로(실측 11건) 모듈별 요약만 더합니다.
+- **배포 산출물**: 서비스 모듈마다 이미지(자체 Dockerfile 이 있으면 그대로 쓰고 없으면 생성)와 하나의 `deploy/docker-compose.yml`·서비스별 Kubernetes 매니페스트를 만듭니다. Spring Cloud 구성(config → discovery → gateway → 서비스)은 헬스체크 기반 기동 순서를 줍니다. 라이브러리 모듈(`egovframe-cloud-module-common` 등)은 이미지에서 뺍니다.
+- **평가서·보안약점**: 모듈별 표를 더합니다(등급 산식은 전체 합산 그대로).
+- 각 도구에 선택 파라미터 `modules`(모듈 일부만) — 도구 수는 그대로입니다.
+
+**범위 (제외)**: 프론트엔드(React) 이미지, 서비스 메시·Helm 차트, 모듈 간 순환 의존 해소, 템플릿에 이미 있는 k8s 매니페스트(`msa-edu/k8s`, 80개) 수정
+
+**검증 기준**: 공식 `msa-common-components`·`msa-edu`·`msa-portal-backend` 에서 모듈 수와 모듈별 의존성 판정 수(실측 고정, 0건이던 두 템플릿 포함), 5.x 최신 유지가 Gradle 18개 프로젝트의 5.0.0 을 auto 로 보고하고 적용 뒤 한 서비스가 compile, 생성 compose 가 공식 Compose 스키마·`docker compose config` 를 통과하고 매니페스트가 kubeconform 을 통과, CI 통합에서 `msa-common-components` 를 빌드해 ConfigServer·EurekaServer·GatewayServer·EgovBoard 를 compose 로 띄워 health UP(DB 는 템플릿의 MySQL compose 사용)
+
+**완료 정의**: 도구 34종(변화 없음), `docs/design-workspace.md`(모듈 탐지 규칙·도구별 동작), README 각 도구 절에 `modules`
+
+**결과 (2026-10-16 완료)**: 작업공간 탐지·모듈별 판정·다중 서비스 배포 산출물을 넣었습니다. 공식 템플릿 실측 — `msa-common-components`(Maven 11 모듈, 라이브러리 0): 의존성 373건·버전 없음 152 → 0, 최신 유지 자동 13(모듈 parent 11·중복 의존성 선언 2), kubeconform 40개 리소스 통과, compose 로 4개 서비스 + MySQL·RabbitMQ healthy·Eureka 에 GATEWAYSERVER·EGOVBOARD UP·Gateway health UP. `msa-edu`(Gradle 독립 10, 라이브러리 1): 의존성 0 → 280건, 최신 유지 자동 4·수동 6, 보안약점 89. `msa-portal-backend`(9): 0 → 256건, 자동 3·수동 6, 보안약점 16. 기획과 달라진 점: (1) Gradle 버전 변수 `egovframeBootParentVersion` 은 공식 템플릿이 직접 배포한 `egovframe-cloud-module-common`(저장소에 5.0.0 만 있음)의 버전에도 쓰여, 모두 auto 로 올리면 빌드가 깨집니다. 그래서 공식 parent·RTE 에만 쓰이는 변수만 auto 이고 나머지는 이유를 단 manual 입니다("18개 프로젝트 auto" 대신). 같은 이유로 Gradle 서비스의 갱신 뒤 compile 은 검증 기준에서 빼고 Maven 템플릿의 실제 빌드·기동으로 대신했습니다. (2) 선택 파라미터 `modules` 는 산출물을 고르는 `generate_egovframe_deploy` 에만 넣었습니다. 점검 도구는 결과의 모듈 열로 거를 수 있어 파라미터를 늘리지 않았습니다. (3) 설정 서버가 내주는 설정은 환경 변수로 덮을 수 없어(원격 속성 우선) native 저장소 사본(`deploy/config-repo`)을 만듭니다. (4) 공식 `msa-common-components` 의 `EgovQuestionnaire` pom 은 `commons-configuration2`·`commons-lang3` 를 같은 `<dependencies>` 에 두 번 선언합니다. 로컬 Maven 3.9.11 은 경고만 내지만 GitHub Actions 의 Maven 은 "must be unique" 오류로 프로젝트를 읽지 않아, 5.x 최신 유지에 `duplicate-dependency` 항목을 더했습니다(내용이 같으면 뒤 선언을 지우는 auto, 버전·scope 가 다르면 manual). (5) 같은 템플릿의 10개 서비스는 `log4j-slf4j2-impl` 을 선언하면서 `spring-boot-starter-logging`(logback·`log4j-to-slf4j`)도 함께 실어 SLF4J 공급자가 둘입니다. 로컬에서는 logback 이 잡혀 뜨지만 GitHub Actions 에서는 log4j 쪽이 잡혀 ConfigServer 가 "log4j-slf4j2-impl cannot be present with log4j-to-slf4j" 로 기동에 실패했습니다. 그래서 배포 산출물이 그런 서비스에 `JAVA_TOOL_OPTIONS=-Dslf4j.provider=ch.qos.logback.classic.spi.LogbackServiceProvider` 를 넣고 안내를 남깁니다(공식 `msa-edu` 는 `egovframe-rte-fdl-logging` 을 빼서 같은 충돌을 피하고 있어 해당 없음). 설계: [docs/design-workspace.md](docs/design-workspace.md).
 
 ## 이전 기획 (v0.44–v0.46, 완료)
 
