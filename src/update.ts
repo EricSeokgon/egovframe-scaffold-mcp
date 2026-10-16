@@ -12,6 +12,7 @@ import { withFileTransaction } from "./file-transaction.js";
 import { detectBuildToolAt, runBuild, type Runner } from "./build-runner.js";
 import { readManifest } from "./manifest.js";
 import { loadCatalog } from "./catalog.js";
+import { detectWorkspace, isMultiModule, moduleOf } from "./workspace.js";
 import {
   applyTextEdits, lineAt, linkBuildError, loadMigrationRules, parsePomDeps, parsePomProperties, versionBelow, walkProjectFiles,
   type ApplyFilePlan, type MigrateResult, type MigrationItem, type SourceEra, type TextEdit, type VerifyLink, type VerifyWorkItem,
@@ -52,6 +53,8 @@ export interface UpdateInfo {
   /** 구간에 있지만 프로젝트가 참조하지 않는 변경 수 */
   unreferencedChanges: number;
   components: { detected: number; manifestTag: string | null; catalogTag: string; tool: "upgrade_egovframe_project" | "reassemble_egovframe_components" | null } | null;
+  /** v0.47: 멀티 모듈 작업공간이면 모듈별 항목 수 */
+  modules?: { name: string; dir: string; auto: number; manual: number }[];
 }
 export interface UpdateResult extends Omit<MigrateResult, "target"> { target: string; update: UpdateInfo }
 export interface UpdateOptions { projectDir: string; target?: string; maxFiles?: number; rules?: UpdateRules }
@@ -130,17 +133,45 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
 }
 
 /** Gradle 빌드 파일의 org.egovframe.rte 좌표 리터럴 버전 */
-export function planGradleUpdate(rel: string, text: string, target: string): { effective: string | null; items: MigrationItem[] } {
+export function planGradleUpdate(rel: string, text: string, target: string): { effective: string | null; items: MigrationItem[]; parentVersion: string | null } {
   const items: MigrationItem[] = [];
   const found: string[] = [];
-  for (const m of text.matchAll(/["'](org\.egovframe\.rte[\w.]*):([\w.\-]+):(5\.[^"':\s]+)["']/g)) {
+  let parentVersion: string | null = null;
+  // 1) 리터럴: RTE 좌표, 공식 parent BOM(mavenBom "org.egovframe.boot:egovframe-boot-starter-parent:5.0.0")
+  for (const m of text.matchAll(/["'](org\.egovframe\.rte[\w.]*|org\.egovframe\.boot):([\w.\-]+):(5\.[^"':\s$]+)["']/g)) {
+    const isParent = m[1] === "org.egovframe.boot" && m[2] === "egovframe-boot-starter-parent";
+    if (m[1] === "org.egovframe.boot" && !isParent) continue;
     found.push(m[3]);
+    if (isParent) parentVersion = m[3];
     if (versionBelow(m[3], target) !== true) continue;
     const start = (m.index ?? 0) + 1 + m[1].length + 1 + m[2].length + 1;
-    items.push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "rte-version", from: `${m[1]}:${m[2]}:${m[3]}`, to: `${m[1]}:${m[2]}:${target}`, action: "auto", reason: `RTE ${target} 기준`, edits: [{ start, end: start + m[3].length, replacement: target }] });
+    items.push({ file: rel, line: lineAt(text, m.index ?? 0), kind: isParent ? "parent-version" : "rte-version", from: `${m[1]}:${m[2]}:${m[3]}`, to: `${m[1]}:${m[2]}:${target}`, action: "auto", reason: isParent ? `공식 parent BOM 최신 ${target}` : `RTE ${target} 기준`, edits: [{ start, end: start + m[3].length, replacement: target }] });
+  }
+  // 2) v0.47: 버전 변수 — set('egovframeBootParentVersion', '5.0.0') · egovframeBootParentVersion = '5.0.0'
+  //    공식 parent BOM·RTE 좌표에만 쓰이면 정의를 바꾸고(auto), 다른 좌표(예: 직접 배포한 공통 모듈)에도 쓰이면 수동으로 둔다 — 그 좌표의 목표 버전이 저장소에 없을 수 있다
+  const defs = [...text.matchAll(/\bset\(\s*['"](\w+)['"]\s*,\s*['"](5\.\d+\.\d+)['"]\s*\)|^\s*(?:ext\.|def\s+)?(\w+)\s*=\s*['"](5\.\d+\.\d+)['"]\s*$/gm)];
+  for (const d of defs) {
+    const name = d[1] ?? d[3], value = d[2] ?? d[4];
+    if (/^(version)$/.test(name)) continue;
+    const useRe = new RegExp(`["']([\\w.\\-]+):([\\w.\\-]+):\\$\\{?${name}\\}?["']`, "g");
+    const uses = [...text.matchAll(useRe)].map((u) => `${u[1]}:${u[2]}`);
+    const egovUses = uses.filter((u) => u === "org.egovframe.boot:egovframe-boot-starter-parent" || u.startsWith("org.egovframe.rte"));
+    if (!egovUses.length) continue;
+    found.push(value);
+    if (egovUses.includes("org.egovframe.boot:egovframe-boot-starter-parent")) parentVersion = value;
+    if (versionBelow(value, target) !== true) continue;
+    const others = [...new Set(uses.filter((u) => !egovUses.includes(u)))];
+    const vStart = (d.index ?? 0) + d[0].indexOf(value, d[0].indexOf(name) + name.length);
+    const line = lineAt(text, d.index ?? 0);
+    const kind = egovUses.includes("org.egovframe.boot:egovframe-boot-starter-parent") ? "parent-version" : "rte-version";
+    if (others.length) {
+      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: `${target} (공식 parent·RTE 용 변수를 따로 두고)`, action: "manual", reason: `버전 변수 ${name} 가 공식 parent·RTE(${egovUses.join(", ")}) 말고 ${others.join(", ")} 에도 쓰입니다 — 그대로 ${target} 로 바꾸면 그 좌표의 ${target} 이 저장소에 있어야 합니다. 공식 parent·RTE 용 변수를 따로 두고 그것만 ${target} 로 올리세요` });
+    } else {
+      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: `${name} = ${target}`, action: "auto", reason: `버전 변수 ${name}(${egovUses.join(", ")} 에만 쓰임) — 공식 parent 최신 ${target}`, edits: [{ start: vStart, end: vStart + value.length, replacement: target }] });
+    }
   }
   const effective = found.sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
-  return { effective, items };
+  return { effective, items, parentVersion };
 }
 
 /** 소스 한 파일에서 변경 클래스 참조를 찾는다(FQN, 또는 import 한 단순 이름·와일드카드 import + 단순 이름). 첫 줄만 돌려준다. */
@@ -175,6 +206,7 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
   const items: MigrationItem[] = [];
   const notes: string[] = [];
   let parent: UpdateInfo["parent"] = null;
+  let rootParent: UpdateInfo["parent"] = null, modParent: UpdateInfo["parent"] = null;
   const effectives: string[] = [];
   let legacy = false;
   const sources: { rel: string; text: string }[] = [];
@@ -192,7 +224,7 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
     if (base === "pom.xml") {
       if (/<groupId>\s*egovframework\.rte\s*<\/groupId>/.test(text)) legacy = true;
       const plan = planPomUpdate(rel, text, target, rules);
-      if (rel === "pom.xml" && plan.parent) parent = plan.parent;
+      if (plan.parent) { if (rel === "pom.xml") rootParent = plan.parent; else if (!modParent || versionBelow(plan.parent.version, modParent.version) === true) modParent = plan.parent; }
       if (plan.effective) effectives.push(plan.effective);
       items.push(...plan.items);
       continue;
@@ -201,11 +233,13 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
       if (/egovframework\.rte/.test(text)) legacy = true;
       const plan = planGradleUpdate(rel, text, target);
       if (plan.effective) effectives.push(plan.effective);
+      if (plan.parentVersion && (!parent || versionBelow(plan.parentVersion, parent.version) === true)) parent = { kind: "boot", groupId: "org.egovframe.boot", artifactId: "egovframe-boot-starter-parent", version: plan.parentVersion, to: target };
       items.push(...plan.items);
       continue;
     }
     if (SOURCE_EXT.has(path.extname(abs)) && text.includes("org.egovframe.rte")) sources.push({ rel, text });
   }
+  parent = rootParent ?? modParent ?? parent;
   const from = effectives.sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
 
   // 3.x/4.x 프로젝트면 갱신이 아니라 전환
@@ -258,6 +292,8 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
     list.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.kind.localeCompare(b.kind));
     const byKind: Record<string, number> = {};
     for (const i of list) byKind[i.kind] = (byKind[i.kind] ?? 0) + 1;
+    const ws = detectWorkspace(dir);
+    if (isMultiModule(ws)) update.modules = ws.modules.map((m) => { const mine = list.filter((i) => moduleOf(ws, i.file)?.name === m.name); return { name: m.name, dir: m.dir, auto: mine.filter((i) => i.action === "auto").length, manual: mine.filter((i) => i.action === "manual").length }; });
     return {
       projectDir: dir, target,
       rules: { toTag: `v${target}-Final`, surveyedAt: rules.surveyedAt, runtimeVersion: target },
@@ -373,6 +409,7 @@ export function renderUpdateMarkdown(r: UpdateResult | UpdateApplyResult | Updat
   L.push(`- 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${u.unreferencedChanges ? ` · 이 구간의 다른 변경 ${u.unreferencedChanges}건은 프로젝트가 참조하지 않음` : ""}`);
   if (u.components) L.push(`- 공통컴포넌트 ${u.components.detected}종 · ${u.components.manifestTag ? `매니페스트 ${u.components.manifestTag}` : "매니페스트 없음"} · 카탈로그 ${u.components.catalogTag}${u.components.tool ? ` → ${u.components.tool}` : " (최신)"}`);
   for (const n of r.notes) L.push(`- ${n}`);
+  if (u.modules?.length) L.push(`- 모듈 ${u.modules.length}개: ${u.modules.map((m) => `${m.name} ${m.auto}/${m.manual}`).join(" · ")} (자동/수동)`);
   if (mode === "apply") {
     const a = r as UpdateApplyResult;
     L.push(`- ${a.dryRun ? "적용 예정" : "적용"} ${a.applied.items}항목 · 편집 ${a.applied.edits}곳 · 파일 ${a.applied.files}개`);

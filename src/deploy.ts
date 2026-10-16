@@ -7,6 +7,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { withFileTransaction } from "./file-transaction.js";
 import { SERVER_VERSION } from "./version.js";
+import { detectWorkspace, flattenYaml, isMultiModule } from "./workspace.js";
+import { planWorkspaceDeploy, workspaceDeployFiles } from "./deploy-workspace.js";
 
 export type DeployTarget = "docker" | "compose" | "k8s";
 export interface DeployRules {
@@ -18,6 +20,8 @@ export interface DeployRules {
   dbAliases: Record<string, string>;
   externalDatabases: Record<string, string>;
   unsupported: { id: string; reason: string }[];
+  /** v0.47: 멀티 모듈 작업공간이 localhost 로 참조하는 메시지 브로커·캐시 */
+  infra?: Record<string, { image: string; port: number; healthcheck: string; user?: string; env?: { user: string; password: string }; note: string }>;
 }
 const RULES_URL = new URL("../catalog/deploy-rules.json", import.meta.url);
 let cached: DeployRules | null = null;
@@ -106,7 +110,8 @@ export function analyzeDeploy(projectDir: string): DeployAnalysis {
     packaging = /<packaging>\s*war\s*<\/packaging>/.test(self) ? "war" : "jar";
     const parentArt = pom.match(/<parent>[\s\S]*?<artifactId>\s*([^<\s]+)\s*<\/artifactId>[\s\S]*?<\/parent>/)?.[1] ?? "";
     boot = /spring-boot-starter-parent|egovframe-boot-starter-parent/.test(parentArt) || /spring-boot-maven-plugin/.test(pom);
-    web = packaging === "war" || /<artifactId>\s*spring-boot-starter-(web|webflux|thymeleaf)\s*<\/artifactId>/.test(pom);
+    // Spring Cloud 서버(config-server·eureka-server·gateway)도 웹 서버를 띄운다(v0.47)
+    web = packaging === "war" || /<artifactId>\s*(spring-boot-starter-(web|webflux|thymeleaf)|spring-cloud-config-server|spring-cloud-starter-netflix-eureka-server|spring-cloud-starter-gateway[\w-]*)\s*<\/artifactId>/.test(pom);
     actuator = /<artifactId>\s*spring-boot-starter-actuator\s*<\/artifactId>/.test(pom);
     artifactId = self.match(/<artifactId>\s*([^<\s]+)\s*<\/artifactId>/)?.[1] ?? path.basename(projectDir);
     version = self.match(/<version>\s*([^<\s$]+)\s*<\/version>/)?.[1] ?? "1.0.0";
@@ -118,7 +123,7 @@ export function analyzeDeploy(projectDir: string): DeployAnalysis {
     if (/^\s*include\s*[\s(]/m.test(settings)) return un("multi-module");
     boot = /org\.springframework\.boot/.test(g);
     packaging = /id\s*\(?\s*['"]war['"]|apply\s+plugin\s*:\s*['"]war['"]|\bwar\s*\{/.test(g) ? "war" : "jar";
-    web = packaging === "war" || /spring-boot-starter-(web|webflux|thymeleaf)/.test(g);
+    web = packaging === "war" || /spring-boot-starter-(web|webflux|thymeleaf)|spring-cloud-config-server|spring-cloud-starter-netflix-eureka-server|spring-cloud-starter-gateway/.test(g);
     actuator = /spring-boot-starter-actuator/.test(g);
     artifactId = settings.match(/rootProject\.name\s*=\s*["']([^"']+)["']/)?.[1] ?? path.basename(projectDir);
     version = g.match(/^\s*version\s*=?\s*["']([^"']+)["']/m)?.[1] ?? "1.0.0";
@@ -134,23 +139,26 @@ export function analyzeDeploy(projectDir: string): DeployAnalysis {
   const files: string[] = [];
   walkFiles(projectDir, "src/main/resources", files, 0);
   const appProps = files.find((f) => /(^|\/)application\.properties$/.test(f) && f.split("/").length === 4);
-  const props = appProps ? parseProperties(read(path.join(projectDir, appProps))) : new Map();
+  // v0.47: application.yml 도 읽는다(같은 키는 properties 가 이김)
+  const appYml = files.find((f) => /(^|\/)application\.ya?ml$/.test(f) && f.split("/").length === 4);
+  const props = new Map([...(appYml ? flattenYaml(read(path.join(projectDir, appYml))) : new Map()), ...(appProps ? parseProperties(read(path.join(projectDir, appProps))) : new Map())]);
+  const appConfig = appProps ?? appYml;
   let port = rules.runtime[runtime].port;
   let contextPath = "";
   if (runtime === "boot") {
     const p = props.get("server.port")?.value;
-    if (p && /^\d+$/.test(p)) port = Number(p);
+    if (p && /^\d+$/.test(p) && p !== "0") port = Number(p);
+    if (p === "0") notes.push("server.port=0(임의 포트) — 컨테이너에서는 SERVER_PORT 로 고정 포트(8080)를 줍니다.");
     const cp = props.get("server.servlet.context-path")?.value;
     if (cp && /^\/[\w\-/]*$/.test(cp)) contextPath = cp.replace(/\/+$/, "");
-    if (fs.existsSync(path.join(projectDir, "src/main/resources/application.yml")) || fs.existsSync(path.join(projectDir, "src/main/resources/application.yaml"))) notes.push("application.yml 은 읽지 않았습니다 — 포트·컨텍스트 경로·DB 설정이 yml 에 있으면 생성 파일을 확인하세요.");
   }
-  const actuatorProbes = runtime === "boot" && actuator && /probes\.enabled\s*=\s*true/.test(read(path.join(projectDir, appProps ?? "")));
+  const actuatorProbes = runtime === "boot" && actuator && (props.get("management.endpoint.health.probes.enabled")?.value === "true");
   const liveness = `${contextPath}${actuatorProbes ? "/actuator/health/liveness" : actuator ? "/actuator/health" : "/"}`;
   const readiness = `${contextPath}${actuatorProbes ? "/actuator/health/readiness" : actuator ? "/actuator/health" : "/"}`;
 
   // DB
   let db: DeployDb | null = null;
-  const dbSource = runtime === "boot" && props.has("Globals.DbType") ? { file: appProps!, props }
+  const dbSource = runtime === "boot" && props.has("Globals.DbType") ? { file: appConfig!, props }
     : (() => {
       const f = files.filter((x) => /globals\.properties$/i.test(x)).sort((a, b) => a.length - b.length)[0];
       return f ? { file: f, props: parseProperties(read(path.join(projectDir, f))) } : null;
@@ -182,17 +190,19 @@ export function analyzeDeploy(projectDir: string): DeployAnalysis {
     }
     if (!url) notes.push(`${dbSource.file} 에 Globals.${rawType}.Url·Globals.Url 이 없어 DB 연결 정보를 덮어쓰지 않습니다.`);
   } else if (props.has("spring.datasource.url")) {
-    const url = props.get("spring.datasource.url")!.value;
+    // ${datasource.url:jdbc:mysql://…} 처럼 자리표시자의 기본값이면 그 기본값으로 판정
+    const url = props.get("spring.datasource.url")!.value.replace(/^\$\{[\w.\-]+:(.*)\}$/, "$1");
     const parsed = parseJdbcUrl(url);
     const type = parsed ? (rules.dbAliases[url.match(/^jdbc:(?:log4jdbc:)?(\w+):/)?.[1] ?? ""] ?? url.match(/^jdbc:(?:log4jdbc:)?(\w+):/)?.[1] ?? "unknown") : "unknown";
-    db = { type, inject: "env", file: appProps!, keys: { url: "spring.datasource.url", user: props.has("spring.datasource.username") ? "spring.datasource.username" : undefined, password: "spring.datasource.password", driver: props.has("spring.datasource.driver-class-name") ? "spring.datasource.driver-class-name" : undefined }, url, user: props.get("spring.datasource.username")?.value ?? null, host: parsed?.host ?? null, port: parsed?.port ?? null, database: parsed?.database ?? null, service: rules.databases[type] ? "container" : "external", initScripts: [] };
+    db = { type, inject: "env", file: appConfig!, keys: { url: "spring.datasource.url", user: props.has("spring.datasource.username") ? "spring.datasource.username" : undefined, password: "spring.datasource.password", driver: props.has("spring.datasource.driver-class-name") ? "spring.datasource.driver-class-name" : undefined }, url, user: props.get("spring.datasource.username")?.value ?? null, host: parsed?.host ?? null, port: parsed?.port ?? null, database: parsed?.database ?? null, service: rules.databases[type] ? "container" : "external", initScripts: [] };
   }
   const appName = slug(artifactId);
   return { profile: { appName, version, buildTool: isMaven ? "maven" : "gradle", wrapper, packaging, runtime, web, actuator, tomcat, port, contextPath, liveness, readiness, db }, unsupported: null, notes };
 }
 
 // ── 렌더러 ───────────────────────────────────────────────
-export interface DeployRenderOptions { jdk: string; imageRegistry: string; buildInImage: boolean; image: string; ingressHost?: string; /** 프로젝트 상대 Dockerfile 경로(기본 Dockerfile) */ dockerfile?: string }
+export interface DeployRenderOptions { jdk: string; imageRegistry: string; buildInImage: boolean; image: string; ingressHost?: string; /** 프로젝트 상대 Dockerfile 경로(기본 Dockerfile) */ dockerfile?: string;
+  /** v0.47: 빌드 컨텍스트가 작업공간 루트이고 이 모듈만 빌드할 때(Maven -pl) 모듈 경로 */ moduleDir?: string }
 const img = (tpl: string, jdk: string) => tpl.replace("{jdk}", jdk);
 const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
@@ -207,12 +217,13 @@ export function renderDockerfile(p: DeployProfile, o: DeployRenderOptions): stri
     `ARG BASE_REGISTRY=${o.imageRegistry}`,
   ];
   const art = p.packaging;
-  const outDir = p.buildTool === "maven" ? "target" : "build/libs";
+  const modPfx = o.moduleDir ? `${o.moduleDir}/` : "";
+  const outDir = `${modPfx}${p.buildTool === "maven" ? "target" : "build/libs"}`;
   if (o.buildInImage) {
     const buildImage = p.buildTool === "maven" || !p.wrapper ? (p.buildTool === "maven" ? img(r.images.maven, o.jdk) : "gradle:8-jdk" + o.jdk) : img(r.images.jdk, o.jdk);
     const cache = p.buildTool === "maven" ? "/root/.m2" : "/root/.gradle";
     // 원격 저장소(maven.egovframe.go.kr 등)의 일시 5xx 를 재시도(Maven 3.9 기본은 429·503 만)
-    const cmd = p.buildTool === "maven" ? "mvn -B -q -DskipTests -Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504 -Daether.connector.http.retryHandler.count=5 package" : p.wrapper ? "chmod +x ./gradlew && ./gradlew --no-daemon -q -x test build" : "gradle --no-daemon -q -x test build";
+    const cmd = p.buildTool === "maven" ? `mvn -B -q -DskipTests -Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504 -Daether.connector.http.retryHandler.count=5${o.moduleDir ? ` -pl ${o.moduleDir} -am` : ""} package` : p.wrapper ? "chmod +x ./gradlew && ./gradlew --no-daemon -q -x test build" : "gradle --no-daemon -q -x test build";
     L.push(``, `FROM \${BASE_REGISTRY}/${buildImage} AS build`, "WORKDIR /workspace", "COPY . .",
       `RUN --mount=type=cache,target=${cache} ${cmd} \\`,
       `    && find ${outDir} -maxdepth 1 -name '*.${art}' ! -name '*-plain.${art}' -exec cp {} /workspace/app.${art} \\;`);
@@ -248,7 +259,7 @@ export function renderDockerfile(p: DeployProfile, o: DeployRenderOptions): stri
 
 export function renderDockerignore(p: DeployProfile, o: DeployRenderOptions): string {
   if (!o.buildInImage) {
-    const outDir = p.buildTool === "maven" ? "target" : "build/libs";
+    const outDir = `${o.moduleDir ? `${o.moduleDir}/` : ""}${p.buildTool === "maven" ? "target" : "build/libs"}`;
     return ["# 미리 빌드한 산출물만 보냄", "*", `!${outDir}/`, `!${outDir}/*.${p.packaging}`, ""].join("\n");
   }
   return [".git", ".gitignore", ".idea", ".vscode", ".settings", ".project", ".classpath", "*.iml", "target", "build", ".gradle", "node_modules", "deploy", "migration-backup", ".egov*", "*.log", "logs", "Dockerfile", ".dockerignore", ""].join("\n");
@@ -338,13 +349,15 @@ export function renderEnvExample(p: DeployProfile, o: DeployRenderOptions): stri
   ].join("\n");
 }
 
-export function renderKubernetes(projectDir: string, p: DeployProfile, o: DeployRenderOptions): string {
+export interface K8sExtra { env?: { name: string; value: string; secret: boolean }[]; configMapMount?: { name: string; mountPath: string } }
+export function renderKubernetes(projectDir: string, p: DeployProfile, o: DeployRenderOptions, extra: K8sExtra = {}): string {
   const r = loadDeployRules();
   const u = r.user;
   const name = p.appName;
   const labels = [`app.kubernetes.io/name: ${name}`, `app.kubernetes.io/version: ${q(p.version)}`, "app.kubernetes.io/managed-by: egovframe-scaffold-mcp"];
   const docs: string[][] = [];
-  const env = dbEnvFor(p, "CHANGE_ME_DB_HOST");
+  // 같은 이름은 뒤(extra — 작업공간의 localhost 참조 치환)가 이긴다
+  const env = [...new Map([...dbEnvFor(p, "CHANGE_ME_DB_HOST"), ...(extra.env ?? []).map((e) => ({ ...e, key: e.name }))].map((e) => [e.name, e] as const)).values()];
   const plain = env.filter((e) => !e.secret);
   const secret = env.filter((e) => e.secret);
   docs.push(["apiVersion: v1", "kind: ConfigMap", "metadata:", `  name: ${name}-config`, "  labels:", ...labels.map((l) => `    ${l}`), "data:", `  TZ: ${q(r.timezone)}`, `  JAVA_OPTS: ${q(`-Dfile.encoding=UTF-8 -Duser.timezone=${r.timezone} -XX:MaxRAMPercentage=75`)}`, ...plain.map((e) => `  ${e.name}: ${q(e.value)}`)]);
@@ -365,6 +378,10 @@ export function renderKubernetes(projectDir: string, p: DeployProfile, o: Deploy
   if (p.web) D.push(...probe("startupProbe", p.liveness, 10).map((l) => l.replace("failureThreshold: 6", "failureThreshold: 30")), ...probe("readinessProbe", p.readiness, 0), ...probe("livenessProbe", p.liveness, 0));
   D.push("        resources:", "          requests:", "            cpu: 250m", "            memory: 768Mi", "          limits:", "            cpu: '1'", "            memory: 1536Mi",
     "        securityContext:", "          allowPrivilegeEscalation: false", "          capabilities:", "            drop:", "            - ALL");
+  if (extra.configMapMount) {
+    D.push("        volumeMounts:", "        - name: config-repo", `          mountPath: ${extra.configMapMount.mountPath}`, "          readOnly: true",
+      "      volumes:", "      - name: config-repo", "        configMap:", `          name: ${extra.configMapMount.name}`);
+  }
   if (classic) {
     D.push("        volumeMounts:", "        - name: db-config", `          mountPath: ${classicTarget(p)}`, `          subPath: ${path.posix.basename(p.db!.file)}`, "          readOnly: true",
       "      volumes:", "      - name: db-config", "        secret:", `          secretName: ${name}-secret`, "          items:", `          - key: ${path.posix.basename(p.db!.file)}`, `            path: ${path.posix.basename(p.db!.file)}`);
@@ -393,6 +410,8 @@ export interface GenerateDeployOptions {
   dockerfilePath?: string;
   ingressHost?: string;
   dryRun?: boolean;
+  /** v0.47: 멀티 모듈 작업공간에서 일부 서비스만(모듈 이름·경로·서비스 이름). 그 서비스가 먼저 띄워야 하는 서비스·인프라는 함께 들어간다 */
+  modules?: string[];
 }
 export interface GenerateDeployResult {
   projectDir: string;
@@ -404,6 +423,14 @@ export interface GenerateDeployResult {
   files: { path: string; target: DeployTarget; bytes: number; content?: string }[];
   usage: string[];
   notes: string[];
+  /** v0.47: 멀티 모듈 작업공간이면 서비스·인프라 */
+  workspace?: {
+    kind: string; appName: string;
+    services: { name: string; module: string; runtime: string; port: number; web: boolean; ownDockerfile: boolean; image: string; env: string[]; dependsOn: string[]; configRepo?: string }[];
+    infra: { name: string; image: string }[];
+    skipped: { module: string; reason: string }[];
+    unresolved: { service: string; key: string; value: string }[];
+  };
 }
 
 export const DEPLOY_IMAGE_REGISTRY_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d{1,5})?(\/[a-z0-9._-]+)*$/;
@@ -421,6 +448,49 @@ export async function generateDeploy(opts: GenerateDeployOptions): Promise<Gener
   if (opts.ingressHost !== undefined && !DEPLOY_HOST_RE.test(opts.ingressHost)) throw new Error(`ingressHost 는 도메인 이름이어야 합니다: ${JSON.stringify(opts.ingressHost)}`);
   const targets = [...new Set(opts.targets?.length ? opts.targets : (["docker", "compose", "k8s"] as DeployTarget[]))];
   const dryRun = opts.dryRun !== false;
+  // v0.47: 멀티 모듈·다중 프로젝트 작업공간
+  const ws = detectWorkspace(projectDir);
+  if (isMultiModule(ws) && ws.kind !== "single") {
+    if (opts.appName && !/^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/.test(opts.appName)) throw new Error(`appName 은 소문자·숫자·하이픈 50자 이하여야 합니다: ${opts.appName}`);
+    const plan = planWorkspaceDeploy(projectDir, { appName: opts.appName });
+    if (opts.modules?.length) {
+      const want = new Set(opts.modules);
+      const picked = plan.services.filter((x) => want.has(x.name) || want.has(x.module.name) || want.has(x.module.dir));
+      const unknownMods = opts.modules.filter((mm) => !plan.services.some((x) => x.name === mm || x.module.name === mm || x.module.dir === mm));
+      if (unknownMods.length) throw new Error(`작업공간에 없는 서비스·모듈: ${unknownMods.join(", ")} (있는 것: ${plan.services.map((x) => x.module.name).join(", ")})`);
+      const keep = new Set(picked.map((x) => x.name));
+      for (let changed = true; changed;) { changed = false; for (const x of plan.services) if (keep.has(x.name)) for (const d of x.dependsOn) if (!keep.has(d) && plan.services.some((y) => y.name === d)) { keep.add(d); changed = true; } }
+      plan.services = plan.services.filter((x) => keep.has(x.name));
+      const usedInfra = new Set(plan.services.flatMap((x) => x.dependsOn));
+      plan.infra = plan.infra.filter((i) => usedInfra.has(i.name));
+      plan.notes.push(`modules: ${opts.modules.join(", ")} → 서비스 ${plan.services.length}개(먼저 뜰 서비스 포함)·인프라 ${plan.infra.map((i) => i.name).join("·") || "없음"}`);
+    }
+    if (!plan.services.length) return { projectDir, supported: false, unsupported: { id: "no-service", reason: `실행할 서비스 모듈이 없습니다(${plan.skipped.map((x) => `${x.module}: ${x.reason}`).join("; ")})` }, dryRun, written: false, files: [], usage: [], notes: plan.notes };
+    const buildInImage = opts.buildInImage !== false;
+    const { files, images } = workspaceDeployFiles(plan, { jdk, imageRegistry, buildInImage, targets });
+    const notes = [...plan.notes];
+    for (const x of plan.skipped) notes.push(`제외: ${x.module} — ${x.reason}`);
+    const own = plan.services.filter((x) => x.ownDockerfile);
+    if (own.length) notes.push(`자체 Dockerfile 이 있는 서비스 ${own.length}개(${own.map((x) => x.name).join(", ")})는 그대로 씁니다 — 그 Dockerfile 이 미리 빌드한 산출물을 복사하면 먼저 빌드하세요.`);
+    if (!buildInImage) notes.push(`buildInImage=false — 이미지 빌드 전에 ${ws.kind === "maven-modules" ? "루트에서 mvn -B -DskipTests package" : "모듈마다 빌드"} 로 산출물을 만드세요.`);
+    const exists = files.filter((f) => fs.existsSync(path.join(projectDir, f.path))).map((f) => f.path);
+    if (exists.length && !dryRun) throw new Error(`이미 있는 파일은 덮어쓰지 않습니다: ${exists.join(", ")}`);
+    if (exists.length) notes.push(`이미 있는 파일: ${exists.join(", ")} — dryRun=false 면 거부됩니다.`);
+    if (!dryRun) await withFileTransaction(projectDir, "다중 서비스 배포 산출물 생성", (tx) => { for (const f of files) tx.writeFile(f.path, f.content, { mustNotExist: true }); });
+    const usage = [
+      ...(targets.includes("compose") ? ["cd deploy && cp .env.example .env && docker compose up --build"] : []),
+      ...(targets.includes("k8s") ? ["kubectl apply -f deploy/k8s/   # 이미지를 레지스트리에 올리고 CHANGE_ME(인프라 호스트·비밀번호)를 먼저 바꾼 뒤"] : []),
+    ];
+    return {
+      projectDir, supported: true, dryRun, written: !dryRun,
+      files: files.map((f) => ({ path: f.path, target: f.target, bytes: Buffer.byteLength(f.content), ...(dryRun ? { content: f.content } : {}) })), usage, notes,
+      workspace: {
+        kind: ws.kind, appName: plan.appName,
+        services: plan.services.map((x) => ({ name: x.name, module: x.module.dir, runtime: x.profile.runtime, port: x.profile.port, web: x.profile.web, ownDockerfile: !!x.ownDockerfile, image: images[x.name], env: x.env.map((e) => e.name), dependsOn: x.dependsOn, ...(x.configRepo ? { configRepo: x.configRepo.source } : {}) })),
+        infra: plan.infra.map((i) => ({ name: i.name, image: i.image })), skipped: plan.skipped, unresolved: plan.unresolved,
+      },
+    };
+  }
   const a = analyzeDeploy(projectDir);
   if (!a.profile) return { projectDir, supported: false, unsupported: a.unsupported!, dryRun, written: false, files: [], usage: [], notes: a.notes };
   const p = a.profile;
@@ -470,6 +540,16 @@ export async function generateDeploy(opts: GenerateDeployOptions): Promise<Gener
 export function renderDeployMarkdown(r: GenerateDeployResult): string {
   const L: string[] = [`# 배포 산출물 ${r.dryRun ? "(dryRun — 쓰지 않음)" : "생성"}`, ""];
   if (!r.supported) { L.push(`- 지원하지 않는 구조: ${r.unsupported!.reason}`); for (const n of r.notes) L.push(`- ${n}`); return L.join("\n"); }
+  if (r.workspace) {
+    const w = r.workspace;
+    L.push(`- 작업공간 ${w.kind} · 서비스 ${w.services.length}개 · 인프라 ${w.infra.map((i) => i.name).join("·") || "없음"}`, "", "| 서비스 | 모듈 | 실행 | 포트 | 이미지 | 환경 변수(localhost 참조) | 먼저 뜰 것 |", "|---|---|---|---|---|---|---|");
+    for (const s of w.services) L.push(`| ${s.name} | ${s.module} | ${s.runtime}${s.ownDockerfile ? "(자체 Dockerfile)" : ""} | ${s.web ? s.port : "-"} | ${s.image} | ${s.env.join(", ") || "-"} | ${s.dependsOn.join(", ") || "-"} |`);
+    L.push("", "| 파일 | 대상 | 크기 |", "|---|---|---|");
+    for (const f of r.files) L.push(`| ${f.path} | ${f.target} | ${f.bytes} B |`);
+    if (r.usage.length) L.push("", "```bash", ...r.usage, "```");
+    for (const n of r.notes) L.push(`- ${n}`);
+    return L.join("\n");
+  }
   const p = r.profile!;
   L.push(`- ${p.appName} ${p.version} · ${p.buildTool}${p.wrapper ? "(래퍼)" : ""} · ${p.packaging} → ${p.runtime === "tomcat" ? `Tomcat ${p.tomcat}(ROOT)` : "Boot java -jar"}${p.web ? ` · 포트 ${p.port}${p.contextPath ? ` · 컨텍스트 ${p.contextPath}` : ""} · 헬스 ${p.liveness}` : " · 웹 없음"}`);
   if (p.db) L.push(`- DB: ${p.db.type} (${p.db.file}) — ${p.db.inject === "env" ? "환경 변수로 덮어씀" : p.db.inject === "file" ? "설정 파일 덮어씀" : "내장 DB"}${p.db.service === "container" && p.db.inject !== "none" ? ` · compose DB 컨테이너${p.db.initScripts.length ? `(초기화 ${p.db.initScripts.join(", ")})` : ""}` : p.db.inject !== "none" ? " · 외부 DB" : ""}`);
