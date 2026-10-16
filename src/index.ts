@@ -159,3 +159,7 @@ export { mergeModuleBoms } from "./sbom.js";
 export type { Workspace, WorkspaceModule, WorkspaceKind } from "./workspace.js";
 export { loadUpdateRules, isUpdateTarget, planPomUpdate, planGradleUpdate, duplicateDependencyItems, findClassReference, updateProject, applyUpdate, verifyUpdate, renderUpdateMarkdown, updateKindLabel } from "./update.js";
 export type { UpdateRules, UpdateChange, UpdateParent, UpdateInfo, UpdateResult, UpdateOptions, UpdateApplyResult, UpdateApplyOptions, UpdateVerifyResult, UpdateVerifyOptions, PomUpdatePlan } from "./update.js";
+export { buildApiContract, compareContracts, checkVersionBump, normalizeSchema, maxLevel, PUBLIC_ENV } from "./api-contract.js";
+export type { ApiContract, ContractChange, ChangeLevel } from "./api-contract.js";
+export { DEPRECATED_PARAMS, applyDeprecatedParams } from "./deprecations.js";
+export type { DeprecatedParam } from "./deprecations.js";

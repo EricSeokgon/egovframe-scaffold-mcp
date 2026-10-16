@@ -12,6 +12,13 @@ const facts = readVersionFacts();
 assert(/^\d+\.\d+\.\d+$/.test(facts.version) && facts.serverVersions.every((v) => v === facts.version), `package.json·server.json 버전 일치 (${facts.version})`);
 assert(facts.changelogHasEntry, `README 변경 이력에 현재 버전 ${facts.version} 항목 존재(릴리스 노트 재료)`);
 assert(facts.mcpName === facts.serverName, "mcpName == server.json name");
+// v1.0 버전 정책: 공개 API 계약의 변경 등급(test/fixtures/api-contract.json 의 base·change)에 맞게 버전을 올렸는지
+{
+  const { checkVersionBump } = await import("../dist/index.js");
+  const contract = JSON.parse(readFileSync(new URL("./fixtures/api-contract.json", import.meta.url), "utf8"));
+  const bump = checkVersionBump(contract.base, facts.version, contract.change);
+  assert(bump.ok, `버전 증가 폭: ${contract.base} → ${facts.version} (계약 변경 ${contract.change}${bump.ok ? "" : `, 필요: ${bump.need}`})`);
+}
 const dry = decideRelease({ ...facts, tagExists: false, npmPublished: false });
 assert(dry.publish === true && dry.reasons.length === 0, "현재 상태는 태그·npm 이 없다면 배포 가능");
 

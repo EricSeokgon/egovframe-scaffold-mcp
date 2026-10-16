@@ -39,6 +39,7 @@ import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js"
 import { resolveToolLang, toolDescription } from "./i18n.js";
 import { toolAnnotations, toolTitle } from "./tool-meta.js";
 import { OUTPUT_SCHEMAS } from "./output-schemas.js";
+import { applyDeprecatedParams } from "./deprecations.js";
 
 /** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
 export { SERVER_VERSION } from "./version.js";
@@ -771,14 +772,17 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       sarifPath: z.string().optional().describe("SARIF 2.1.0 을 쓸 프로젝트 상대 경로(예: egovframe-secure.sarif)"),
       overwrite: z.boolean().default(false).describe("sarifPath 가 있으면 덮어쓰기"),
       maxFindings: z.number().int().min(1).max(20_000).default(2000).describe("응답에 담을 최대 항목 수(SARIF 파일에는 전부)"),
-      top: z.number().int().min(1).max(500).default(40).describe("Markdown 상세 항목 수"),
+      topN: z.number().int().min(1).max(500).optional().describe("Markdown 상세 항목 수(기본 40)"),
+      top: z.number().int().min(1).max(500).optional().describe("[deprecated 1.0.0 — topN 을 쓰세요, 2.0.0 에서 제거] Markdown 상세 항목 수"),
       format: z.enum(["markdown", "json", "sarif"]).default("markdown").describe("응답 형식(sarif 는 SARIF 2.1.0 JSON 본문)"),
     }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_secure_coding.shape, annotations: toolAnnotations("check_egovframe_secure_coding") },
-    async (args) => {
-      enforceAllowedRoots(args);
+    async (raw) => {
+      enforceAllowedRoots(raw);
+      const { args, warnings } = applyDeprecatedParams("check_egovframe_secure_coding", raw);
       const r = await checkSecureCoding({ projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeTests: args.includeTests, baselinePath: args.baselinePath, sarifPath: args.sarifPath, overwrite: args.overwrite, maxFindings: args.maxFindings });
-      const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "sarif" ? JSON.stringify(toSarif(r), null, 2) : renderSecureCodingMarkdown(r, args.top);
-      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "sarif" ? JSON.stringify(toSarif(r), null, 2) : renderSecureCodingMarkdown(r, args.topN ?? 40);
+      // 경고는 본문과 섞지 않는다(format=json·sarif 본문이 그대로 파싱되도록 별도 content 항목)
+      return { content: [{ type: "text" as const, text }, ...warnings.map((w) => ({ type: "text" as const, text: `⚠ ${w}` }))], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── SBOM 운영 (v0.40) ─────────────────────────────────
