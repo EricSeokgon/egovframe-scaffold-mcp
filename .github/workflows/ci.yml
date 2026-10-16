@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   # 릴리스 게이트(빌드 + 오프라인 테스트 + MCP 핸드셰이크)를 지원 범위 전체에서 실행한다.
-  # engines(node >=18)와 Windows 경로(프로세스 트리 종료, 경로 구분자, .cmd 래퍼)를 함께 검증한다.
+  # engines(node >=22)와 Windows 경로(프로세스 트리 종료, 경로 구분자, .cmd 래퍼)를 함께 검증한다.
   gate:
     name: gate (${{ matrix.os }}, node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: ['18', '20', '22']
+        node: ['22', '24']
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -61,7 +61,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - name: Setup Java

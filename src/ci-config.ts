@@ -87,6 +87,9 @@ export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary
 }
 const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : [])];
 
+/** GitLab supply-chain job 준비: Node 22 이상 보장(v1.0, engines >=22) */
+export const NODE22_ENSURE = `node -e "process.exit(+process.versions.node.split('.')[0] >= 22 ? 0 : 1)" 2>/dev/null || ((command -v npm >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq nodejs npm)) && npm install -g -s node@22)`;
+
 // ── GitHub Actions ───────────────────────────────────────
 /** 공급망 게이트 job(v0.39, v0.43 에 sbom-check 단계): SBOM 생성 → 최소 요소 점검 → 평가서(등급을 PR 요약에) → 아티팩트. */
 export function supplyChainJobYaml(buildTool: "maven" | "gradle", jdk: string, opts: CiSupplyChainOptions = {}, env: CiEnvOptions = {}): string[] {
@@ -172,7 +175,7 @@ export function generateGitlabCi(buildTool: "maven" | "gradle", jdkInput: string
   const cache = ["  cache:", `    key: ${buildTool}`, "    paths:", `      - ${cachePath}`];
   const L = [
     `# eGovFrame CI — egovframe-scaffold-mcp ${SERVER_VERSION} generate_egovframe_ci(platform=gitlab)`,
-    `# 이미지는 공개 Docker Hub 기준입니다. 폐쇄망이면 사내 레지스트리의 같은 이미지(JDK ${major}${supplyChain ? " + Node.js 18 이상" : ""})로 바꾸세요.`,
+    `# 이미지는 공개 Docker Hub 기준입니다. 폐쇄망이면 사내 레지스트리의 같은 이미지(JDK ${major}${supplyChain ? " + Node.js 22 이상" : ""})로 바꾸세요.`,
     "stages:",
     "  - build",
     ...(supplyChain ? ["  - supply-chain"] : []),
@@ -200,7 +203,8 @@ export function generateGitlabCi(buildTool: "maven" | "gradle", jdkInput: string
       "  needs: []",
       ...cache,
       "  before_script:",
-      `    - ${yq("command -v npx >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq nodejs npm)")}`,
+      // v1.0: Node 22 이상 — 이미지의 배포판 nodejs 가 그보다 낮으면 npm 레지스트리의 node@22 를 전역으로 받아 PATH 앞에 둔다(npx 의 #!/usr/bin/env node 가 그것을 씀)
+      `    - ${yq(NODE22_ENSURE)}`,
       "  script:",
       ...cmds.map((c) => `    - ${yq(c.command)}`),
       "  artifacts:",
@@ -228,7 +232,7 @@ export function generateJenkinsfile(buildTool: "maven" | "gradle", jdkInput: str
     : ["if (isUnix()) {", `  sh ${gq("chmod +x ./gradlew && ./gradlew build --no-daemon")}`, "} else {", `  bat ${gq("gradlew.bat build --no-daemon")}`, "}"];
   const L = [
     `// eGovFrame CI — egovframe-scaffold-mcp ${SERVER_VERSION} generate_egovframe_ci(platform=jenkins)`,
-    `// 에이전트 준비물: ${[`JDK ${jdk}`, ...(buildTool === "maven" ? ["Maven"] : []), ...(supplyChain ? ["Node.js 18 이상"] : [])].join(", ")}. Pipeline 기본 단계(sh·bat·archiveArtifacts)만 씁니다.`,
+    `// 에이전트 준비물: ${[`JDK ${jdk}`, ...(buildTool === "maven" ? ["Maven"] : []), ...(supplyChain ? ["Node.js 22 이상"] : [])].join(", ")}. Pipeline 기본 단계(sh·bat·archiveArtifacts)만 씁니다.`,
     "def run(String cmd) {",
     "  if (isUnix()) { sh cmd } else { bat cmd }",
     "}",

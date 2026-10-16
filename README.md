@@ -17,7 +17,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 
 ## 진행 현황 (2026-10-16)
 
-- **소스 기준**: v0.47.0(`package.json`), 도구 34종 + CLI 명령 11종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
+- **소스 기준**: v1.0.0(`package.json`), 도구 34종 + CLI 명령 11종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
@@ -32,6 +32,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - **v0.30.0 추가**: `migrate_egovframe_project` 2단계(`apply=true`) — 진단의 auto 항목을 하나의 transaction 으로 실제 치환합니다(dryRun 기본, 원본 `migration-backup/` 보관, `migration-plan.json`, 실패 시 복구). 3.10 좌표·javax 픽스처를 적용한 뒤 JDK 17 `mvn compile` 통과를 CI 에서 확인합니다. `check_egovframe_dependencies` — 공식 5.x parent 2종에서 추출한 기준(관리 좌표 139종 + BOM 계열 7종, `catalog/dependency-baseline.json`)과 의존성을 대조해 기준 충족/미만/parent 관리/전환 대상/교체 필요/기준 없음으로 분류하고, 보안 설정(sec.security·CSRF·XSS 필터·보안 헤더·HTTPS 저장소) 존재 여부를 근거와 함께 보고합니다. 기본 오프라인, `offline=false` 면 OSV 취약점 조회(설계: [docs/design-dependency-check.md](docs/design-dependency-check.md)).
 - **v0.31.0 추가**: 운영 편의 — `diagnose_egovframe_network`(도구가 쓰는 호스트 7종에 DNS·HEAD 프로브, 실패 종류 분류, HTTPS_PROXY+NODE_USE_ENV_PROXY·IPv4 우선·사내 CA 처방을 bash/cmd/PowerShell 명령으로), 모든 다운로드 실패 메시지에 같은 처방 한 줄 부착, `generate_agents_md`(진단 결과로 AI 코딩 도구용 AGENTS.md, ko/en), 영문 README(`README.en.md`)와 `EGOVFRAME_LANG=en` 영문 도구 설명, MCP Registry 메타데이터(`server.json`·`mcpName`). 기획 3개 버전(v0.29–v0.31)이 모두 완료됐습니다.
 - **v0.32.0 추가**: MCP 프로토콜 현대화 — 도구 27종을 `registerTool` 로 전환해 `title`(ko/en)과 annotations(`readOnlyHint` 14종·`destructiveHint` 4종·`idempotentHint`·`openWorldHint`)를 `tools/list` 에 노출하고, `format=json` 을 제공하던 5종(`diagnose_egovframe_project`·`validate_egovframe_project`·`migrate_egovframe_project`·`check_egovframe_dependencies`·`diagnose_egovframe_network`)은 `outputSchema` 와 `structuredContent` 를 함께 돌려줍니다(기존 `text` 유지). 테스트 이식성 가드(`scripts/check-test-portability.mjs`, 게이트 포함)와 플랫폼 주입 단언으로 Windows 전용 실패 재발을 막습니다.
+- **v1.0.0 (안정화)**: 0.x 를 끝내고 공개 API 를 고정했습니다 — [버전 정책](docs/versioning.md)(SemVer 2.0)이 도구 이름·입력 파라미터·구조화 출력 13종·CLI 명령과 종료 코드·환경 변수·지원 Node 를 공개 API 로 정하고, MAJOR·MINOR·PATCH 기준과 폐기 절차를 둡니다. 새 게이트 `test:api-contract` 가 계약 스냅샷(`test/fixtures/api-contract.json`)과 비교해 변경을 minor·major 로 분류하고, `test:release` 가 버전 증가 폭이 모자라면 배포를 막습니다. 1.0 전 이름 정리로 `check_egovframe_secure_coding` 의 `top` 을 다른 도구와 같은 `topN` 으로 바꿨습니다(`top` 은 2.0.0 까지 경고와 함께 계속 받음). 지원 Node 는 22 이상(18·20 지원 종료)이고, CI 는 ubuntu·windows × Node 22·24 입니다. 새 기능은 없으며 도구는 34종 그대로입니다.
 - **v0.47.0 추가**: 멀티 모듈·MSA 대응 — 새 `src/workspace.ts` 가 Maven `<modules>`·Gradle `include`·루트 빌드 파일 없는 독립 프로젝트 묶음을 탐지하고(라이브러리 모듈·작업공간 안 parent 상속 판정), 의존성 점검·5.x 최신 유지·SBOM·보안약점·평가서가 모듈별 결과와 합계를 냅니다. 공식 MSA 템플릿에서 의존성 판정은 `msa-edu` 0 → 280건·`msa-portal-backend` 0 → 256건, `msa-common-components` 의 "버전 없음" 152 → 0(모듈 parent 관리)이 되었습니다. Gradle 버전 변수(`set('egovframeBootParentVersion', …)`)는 공식 parent·RTE 에만 쓰이면 auto, 다른 좌표(`egovframe-cloud-module-common`)에도 쓰이면 manual 입니다. `generate_egovframe_deploy` 는 서비스 모듈마다 이미지(자체 Dockerfile 재사용)와 하나의 compose·서비스별 Kubernetes 매니페스트를 만들고, 설정의 `localhost:포트` 를 서비스·DB·RabbitMQ·Redis 이름으로 바꿉니다(모듈 설정은 Spring 환경 변수, 설정 서버 native 저장소는 `deploy/config-repo` 사본). 선택 파라미터 `modules` 로 일부 서비스만 고릅니다. CI 통합에서 `msa-common-components` 를 5.0.2 로 갱신·빌드해 ConfigServer·EurekaServer·GatewayServer·EgovBoard 를 compose 로 띄우고 Eureka 등록·Gateway health UP 을 확인합니다. 도구 수는 34종 그대로입니다. 설계: [docs/design-workspace.md](docs/design-workspace.md).
 - **v0.46.0 추가**: 5.x 최신 유지와 생성 CI 실행 검증 — `migrate_egovframe_project(target="5.0.2")` 가 이미 5.x 인 프로젝트를 최신 5.0.x 로 맞춥니다. parent·RTE 버전 속성·RTE 의존성 리터럴 버전은 auto, 그 사이 바뀐 RTE API·동작(보안 설정 `@Bean` 시그니처·엑셀 수식 주입 방지·XML XXE 차단·테이블 ID 생성 행 잠금 등 11건)을 프로젝트가 참조하는 곳과 공통컴포넌트 최신 유지 안내는 manual 이고, `apply`·`verify` 는 전환과 같습니다. 규칙은 `egovframe-runtime` 5.0.0·5.0.1·5.0.2 태그와 공식 parent pom 으로 만든 `catalog/update-rules.json` 입니다. 공식 web·boot-web 템플릿(parent 5.0.0)은 갱신 뒤 JDK 17 compile 이 통과하고, 의존성 기준 미만이 6 → 4·3 → 1, 공급망 등급이 C → B 가 됩니다. `create_egovframe_project(alignParent=true)` 는 생성 직후 같은 갱신을 적용하고, 평가서 2절에 "5.x 최신 유지" 요약이 붙습니다. 생성 `Jenkinsfile` 은 공식 Jenkins LTS(플러그인 56종 버전 고정)에서 선언형 문법 검증 후 실제로 실행해 모든 단계 성공·산출물 보관을, 생성 `.gitlab-ci.yml` 은 gitlab-ci-local 로 build·supply-chain job 성공·산출물을 CI 에서 확인합니다. 도구 수는 34종 그대로입니다.
 - **v0.45.0 추가**: 컨테이너·배포 산출물 — 새 도구 **`generate_egovframe_deploy`**(34번째)가 진단(빌드 도구·war/jar·Boot·웹·actuator·DbType·설정 파일)으로 Dockerfile(멀티 스테이지 Maven/Gradle 빌드 → Classic war 는 Tomcat 10.1 에 ROOT 로 풀어서, Boot jar 는 Temurin JRE — 비루트·HEALTHCHECK·Asia/Seoul·UTF-8, `buildInImage=false` 면 미리 빌드한 산출물), `deploy/docker-compose.yml`(앱 + DbType 별 mysql·mariadb·postgres 컨테이너, 템플릿 DDL·DATA 초기화), Kubernetes 매니페스트(Deployment 프로브·비루트 securityContext·리소스, Service, ConfigMap, Secret, 선택 Ingress)를 만듭니다. DB 설정은 Boot 는 Spring 환경 변수(`Globals.mysql.Url` → `GLOBALS_MYSQL_URL`), Classic 은 `globals.properties` 사본을 볼륨·Secret 으로 덮어쓰고, 기반 이미지는 `imageRegistry`(Dockerfile `BASE_REGISTRY`)로 사내 레지스트리에서 받습니다. 공식 web(Classic)·boot-web(Boot) 템플릿은 hadolint 경고 0·kubeconform 통과 후 실제 `docker build` → 기동 → HTTP 200·healthy·uid 10001, 공식 simple-backend 는 `docker compose up` 으로 MySQL 초기화 데이터가 API 로 나오는 것까지 CI 에서 확인합니다.
@@ -47,7 +48,7 @@ Claude, VS Code(Copilot), Cursor 등 MCP를 지원하는 AI 도구에서 **대�
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v1.0.0 안정화(버전 정책·공개 API 고정·Node 22 이상) → v1.1 납품 패키지 → v1.2 응답 영문화·진행 알림. [다음 버전 기획](#다음-버전-기획-v10v12) 참조.
+- **다음 계획**: v1.1 납품 패키지 → v1.2 응답 영문화·진행 알림. [다음 버전 기획](#다음-버전-기획-v10v12) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 제공 도구
@@ -278,7 +279,10 @@ check_egovframe_secure_coding(projectDir)                                       
 check_egovframe_secure_coding(projectDir, format="json")                             # 전체(지문 포함) — 다음 비교의 baseline
 check_egovframe_secure_coding(projectDir, baselinePath="reports/secure-prev.json")   # 새로 생긴 것만 🆕
 check_egovframe_secure_coding(projectDir, sarifPath="egovframe-secure.sarif", overwrite=true)   # SARIF 2.1.0
+check_egovframe_secure_coding(projectDir, topN=100)                                  # Markdown 상세 항목 수(기본 40)
 ```
+
+`topN` 의 옛 이름 `top` 은 1.0.0 부터 deprecated 입니다. 2.0.0 까지는 받고 응답에 경고 한 줄을 붙입니다([버전 정책](docs/versioning.md#3-폐기deprecation-절차)).
 
 | 가이드 항목 (규칙) | 찾는 것 | 걸러 내는 것 |
 |---|---|---|
@@ -379,7 +383,7 @@ generate_agents_md(projectDir="/work/my-egov-app", lang="en", fileName="CLAUDE.m
 
 ## 설치·사용
 
-[npm에 배포되어](https://www.npmjs.com/package/egovframe-scaffold-mcp) 설치 없이 바로 실행할 수 있습니다:
+[npm에 배포되어](https://www.npmjs.com/package/egovframe-scaffold-mcp) 설치 없이 바로 실행할 수 있습니다(Node.js 22 이상, v1.0 부터):
 
 ```json
 {
@@ -478,7 +482,7 @@ generate_egovframe_ci(projectDir="/work/my-egov-app", platform="jenkins", supply
 - v0.44: `secureCoding=true` 면 sbom-check 다음에 보안약점 점검(`secure --fail-on high`, `egovframe-secure.sarif`) 단계가 들어갑니다. GitHub 는 `security-events: write` 권한으로 code scanning 에 SARIF 를 올리며(Advanced Security 가 없는 비공개 저장소에서도 게이트가 흔들리지 않게 `continue-on-error`), GitLab·Jenkins 는 SARIF 를 아티팩트로 보관합니다.
 - `npmRegistry` 는 `NPM_CONFIG_REGISTRY`(npx 가 이 서버를 받는 사내 레지스트리), `offlineBundle` 은 `EGOVFRAME_OFFLINE_BUNDLE`(러너·에이전트에서 본 번들 경로)로 들어갑니다. 값은 따옴표·`$`·줄바꿈 없는 URL·절대 경로만 허용합니다(설정 파일 주입 차단).
 - 공급자 단서가 없으면(`supplier` 미지정, pom `<organization><name>` 없음) SBOM 의 주 component 공급자·작성자가 비어 `sbom-check` 단계가 실패하므로, 생성 응답이 이를 미리 알립니다.
-- GitLab 이미지는 공개 Docker Hub 기준입니다. 폐쇄망에서는 사내 레지스트리의 같은 이미지(JDK + Node.js 18 이상)로 바꾸세요. Jenkins 는 Pipeline 기본 단계(`sh`·`bat`·`archiveArtifacts`)만 쓰며 에이전트에 JDK·Maven·Node.js 가 있어야 합니다.
+- GitLab 이미지는 공개 Docker Hub 기준입니다. 폐쇄망에서는 사내 레지스트리의 같은 이미지(JDK + Node.js 22 이상)로 바꾸세요. Jenkins 는 Pipeline 기본 단계(`sh`·`bat`·`archiveArtifacts`)만 쓰며 에이전트에 JDK·Maven·Node.js 가 있어야 합니다.
 - 생성 `.gitlab-ci.yml` 은 테스트에서 GitLab 공식 CI 스키마로 검증하고, `Jenkinsfile` 은 Declarative 구조를 단언합니다. 설계: [docs/design-cli.md](docs/design-cli.md).
 - **실행 검증(v0.46, CI 통합 `test:ci-run-live`)**: 공식 web 템플릿에 `supplyChain`·`secureCoding`·`supplier` 로 만든 파일을 실제 빌드 서버에서 돌립니다. 아직 배포 전인 버전을 쓰도록 `npx -y egovframe-scaffold-mcp@<버전>` 만 같은 버전의 `npm pack` 산출물로 바꾸고 나머지는 생성 그대로입니다.
 
@@ -567,7 +571,7 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Eri
 - 수명주기 레벨: 설치 매니페스트 기록, 중복 설치 거부, 의존 컴포넌트 제거 보호, 제거·검증 동작 (`npm run test:components`)
 - 프로토콜 레벨: 빌드된 서버를 실제 프로세스로 띄워 MCP initialize / tools/list 핸드셰이크, `serverInfo.version`↔`package.json` 일치, 핵심 도구 노출, `jdk` 패턴 제약 노출 확인 (`npm run test:handshake`, 네트워크 불필요)
 - 릴리스 레벨: 배포 판정(버전·`server.json`·변경 이력·태그·npm 네 조건)과 릴리스 노트 추출, `npm pack --dry-run` 의 tarball 내용(포함·제외·크기 상한), `server.json` 설명 100자 제한 (`npm run test:release`·`npm run test:registry`, 네트워크 불필요); CI 통합이 `mcp-publisher validate` 로 레지스트리 스키마를 실제 검증
-- 플랫폼 레벨: CI가 릴리스 게이트를 ubuntu·windows × Node 18·20·22 매트릭스로 실행하고, 공식 저장소를 내려받는 통합 테스트는 ubuntu/Node 20에서 실행합니다. 타임아웃 시 프로세스 트리 종료는 POSIX·Windows 모두 실제 프로세스로 검증합니다 (`npm run test:build`).
+- 플랫폼 레벨: CI가 릴리스 게이트를 ubuntu·windows × Node 22·24 매트릭스로(v1.0, 이전 18·20·22) 실행하고, 공식 저장소를 내려받는 통합 테스트는 ubuntu/Node 22에서 실행합니다. 타임아웃 시 프로세스 트리 종료는 POSIX·Windows 모두 실제 프로세스로 검증합니다 (`npm run test:build`).
 - 레시피 레벨: `catalog/recipes.json`의 컴포넌트 id·의존성·템플릿 제공 컴포넌트 정합 검증 (`npm run test:recipes`, 네트워크 불필요). 공식 `simple-backend`의 기존 `cmm`을 보존하고 board-login의 bbs 88파일·login 41파일·SQL 4건(총 133파일)을 조립한 뒤 검증하며, 컴포넌트 이후 fault injection의 전체 staging rollback도 확인 (`npm run test:recipe-transaction`)
 - 진단 레벨: 픽스처(pom·DbType·컴포넌트 패키지)로 `diagnose_egovframe_project`의 빌드·버전·DbType·컴포넌트 지문·의존성 검출 검증 (`npm run test:diagnose`, 네트워크 불필요)
 - 전환 진단 레벨: 3.10 스타일 픽스처(pom·gradle·java·Spring XML·MyBatis XML·web.xml·JSP)에서 항목 종류·auto/manual·라인·대응 좌표를 단언하고, 5.x 스타일 픽스처에서 항목 0건과 진단 전후 디스크 불변을 확인 (`npm run test:migrate`, 87단언, 네트워크 불필요). 규칙 카탈로그는 스키마·좌표 규칙성·제거 클래스의 대체가 동봉된 5.x 소스 트리에 존재하는지·JDK 내장 `javax.*` 제외·큐레이션과 생성물 일치를 검증 (`npm run test:migration-rules`, 579단언, 네트워크 불필요). 목적지 좌표(RTE 5.x 24종·3.x 원본 18종·parent 2종·Jakarta 좌표)가 표준프레임워크 Maven 저장소와 Maven Central 에 실제로 존재하는지는 CI 통합 job 에서 확인 (`npm run test:migration-rules-live`, 61건, 네트워크 필요)
@@ -584,6 +588,7 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Eri
 - 5.x 최신 유지 레벨: 규칙 데이터(버전·근거 태그 commit·parent 2종 × 3버전·변경 11건), pom·Gradle 계획(속성 참조·비 RTE 좌표 불변, 예전 parent 기본값만 바꾸고 의도한 고정값 보존), 변경 클래스 참조 탐지(접두어만 같은 클래스·와일드카드 import), 구간(target 5.0.1, 실효 버전 5.0.1), 3.x 거부, dryRun 무기록·fault-injection 롤백·적용·백업·재진단, 가짜 runner verify 의 오류 ↔ 변경 항목 연결, `alignPom`, 평가서 2절, outputSchema, MCP `tools/call`(target=5.0.2·잘못된 target·기본 5.x) (`npm run test:update`, 55단언, 네트워크 불필요). 공식 web·boot-web 의 갱신 → JDK 17 compile·기준 미만·공급망 등급 실측 고정과 alignParent 생성은 CI 통합 `test:update-live`
 - CI 실행 레벨: 생성 `Jenkinsfile` 을 공식 Jenkins LTS·고정 플러그인에서 선언형 문법 검증 후 실행(SUCCESS·5단계·보관 산출물), 생성 `.gitlab-ci.yml` 을 gitlab-ci-local 로 실행(두 job·산출물·SARIF·최소 요소) (`npm run test:ci-run-live`, CI 통합, Docker 필요)
 - 배포 산출물 레벨: 분석(Classic war·Boot jar·Gradle 배치·Boot `server.port`·context-path·actuator 프로브·Servlet 6.1 → Tomcat 11·`Globals.<type>.Url`/`Globals.Url`/`spring.datasource.url`·DB 별칭·초기화 SQL 선택·지원 안 함 3종), Dockerfile(멀티 스테이지·캐시 마운트·5xx 재시도·WAR 풀기·비루트·HEALTHCHECK·레지스트리 ARG·미리 빌드), 생성 `docker-compose.yml` 의 공식 Compose 스키마(compose-spec 고정물) 통과·DB 컨테이너·초기화 순서·설정 볼륨, Kubernetes(보안 설정·프로브·ConfigMap/Secret 분리·Classic Secret subPath·Ingress), 입력 주입 거부·새 파일만·부분 충돌 시 무기록 (`npm run test:deploy`, 49단언, 네트워크 불필요). 실제 빌드·기동·compose 는 CI 통합 `test:deploy-live`(hadolint·kubeconform 포함)
+- 공개 API 계약 레벨(v1.0, `test:api-contract` 50단언, 게이트 맨 앞): 계약 스냅샷 일치(도구 34·구조화 출력 13·CLI 명령 11·종료 코드·환경 변수·`engines`), 분류기 23경우(파라미터 삭제·필수 추가·기본값·범위 축소·출력 필드 삭제·도구 삭제·종료 코드·Node 상향 → major, 선택 파라미터·출력 필드·도구·명령 추가·범위 확대·deprecated → minor), 버전 증가 폭 9경우, deprecated 별칭(`top` → `topN` 본문 동일·별도 경고 항목·`format=json` 본문 파싱 유지). `test:release` 는 이번 릴리스의 증가 폭(0.47.0 → 1.0.0, major)을 단언합니다.
 - 작업공간 레벨(v0.47, `test:workspace` 55단언): Maven 모듈·Gradle include·독립 프로젝트 탐지와 라이브러리·parent 상속 판정, YAML 평탄화, 모듈 parent 관리·Gradle 버전 변수·BOM parent, Gradle 변수 auto/manual 과 적용, 다중 서비스 계획(참조 치환·환경 변수 이름·브로커 계정·기동 순서·설정 저장소 사본·DB 계정·루트 컨텍스트 `-pl`), compose 공식 스키마·`$$`·k8s 키 중복 없음, `modules`, SBOM 합본, 보안약점·평가서 모듈 표.
 - MSA 템플릿 레벨(v0.47, CI 통합 `test:workspace-live`): 공식 MSA 템플릿 3종의 모듈 수·라이브러리 수·모듈별 의존성(버전 없음 0)·5.x 최신 유지·보안약점·평가서 모듈 표, 생성 compose(공식 스키마·`docker compose config`)·kubeconform·hadolint, `msa-common-components` 5.0.2 갱신 → 루트 `mvn package` → compose 기동(ConfigServer·EurekaServer·GatewayServer·EgovBoard·MySQL·RabbitMQ healthy, Eureka 등록, Gateway health UP).
 - 보안약점 점검 레벨: 규칙 20종 데이터 검증(가이드 7개 유형·항목·CWE·컴파일), Java·XML·JSP 주석 제거(문자열·텍스트 블록 보존, HTML 주석 안 EL 유지), 규칙마다 양성·음성 픽스처(오탐 방지 사례 — `<c:out>`·커스텀 태그 속성·`fn:escapeXml`·상수 c:out·`ENC()`·자리표시자·파라미터 이름·보호 설정 있는 XML 파서 등), ORDER BY 강등·요청 값 동반 승격·보안 문맥 난수, 출처(매니페스트 원본·수정본·매니페스트 없음), 예외 파일(사유·검토자 없으면 미적용), baseline(JSON·SARIF, 줄 이동에도 같은 항목), SARIF 2.1.0 OASIS 공식 스키마(테스트 고정물) (`npm run test:secure-coding`, 52단언, 네트워크 불필요). 공식 공통컴포넌트 v3.10.0·v4.3.2 의 규칙별 건수는 회귀 코퍼스 기대값(±1%), 공식 템플릿은 CI 통합 `test:secure-live`(Initializr 고정 템플릿은 단언, 저장소 브랜치 템플릿은 drift 로그)
@@ -613,11 +618,23 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Eri
 - `migrate_egovframe_project` 의 적용은 진단이 `auto` 로 표시한 항목만 치환합니다. 정적 텍스트 스캔이므로 리플렉션·문자열 조립으로 만든 클래스명, 프로젝트 밖 라이브러리 안의 `javax` 사용, Spring Security 6·Hibernate 6 등 라이브러리 자체의 API 변경으로 인한 코드 수정 범위는 보고하지 않습니다(라이브러리 단위로 `manual` 안내만 합니다).
 - 템플릿·컴포넌트·가이드 원본을 받을 때 GitHub(`codeload.github.com`, `raw.githubusercontent.com`, zip 조달 템플릿은 `media.githubusercontent.com`) 네트워크 접근이 필요합니다.
 
+## 버전 정책
+
+1.0.0 부터 [SemVer 2.0](https://semver.org/lang/ko/) 을 따릅니다. 자세한 기준과 폐기 절차는 [docs/versioning.md](docs/versioning.md) 에 있습니다.
+
+- **공개 API**: 도구 이름, 입력 파라미터(이름·타입·필수·기본값·허용값·범위), 구조화 출력 13종의 필드, CLI 명령과 종료 코드(0·2·3·64), 환경 변수 `EGOVFRAME_*` 5종, 지원 Node(`>=22`).
+- **공개 API 가 아닌 것**: Markdown 응답 문구, 카탈로그·규칙·기준 데이터의 내용(공식 태그 추적으로 PATCH 에서도 판정 건수가 바뀔 수 있음), `dist/` 내부 모듈.
+- **MAJOR**: 공개 API 를 지우거나 이름·타입·기본값을 바꾸거나 범위를 좁힐 때, 그리고 Node 최소 버전을 올릴 때입니다.
+- **MINOR**: 새 도구·선택 파라미터·출력 필드·명령을 더하거나 deprecated 를 표시할 때입니다.
+- **PATCH**: 버그 수정, 데이터 갱신, 문구 변경입니다.
+- **폐기 절차**: deprecated 는 옛 이름을 계속 받고 경고를 붙이며, 다음 MAJOR 에서만 지웁니다.
+- **강제**: `test:api-contract` 와 `test:release` 가 계약 변경 등급과 버전 증가 폭을 맞춰 봅니다. 맞지 않으면 게이트가 실패합니다.
+
 ## 로드맵
 
 v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
 
-v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). v0.47 로 멀티 모듈·MSA 대응을 마쳤습니다([v0.47](#이전-기획-v047-완료)). 다음은 0.x 를 끝내는 v1.0.0 안정화와 v1.1–v1.2 이며 범위는 [다음 버전 기획](#다음-버전-기획-v10v12)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
+v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). v0.47 로 멀티 모듈·MSA 대응을 마쳤습니다([v0.47](#이전-기획-v047-완료)). v1.0.0 으로 0.x 를 끝내고 공개 API 를 고정했으며([버전 정책](#버전-정책)), 다음 v1.1–v1.2 의 범위는 [다음 버전 기획](#다음-버전-기획-v10v12)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -649,7 +666,7 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v0.45 완료** | 컨테이너·배포 산출물 | `generate_egovframe_deploy`: Classic war(Tomcat 10.1)·Boot jar 멀티 스테이지 Dockerfile, DbType 별 docker-compose, Kubernetes 매니페스트, 폐쇄망 레지스트리 — hadolint·kubeconform·실제 빌드·기동 검증 |
 | **v0.46 완료** | 5.x 최신 유지 + CI 실행 검증 | `migrate_egovframe_project(target="5.0.2")`: parent·RTE 버전 auto, 바뀐 RTE API·동작 참조 manual(규칙 `catalog/update-rules.json`), `create(alignParent=true)`, 평가서 2절 — 공식 web·boot-web 갱신 후 compile·기준 미만 감소·등급 C → B. 생성 `Jenkinsfile`(Jenkins LTS·고정 플러그인)·`.gitlab-ci.yml`(gitlab-ci-local) 실제 실행 검증 |
 | **v0.47 완료** | 멀티 모듈·MSA 대응 | 공식 MSA 템플릿 3종(Maven 11 모듈·Gradle 독립 10·9)의 모듈 탐지, 의존성(0 → 280·256건)·SBOM·5.x 최신 유지·보안약점·평가서 모듈별 판정, 다중 서비스 compose·Kubernetes, `msa-common-components` 실제 기동(Eureka·Gateway UP) |
-| **v1.0 계획** | 안정화: 버전 정책 + 공개 API 고정 | `docs/versioning.md`(SemVer, 공개 API 범위·폐기 절차), API 계약 스냅샷 테스트와 버전 증가 폭 검사, 1.0 전 파라미터 이름 정리(별칭 유지), Node 22 이상 |
+| **v1.0 완료** | 안정화: 버전 정책 + 공개 API 고정 | `docs/versioning.md`(SemVer, 공개 API 범위·폐기 절차), `test:api-contract` 계약 스냅샷·분류기와 `test:release` 버전 증가 폭 검사, secure_coding `top` → `topN`(deprecated 별칭), Node 22 이상·CI Node 22·24 |
 | **v1.1 계획** | 납품 패키지 | 새 도구 `prepare_egovframe_delivery`(35종): 평가서·SBOM·VEX·보안약점·배포 검증을 한 묶음 + sha256 manifest·목차·이전 차수 비교, `deliver --verify` |
 | **v1.2 계획** | 응답 영문화 + 진행 알림 | `--lang en` 응답 본문·규칙 사유 영문, 장시간 도구의 MCP 진행 알림과 취소 시 정리 |
 
@@ -685,6 +702,22 @@ v0.47.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종)에서 
 **검증 기준**: 계약 스냅샷이 0.47.0 의 실제 API 와 같음. 파라미터 하나를 지운 사본은 MAJOR 로, 선택 파라미터 하나를 더한 사본은 MINOR 로 분류됨. 버전 증가 폭이 모자라면 `test:release` 가 실패함. deprecated 별칭으로 부르면 새 이름과 같은 결과에 경고가 붙음. Node 22·24 매트릭스와 CI 통합이 모두 통과함.
 
 **완료 정의**: 도구 34종(변화 없음), `docs/versioning.md`, README 「버전 정책」 절, npm `1.0.0` 자동 배포·MCP Registry 1.0.0
+
+**결과 (2026-10-16 완료)**: 버전 정책·계약 테스트·deprecated 장치를 넣고, 지원 Node 를 22 이상으로 올렸습니다. 1.0 전 이름을 점검한 결과는 아래와 같습니다.
+
+| 후보 | 결정 | 이유 |
+|---|---|---|
+| `check_egovframe_secure_coding(top)` | `topN` 으로 바꾸고 `top` 은 deprecated(2.0.0 제거) | 같은 뜻(Markdown 상위 N건)을 `rehearse`·`report` 는 `topN` 으로 씁니다 |
+| `maxFindings`(secure_coding) | 유지 | 응답에 담는 항목 수 상한으로, 표시 개수와 뜻이 다릅니다 |
+| `limit`·`fetchTop`(get_egovframe_guide) | 유지 | 검색 결과 수와 본문을 받을 상위 수로, 뜻이 다릅니다 |
+| `outputDir`·`outputPath` | 유지 | 디렉터리(create·ai·bundle·config)와 파일(sbom·report)을 일관되게 나눠 쓰고 있습니다 |
+| 구조화 출력 13/34 | 13종만 계약 | 나머지 21종은 생성·조회 도구라 Markdown 본문이 결과입니다. 출력 스키마 추가는 MINOR 로 언제든 할 수 있습니다 |
+
+계약 스냅샷은 0.47.0 의 실제 API 로 만들고, 1.0.0 에서 다시 갱신했습니다. 분류 결과는 major 이고, 근거는 `engines` `>=18` → `>=22` 와 `top` 기본값 제거(별칭 처리를 위해 기본 40 을 처리기로 옮김) 두 가지입니다. minor 는 `topN` 추가와 deprecated 표시입니다.
+
+생성 CI 도 Node 22 를 쓰게 했습니다. 생성 `.gitlab-ci.yml` 은 이미지의 배포판 nodejs 가 22 미만이면 npm 레지스트리의 `node@22` 를 받습니다(Ubuntu 24.04 의 nodejs 는 18). Jenkins 실행 검증 이미지도 같은 방식으로 준비합니다.
+
+기획과 달라진 점: deprecated 별칭으로 부르면 경고를 `structuredContent` 가 아닌 별도 content 항목으로 냅니다. 구조화 출력 스키마를 바꾸지 않고, `format=json`·`sarif` 본문이 그대로 파싱되도록 하기 위해서입니다.
 
 ### v1.1.0 — 납품 패키지 (`prepare_egovframe_delivery`)
 
@@ -1188,7 +1221,7 @@ v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행�
 
 1. `main` 최신화 후 기능 브랜치 생성 → 패치 적용(`git am`) 또는 직접 커밋. 버전은 `package.json`·`server.json`(두 곳) 을 함께 올리고 README 변경 이력에 `- **X.Y.Z** — …` 항목을 쓴다(`test:release` 가 셋을 단언)
 2. `npm ci && npm run prepublishOnly` 로컬 통과(Windows 클론은 `core.autocrlf` 무관하게 통과해야 함). 테스트 기대값은 플랫폼 중립이어야 한다 — 플랫폼 분기 함수는 `platform` 을 주입해 양쪽을 단언하고, `npm run check:portability` 가 0건이어야 한다
-3. 푸시 → PR → CI 7개(ubuntu·windows × Node 18/20/22 + integration) 전부 통과 → squash 병합. **여기까지가 사람의 일입니다.**
+3. 푸시 → PR → CI 5개(ubuntu·windows × Node 22/24 + integration, v1.0 이전은 7개) 전부 통과 → squash 병합. 공개 API 를 바꿨으면 `npm run api-contract:update` 로 스냅샷을 갱신하고 그 diff 와 버전 증가 폭을 PR 에서 함께 검토합니다([버전 정책](docs/versioning.md)). **여기까지가 사람의 일입니다.**
 4. 병합 뒤 `main` 의 CI 가 성공하면 `Release` 워크플로(`.github/workflows/release.yml`)가 `scripts/release-check.mjs` 로 전제(`server.json` 버전 일치·변경 이력 항목)를 확인하고 원격 상태(npm·태그·GitHub Release·MCP Registry)를 보아 **남은 단계만** 수행합니다: npm(OIDC trusted publishing, provenance 자동) → 게시된 커밋에 `vX.Y.Z` 태그 → GitHub Release(`scripts/release-notes.mjs`) → MCP Registry(GitHub OIDC). 조건이 안 맞으면 이유를 적고 성공 종료합니다(문서만 바꾼 병합은 아무것도 게시하지 않음)
 5. 확인: Actions 의 `Release` 요약(단계별 결과), `npm view egovframe-scaffold-mcp version`, Releases 페이지, 레지스트리 검색. 도중에 끊기면(v0.36.1 처럼 npm 전파 지연, Registry 실패 등) 손댈 것 없이 다음 `main` 병합(또는 `Run workflow`)의 Release 가 이어서 합니다 — npm 만 돼 있으면 태그를 npm 이 기록한 `gitHead` 커밋에 만들므로 패키지와 태그가 같은 코드를 가리킵니다(그 커밋이 `main` 의 조상이 아니면 수동 태그를 안내하고 멈춤)
 
@@ -1196,15 +1229,15 @@ v0.28.1 까지의 상태에서 다음 세 릴리스를 아래 순서로 진행�
 
 ### 브랜치 보호 (소유자 1회)
 
-v0.42 에서 실패한 CI 상태로 병합한 적이 있어(#51), `main` 에 필수 상태 검사 7개를 겁니다. 저장소 소유자가 한 번만 실행합니다.
+v0.42 에서 실패한 CI 상태로 병합한 적이 있어(#51), `main` 에 필수 상태 검사를 겁니다. v1.0 에서 매트릭스를 Node 22·24 로 바꿔 7개 → 5개가 되었습니다 — **1.0.0 PR 을 병합하기 전에** 아래를 다시 실행해야 옛 이름(node 18·20)의 검사를 기다리지 않습니다. 저장소 소유자가 한 번만 실행합니다.
 
 ```cmd
-echo {"required_status_checks":{"strict":false,"contexts":["gate (ubuntu-latest, node 18)","gate (ubuntu-latest, node 20)","gate (ubuntu-latest, node 22)","gate (windows-latest, node 18)","gate (windows-latest, node 20)","gate (windows-latest, node 22)","integration (official templates & components)"]},"enforce_admins":false,"required_pull_request_reviews":null,"restrictions":null}> protection.json
+echo {"required_status_checks":{"strict":false,"contexts":["gate (ubuntu-latest, node 22)","gate (ubuntu-latest, node 24)","gate (windows-latest, node 22)","gate (windows-latest, node 24)","integration (official templates & components)"]},"enforce_admins":false,"required_pull_request_reviews":null,"restrictions":null}> protection.json
 gh api -X PUT repos/EricSeokgon/egovframe-scaffold-mcp/branches/main/protection --input protection.json
 gh api repos/EricSeokgon/egovframe-scaffold-mcp/branches/main/protection/required_status_checks --jq ".contexts | length"
 ```
 
-- 마지막 명령이 `7` 이면 적용된 것입니다. 이름은 CI 워크플로의 job 이름과 같아야 하므로, job 이름이나 매트릭스를 바꾸면 이 목록도 같이 바꿉니다.
+- 마지막 명령이 `5` 이면 적용된 것입니다. 이름은 CI 워크플로의 job 이름과 같아야 하므로, job 이름이나 매트릭스를 바꾸면 이 목록도 같이 바꿉니다.
 - `enforce_admins: false` 라 소유자는 긴급할 때 직접 푸시할 수 있습니다. 리뷰 필수는 걸지 않습니다(1인 저장소).
 - `Release` 워크플로는 `main` 의 CI 성공 뒤에 돌기 때문에 상태 검사에 넣지 않습니다.
 
@@ -1244,6 +1277,7 @@ gh api repos/EricSeokgon/egovframe-scaffold-mcp/branches/main/protection/require
 
 ## 변경 이력
 
+- **1.0.0** — 안정화: 버전 정책 + 공개 API 고정(도구 34종 유지, 새 기능 없음). **호환 주의**: 지원 Node 가 `>=22` 로 올랐습니다(18·20 은 지원 종료). (1) `docs/versioning.md` — SemVer 2.0, 공개 API(도구 이름·입력 파라미터·구조화 출력 13종·CLI 명령과 종료 코드·환경 변수 5종·`engines`)와 아닌 것(Markdown 문구·데이터 내용·내부 모듈), MAJOR·MINOR·PATCH 기준, 폐기 절차, 지원 범위. README 「버전 정책」 절. (2) `src/api-contract.ts` — `buildApiContract`(MCP `tools/list` 의 JSON Schema 를 계약 키만 남겨 정규화)·`compareContracts`(입력은 좁히면, 출력은 빼면 major)·`checkVersionBump`(0.x 는 MINOR 로 major 허용). `test/fixtures/api-contract.json`(version·base·change + 계약)과 `npm run api-contract:update`. (3) `test:api-contract`(50단언, 게이트 맨 앞)·`test:release` 증가 폭 단언. (4) `src/deprecations.ts` — `DEPRECATED_PARAMS`·`applyDeprecatedParams`. `check_egovframe_secure_coding` 의 `top` → `topN`(옛 이름은 2.0.0 까지 받고 별도 content 항목으로 경고). (5) Node 22 이상: `engines >=22`, CI 게이트 ubuntu·windows × Node 22·24, 통합 job Node 22. 생성 GitLab CI 는 배포판 nodejs 가 22 미만이면 `npm install -g node@22`, 생성 CI 안내문은 "Node.js 22 이상". 브랜치 보호 필수 검사 7 → 5개(README 절차 갱신).
 - **0.47.0** — 멀티 모듈·MSA 대응(도구 34종 유지). (1) `src/workspace.ts` — `detectWorkspace`(`maven-modules`·`gradle-include`·`independent`·`single`, 모듈별 빌드 도구·packaging·Boot·웹·라이브러리·자체 Dockerfile·작업공간 안 parent 상속), `flattenYaml`. (2) 의존성 점검: 모듈 pom 의 자기 parent 판정·대표 parent, Gradle 버전 변수(`gradleVariables`)·공식 parent `mavenBom`(BOM 관리·parent 버전), 항목 `module`·`workspace.modules`, 독립 프로젝트별 `resolve`. (3) 5.x 최신 유지: Gradle 버전 변수 auto/manual(다른 좌표에도 쓰이면 manual), `update.modules`, 같은 `<dependencies>` 의 중복 선언 `duplicate-dependency`(`duplicateDependencyItems` — 같으면 auto 로 뒤 선언 제거, 다르면 manual; dependencyManagement·plugin 의존성·profile 제외). (4) `generate_egovframe_deploy` 다중 서비스: `src/deploy-workspace.ts` — 서비스 모듈별 Dockerfile(루트 컨텍스트 `mvn -pl … -am`, 자체 Dockerfile 재사용), `deploy/docker-compose.yml`·`.env.example`·`deploy/k8s/<서비스>.yaml`, `localhost:포트` 치환(`rewriteLocal`·`springEnvName`), 설정 서버 native 저장소 사본 `deploy/config-repo`·ConfigMap, 규칙 `infra`(RabbitMQ·Redis), `server.port=0` 고정, 선택 파라미터 `modules`, 구조화 출력 `workspace`. 단일 프로젝트 분석은 `application.yml` 을 읽고 actuator 프로브 키를 판정합니다. (5) SBOM: 독립 프로젝트별 SBOM 합본(`mergeModuleBoms`, `sbom/modules/*.cdx.json`), 보안약점 `byModule`, 평가서 1절 모듈 표. (6) 테스트: `test:workspace`(55단언, 게이트), `test:workspace-live`(공식 MSA 템플릿 3종·compose 실제 기동, CI 통합). 설계 `docs/design-workspace.md`.
 - **0.46.0** — 5.x 최신 유지 + 생성 CI 실행 검증(도구 34종 유지). (1) `migrate_egovframe_project` 의 `target` 에 `5.0.x` 를 받는 갱신 모드: `src/update.ts` — `planPomUpdate`(parent 버전·RTE 버전 속성·`org.egovframe.rte` 리터럴 버전·예전 parent 기본값을 복사한 속성)·`planGradleUpdate`·`findClassReference`(FQN·import·와일드카드 import)·`updateProject`(실효 RTE 버전 = 관리 버전과 리터럴 중 최저, 구간 안의 변경 중 참조하는 것만 `rte-change`, 공통컴포넌트 `component-update`, 3.x/4.x 는 전환 안내)·`applyUpdate`(transaction·백업·`update-plan.json`·fault-injection)·`verifyUpdate`(compile 오류 ↔ 변경 항목)·`renderUpdateMarkdown`. 서버는 `target` 을 `5.x | 5.0.x` 로 받고 구조화 출력에 `update` 를 더했습니다. (2) 규칙 `catalog/update-rules.json` 과 생성기 `scripts/generate-update-rules.mjs`(`generate:update-rules`): `egovframe-runtime` v5.0.0·5.0.1·5.0.2-Final 태그와 단계별 변경 클래스, 공식 parent 2종 × 3버전의 속성·Boot parent, 큐레이션 `catalog/update-mapping.json` 11건(보안 설정 Bean 시그니처·엑셀 수식 주입 방지·XML XXE·파일 경로 검증·약한 기본 암호 경고·테이블 ID 행 잠금·날짜 유틸 검증·리액티브 예외 메시지·엑셀 일괄 등록·HTMLTagFilter·`getTokens` 반환 타입) — 큐레이션 클래스가 그 단계에서 바뀌지 않았으면 생성 실패. 규칙 drift 절차에 재생성 단계 추가. (3) `create_egovframe_project(alignParent=true)`(`alignPom`, dryRun 미리보기 포함), 평가서 2절 "5.x 최신 유지" 요약. (4) CI 실행 검증 `test/ci-run-live.mjs`: 공식 web 템플릿의 생성 `Jenkinsfile` 을 `jenkins/jenkins:2.580.1-lts-jdk21` + 고정 플러그인 56종(`test/fixtures/jenkins/plugins.txt`)·Pipeline from SCM 으로 선언형 검증 후 실행(SUCCESS·5단계·보관 산출물), 생성 `.gitlab-ci.yml` 을 gitlab-ci-local 4.76.1 로 실행(두 job·산출물·SARIF·최소 요소). 배포 전 버전은 `npm pack` 산출물로 실행하고 프록시 뒤 실행(CA·apt https·Maven 설정)을 지원합니다. (5) 테스트: `test:update`(55단언, 게이트), `test:update-live`(공식 web·boot-web 갱신 → compile·기준 미만 6→4·3→1·공급망 C→B 실측 고정, alignParent 생성), `test:ci-run-live`, catalog-drift 절차 4단계, release(규칙 파일 포함·`*-mapping.json` 제외). (6) 패키지에서 생성기 입력 `catalog/*-mapping.json` 을 빼고, `test:release` 의 풀린 크기 상한을 2MB → 2.5MB 로 올렸습니다(0.46.0 은 2.09MB, 압축 상한 600KB 는 그대로). (7) README 에 브랜치 보호 운영 절차(필수 상태 검사 7개).
 - **0.45.0** — 컨테이너·배포 산출물(도구 33 → 34종). (1) 새 도구 `generate_egovframe_deploy(projectDir, targets=["docker","compose","k8s"], jdk="17"|"21", imageRegistry="docker.io/library", image?, appName?, buildInImage=true, dockerfilePath="Dockerfile", ingressHost?, dryRun=true, format)`: `src/deploy.ts` — `analyzeDeploy`(빌드 도구·래퍼·war/jar·Boot·웹·actuator 프로브·Tomcat 10.1/11·포트·컨텍스트 경로·DB: `Globals.<type>.Url`/`Globals.Url`/`spring.datasource.url`, 별칭, 초기화 SQL, 지원 안 함 3종), `renderDockerfile`(멀티 스테이지 Maven·Gradle 캐시 마운트·Maven 5xx 재시도·plain 산출물 제외·WAR 풀기·비루트 uid 10001·TZ·UTF-8·MaxRAMPercentage·HEALTHCHECK·`ARG BASE_REGISTRY`·미리 빌드 경로), `.dockerignore`(미리 빌드 시 산출물 화이트리스트), `renderCompose`(DB 컨테이너 mysql 8.4·mariadb 11.4·postgres 16, 초기화 마운트, 헬스체크 후 기동, `.env.example`), `renderClassicConfig`(설정 사본), `renderKubernetes`(ConfigMap·Secret·Deployment 프로브·보안 설정·리소스·Service·Ingress). 규칙 데이터 `catalog/deploy-rules.json`. 새 파일만(하나라도 있으면 무기록), 템플릿 자체 배포 구성 안내. 도구 메타 비읽기·비파괴, outputSchema(13종), 영문 설명, AGENTS.md. (2) 테스트: 신규 `test:deploy` 49단언(게이트, 공식 Compose 스키마 고정물), `test:deploy-live`(CI 통합: hadolint 2.14·kubeconform 0.7 sha256 고정 다운로드, 공식 web·boot-web 빌드·기동·헬스·비루트, simple-backend compose + MySQL 데이터 확인, `DEPLOY_LIVE_PREBUILT=1` 로 미리 빌드 경로), `output-schemas`·`handshake` 34종·13종. 설계: [docs/design-deploy.md](docs/design-deploy.md). `server.json` 0.45.0.

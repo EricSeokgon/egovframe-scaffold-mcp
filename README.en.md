@@ -35,7 +35,7 @@ Published on npm; no installation needed:
 }
 ```
 
-Requires Node.js 18+. Downloads go to `codeload.github.com`, `raw.githubusercontent.com`, `media.githubusercontent.com` (Git LFS zips) and, for builds, `maven.egovframe.go.kr` and Maven Central. Behind a corporate proxy set `HTTPS_PROXY` and `NODE_USE_ENV_PROXY=1` (Node's built-in fetch ignores the proxy otherwise); `diagnose_egovframe_network` tells you exactly what is wrong.
+Requires Node.js 22+ (since 1.0.0; Node 18 and 20 are end-of-life). Downloads go to `codeload.github.com`, `raw.githubusercontent.com`, `media.githubusercontent.com` (Git LFS zips) and, for builds, `maven.egovframe.go.kr` and Maven Central. Behind a corporate proxy set `HTTPS_PROXY` and `NODE_USE_ENV_PROXY=1` (Node's built-in fetch ignores the proxy otherwise); `diagnose_egovframe_network` tells you exactly what is wrong.
 
 ### Environment variables
 
@@ -82,7 +82,7 @@ Resources: `egovframe://catalog/components`, `…/components/{id}`, `…/templat
 ## How it stays trustworthy
 
 - **Pinned sources**: component catalog (official v5.0.7 tag, commit, archive sha256), Initializr zip templates (commit, sha256, size), config templates (commit, per-file sha256, CRLF-safe), migration rules derived from `egovframe-runtime` tags v3.10.0 / v4.3.0-Final / v5.0.2-Final and `egovframe-common-components` v3.10.0 / v5.0.7, dependency baseline extracted from the official 5.x parent poms (5.0.2), `spring-boot-dependencies` 3.5.6 and the RTE 5.0.2 module poms — every pom with url and sha256. `sync_egovframe_templates` reports when any of these drifts upstream.
-- **Release gate**: `npm run prepublishOnly` runs the build and ~28 offline suites (over 1,300 assertions) on ubuntu and windows × Node 18/20/22; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, checks that every migration target coordinate exists in the Maven repositories, watches upstream drift of the bundled rules and baseline, and validates `server.json` against the MCP Registry.
+- **Release gate**: `npm run prepublishOnly` runs the build and ~28 offline suites (over 1,300 assertions) on ubuntu and windows × Node 22/24; an integration job downloads real upstream assets, compiles generated CRUD and a migrated 3.10 project with JDK 17, checks that every migration target coordinate exists in the Maven repositories, watches upstream drift of the bundled rules and baseline, and validates `server.json` against the MCP Registry.
 - **Automated releases** (v0.35+): once a PR is merged and CI passes on `main`, `release.yml` publishes to npm with OIDC trusted publishing (provenance attached, no tokens), tags the verified commit, creates the GitHub Release from the changelog and publishes to the MCP Registry with GitHub OIDC — only when the version in `package.json`, `server.json` and the changelog agree and the version is not released yet.
 - **Protocol metadata**: every tool carries ko/en `title` and MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); the five diagnostic tools, the SBOM generator and checker, the report tool, the reassembly tool, the rehearsal tool and the bundle tool also declare `outputSchema` and return `structuredContent`.
 - **Regression corpus** (v0.37): CI runs diagnosis, dry-run apply, the dependency check and the assessment against the official `egovframe-common-components` **v3.10.0 and v4.3.2** source trees (pinned commits, sparse partial clones) and asserts the counts in `catalog/migration-corpus.json` within ±1% — so a rule or baseline change that moves real-world results is caught, and the 4.x→5.x path is verified on real assets.
@@ -169,6 +169,20 @@ generate_egovframe_report(projectDir="/work/legacy-app", sections=["assessment"]
 ```
 
 Six sections: overview (build tool, RTE generation, parent, Java, components), migration scope (auto/manual by kind, reassembly advice, top manual work items grouped by kind and target), dependencies (verdict counts, an action list, transitive artifacts with `resolve=true`, OSV with `offline=false`), security settings, SBOM summary (if `sbom/bom.cdx.json` exists), and **grades with evidence**. Two grades — *migration difficulty* (manual items, components to reassemble, removed-API references, coordinate generation) and *supply-chain state* (below-baseline, legacy/replace, known vulnerabilities, missing security settings, parent/Java) — are sums of banded factor points, A=0 · B≤3 · C≤7 · D>7, and the full formula is printed in the report so anyone can recompute it (the tests do). The official 5.x template grades A for migration; the full common-components trees (v3.10.0, v4.3.2) grade D on both axes. No cost or effort estimates. Design notes: [docs/design-assessment-report.md](docs/design-assessment-report.md) (Korean).
+
+## Versioning
+
+Since 1.0.0 the package follows [SemVer 2.0](https://semver.org/). The public API is defined as:
+
+- tool names and input parameters (name, type, required, default, allowed values, ranges);
+- the structured output of the 13 tools with an output schema;
+- CLI commands and exit codes (0/2/3/64);
+- the five `EGOVFRAME_*` environment variables;
+- the supported Node range (`>=22`).
+
+Markdown response wording, catalog and rule data, and internal modules are not part of it. Breaking changes need a MAJOR release. Deprecated parameters keep working with a warning until the next MAJOR; for example, `check_egovframe_secure_coding(top)` is now `topN` and `top` will be removed in 2.0.0.
+
+The gate test `test:api-contract` compares the code against a contract snapshot and classifies every change as minor or major. `test:release` fails when the version bump is too small. Details: [docs/versioning.md](docs/versioning.md) (Korean).
 
 ## MCP Registry
 

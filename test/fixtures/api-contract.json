@@ -1,0 +1,5793 @@
+{
+  "version": "1.0.0",
+  "base": "0.47.0",
+  "change": "major",
+  "contract": {
+    "tools": {
+      "add_ai_components": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir",
+            "stack"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "includeInfra": {
+              "type": "boolean",
+              "default": true
+            },
+            "includeTests": {
+              "type": "boolean",
+              "default": false
+            },
+            "includeUi": {
+              "type": "boolean",
+              "default": true
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "stack": {
+              "type": "string",
+              "enum": [
+                "langchain4j",
+                "spring-ai"
+              ]
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "add_egovframe_components": {
+        "input": {
+          "type": "object",
+          "required": [
+            "components",
+            "projectDir"
+          ],
+          "properties": {
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "database": {
+              "type": "string",
+              "enum": [
+                "altibase",
+                "cubrid",
+                "goldilocks",
+                "maria",
+                "mysql",
+                "oracle",
+                "postgres",
+                "tibero"
+              ]
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "includeDependencies": {
+              "type": "boolean",
+              "default": true
+            },
+            "projectDir": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "apply_egovframe_recipe": {
+        "input": {
+          "type": "object",
+          "required": [
+            "outputDir",
+            "projectName",
+            "recipeId"
+          ],
+          "properties": {
+            "database": {
+              "type": "string",
+              "enum": [
+                "altibase",
+                "cubrid",
+                "goldilocks",
+                "maria",
+                "mysql",
+                "oracle",
+                "postgres",
+                "tibero"
+              ]
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "groupId": {
+              "type": "string",
+              "default": "egovframework.example"
+            },
+            "outputDir": {
+              "type": "string"
+            },
+            "projectName": {
+              "type": "string"
+            },
+            "recipeId": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "build_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "goal": {
+              "type": "string",
+              "enum": [
+                "compile",
+                "package",
+                "test"
+              ],
+              "default": "compile"
+            },
+            "maxLogLines": {
+              "type": "integer",
+              "default": 200,
+              "maximum": 5000,
+              "exclusiveMinimum": 0
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "default": 300,
+              "maximum": 3600,
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "check_egovframe_dependencies": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "offline": {
+              "type": "boolean",
+              "default": true
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "resolve": {
+              "type": "boolean",
+              "default": false
+            },
+            "resolveScope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "runtime"
+              ],
+              "default": "runtime"
+            },
+            "resolveTimeoutMs": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 10000,
+              "maximum": 1800000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "baseline",
+            "buildSystem",
+            "checks",
+            "findings",
+            "java",
+            "notes",
+            "offline",
+            "parent",
+            "projectDir",
+            "summary"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "java",
+                "rte",
+                "springBoot",
+                "springFramework",
+                "surveyedAt"
+              ],
+              "properties": {
+                "bootBom": {
+                  "type": "integer"
+                },
+                "java": {
+                  "type": "integer"
+                },
+                "rte": {
+                  "type": "string"
+                },
+                "rteTransitive": {
+                  "type": "integer"
+                },
+                "springBoot": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "springFramework": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "surveyedAt": {
+                  "type": "string"
+                }
+              }
+            },
+            "buildSystem": {
+              "type": "string",
+              "enum": [
+                "gradle",
+                "maven",
+                "unknown"
+              ]
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "evidence",
+                  "hint",
+                  "id",
+                  "status",
+                  "title"
+                ],
+                "properties": {
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "file",
+                        "line",
+                        "text"
+                      ],
+                      "properties": {
+                        "file": {
+                          "type": "string"
+                        },
+                        "line": {
+                          "type": "integer"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "hint": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "missing",
+                      "n/a",
+                      "ok"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "findings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "artifactId",
+                  "baseline",
+                  "basis",
+                  "file",
+                  "groupId",
+                  "line",
+                  "origin",
+                  "resolvedVersion",
+                  "scope",
+                  "status",
+                  "version"
+                ],
+                "properties": {
+                  "artifactId": {
+                    "type": "string"
+                  },
+                  "baseline": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "basis": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "boot-bom",
+                          "family",
+                          "migration-rules",
+                          "parent",
+                          "rte-transitive"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "depth": {
+                    "type": "integer"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "groupId": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "origin": {
+                    "type": "string",
+                    "enum": [
+                      "declared",
+                      "transitive"
+                    ]
+                  },
+                  "resolvedVersion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "scope": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "legacy",
+                      "managed",
+                      "ok",
+                      "outdated",
+                      "replace",
+                      "unknown",
+                      "unversioned",
+                      "vendor"
+                    ]
+                  },
+                  "treeVersion": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "via": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "java": {
+              "type": "object",
+              "required": [
+                "status",
+                "value"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok",
+                    "outdated",
+                    "unknown"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "offline": {
+              "type": "boolean"
+            },
+            "osvError": {
+              "type": "string"
+            },
+            "parent": {
+              "type": "object",
+              "required": [
+                "artifactId",
+                "groupId",
+                "kind",
+                "status",
+                "version"
+              ],
+              "properties": {
+                "artifactId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "groupId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "boot",
+                    "none",
+                    "other",
+                    "web"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "n/a",
+                    "ok",
+                    "outdated"
+                  ]
+                },
+                "version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "resolution": {
+              "type": "object",
+              "required": [
+                "artifacts",
+                "command",
+                "differs",
+                "direct",
+                "ran",
+                "scope",
+                "success",
+                "summary",
+                "transitive"
+              ],
+              "properties": {
+                "artifacts": {
+                  "type": "integer"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "differs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "artifactId",
+                      "declared",
+                      "groupId",
+                      "resolved"
+                    ],
+                    "properties": {
+                      "artifactId": {
+                        "type": "string"
+                      },
+                      "declared": {
+                        "type": "string"
+                      },
+                      "groupId": {
+                        "type": "string"
+                      },
+                      "resolved": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "direct": {
+                  "type": "integer"
+                },
+                "error": {
+                  "type": "string"
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "runtime"
+                  ]
+                },
+                "success": {
+                  "type": "boolean"
+                },
+                "summary": {
+                  "type": "object"
+                },
+                "transitive": {
+                  "type": "integer"
+                }
+              }
+            },
+            "summary": {
+              "type": "object"
+            },
+            "vulnerabilities": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "dependency",
+                  "ids",
+                  "version"
+                ],
+                "properties": {
+                  "dependency": {
+                    "type": "string"
+                  },
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "workspace": {
+              "type": "object",
+              "required": [
+                "kind",
+                "modules"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "buildTool",
+                      "dir",
+                      "findings",
+                      "name",
+                      "summary"
+                    ],
+                    "properties": {
+                      "buildTool": {
+                        "type": "string"
+                      },
+                      "dir": {
+                        "type": "string"
+                      },
+                      "findings": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "summary": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "check_egovframe_sbom": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "baselinePath": {
+              "type": "string"
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "offline": {
+              "type": "boolean",
+              "default": true
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "sbomPath": {
+              "type": "string",
+              "default": "sbom/bom.cdx.json"
+            },
+            "vex": {
+              "type": "boolean",
+              "default": false
+            },
+            "vexPath": {
+              "type": "string",
+              "default": "sbom/vex.cdx.json"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "absolutePath",
+            "document",
+            "minimum",
+            "notes",
+            "projectDir",
+            "recheck",
+            "sbomPath"
+          ],
+          "properties": {
+            "absolutePath": {
+              "type": "string"
+            },
+            "diff": {
+              "type": "object",
+              "required": [
+                "added",
+                "baselinePath",
+                "baselineTimestamp",
+                "newVulnerabilities",
+                "removed",
+                "resolvedVulnerabilities",
+                "statusChanged",
+                "unchanged",
+                "versionChanged"
+              ],
+              "properties": {
+                "added": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "component",
+                      "version"
+                    ],
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "baselinePath": {
+                  "type": "string"
+                },
+                "baselineTimestamp": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "newVulnerabilities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "components",
+                      "id"
+                    ],
+                    "properties": {
+                      "components": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "removed": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "component",
+                      "version"
+                    ],
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "resolvedVulnerabilities": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "statusChanged": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "component",
+                      "from",
+                      "to"
+                    ],
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "unchanged": {
+                  "type": "integer"
+                },
+                "versionChanged": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "component",
+                      "from",
+                      "to"
+                    ],
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "document": {
+              "type": "object",
+              "required": [
+                "components",
+                "format",
+                "serialNumber",
+                "specVersion",
+                "timestamp",
+                "tools",
+                "version",
+                "vulnerabilities"
+              ],
+              "properties": {
+                "components": {
+                  "type": "integer"
+                },
+                "format": {
+                  "type": "string",
+                  "enum": [
+                    "cyclonedx",
+                    "spdx"
+                  ]
+                },
+                "serialNumber": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "specVersion": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "vulnerabilities": {
+                  "type": "integer"
+                }
+              }
+            },
+            "minimum": {
+              "type": "object",
+              "required": [
+                "components",
+                "componentsWithGaps",
+                "elements",
+                "supplierFromCatalog",
+                "verdict"
+              ],
+              "properties": {
+                "components": {
+                  "type": "integer"
+                },
+                "componentsWithGaps": {
+                  "type": "integer"
+                },
+                "elements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "hint",
+                      "id",
+                      "label",
+                      "labelEn",
+                      "level",
+                      "missing",
+                      "ok",
+                      "satisfied",
+                      "total"
+                    ],
+                    "properties": {
+                      "hint": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "labelEn": {
+                        "type": "string"
+                      },
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "component",
+                          "document"
+                        ]
+                      },
+                      "missing": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "ok": {
+                        "type": "boolean"
+                      },
+                      "satisfied": {
+                        "type": "integer"
+                      },
+                      "total": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                },
+                "supplierFromCatalog": {
+                  "type": "integer"
+                },
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "needs-work",
+                    "ready"
+                  ]
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "recheck": {
+              "type": "object",
+              "required": [
+                "changed",
+                "components",
+                "osv",
+                "summary",
+                "unrecorded"
+              ],
+              "properties": {
+                "changed": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "baseline",
+                      "component",
+                      "from",
+                      "to"
+                    ],
+                    "properties": {
+                      "baseline": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "component": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "components": {
+                  "type": "integer"
+                },
+                "osv": {
+                  "type": "object",
+                  "required": [
+                    "goneIds",
+                    "ids",
+                    "items",
+                    "newIds",
+                    "queried",
+                    "recorded"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "goneIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "ids": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "component",
+                          "ids",
+                          "ref"
+                        ],
+                        "properties": {
+                          "component": {
+                            "type": "string"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "ref": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "newIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "queried": {
+                      "type": "boolean"
+                    },
+                    "recorded": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "summary": {
+                  "type": "object"
+                },
+                "unrecorded": {
+                  "type": "integer"
+                }
+              }
+            },
+            "sbomPath": {
+              "type": "string"
+            },
+            "vex": {
+              "type": "object",
+              "required": [
+                "added",
+                "created",
+                "dryRun",
+                "extended",
+                "notDetected",
+                "path",
+                "preserved",
+                "states",
+                "usedBomLink",
+                "vulnerabilities",
+                "written"
+              ],
+              "properties": {
+                "added": {
+                  "type": "integer"
+                },
+                "created": {
+                  "type": "boolean"
+                },
+                "dryRun": {
+                  "type": "boolean"
+                },
+                "extended": {
+                  "type": "integer"
+                },
+                "notDetected": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "path": {
+                  "type": "string"
+                },
+                "preserved": {
+                  "type": "integer"
+                },
+                "states": {
+                  "type": "object"
+                },
+                "usedBomLink": {
+                  "type": "boolean"
+                },
+                "vulnerabilities": {
+                  "type": "integer"
+                },
+                "written": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "check_egovframe_secure_coding": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "baselinePath": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown",
+                "sarif"
+              ],
+              "default": "markdown"
+            },
+            "includeTests": {
+              "type": "boolean",
+              "default": true
+            },
+            "maxFindings": {
+              "type": "integer",
+              "default": 2000,
+              "minimum": 1,
+              "maximum": 20000
+            },
+            "overwrite": {
+              "type": "boolean",
+              "default": false
+            },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sarifPath": {
+              "type": "string"
+            },
+            "top": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            },
+            "topN": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "byOrigin",
+            "byRule",
+            "byTarget",
+            "disclaimer",
+            "filesScanned",
+            "findings",
+            "notes",
+            "projectDir",
+            "rulesVersion",
+            "summary",
+            "suppressions",
+            "truncated"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "findings",
+                "path",
+                "resolved"
+              ],
+              "properties": {
+                "findings": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "resolved": {
+                  "type": "integer"
+                }
+              }
+            },
+            "byModule": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "high",
+                  "low",
+                  "medium",
+                  "module",
+                  "total"
+                ],
+                "properties": {
+                  "high": {
+                    "type": "integer"
+                  },
+                  "low": {
+                    "type": "integer"
+                  },
+                  "medium": {
+                    "type": "integer"
+                  },
+                  "module": {
+                    "type": "string"
+                  },
+                  "total": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "byOrigin": {
+              "type": "object"
+            },
+            "byRule": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "count",
+                  "guideItem",
+                  "rule",
+                  "severity"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "guideItem": {
+                    "type": "string"
+                  },
+                  "rule": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "high",
+                      "low",
+                      "medium"
+                    ]
+                  }
+                }
+              }
+            },
+            "byTarget": {
+              "type": "object"
+            },
+            "disclaimer": {
+              "type": "string"
+            },
+            "filesScanned": {
+              "type": "integer"
+            },
+            "findings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "category",
+                  "code",
+                  "column",
+                  "cwe",
+                  "file",
+                  "fingerprint",
+                  "fix",
+                  "guideItem",
+                  "line",
+                  "message",
+                  "origin",
+                  "rule",
+                  "severity"
+                ],
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "column": {
+                    "type": "integer"
+                  },
+                  "component": {
+                    "type": "string"
+                  },
+                  "cwe": {
+                    "type": "integer"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "fingerprint": {
+                    "type": "string"
+                  },
+                  "fix": {
+                    "type": "string"
+                  },
+                  "guideItem": {
+                    "type": "string"
+                  },
+                  "isNew": {
+                    "type": "boolean"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "type": "string",
+                    "enum": [
+                      "component",
+                      "component-modified",
+                      "component-unmanaged",
+                      "project",
+                      "test"
+                    ]
+                  },
+                  "rule": {
+                    "type": "string"
+                  },
+                  "severity": {}
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rulesVersion": {
+              "type": "object",
+              "required": [
+                "rules",
+                "source",
+                "surveyedAt"
+              ],
+              "properties": {
+                "rules": {
+                  "type": "integer"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "surveyedAt": {
+                  "type": "string"
+                }
+              }
+            },
+            "sarif": {
+              "type": "object",
+              "required": [
+                "overwritten",
+                "path",
+                "results",
+                "written"
+              ],
+              "properties": {
+                "overwritten": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "results": {
+                  "type": "integer"
+                },
+                "written": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "high",
+                "low",
+                "medium",
+                "new",
+                "suppressed",
+                "total"
+              ],
+              "properties": {
+                "high": {
+                  "type": "integer"
+                },
+                "low": {
+                  "type": "integer"
+                },
+                "medium": {
+                  "type": "integer"
+                },
+                "new": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "suppressed": {
+                  "type": "integer"
+                },
+                "total": {
+                  "type": "integer"
+                }
+              }
+            },
+            "suppressions": {
+              "type": "object",
+              "required": [
+                "applied",
+                "file",
+                "invalid"
+              ],
+              "properties": {
+                "applied": {
+                  "type": "integer"
+                },
+                "file": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "invalid": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          }
+        },
+        "deprecated": {
+          "top": "topN"
+        }
+      },
+      "create_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "groupId",
+            "outputDir",
+            "projectName"
+          ],
+          "properties": {
+            "alignParent": {
+              "type": "boolean",
+              "default": false
+            },
+            "database": {
+              "type": "string",
+              "enum": [
+                "altibase",
+                "hsql",
+                "mysql",
+                "oracle",
+                "tibero"
+              ],
+              "default": "hsql"
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "groupId": {
+              "type": "string"
+            },
+            "outputDir": {
+              "type": "string"
+            },
+            "projectName": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "enum": [
+                "ai-rag",
+                "batch-db-commandline",
+                "batch-db-scheduler",
+                "batch-db-web",
+                "batch-file-commandline",
+                "batch-file-scheduler",
+                "batch-file-web",
+                "boot-web",
+                "enterprise-business",
+                "mobile-common-components",
+                "mobile-device-api",
+                "mobile-web",
+                "msa-common-components",
+                "msa-edu",
+                "msa-portal-backend",
+                "msa-portal-frontend",
+                "portal-site",
+                "simple-backend",
+                "simple-homepage",
+                "simple-react",
+                "web",
+                "web-sample"
+              ],
+              "default": "simple-backend"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "diagnose_egovframe_network": {
+        "input": {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "hosts": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "api.osv.dev",
+                  "codeload.github.com",
+                  "maven.egovframe.go.kr",
+                  "media.githubusercontent.com",
+                  "raw.githubusercontent.com",
+                  "registry.npmjs.org",
+                  "repo1.maven.org"
+                ]
+              }
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 10000,
+              "minimum": 1000,
+              "maximum": 60000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "env",
+            "envProxySupported",
+            "hosts",
+            "node",
+            "notes",
+            "platform",
+            "prescriptions",
+            "summary"
+          ],
+          "properties": {
+            "env": {
+              "type": "object",
+              "required": [
+                "httpProxy",
+                "httpsProxy",
+                "noProxy",
+                "nodeExtraCaCerts",
+                "nodeOptions",
+                "nodeTlsRejectUnauthorized",
+                "nodeUseEnvProxy"
+              ],
+              "properties": {
+                "httpProxy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "httpsProxy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "noProxy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "nodeExtraCaCerts": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "nodeOptions": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "nodeTlsRejectUnauthorized": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "nodeUseEnvProxy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "envProxySupported": {
+              "type": "boolean"
+            },
+            "hosts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "dns",
+                  "host",
+                  "http",
+                  "ok",
+                  "purpose",
+                  "tools"
+                ],
+                "properties": {
+                  "dns": {
+                    "type": "object",
+                    "required": [
+                      "addresses",
+                      "error",
+                      "ms",
+                      "ok"
+                    ],
+                    "properties": {
+                      "addresses": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "address",
+                            "family"
+                          ],
+                          "properties": {
+                            "address": {
+                              "type": "string"
+                            },
+                            "family": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      },
+                      "error": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "ms": {
+                        "type": "number"
+                      },
+                      "ok": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "host": {
+                    "type": "string"
+                  },
+                  "http": {
+                    "type": "object",
+                    "required": [
+                      "error",
+                      "kind",
+                      "ms",
+                      "status"
+                    ],
+                    "properties": {
+                      "error": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "dns",
+                          "http",
+                          "ok",
+                          "other",
+                          "proxy-auth",
+                          "refused",
+                          "reset",
+                          "timeout",
+                          "tls",
+                          "unreachable"
+                        ]
+                      },
+                      "ms": {
+                        "type": "number"
+                      },
+                      "status": {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "ok": {
+                    "type": "boolean"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "node": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "platform": {
+              "type": "string"
+            },
+            "prescriptions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "commands",
+                  "id",
+                  "reason",
+                  "title"
+                ],
+                "properties": {
+                  "commands": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "command",
+                        "shell"
+                      ],
+                      "properties": {
+                        "command": {
+                          "type": "string"
+                        },
+                        "shell": {
+                          "type": "string",
+                          "enum": [
+                            "bash",
+                            "cmd",
+                            "powershell"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "byKind",
+                "failed",
+                "ok"
+              ],
+              "properties": {
+                "byKind": {
+                  "type": "object"
+                },
+                "failed": {
+                  "type": "integer"
+                },
+                "ok": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "diagnose_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "projectDir": {
+              "type": "string"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "aiLayer",
+            "buildSystem",
+            "database",
+            "detectedComponents",
+            "egovVersion",
+            "hasManifest",
+            "isEgovProject",
+            "issues",
+            "projectDir",
+            "suggestions"
+          ],
+          "properties": {
+            "aiLayer": {
+              "type": "boolean"
+            },
+            "buildSystem": {
+              "type": "string",
+              "enum": [
+                "gradle",
+                "maven",
+                "unknown"
+              ]
+            },
+            "database": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "detectedComponents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "matchedPrefix",
+                  "name"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "matchedPrefix": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "egovVersion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "hasManifest": {
+              "type": "boolean"
+            },
+            "isEgovProject": {
+              "type": "boolean"
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "explain_egovframe_component": {
+        "input": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "generate_agents_md": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "fileName": {
+              "type": "string",
+              "default": "AGENTS.md",
+              "pattern": "^[A-Za-z0-9_.-]{1,64}\\.md$"
+            },
+            "lang": {
+              "type": "string",
+              "enum": [
+                "en",
+                "ko"
+              ],
+              "default": "ko"
+            },
+            "overwrite": {
+              "type": "boolean",
+              "default": false
+            },
+            "projectDir": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "generate_egovframe_ci": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "failOn": {
+              "type": "string",
+              "default": "supplyChain:D",
+              "pattern": "^(?:(?:migration|supplyChain):[ABCD]|[A-Za-z]+(?:>=?\\d+)?)(?:,(?:(?:migration|supplyChain):[ABCD]|[A-Za-z]+(?:>=?\\d+)?))*$"
+            },
+            "jdk": {
+              "type": "string",
+              "default": "17",
+              "pattern": "^[0-9]{1,2}(\\.[0-9]{1,3}){0,2}$"
+            },
+            "npmRegistry": {
+              "type": "string",
+              "pattern": "^https?:\\/\\/[A-Za-z0-9.\\-]+(?::\\d{1,5})?(?:\\/[A-Za-z0-9._~%\\-\\/]*)?$"
+            },
+            "offlineBundle": {
+              "type": "string",
+              "pattern": "^(?:\\/|[A-Za-z]:[\\\\/])[A-Za-z0-9_.\\/\\\\: -]{0,250}$"
+            },
+            "osv": {
+              "type": "boolean",
+              "default": true
+            },
+            "platform": {
+              "type": "string",
+              "enum": [
+                "github",
+                "gitlab",
+                "jenkins"
+              ],
+              "default": "github"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "secureCoding": {
+              "type": "boolean",
+              "default": false
+            },
+            "supplier": {
+              "type": "string",
+              "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} .,&()_-]{0,99}$"
+            },
+            "supplyChain": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "generate_egovframe_config": {
+        "input": {
+          "type": "object",
+          "required": [
+            "configId",
+            "projectDir"
+          ],
+          "properties": {
+            "configId": {
+              "type": "string",
+              "enum": [
+                "cache-ehcache-default",
+                "cache-spring",
+                "datasource",
+                "datasource-jndi",
+                "idgen-sequence",
+                "idgen-table",
+                "idgen-uuid",
+                "logging-console",
+                "logging-file",
+                "logging-jdbc",
+                "logging-rolling-file",
+                "logging-time-rolling-file",
+                "property",
+                "scheduling-bean-job",
+                "scheduling-cron-trigger",
+                "scheduling-method-job",
+                "scheduling-scheduler",
+                "scheduling-simple-trigger",
+                "transaction-datasource",
+                "transaction-jpa",
+                "transaction-jta"
+              ]
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "fields": {
+              "type": "object"
+            },
+            "fileName": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "javaConfig",
+                "properties",
+                "xml",
+                "yaml"
+              ],
+              "default": "xml"
+            },
+            "outputDir": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "generate_egovframe_crud": {
+        "input": {
+          "type": "object",
+          "required": [
+            "basePackage",
+            "fields",
+            "projectDir",
+            "tableName"
+          ],
+          "properties": {
+            "author": {
+              "type": "string",
+              "default": "egovframe-scaffold-mcp"
+            },
+            "basePackage": {
+              "type": "string"
+            },
+            "checkDataAccess": {
+              "type": "boolean",
+              "default": true
+            },
+            "checkService": {
+              "type": "boolean",
+              "default": true
+            },
+            "checkWeb": {
+              "type": "boolean",
+              "default": true
+            },
+            "controllerPackage": {
+              "type": "string"
+            },
+            "createDate": {
+              "type": "string"
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "entityName": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "columnName"
+                ],
+                "properties": {
+                  "columnName": {
+                    "type": "string"
+                  },
+                  "generated": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "javaType": {
+                    "type": "string",
+                    "enum": [
+                      "BigDecimal",
+                      "Boolean",
+                      "Double",
+                      "Instant",
+                      "Integer",
+                      "LocalDate",
+                      "LocalDateTime",
+                      "Long",
+                      "String",
+                      "byte[]"
+                    ],
+                    "default": "String"
+                  },
+                  "jdbcType": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "primaryKey": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "propertyName": {
+                    "type": "string"
+                  }
+                }
+              },
+              "minItems": 1,
+              "maxItems": 100
+            },
+            "implPackage": {
+              "type": "string"
+            },
+            "includeJsp": {
+              "type": "boolean"
+            },
+            "jspFolder": {
+              "type": "string"
+            },
+            "mapperFolder": {
+              "type": "string"
+            },
+            "mapperPackage": {
+              "type": "string"
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "boot",
+                "classic"
+              ],
+              "default": "classic"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "servicePackage": {
+              "type": "string"
+            },
+            "tableName": {
+              "type": "string"
+            },
+            "voPackage": {
+              "type": "string"
+            },
+            "withTest": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "generate_egovframe_deploy": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "appName": {
+              "type": "string",
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$"
+            },
+            "buildInImage": {
+              "type": "boolean",
+              "default": true
+            },
+            "dockerfilePath": {
+              "type": "string",
+              "default": "Dockerfile"
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "image": {
+              "type": "string",
+              "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\\d{1,5})?(\\/[a-z0-9._-]+)*(:[\\w.-]{1,128})?$"
+            },
+            "imageRegistry": {
+              "type": "string",
+              "default": "docker.io/library",
+              "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\\d{1,5})?(\\/[a-z0-9._-]+)*$"
+            },
+            "ingressHost": {
+              "type": "string",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+            },
+            "jdk": {
+              "type": "string",
+              "enum": [
+                "17",
+                "21"
+              ],
+              "default": "17"
+            },
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[\\w.\\-\\/]{1,120}$"
+              },
+              "maxItems": 50
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "targets": {
+              "type": "array",
+              "default": [
+                "docker",
+                "compose",
+                "k8s"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "compose",
+                  "docker",
+                  "k8s"
+                ]
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "dryRun",
+            "files",
+            "notes",
+            "projectDir",
+            "supported",
+            "usage",
+            "written"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "bytes",
+                  "path",
+                  "target"
+                ],
+                "properties": {
+                  "bytes": {
+                    "type": "integer"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "compose",
+                      "docker",
+                      "k8s"
+                    ]
+                  }
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "profile": {
+              "type": "object",
+              "required": [
+                "actuator",
+                "appName",
+                "buildTool",
+                "contextPath",
+                "db",
+                "liveness",
+                "packaging",
+                "port",
+                "readiness",
+                "runtime",
+                "tomcat",
+                "version",
+                "web",
+                "wrapper"
+              ],
+              "properties": {
+                "actuator": {
+                  "type": "boolean"
+                },
+                "appName": {
+                  "type": "string"
+                },
+                "buildTool": {
+                  "type": "string",
+                  "enum": [
+                    "gradle",
+                    "maven"
+                  ]
+                },
+                "contextPath": {
+                  "type": "string"
+                },
+                "db": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "database",
+                        "file",
+                        "host",
+                        "initScripts",
+                        "inject",
+                        "port",
+                        "service",
+                        "type",
+                        "url",
+                        "user"
+                      ],
+                      "properties": {
+                        "database": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "file": {
+                          "type": "string"
+                        },
+                        "host": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "initScripts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "inject": {
+                          "type": "string",
+                          "enum": [
+                            "env",
+                            "file",
+                            "none"
+                          ]
+                        },
+                        "port": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "service": {
+                          "type": "string",
+                          "enum": [
+                            "container",
+                            "external"
+                          ]
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "user": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "liveness": {
+                  "type": "string"
+                },
+                "packaging": {
+                  "type": "string",
+                  "enum": [
+                    "jar",
+                    "war"
+                  ]
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "readiness": {
+                  "type": "string"
+                },
+                "runtime": {
+                  "type": "string",
+                  "enum": [
+                    "boot",
+                    "tomcat"
+                  ]
+                },
+                "tomcat": {
+                  "type": "string",
+                  "enum": [
+                    "10.1",
+                    "11.0"
+                  ]
+                },
+                "version": {
+                  "type": "string"
+                },
+                "web": {
+                  "type": "boolean"
+                },
+                "wrapper": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "supported": {
+              "type": "boolean"
+            },
+            "unsupported": {
+              "type": "object",
+              "required": [
+                "id",
+                "reason"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "usage": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "workspace": {
+              "type": "object",
+              "required": [
+                "appName",
+                "infra",
+                "kind",
+                "services",
+                "skipped",
+                "unresolved"
+              ],
+              "properties": {
+                "appName": {
+                  "type": "string"
+                },
+                "infra": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "image",
+                      "name"
+                    ],
+                    "properties": {
+                      "image": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "services": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "dependsOn",
+                      "env",
+                      "image",
+                      "module",
+                      "name",
+                      "ownDockerfile",
+                      "port",
+                      "runtime",
+                      "web"
+                    ],
+                    "properties": {
+                      "dependsOn": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "env": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "image": {
+                        "type": "string"
+                      },
+                      "module": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "ownDockerfile": {
+                        "type": "boolean"
+                      },
+                      "port": {
+                        "type": "integer"
+                      },
+                      "runtime": {
+                        "type": "string"
+                      },
+                      "web": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                },
+                "skipped": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "module",
+                      "reason"
+                    ],
+                    "properties": {
+                      "module": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "unresolved": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "key",
+                      "service",
+                      "value"
+                    ],
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "service": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "written": {
+              "type": "boolean"
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "generate_egovframe_report": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "offline": {
+              "type": "boolean",
+              "default": true
+            },
+            "outputPath": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "resolve": {
+              "type": "boolean",
+              "default": false
+            },
+            "resolveScope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "runtime"
+              ],
+              "default": "runtime"
+            },
+            "resolveTimeoutMs": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 10000,
+              "maximum": 1800000
+            },
+            "sbomPath": {
+              "type": "string",
+              "default": "sbom/bom.cdx.json"
+            },
+            "sections": {
+              "type": "array",
+              "default": [
+                "components"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "assessment",
+                  "components"
+                ]
+              }
+            },
+            "topN": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "bytes",
+            "dryRun",
+            "notes",
+            "projectDir",
+            "sections",
+            "written"
+          ],
+          "properties": {
+            "absolutePath": {
+              "type": "string"
+            },
+            "assessment": {
+              "type": "object",
+              "required": [
+                "dependencies",
+                "generatedAt",
+                "grades",
+                "migration",
+                "notes",
+                "overview",
+                "projectDir",
+                "sbom",
+                "security",
+                "tool"
+              ],
+              "properties": {
+                "dependencies": {
+                  "type": "object",
+                  "required": [
+                    "actions",
+                    "declared",
+                    "findings",
+                    "notes",
+                    "offline",
+                    "summary",
+                    "transitive",
+                    "unknown",
+                    "vendor",
+                    "vulnerabilities"
+                  ],
+                  "properties": {
+                    "actions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "action",
+                          "artifactId",
+                          "baseline",
+                          "basis",
+                          "file",
+                          "groupId",
+                          "line",
+                          "origin",
+                          "status",
+                          "version"
+                        ],
+                        "properties": {
+                          "action": {
+                            "type": "string"
+                          },
+                          "artifactId": {
+                            "type": "string"
+                          },
+                          "baseline": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "basis": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "file": {
+                            "type": "string"
+                          },
+                          "groupId": {
+                            "type": "string"
+                          },
+                          "line": {
+                            "type": "integer"
+                          },
+                          "origin": {
+                            "type": "string",
+                            "enum": [
+                              "declared",
+                              "transitive"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "legacy",
+                              "managed",
+                              "ok",
+                              "outdated",
+                              "replace",
+                              "unknown",
+                              "unversioned",
+                              "vendor"
+                            ]
+                          },
+                          "version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "declared": {
+                      "type": "integer"
+                    },
+                    "findings": {
+                      "type": "integer"
+                    },
+                    "notes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "offline": {
+                      "type": "boolean"
+                    },
+                    "osvError": {
+                      "type": "string"
+                    },
+                    "resolution": {
+                      "type": "object",
+                      "required": [
+                        "artifacts",
+                        "differs",
+                        "direct",
+                        "ran",
+                        "scope",
+                        "success",
+                        "transitive"
+                      ],
+                      "properties": {
+                        "artifacts": {
+                          "type": "integer"
+                        },
+                        "differs": {
+                          "type": "integer"
+                        },
+                        "direct": {
+                          "type": "integer"
+                        },
+                        "error": {
+                          "type": "string"
+                        },
+                        "ran": {
+                          "type": "boolean"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "all",
+                            "runtime"
+                          ]
+                        },
+                        "success": {
+                          "type": "boolean"
+                        },
+                        "transitive": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "summary": {
+                      "type": "object"
+                    },
+                    "transitive": {
+                      "type": "integer"
+                    },
+                    "unknown": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "vendor": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "vulnerabilities": {
+                      "type": "object",
+                      "required": [
+                        "dependencies",
+                        "ids",
+                        "items",
+                        "queried"
+                      ],
+                      "properties": {
+                        "dependencies": {
+                          "type": "integer"
+                        },
+                        "ids": {
+                          "type": "integer"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "dependency",
+                              "ids",
+                              "version"
+                            ],
+                            "properties": {
+                              "dependency": {
+                                "type": "string"
+                              },
+                              "ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "version": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "queried": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                },
+                "generatedAt": {
+                  "type": "string"
+                },
+                "grades": {
+                  "type": "object",
+                  "required": [
+                    "migration",
+                    "supplyChain"
+                  ],
+                  "properties": {
+                    "migration": {
+                      "type": "object",
+                      "required": [
+                        "caveats",
+                        "factors",
+                        "grade",
+                        "max",
+                        "scale",
+                        "score"
+                      ],
+                      "properties": {
+                        "caveats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "factors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "band",
+                              "id",
+                              "label",
+                              "points",
+                              "value"
+                            ],
+                            "properties": {
+                              "band": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "points": {
+                                "type": "integer"
+                              },
+                              "value": {
+                                "type": "number"
+                              }
+                            }
+                          }
+                        },
+                        "grade": {
+                          "type": "string",
+                          "enum": [
+                            "A",
+                            "B",
+                            "C",
+                            "D"
+                          ]
+                        },
+                        "max": {
+                          "type": "integer"
+                        },
+                        "scale": {
+                          "type": "string"
+                        },
+                        "score": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "supplyChain": {}
+                  }
+                },
+                "migration": {
+                  "type": "object",
+                  "required": [
+                    "auto",
+                    "byKind",
+                    "files",
+                    "items",
+                    "manual",
+                    "manualByKind",
+                    "manualTop",
+                    "manualTotalGroups",
+                    "notes",
+                    "reassemble",
+                    "removedApiRefs"
+                  ],
+                  "properties": {
+                    "auto": {
+                      "type": "integer"
+                    },
+                    "byKind": {
+                      "type": "object"
+                    },
+                    "files": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "integer"
+                    },
+                    "manual": {
+                      "type": "integer"
+                    },
+                    "manualByKind": {
+                      "type": "object"
+                    },
+                    "manualTop": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "count",
+                          "example",
+                          "files",
+                          "from",
+                          "kind",
+                          "reason",
+                          "to"
+                        ],
+                        "properties": {
+                          "count": {
+                            "type": "integer"
+                          },
+                          "example": {
+                            "type": "string"
+                          },
+                          "files": {
+                            "type": "integer"
+                          },
+                          "from": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "manualTotalGroups": {
+                      "type": "integer"
+                    },
+                    "notes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "reassemble": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "removedApiRefs": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "overview": {
+                  "type": "object",
+                  "required": [
+                    "aiLayer",
+                    "buildSystem",
+                    "components",
+                    "database",
+                    "filesScanned",
+                    "hasManifest",
+                    "isEgovProject",
+                    "java",
+                    "parent",
+                    "rteVersion",
+                    "sourceEra"
+                  ],
+                  "properties": {
+                    "aiLayer": {
+                      "type": "boolean"
+                    },
+                    "buildSystem": {
+                      "type": "string",
+                      "enum": [
+                        "gradle",
+                        "maven",
+                        "unknown"
+                      ]
+                    },
+                    "components": {
+                      "type": "object",
+                      "required": [
+                        "count",
+                        "ids"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        },
+                        "ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "database": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "filesScanned": {
+                      "type": "integer"
+                    },
+                    "hasManifest": {
+                      "type": "boolean"
+                    },
+                    "isEgovProject": {
+                      "type": "boolean"
+                    },
+                    "java": {
+                      "type": "object",
+                      "required": [
+                        "status",
+                        "value"
+                      ],
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "outdated",
+                            "unknown"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "parent": {
+                      "type": "object",
+                      "required": [
+                        "artifactId",
+                        "groupId",
+                        "kind",
+                        "status",
+                        "version"
+                      ],
+                      "properties": {
+                        "artifactId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "groupId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "boot",
+                            "none",
+                            "other",
+                            "web"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "n/a",
+                            "ok",
+                            "outdated"
+                          ]
+                        },
+                        "version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "rteVersion": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sourceEra": {
+                      "type": "string",
+                      "enum": [
+                        "3.x",
+                        "4.x",
+                        "5.x",
+                        "unknown"
+                      ]
+                    }
+                  }
+                },
+                "projectDir": {
+                  "type": "string"
+                },
+                "rehearsal": {
+                  "type": "object",
+                  "required": [
+                    "afterAutomation",
+                    "afterPomAlignment",
+                    "at",
+                    "origin",
+                    "projectUnchanged"
+                  ],
+                  "properties": {
+                    "afterAutomation": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "afterPomAlignment": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "at": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "projectUnchanged": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "sbom": {
+                  "type": "object",
+                  "required": [
+                    "note",
+                    "path",
+                    "present"
+                  ],
+                  "properties": {
+                    "components": {
+                      "type": "integer"
+                    },
+                    "minimum": {
+                      "type": "object",
+                      "required": [
+                        "missing",
+                        "verdict"
+                      ],
+                      "properties": {
+                        "missing": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "needs-work",
+                            "ready"
+                          ]
+                        }
+                      }
+                    },
+                    "note": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "present": {
+                      "type": "boolean"
+                    },
+                    "specVersion": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "vex": {
+                      "type": "object",
+                      "required": [
+                        "path",
+                        "present"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "string"
+                        },
+                        "present": {
+                          "type": "boolean"
+                        },
+                        "states": {
+                          "type": "object"
+                        },
+                        "timestamp": {
+                          "type": "string"
+                        },
+                        "vulnerabilities": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "vulnerabilities": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "security": {
+                  "type": "object",
+                  "required": [
+                    "checks",
+                    "missing",
+                    "na",
+                    "ok"
+                  ],
+                  "properties": {
+                    "checks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "evidence",
+                          "hint",
+                          "id",
+                          "status",
+                          "title"
+                        ],
+                        "properties": {
+                          "evidence": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "file",
+                                "line",
+                                "text"
+                              ],
+                              "properties": {
+                                "file": {
+                                  "type": "string"
+                                },
+                                "line": {
+                                  "type": "integer"
+                                },
+                                "text": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "hint": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "missing",
+                              "n/a",
+                              "ok"
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "missing": {
+                      "type": "integer"
+                    },
+                    "na": {
+                      "type": "integer"
+                    },
+                    "ok": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "tool": {
+                  "type": "object",
+                  "required": [
+                    "baselineSurveyedAt",
+                    "name",
+                    "rulesSurveyedAt",
+                    "rulesTag",
+                    "targetRuntime",
+                    "version"
+                  ],
+                  "properties": {
+                    "baselineSurveyedAt": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "rulesSurveyedAt": {
+                      "type": "string"
+                    },
+                    "rulesTag": {
+                      "type": "string"
+                    },
+                    "targetRuntime": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "bytes": {
+              "type": "integer"
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "outputPath": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "assessment",
+                  "components"
+                ]
+              }
+            },
+            "written": {
+              "type": "boolean"
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "generate_egovframe_sbom": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "author": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "bomFormat": {
+              "type": "string",
+              "enum": [
+                "cyclonedx-json",
+                "spdx-json"
+              ],
+              "default": "cyclonedx-json"
+            },
+            "componentName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "componentVersion": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "enrich": {
+              "type": "boolean",
+              "default": true
+            },
+            "fillSuppliers": {
+              "type": "boolean"
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "offline": {
+              "type": "boolean",
+              "default": true
+            },
+            "outputPath": {
+              "type": "string"
+            },
+            "overwrite": {
+              "type": "boolean",
+              "default": false
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "runtime"
+              ],
+              "default": "runtime"
+            },
+            "supplier": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 600000,
+              "minimum": 10000,
+              "maximum": 1800000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "absolutePath",
+            "buildTool",
+            "bytes",
+            "command",
+            "components",
+            "direct",
+            "dryRun",
+            "format",
+            "generator",
+            "notes",
+            "outputPath",
+            "overwritten",
+            "projectDir",
+            "specVersion",
+            "statuses",
+            "transitive",
+            "vulnerabilities",
+            "written"
+          ],
+          "properties": {
+            "absolutePath": {
+              "type": "string"
+            },
+            "buildTool": {
+              "type": "string",
+              "enum": [
+                "gradle",
+                "maven"
+              ]
+            },
+            "bytes": {
+              "type": "integer"
+            },
+            "command": {
+              "type": "string"
+            },
+            "components": {
+              "type": "integer"
+            },
+            "direct": {
+              "type": "integer"
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "durationMs": {
+              "type": "number"
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "cyclonedx-json",
+                "spdx-json"
+              ]
+            },
+            "generator": {
+              "type": "string",
+              "enum": [
+                "cyclonedx-maven-plugin",
+                "egovframe-scaffold-mcp"
+              ]
+            },
+            "logTail": {
+              "type": "string"
+            },
+            "minimum": {
+              "type": "object",
+              "required": [
+                "componentsWithGaps",
+                "missing",
+                "supplierFromCatalog",
+                "verdict"
+              ],
+              "properties": {
+                "componentsWithGaps": {
+                  "type": "integer"
+                },
+                "missing": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "supplierFromCatalog": {
+                  "type": "integer"
+                },
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "needs-work",
+                    "ready"
+                  ]
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "osvError": {
+              "type": "string"
+            },
+            "outputPath": {
+              "type": "string"
+            },
+            "overwritten": {
+              "type": "boolean"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "specVersion": {
+              "type": "string"
+            },
+            "statuses": {
+              "type": "object"
+            },
+            "transitive": {
+              "type": "integer"
+            },
+            "vulnerabilities": {
+              "type": "integer"
+            },
+            "written": {
+              "type": "boolean"
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "get_egovframe_guide": {
+        "input": {
+          "type": "object",
+          "required": [
+            "component"
+          ],
+          "properties": {
+            "component": {
+              "type": "string"
+            },
+            "docIndex": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "list_egovframe_components": {
+        "input": {
+          "type": "object",
+          "properties": {}
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "list_egovframe_recipes": {
+        "input": {
+          "type": "object",
+          "properties": {}
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "list_egovframe_templates": {
+        "input": {
+          "type": "object",
+          "properties": {}
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "migrate_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "apply": {
+              "type": "boolean",
+              "default": false
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "skipComponents": {
+              "type": "boolean",
+              "default": false
+            },
+            "target": {
+              "type": "string",
+              "default": "5.x",
+              "pattern": "^(5\\.x|5\\.0\\.\\d+)$"
+            },
+            "verify": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "buildSystem",
+            "filesScanned",
+            "items",
+            "notes",
+            "projectDir",
+            "rteVersion",
+            "rules",
+            "sourceEra",
+            "summary",
+            "target"
+          ],
+          "properties": {
+            "applied": {
+              "type": "object",
+              "required": [
+                "edits",
+                "files",
+                "items"
+              ],
+              "properties": {
+                "edits": {
+                  "type": "integer"
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "items": {
+                  "type": "integer"
+                }
+              }
+            },
+            "backupDir": {
+              "type": "string"
+            },
+            "build": {
+              "type": "object",
+              "required": [
+                "errors",
+                "ran",
+                "success"
+              ],
+              "properties": {
+                "errors": {
+                  "type": "integer"
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "success": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "buildSystem": {
+              "type": "string",
+              "enum": [
+                "gradle",
+                "maven",
+                "unknown"
+              ]
+            },
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "edits",
+                  "file",
+                  "items"
+                ],
+                "properties": {
+                  "edits": {
+                    "type": "integer"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "filesScanned": {
+              "type": "integer"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "file",
+                  "from",
+                  "kind",
+                  "line",
+                  "reason",
+                  "to"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "manual"
+                    ]
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "links": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "error",
+                  "how",
+                  "itemIndex"
+                ],
+                "properties": {
+                  "error": {
+                    "type": "object",
+                    "required": [
+                      "file",
+                      "line",
+                      "message"
+                    ],
+                    "properties": {
+                      "file": {
+                        "type": "string"
+                      },
+                      "line": {
+                        "type": "integer"
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "how": {
+                    "type": "string",
+                    "enum": [
+                      "rules-symbol",
+                      "same-file-line",
+                      "same-file-symbol",
+                      "unlinked"
+                    ]
+                  },
+                  "itemIndex": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "apply",
+                "verify"
+              ]
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "planPath": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "remaining": {},
+            "rteVersion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rules": {
+              "type": "object",
+              "required": [
+                "runtimeVersion",
+                "surveyedAt",
+                "toTag"
+              ],
+              "properties": {
+                "runtimeVersion": {
+                  "type": "string"
+                },
+                "surveyedAt": {
+                  "type": "string"
+                },
+                "toTag": {
+                  "type": "string"
+                }
+              }
+            },
+            "skippedManual": {
+              "type": "integer"
+            },
+            "sourceEra": {
+              "type": "string",
+              "enum": [
+                "3.x",
+                "4.x",
+                "5.x",
+                "unknown"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "auto",
+                "byKind",
+                "files",
+                "manual"
+              ],
+              "properties": {
+                "auto": {
+                  "type": "integer"
+                },
+                "byKind": {
+                  "type": "object"
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "manual": {
+                  "type": "integer"
+                }
+              }
+            },
+            "target": {
+              "type": "string"
+            },
+            "unlinked": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "line",
+                  "message"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "update": {
+              "type": "object",
+              "required": [
+                "changes",
+                "components",
+                "from",
+                "parent",
+                "to",
+                "unreferencedChanges"
+              ],
+              "properties": {
+                "changes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "files",
+                      "id",
+                      "since",
+                      "summary"
+                    ],
+                    "properties": {
+                      "files": {
+                        "type": "integer"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "since": {
+                        "type": "string"
+                      },
+                      "summary": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "components": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "catalogTag",
+                        "detected",
+                        "tool"
+                      ],
+                      "properties": {
+                        "catalogTag": {
+                          "type": "string"
+                        },
+                        "detected": {
+                          "type": "integer"
+                        },
+                        "tool": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "from": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "parent": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "to",
+                        "version"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "to": {
+                  "type": "string"
+                },
+                "unreferencedChanges": {
+                  "type": "integer"
+                }
+              }
+            },
+            "worklist": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "errors",
+                  "index",
+                  "item"
+                ],
+                "properties": {
+                  "errors": {
+                    "type": "integer"
+                  },
+                  "index": {
+                    "type": "integer"
+                  },
+                  "item": {}
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "prepare_egovframe_offline_bundle": {
+        "input": {
+          "type": "object",
+          "required": [
+            "outputDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "include": {
+              "type": "array",
+              "default": [
+                "osv",
+                "components",
+                "templates",
+                "origin"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "components",
+                  "origin",
+                  "osv",
+                  "templates"
+                ]
+              },
+              "minItems": 1
+            },
+            "outputDir": {
+              "type": "string"
+            },
+            "templates": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "dryRun",
+            "items",
+            "notes",
+            "outputDir",
+            "totalBytes",
+            "usage",
+            "written"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "bytes",
+                  "id",
+                  "kind",
+                  "path",
+                  "sha256",
+                  "url",
+                  "verified"
+                ],
+                "properties": {
+                  "bytes": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "components",
+                      "origin",
+                      "osv",
+                      "template"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "verified": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "manifestPath": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "origin": {
+              "type": "object",
+              "required": [
+                "bytes",
+                "path",
+                "repository",
+                "tags"
+              ],
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "repository": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "integer"
+                }
+              }
+            },
+            "outputDir": {
+              "type": "string"
+            },
+            "totalBytes": {
+              "type": "integer"
+            },
+            "usage": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "written": {
+              "type": "boolean"
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "reassemble_egovframe_components": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "database": {
+              "type": "string",
+              "enum": [
+                "altibase",
+                "cubrid",
+                "goldilocks",
+                "maria",
+                "mysql",
+                "oracle",
+                "postgres",
+                "tibero"
+              ]
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "sourceTag": {
+              "type": "string",
+              "default": "auto",
+              "pattern": "^(auto|[A-Za-z0-9._-]+)$"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 10000,
+              "maximum": 1800000
+            },
+            "verify": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "actions",
+            "components",
+            "dryRun",
+            "files",
+            "manifestUpdated",
+            "notes",
+            "origin",
+            "projectDir",
+            "sourceEra",
+            "sql",
+            "summary",
+            "target",
+            "worklist"
+          ],
+          "properties": {
+            "actions": {
+              "type": "object"
+            },
+            "backupDir": {
+              "type": "string"
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "files",
+                  "id",
+                  "name",
+                  "summary"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "asset",
+                  "componentId",
+                  "path",
+                  "state"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "add",
+                      "delete",
+                      "keep",
+                      "keep-reference",
+                      "replace"
+                    ]
+                  },
+                  "asset": {
+                    "type": "string"
+                  },
+                  "componentId": {
+                    "type": "string"
+                  },
+                  "patch": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "identical",
+                      "new",
+                      "removed-modified",
+                      "removed-unchanged",
+                      "unchanged",
+                      "unverified",
+                      "user-added",
+                      "user-modified"
+                    ]
+                  }
+                }
+              }
+            },
+            "manifestUpdated": {
+              "type": "boolean"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "origin": {
+              "type": "object",
+              "required": [
+                "candidates",
+                "mode",
+                "tag"
+              ],
+              "properties": {
+                "candidates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "matched",
+                      "ratio",
+                      "tag",
+                      "total"
+                    ],
+                    "properties": {
+                      "matched": {
+                        "type": "integer"
+                      },
+                      "ratio": {
+                        "type": "number"
+                      },
+                      "tag": {
+                        "type": "string"
+                      },
+                      "total": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "fixed"
+                  ]
+                },
+                "tag": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "planPath": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "sourceEra": {
+              "type": "string",
+              "enum": [
+                "3.x",
+                "4.x",
+                "5.x",
+                "unknown"
+              ]
+            },
+            "sql": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "summary": {
+              "type": "object"
+            },
+            "target": {
+              "type": "object",
+              "required": [
+                "commit",
+                "tag"
+              ],
+              "properties": {
+                "commit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tag": {
+                  "type": "string"
+                }
+              }
+            },
+            "verify": {
+              "type": "object",
+              "required": [
+                "errors",
+                "inReassembled",
+                "ran",
+                "success"
+              ],
+              "properties": {
+                "command": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "number"
+                },
+                "errors": {
+                  "type": "integer"
+                },
+                "inReassembled": {
+                  "type": "integer"
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "success": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "worklist": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "componentId",
+                  "detail",
+                  "kind",
+                  "path"
+                ],
+                "properties": {
+                  "componentId": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  },
+                  "errors": {
+                    "type": "integer"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "reapply-patch",
+                      "removed-in-5x",
+                      "review-config",
+                      "unverified-replaced"
+                    ]
+                  },
+                  "patch": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "rehearse_egovframe_migration": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "keepWorkspace": {
+              "type": "boolean",
+              "default": false
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "sourceTag": {
+              "type": "string",
+              "default": "auto"
+            },
+            "steps": {
+              "type": "array",
+              "default": [
+                "reassemble",
+                "migrate",
+                "verify",
+                "align-pom"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "align-pom",
+                  "migrate",
+                  "reassemble",
+                  "verify"
+                ]
+              },
+              "minItems": 1
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 900000,
+              "minimum": 30000,
+              "maximum": 3600000
+            },
+            "topN": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "buildTool",
+            "notes",
+            "original",
+            "projectDir",
+            "startedAt",
+            "steps",
+            "worklist",
+            "workspace"
+          ],
+          "properties": {
+            "afterAutomation": {
+              "type": "object",
+              "required": [
+                "ran",
+                "success"
+              ],
+              "properties": {
+                "analysis": {
+                  "type": "object",
+                  "required": [
+                    "byDirectory",
+                    "capped",
+                    "cascade",
+                    "errors",
+                    "files",
+                    "linked",
+                    "missingPackage",
+                    "missingPackages",
+                    "other",
+                    "topFiles"
+                  ],
+                  "properties": {
+                    "byDirectory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "dir",
+                          "errors"
+                        ],
+                        "properties": {
+                          "dir": {
+                            "type": "string"
+                          },
+                          "errors": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "capped": {
+                      "type": "boolean"
+                    },
+                    "cascade": {
+                      "type": "integer"
+                    },
+                    "errors": {
+                      "type": "integer"
+                    },
+                    "files": {
+                      "type": "integer"
+                    },
+                    "linked": {
+                      "type": "object",
+                      "required": [
+                        "manual",
+                        "rules",
+                        "unlinked"
+                      ],
+                      "properties": {
+                        "manual": {
+                          "type": "integer"
+                        },
+                        "rules": {
+                          "type": "integer"
+                        },
+                        "unlinked": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "missingPackage": {
+                      "type": "integer"
+                    },
+                    "missingPackages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "cascade",
+                          "direct",
+                          "errors",
+                          "files",
+                          "hint",
+                          "package"
+                        ],
+                        "properties": {
+                          "cascade": {
+                            "type": "integer"
+                          },
+                          "direct": {
+                            "type": "integer"
+                          },
+                          "errors": {
+                            "type": "integer"
+                          },
+                          "files": {
+                            "type": "integer"
+                          },
+                          "hint": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "package": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "other": {
+                      "type": "integer"
+                    },
+                    "topFiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "errors",
+                          "file",
+                          "sample"
+                        ],
+                        "properties": {
+                          "errors": {
+                            "type": "integer"
+                          },
+                          "file": {
+                            "type": "string"
+                          },
+                          "sample": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "command": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "number"
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "success": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "timedOut": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "afterPomAlignment": {
+              "type": "object",
+              "required": [
+                "ran",
+                "success"
+              ],
+              "properties": {
+                "added": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "analysis": {},
+                "command": {},
+                "durationMs": {},
+                "parent": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "patch": {
+                  "type": "string"
+                },
+                "propertiesRemoved": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "propertiesSet": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "ran": {},
+                "reason": {},
+                "reference": {
+                  "type": "string"
+                },
+                "scopesChanged": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "success": {},
+                "timedOut": {},
+                "versionsChanged": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "buildTool": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "gradle",
+                    "maven"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "migrate": {
+              "type": "object",
+              "required": [
+                "applied",
+                "byKind",
+                "manualRemaining"
+              ],
+              "properties": {
+                "applied": {
+                  "type": "object",
+                  "required": [
+                    "edits",
+                    "files",
+                    "items"
+                  ],
+                  "properties": {
+                    "edits": {
+                      "type": "integer"
+                    },
+                    "files": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "byKind": {
+                  "type": "object"
+                },
+                "manualRemaining": {
+                  "type": "integer"
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "original": {
+              "type": "object",
+              "required": [
+                "bytes",
+                "files",
+                "sha256",
+                "unchanged"
+              ],
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "unchanged": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "reassemble": {
+              "type": "object",
+              "required": [
+                "actions",
+                "components",
+                "origin",
+                "worklist"
+              ],
+              "properties": {
+                "actions": {
+                  "type": "object"
+                },
+                "components": {
+                  "type": "integer"
+                },
+                "origin": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "worklist": {
+                  "type": "integer"
+                }
+              }
+            },
+            "savedTo": {
+              "type": "string"
+            },
+            "startedAt": {
+              "type": "string"
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "durationMs",
+                  "ok",
+                  "ran",
+                  "step",
+                  "summary"
+                ],
+                "properties": {
+                  "durationMs": {
+                    "type": "number"
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "ok": {
+                    "type": "boolean"
+                  },
+                  "ran": {
+                    "type": "boolean"
+                  },
+                  "step": {
+                    "type": "string",
+                    "enum": [
+                      "align-pom",
+                      "migrate",
+                      "reassemble",
+                      "verify"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "worklist": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "detail",
+                  "errors",
+                  "kind",
+                  "title"
+                ],
+                "properties": {
+                  "detail": {
+                    "type": "string"
+                  },
+                  "errors": {
+                    "type": "integer"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "align-pom",
+                      "file",
+                      "manual-item",
+                      "missing-package"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "workspace": {
+              "type": "object",
+              "required": [
+                "bytes",
+                "copyMs",
+                "files",
+                "kept",
+                "path"
+              ],
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "copyMs": {
+                  "type": "number"
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "kept": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "remove_egovframe_components": {
+        "input": {
+          "type": "object",
+          "required": [
+            "components",
+            "projectDir"
+          ],
+          "properties": {
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "force": {
+              "type": "boolean",
+              "default": false
+            },
+            "projectDir": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "search_egovframe_components": {
+        "input": {
+          "type": "object",
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "category": {
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "search_egovframe_docs": {
+        "input": {
+          "type": "object",
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "fetchTop": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0,
+              "maximum": 5
+            },
+            "limit": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 30
+            },
+            "query": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "sync_egovframe_catalog": {
+        "input": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "sync_egovframe_templates": {
+        "input": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "test_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": false
+            },
+            "maxFailures": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 500,
+              "exclusiveMinimum": 0
+            },
+            "maxLogLines": {
+              "type": "integer",
+              "default": 200,
+              "maximum": 5000,
+              "exclusiveMinimum": 0
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "testFilter": {
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "default": 600,
+              "maximum": 3600,
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "upgrade_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "force": {
+              "type": "boolean",
+              "default": false
+            },
+            "projectDir": {
+              "type": "string"
+            }
+          }
+        },
+        "output": null,
+        "deprecated": {}
+      },
+      "validate_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "projectDir": {
+              "type": "string"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "aiChecks",
+            "components",
+            "dbScriptDirs",
+            "dbType",
+            "manifestFound",
+            "ok",
+            "projectDir",
+            "warnings"
+          ],
+          "properties": {
+            "aiChecks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "componentId",
+                  "exists",
+                  "file",
+                  "note"
+                ],
+                "properties": {
+                  "componentId": {
+                    "type": "string"
+                  },
+                  "exists": {
+                    "type": "boolean"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "files",
+                  "id",
+                  "missing",
+                  "missingSamples"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "missing": {
+                    "type": "integer"
+                  },
+                  "missingSamples": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "dbScriptDirs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "dbType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "manifestFound": {
+              "type": "boolean"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      }
+    },
+    "cli": {
+      "commands": {
+        "assess": "generate_egovframe_report",
+        "bundle": "prepare_egovframe_offline_bundle",
+        "check": "check_egovframe_dependencies",
+        "diagnose": "diagnose_egovframe_project",
+        "migrate": "migrate_egovframe_project",
+        "network": "diagnose_egovframe_network",
+        "rehearse": "rehearse_egovframe_migration",
+        "sbom": "generate_egovframe_sbom",
+        "sbom-check": "check_egovframe_sbom",
+        "secure": "check_egovframe_secure_coding",
+        "validate": "validate_egovframe_project"
+      },
+      "exitCodes": {
+        "ok": 0,
+        "failOn": 2,
+        "error": 3,
+        "usage": 64
+      }
+    },
+    "env": [
+      "EGOVFRAME_ALLOWED_ROOTS",
+      "EGOVFRAME_BUNDLE_MAX_AGE_DAYS",
+      "EGOVFRAME_CACHE_DIR",
+      "EGOVFRAME_LANG",
+      "EGOVFRAME_OFFLINE_BUNDLE"
+    ],
+    "node": ">=22"
+  }
+}

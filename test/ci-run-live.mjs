@@ -81,10 +81,12 @@ try {
       `FROM ${JENKINS_IMAGE}`,
       `USER root`,
       `COPY ca.crt /tmp/proxy-ca.crt`,
-      // 에이전트 준비물(생성 Jenkinsfile 머리말): JDK(이미지 동봉 21 — release 17 로 컴파일), Maven, Node.js 18 이상
+      // 에이전트 준비물(생성 Jenkinsfile 머리말): JDK(이미지 동봉 21 — release 17 로 컴파일), Maven, Node.js 22 이상
       // 프록시 CA 가 있으면(HTTPS CONNECT 만 받는 프록시 포함) 신뢰 저장소에 넣고 apt 원본을 https 로
       `RUN if [ -s /tmp/proxy-ca.crt ]; then cp /tmp/proxy-ca.crt /usr/local/share/ca-certificates/proxy-ca.crt && update-ca-certificates && keytool -importcert -noprompt -cacerts -storepass changeit -alias proxyca -file /tmp/proxy-ca.crt && sed -i 's#http://#https://#g' /etc/apt/sources.list.d/*.sources; fi \\`,
       ` && apt-get update -qq && apt-get install -y -qq --no-install-recommends maven nodejs npm > /dev/null && rm -rf /var/lib/apt/lists/* \\`,
+      // 배포판 nodejs 는 22 미만 — npm 레지스트리의 node@22 를 전역으로(engines >=22, v1.0)
+      ` && NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt npm install -g -s node@22 && node -v \\`,
       ` && git config --system safe.directory '*'`,
       `USER jenkins`,
       `COPY --chown=jenkins:jenkins settings.xml /var/jenkins_home/.m2/settings.xml`,
