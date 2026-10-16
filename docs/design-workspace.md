@@ -69,6 +69,10 @@
   - DB 컨테이너의 계정·DB 이름·비밀번호 기본값은 설정에 적힌 값과 같게 둡니다. 앱은 설정 서버가 내주는 값을 그대로 쓰기 때문입니다.
   - 템플릿의 `docker-compose/<db>/init` SQL 디렉터리를 초기화로 붙입니다.
   - RabbitMQ 의 `guest` 는 원격 접속이 막혀 있어 `egov` 계정을 만들고, 앱의 `spring.rabbitmq.username·password` 를 환경 변수로 덮습니다.
+- **SLF4J 공급자 고정**: `log4j-slf4j2-impl` 을 선언했는데 `spring-boot-starter-logging` 을 빼지 않은 모듈은 공급자가 logback·log4j 둘입니다. 공식 `msa-common-components` 의 10개 서비스가 그렇습니다.
+  - 어느 쪽이 잡히는지는 실행 환경에 따라 달라집니다. 로컬에서는 logback 이 잡혔고, GitHub Actions 에서는 log4j 가 잡혀 ConfigServer 가 "cannot be present with log4j-to-slf4j" 로 실패했습니다.
+  - 그래서 그런 서비스에 `JAVA_TOOL_OPTIONS=-Dslf4j.provider=…LogbackServiceProvider`(SLF4J 2.0.9+)를 넣고 안내를 남깁니다.
+  - 주석에만 나오는 경우와 Maven·Gradle 에서 제외한 경우는 해당하지 않습니다.
 - **Kubernetes**: 서비스마다 `deploy/k8s/<서비스>.yaml` 을 만듭니다. 서비스 참조는 Service DNS, 인프라는 `CHANGE_ME_<이름>_HOST`, 비밀은 Secret 으로 둡니다. 설정 저장소 ConfigMap 도 함께 만듭니다.
 - **`modules`**: 일부 서비스만 고릅니다. 고른 서비스가 먼저 띄워야 하는 서비스·인프라는 함께 들어갑니다.
 

@@ -171,4 +171,20 @@ try {
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
+// ── SLF4J 공급자 충돌(GitHub Actions 에서 공식 msa-common-components ConfigServer 가 "log4j-slf4j2-impl cannot be present with log4j-to-slf4j" 로 기동 실패) ──
+{
+  const { slf4jProviderConflict } = await import("../dist/index.js");
+  const { mkdtempSync: mk, mkdirSync: md, writeFileSync: wf, rmSync: rm } = await import("node:fs");
+  const { tmpdir: td } = await import("node:os");
+  const pth = (await import("node:path")).default;
+  const d = mk(pth.join(td(), "egov-slf4j-"));
+  const at = (name, file, text) => { const dir = pth.join(d, name); md(dir, { recursive: true }); wf(pth.join(dir, file), text); return dir; };
+  try {
+    const both = at("a", "pom.xml", "<project><dependencies><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter</artifactId></dependency><dependency><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-slf4j2-impl</artifactId></dependency></dependencies></project>");
+    const excluded = at("b", "pom.xml", "<project><dependencies><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter</artifactId><exclusions><exclusion><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-logging</artifactId></exclusion></exclusions></dependency><dependency><artifactId>log4j-slf4j2-impl</artifactId></dependency></dependencies></project>");
+    const comment = at("c", "build.gradle", "dependencies {\n  // egovframe-rte-fdl-logging 이 log4j-slf4j2-impl 을 끌어와 충돌하므로 제외\n  implementation 'org.springframework.boot:spring-boot-starter-web'\n}\n");
+    const gradleEx = at("e", "build.gradle", "configurations { all*.exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging' }\ndependencies { implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.25.3' }\n");
+    assert(slf4jProviderConflict(both) && !slf4jProviderConflict(excluded) && !slf4jProviderConflict(comment) && !slf4jProviderConflict(gradleEx), "SLF4J 공급자 충돌: log4j-slf4j2-impl + starter-logging 은 충돌, starter-logging 제외(Maven·Gradle)·주석만은 아님");
+  } finally { rm(d, { recursive: true, force: true }); }
+}
 if (process.exitCode) console.error(`workspace FAIL (${n} assertions)`); else console.log(`workspace OK (${n} assertions)`);

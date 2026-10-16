@@ -63,6 +63,14 @@ export function rewriteLocal(value: string, ports: Map<number, HostTarget>): { v
   return hosts.length || unknown.length ? { value: out, hosts, unknown } : null;
 }
 
+const LOGBACK_PROVIDER = "ch.qos.logback.classic.spi.LogbackServiceProvider";
+/** log4j-slf4j(2)-impl 을 선언했는데 spring-boot-starter-logging 을 빼지 않은 모듈 — SLF4J 공급자가 logback·log4j 둘이 된다 */
+export function slf4jProviderConflict(moduleDir: string): boolean {
+  const text = ["pom.xml", "build.gradle", "build.gradle.kts"].map((f) => { try { return fs.readFileSync(path.join(moduleDir, f), "utf8"); } catch { return ""; } }).join("\n").replace(/<!--[\s\S]*?-->/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  if (!/log4j-slf4j2?-impl/.test(text)) return false;
+  return !/spring-boot-starter-logging/.test(text) || !/<exclusion>[\s\S]*?spring-boot-starter-logging|exclude\s*\(?\s*(group|module)[^\n]*spring-boot-starter-logging/.test(text);
+}
+
 /** 작업공간을 서비스·인프라로 나눈다(읽기 전용). */
 export function planWorkspaceDeploy(projectDir: string, opts: { appName?: string } = {}): WorkspaceDeployPlan {
   const rules = loadDeployRules();
@@ -127,7 +135,10 @@ export function planWorkspaceDeploy(projectDir: string, opts: { appName?: string
   for (const s of services) {
     for (const c of moduleConfig(path.join(root, s.module.dir))) scanRefs(s, `${s.module.dir}/${c.file}`, c.map, (r) => { s.refs.push(r); if (!s.env.some((e) => e.name === r.name)) s.env.push({ name: r.name, value: r.to, secret: false }); });
     if (s.fixedPort) s.env.push({ name: "SERVER_PORT", value: String(s.profile.port), secret: false });
+    if (slf4jProviderConflict(path.join(root, s.module.dir))) s.env.push({ name: "JAVA_TOOL_OPTIONS", value: `-Dslf4j.provider=${LOGBACK_PROVIDER}`, secret: false });
   }
+  const pinned = services.filter((s) => s.env.some((e) => e.name === "JAVA_TOOL_OPTIONS"));
+  if (pinned.length) notes.push(`${pinned.length}개 서비스(${pinned.slice(0, 4).map((s) => s.name).join("·")}${pinned.length > 4 ? " 등" : ""})는 log4j-slf4j2-impl 을 선언하면서 spring-boot-starter-logging(logback·log4j-to-slf4j)도 함께 실어 SLF4J 공급자가 둘입니다. 어느 쪽이 잡히는지는 실행 환경에 따라 달라지고, log4j 쪽이 잡히면 "log4j-slf4j2-impl cannot be present with log4j-to-slf4j" 로 기동에 실패합니다(GitHub Actions 실측). 그래서 JAVA_TOOL_OPTIONS=-Dslf4j.provider 로 logback 을 고정했습니다 — 근본 해결은 둘 중 하나를 빼는 것입니다.`);
   if (configServer) {
     const cfg = moduleConfig(path.join(root, configServer.module.dir));
     const loc = cfg.map((c) => c.map.get("spring.cloud.config.server.native.search-locations")?.value).find(Boolean) ?? null;

@@ -44,6 +44,9 @@ try {
     const compose = g.files.find((f) => f.path === "deploy/docker-compose.yml")?.content;
     const services = g.workspace?.services.length ?? 0;
     assert(g.supported && services === exp.modules - exp.libraries && compose && validateCompose(compose) === null, `${template}: 서비스 ${services}개 · 인프라 ${g.workspace?.infra.map((i) => i.name).join("·") || "없음"} · compose 공식 스키마`);
+    // SLF4J 공급자 고정: msa-common-components 는 log4j-slf4j2-impl + spring-boot-starter-logging(10개 서비스), Gradle 두 템플릿은 fdl-logging 을 빼 두어 0
+    const pinned = g.workspace.services.filter((x) => x.env.includes("JAVA_TOOL_OPTIONS")).map((x) => x.name);
+    assert(template === "msa-common-components" ? pinned.includes("configserver") && pinned.length === 10 && compose.includes("-Dslf4j.provider=ch.qos.logback.classic.spi.LogbackServiceProvider") : pinned.length === 0, `${template}: SLF4J 공급자 logback 고정 ${pinned.length}개 서비스`);
     const w = await m.generateDeploy({ projectDir: dir, buildInImage: false, imageRegistry: registry, dryRun: false });
     copyFileSync(path.join(dir, "deploy/.env.example"), path.join(dir, "deploy/.env"));
     const cfg = sh("docker", ["compose", "config", "-q"], { cwd: path.join(dir, "deploy"), timeout: 60_000 });
