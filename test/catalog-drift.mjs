@@ -71,7 +71,7 @@ const pomsSame = Object.fromEntries(pomBody);
   assert(r.dependencyBaseline.bootBom.sha256Changed === true, "Boot BOM pom sha256 변경 감지");
   assert(r.warnings.length === 4 && r.warnings.some((w) => /v5.1.0-Final/.test(w)) && r.warnings.some((w) => /spring-boot-dependencies/.test(w)), `경고 4건 (${r.warnings.length})`);
   // v0.46: runtime 새 태그는 5.x 최신 유지 규칙(update-rules) 재생성 절차가 함께 붙는다
-  assert(r.procedure.length === 4 && /runtime.toTag 를 v5.1.0-Final/.test(r.procedure[0]) && /generate-update-rules\.mjs/.test(r.procedure[1]) && new RegExp(`--web ${candidateVersions(webSrc.version)[0]} --boot ${candidateVersions(bootSrc.version)[3]}`).test(r.procedure[2]) && /변경 이력/.test(r.procedure[3]), `갱신 절차 4단계 (${r.procedure.length})`);
+  assert(r.procedure.length === 4 && /runtime.toTag 를 v5.1.0-Final/.test(r.procedure[0]) && /generate-update-rules\.mjs/.test(r.procedure[1]) && new RegExp(`--web ${candidateVersions(webSrc.version)[0]} --boot ${candidateVersions(bootSrc.version)[3]}`).test(r.procedure[2]) && /CHANGELOG\.md/.test(r.procedure[3]), `갱신 절차 4단계 (${r.procedure.length})`);
   const lines = renderCatalogDriftLines(r);
   assert(lines.some((l) => l.includes("카탈로그 drift: 있음")) && lines.some((l) => l.startsWith("- 갱신 절차:")) && lines.some((l) => /pom sha256 변경됨/.test(l)), "렌더링: 경고·절차·sha 변경");
 }

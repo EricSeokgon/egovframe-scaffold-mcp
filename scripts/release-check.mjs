@@ -4,7 +4,7 @@
  *
  *   package.json 버전을 읽어 전제 조건을 확인한 뒤
  *     (a) server.json 의 두 version 이 package.json 과 같다
- *     (b) README 변경 이력에 그 버전 항목(`- **X.Y.Z** — …`)이 있다
+ *     (b) CHANGELOG.md 에 그 버전 항목(`- **X.Y.Z** — …`)이 있다
  *   원격 상태(태그 vX.Y.Z · npm 게시 여부와 게시 커밋 gitHead · GitHub Release)를 보고 **남은 단계만** 고른다:
  *     - 아무것도 없음            → full   : npm → 태그(현재 커밋) → Release → MCP Registry
  *     - npm 만 있음(태그 없음)   → resume : 태그를 npm 이 기록한 gitHead 커밋에(현재 main 의 조상이어야 함) → Release → Registry
@@ -31,21 +31,21 @@ export const REGISTRY_URL = "https://registry.modelcontextprotocol.io";
 export function readVersionFacts(root = ROOT) {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   const server = JSON.parse(fs.readFileSync(path.join(root, "server.json"), "utf8"));
-  const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+  const changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
   return {
     name: pkg.name,
     mcpName: pkg.mcpName ?? null,
     version: pkg.version,
     serverVersions: [server.version, ...(server.packages ?? []).map((p) => p.version)],
     serverName: server.name,
-    changelogHasEntry: hasChangelogEntry(readme, pkg.version),
+    changelogHasEntry: hasChangelogEntry(changelog, pkg.version),
   };
 }
 
-/** README 변경 이력에 `- **X.Y.Z** — …` 항목이 있는지. */
-export function hasChangelogEntry(readme, version) {
+/** CHANGELOG.md(1.0.0 까지는 README 의 변경 이력 절)에 `- **X.Y.Z** — …` 항목이 있는지. */
+export function hasChangelogEntry(changelog, version) {
   const esc = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`^- \\*\\*${esc}\\*\\* — `, "m").test(readme);
+  return new RegExp(`^- \\*\\*${esc}\\*\\* — `, "m").test(changelog);
 }
 
 /**
@@ -60,7 +60,7 @@ export function decideRelease({ version, serverVersions, changelogHasEntry, tagE
   const badServer = serverVersions.filter((v) => v !== version);
   if (badServer.length) reasons.push(`server.json 의 version 이 package.json(${version})과 다릅니다: ${badServer.join(", ")}`);
   if (mcpName !== undefined && serverName !== undefined && mcpName !== serverName) reasons.push(`package.json mcpName(${mcpName})과 server.json name(${serverName})이 다릅니다`);
-  if (!changelogHasEntry) reasons.push(`README 변경 이력에 ${version} 항목이 없습니다`);
+  if (!changelogHasEntry) reasons.push(`CHANGELOG.md 에 ${version} 항목이 없습니다`);
   if (reasons.length) return none();
 
   // 아무것도 없음 → 전체 배포

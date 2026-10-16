@@ -5,7 +5,7 @@
 
 An **MCP (Model Context Protocol) server** that scaffolds, assembles, diagnoses and migrates projects built on the Korean **eGovFrame** (전자정부 표준프레임워크, the e-Government Standard Framework) — a community proof of concept for [eGovFramework/egovframe-common-components#1120](https://github.com/eGovFramework/egovframe-common-components/issues/1120).
 
-The full documentation, design notes and change log are in Korean: [README.md](README.md). This page is a condensed English overview. Tool **responses** (reports, diagnoses) are in Korean; set `EGOVFRAME_LANG=en` to get English tool **descriptions** in `tools/list` so any MCP client or model can pick tools without reading Korean.
+This page is a condensed English overview. The Korean documentation covers more: [README.md](README.md) (usage scenarios), [docs/tools.md](docs/tools.md) (every tool's parameters), [docs/versioning.md](docs/versioning.md), [CHANGELOG.md](CHANGELOG.md) and the design notes under `docs/`. Tool **responses** (reports, diagnoses) are in Korean; set `EGOVFRAME_LANG=en` to get English tool descriptions in `tools/list`.
 
 ## What it does
 
@@ -187,6 +187,17 @@ The gate test `test:api-contract` compares the code against a contract snapshot 
 ## MCP Registry
 
 The server is described for the [MCP Registry](https://registry.modelcontextprotocol.io) by `server.json` (`io.github.EricSeokgon/egovframe-scaffold-mcp`) and the matching `mcpName` in `package.json`. CI publishes it right after the npm release (`mcp-publisher login github-oidc && mcp-publisher publish`); `mcp-publisher validate` runs in CI on every change.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [README.md](README.md) | Usage scenarios for AI-tool users, CI/DevOps and auditors (Korean) |
+| [docs/tools.md](docs/tools.md) | Parameters, behaviour and examples of all 34 tools; MCP resources and prompts |
+| [docs/versioning.md](docs/versioning.md) | Versioning policy, public API surface, deprecation process |
+| [CHANGELOG.md](CHANGELOG.md) | Per-release change log |
+| [docs/development.md](docs/development.md) | Local development, test suites, release procedure (contributors) |
+| [docs/planning.md](docs/planning.md) | Planning records per version and the next plans (v1.1 delivery package, v1.2 English responses and progress notifications) |
 
 ## License
 

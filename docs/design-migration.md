@@ -74,7 +74,7 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 1. 새 실행환경 태그가 나오면 `catalog/migration-mapping.json` 의 `runtime.toTag`·`toVersion` 을 올린다.
 2. `node scripts/generate-migration-rules.mjs --runtime-dir <egovframe-runtime clone>` 를 실행한다. 새로 제거된 클래스가 있으면 사유 없이 실패하므로 `removedClasses` 에 대체·사유를 추가한다.
 3. `npm run test:migration-rules && npm run test:migrate`, 네트워크가 되면 `npm run test:migration-rules-live`.
-4. 이 문서의 근거 표와 README 변경 이력을 갱신한다.
+4. 이 문서의 근거 표와 CHANGELOG.md 를 갱신한다.
 
 ## 2단계(v0.30.0): 적용
 

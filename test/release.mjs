@@ -10,7 +10,7 @@ function assert(cond, msg) { n++; if (!cond) { console.error("FAIL:", msg); proc
 // ── 현재 저장소 상태 ─────────────────────────────────
 const facts = readVersionFacts();
 assert(/^\d+\.\d+\.\d+$/.test(facts.version) && facts.serverVersions.every((v) => v === facts.version), `package.json·server.json 버전 일치 (${facts.version})`);
-assert(facts.changelogHasEntry, `README 변경 이력에 현재 버전 ${facts.version} 항목 존재(릴리스 노트 재료)`);
+assert(facts.changelogHasEntry, `CHANGELOG.md 에 현재 버전 ${facts.version} 항목 존재(릴리스 노트 재료)`);
 assert(facts.mcpName === facts.serverName, "mcpName == server.json name");
 // v1.0 버전 정책: 공개 API 계약의 변경 등급(test/fixtures/api-contract.json 의 base·change)에 맞게 버전을 올렸는지
 {
@@ -26,7 +26,7 @@ assert(dry.publish === true && dry.reasons.length === 0, "현재 상태는 태�
 const base = { version: "1.2.3", serverVersions: ["1.2.3", "1.2.3"], changelogHasEntry: true, tagExists: false, npmPublished: false, mcpName: "io.github.x/y", serverName: "io.github.x/y" };
 assert(decideRelease(base).publish === true, "네 조건 충족 → publish");
 assert(decideRelease({ ...base, serverVersions: ["1.2.3", "1.2.2"] }).reasons.some((r) => /server\.json/.test(r)), "server.json 버전 불일치 → 거부");
-assert(decideRelease({ ...base, changelogHasEntry: false }).reasons.some((r) => /변경 이력/.test(r)), "변경 이력 없음 → 거부");
+assert(decideRelease({ ...base, changelogHasEntry: false }).reasons.some((r) => /CHANGELOG/.test(r)), "변경 이력 없음 → 거부");
 assert(decideRelease({ ...base, tagExists: true }).reasons.some((r) => /태그/.test(r)), "태그 이미 있음 → 거부(재배포 방지)");
 assert(decideRelease({ ...base, npmPublished: true }).reasons.some((r) => /npm/.test(r)), "npm 에 이미 있음 → 거부");
 assert(decideRelease({ ...base, version: "1.2" }).publish === false && decideRelease({ ...base, serverName: "io.github.x/z" }).publish === false, "버전 형식·mcpName 불일치 → 거부");
@@ -54,7 +54,7 @@ assert((await githubReleaseExists("1.0.0", { repo: "o/r", token: "t", fetchImpl:
 assert((await registryVersionExists("io.github.x/y", "1.0.0", fakeFetch(200))) === true && (await registryVersionExists("io.github.x/y", "1.0.0", fakeFetch(404))) === false && (await registryVersionExists("io.github.x/y", "1.0.0", async () => { throw new Error("net"); })) === null, "MCP Registry 조회: 200/404/오류");
 
 // ── 변경 이력 항목 추출·릴리스 노트 ─────────────────
-const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+const readme = readFileSync(new URL("../CHANGELOG.md", import.meta.url), "utf8");
 assert(hasChangelogEntry(readme, facts.version) && !hasChangelogEntry(readme, "99.99.99"), "hasChangelogEntry");
 const sample = `## 변경 이력\n\n- **9.9.9** — 요약 문장. (1) 첫째 변경 내용 (2) 둘째 변경 내용, \`코드\` 포함. \`server.json\` 9.9.9.\n  - 들여쓴 후속 줄\n- **9.9.8** — 이전 항목.\n\n## 라이선스\n`;
 const entry = findChangelogEntry(sample, "9.9.9");
@@ -86,7 +86,7 @@ try { info = pack.status === 0 ? parsePackJson(pack.stdout) : null; } catch (e) 
 assert(info && info.name === facts.name && info.version === facts.version, `npm pack --dry-run 실행 (${info?.filename ?? `exit ${pack.status}: ${(pack.stderr || pack.stdout || "").slice(0, 300)}`})`);
 assert(parsePackJson(JSON.stringify([{ name: "x", files: [] }])).name === "x" && parsePackJson(`npm warn something\n${JSON.stringify({ x: { name: "x", files: [] } })}`).name === "x" && parsePackJson("no json") === null, "parsePackJson: 배열(npm ≤11)·객체(npm 12)·앞선 경고 허용");
 const files = new Set((info?.files ?? []).map((f) => f.path));
-for (const must of ["package.json", "README.md", "README.en.md", "LICENSE", "dist/index.js", "dist/server.js", "catalog/components.json", "catalog/templates.json", "catalog/migration-rules.json", "catalog/dependency-baseline.json", "catalog/config-templates.json", "catalog/update-rules.json", "catalog/deploy-rules.json", "catalog/secure-coding-rules.json"])
+for (const must of ["package.json", "README.md", "README.en.md", "CHANGELOG.md", "docs/tools.md", "docs/versioning.md", "LICENSE", "dist/index.js", "dist/server.js", "catalog/components.json", "catalog/templates.json", "catalog/migration-rules.json", "catalog/dependency-baseline.json", "catalog/config-templates.json", "catalog/update-rules.json", "catalog/deploy-rules.json", "catalog/secure-coding-rules.json"])
   assert(files.has(must), `tarball 포함: ${must}`);
 assert([...files].some((f) => f.startsWith("catalog/config-templates/") && f.endsWith(".hbs")), "tarball 포함: 동봉 설정 템플릿(.hbs)");
 assert(![...files].some((f) => /^(test|scripts|src|\.github|node_modules)\//.test(f) || f.endsWith(".map") || f === "server.json" || f.startsWith(".")), "tarball 제외: test·scripts·src·.github·소스맵·숨김 파일");
