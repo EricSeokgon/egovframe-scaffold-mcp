@@ -157,5 +157,5 @@ export { planWorkspaceDeploy, workspaceDeployFiles, rewriteLocal, springEnvName,
 export { gradleVariables } from "./dependencies.js";
 export { mergeModuleBoms } from "./sbom.js";
 export type { Workspace, WorkspaceModule, WorkspaceKind } from "./workspace.js";
-export { loadUpdateRules, isUpdateTarget, planPomUpdate, planGradleUpdate, findClassReference, updateProject, applyUpdate, verifyUpdate, renderUpdateMarkdown, updateKindLabel } from "./update.js";
+export { loadUpdateRules, isUpdateTarget, planPomUpdate, planGradleUpdate, duplicateDependencyItems, findClassReference, updateProject, applyUpdate, verifyUpdate, renderUpdateMarkdown, updateKindLabel } from "./update.js";
 export type { UpdateRules, UpdateChange, UpdateParent, UpdateInfo, UpdateResult, UpdateOptions, UpdateApplyResult, UpdateApplyOptions, UpdateVerifyResult, UpdateVerifyOptions, PomUpdatePlan } from "./update.js";

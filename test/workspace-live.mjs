@@ -57,7 +57,9 @@ try {
   if (sh("docker", ["info"], { timeout: 30_000 }).code !== 0) { info("Docker 데몬 없음 — 기동 검증 건너뜀"); }
   else {
     const ap = await m.applyUpdate({ projectDir: dir, dryRun: false });
-    assert(ap.applied.items === 11 && ap.remaining.auto === 0, `msa-common-components: 모듈 parent ${ap.applied.items}곳 5.0.2 로`);
+    // 모듈 parent 11곳 + EgovQuestionnaire 의 중복 의존성 선언 2건(commons-configuration2·commons-lang3 — CI 의 Maven 은 "must be unique" 오류로 거부)
+    assert(ap.applied.items === 13 && ap.remaining.auto === 0, `msa-common-components: 자동 ${ap.applied.items}건 적용(모듈 parent 11곳 5.0.2 · 중복 선언 2건 제거)`);
+    info(sh(process.platform === "win32" ? "mvn.cmd" : "mvn", ["-v"], { timeout: 60_000 }).out.split("\n").find((l) => /Apache Maven/.test(l)) ?? "mvn -v 실패");
     const mvn = sh(process.platform === "win32" ? "mvn.cmd" : "mvn", ["-B", "-q", "-DskipTests", "-Dproject.build.sourceEncoding=UTF-8", "package"], { cwd: dir, timeout: 1_500_000 });
     assert(mvn.code === 0 && existsSync(path.join(dir, "EgovBoard/target")), `msa-common-components: 루트 mvn package(11 모듈, parent 5.0.2)${mvn.code ? `\n${mvn.out.slice(-3000)}` : ""}`);
     if (mvn.code === 0) {
@@ -66,7 +68,8 @@ try {
       writeFileSync(path.join(composeDir, ".env"), env);
       const t0 = Date.now();
       const upc = sh("docker", ["compose", "up", "-d", "--build", "--wait", "--wait-timeout", "600", "configserver", "eurekaserver", "gatewayserver", "egovboard"], { cwd: composeDir, timeout: 1_500_000 });
-      const ps = sh("docker", ["compose", "ps", "--format", "{{.Service}} {{.Health}}"], { cwd: composeDir }).out.trim();
+      const ps = sh("docker", ["compose", "ps", "-a", "--format", "{{.Service}} {{.Health}}"], { cwd: composeDir }).out.trim();
+      if (upc.code) info(sh("docker", ["compose", "ps", "-a", "--format", "{{.Service}} {{.State}} {{.Status}}"], { cwd: composeDir }).out.trim());
       assert(upc.code === 0 && ["configserver", "eurekaserver", "gatewayserver", "egovboard", "db", "rabbitmq"].every((s) => new RegExp(`^${s} healthy$`, "m").test(ps)), `compose 기동 ${Math.round((Date.now() - t0) / 1000)}초 — ${ps.replace(/\n/g, " · ")}${upc.code ? `\n${upc.out.slice(-3000)}` : ""}`);
       let apps = [];
       for (let i = 0; i < 40; i++) {
@@ -77,7 +80,7 @@ try {
       assert(apps.includes("GATEWAYSERVER:UP") && apps.includes("EGOVBOARD:UP"), `Eureka 등록: ${apps.join(", ") || "없음"} (설정 서버·DB 사본·브로커 계정이 맞아야 EgovBoard 가 뜸)`);
       const gw = await fetch("http://127.0.0.1:9000/actuator/health").then((r) => r.json()).catch(() => null);
       assert(gw?.status === "UP", `Gateway health ${gw?.status ?? "응답 없음"}`);
-      if (process.exitCode) info(sh("docker", ["compose", "logs", "--tail", "60", "egovboard", "configserver"], { cwd: composeDir }).out.slice(-6000));
+      if (process.exitCode) info(sh("docker", ["compose", "logs", "--tail", "40", "egovboard", "configserver", "rabbitmq"], { cwd: composeDir }).out.slice(-6000));
     }
   }
 } catch (e) {

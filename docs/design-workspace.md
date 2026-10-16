@@ -40,6 +40,10 @@
   - 그 변수가 **공식 parent·RTE 에만** 쓰이면 정의를 바꾸는 auto 항목입니다.
   - **다른 좌표에도** 쓰이면 manual 항목입니다. 공식 msa-edu 는 같은 변수를 직접 배포한 `egovframe-cloud-module-common` 의 버전에도 씁니다. 이 좌표의 5.0.2 는 표준프레임워크 저장소에 없으므로(실측: 5.0.0 만 있음) 그대로 올리면 빌드가 깨집니다.
   - 실측: msa-edu 자동 4·수동 6, msa-portal-backend 자동 3·수동 6.
+- **중복 의존성 선언(`duplicate-dependency`)**: 공식 `msa-common-components` 의 `EgovQuestionnaire` pom 은 CVE 보완용 `commons-configuration2`·`commons-lang3` 를 같은 `<dependencies>` 에 두 번 선언합니다. 로컬 Maven 3.9.11 은 경고만 내지만 GitHub Actions ubuntu-latest 의 Maven 은 "must be unique" 오류로 그 모듈을 읽지 않습니다.
+  - 내용이 같으면 뒤 선언 블록을 지우는 auto, 버전·scope·exclusions 가 다르면 manual 입니다. 주석은 그대로 둡니다.
+  - dependencyManagement·plugin 의존성·profile 은 보지 않습니다. classifier·type 이 다르면 다른 좌표입니다.
+  - 실측: msa-common-components 자동 13(모듈 parent 11·중복 2).
 
 ### 3.3 배포 산출물 (`generate_egovframe_deploy`)
 

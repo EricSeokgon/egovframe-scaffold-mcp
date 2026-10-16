@@ -180,4 +180,15 @@ try {
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
+// ── 중복 의존성 선언(v0.47: 공식 msa-common-components EgovQuestionnaire — CI 의 Maven 이 "must be unique" 오류로 거부) ──
+{
+  const { duplicateDependencyItems, applyTextEdits } = await import("../dist/index.js");
+  const dep = (g, a, extra = "") => `        <dependency>\n            <groupId>${g}</groupId>\n            <artifactId>${a}</artifactId>${extra}\n        </dependency>\n`;
+  const V = "\n            <version>$" + "{commons-lang3.version}</version>";
+  const pom = `<project>\n    <dependencyManagement>\n        <dependencies>\n${dep("x", "managed")}${dep("x", "managed")}        </dependencies>\n    </dependencyManagement>\n    <dependencies>\n${dep("org.apache.commons", "commons-lang3", V)}${dep("a", "b")}        <!-- CVE 보완용 -->\n${dep("org.apache.commons", "commons-lang3", V)}${dep("a", "b", "\n            <scope>test</scope>")}${dep("a", "b", "\n            <classifier>tests</classifier>")}    </dependencies>\n    <build><plugins><plugin><dependencies>\n${dep("a", "b")}        </dependencies></plugin></plugins></build>\n</project>\n`;
+  const items = duplicateDependencyItems("pom.xml", pom);
+  assert(items.length === 2 && items[0].action === "auto" && /commons-lang3/.test(items[0].from) && items[1].action === "manual" && /a:b:jar/.test(items[1].from), `중복 선언: 같은 내용 auto 1·scope 다른 것 manual 1, classifier 다르면 별개·dependencyManagement·plugin 의존성 제외 (${items.map((i) => `${i.action} ${i.from}`).join(" / ")})`);
+  const fixed = applyTextEdits(pom, items.filter((i) => i.action === "auto").flatMap((i) => i.edits)).text;
+  assert((fixed.match(/<artifactId>commons-lang3</g) ?? []).length === 1 && fixed.includes("<!-- CVE 보완용 -->") && !/\n\s*\n\s*<dependency>/.test(fixed.split("<dependencies>")[2]) && duplicateDependencyItems("pom.xml", fixed).filter((i) => i.action === "auto").length === 0, "적용: 뒤 선언 블록과 그 줄만 지움(주석·다른 선언 유지, 빈 줄 없음), 다시 계획하면 auto 0");
+}
 if (process.exitCode) console.error(`update FAIL (${n} assertions)`); else console.log(`update OK (${n} assertions)`);

@@ -42,7 +42,7 @@ export function loadUpdateRules(): UpdateRules {
 export const isUpdateTarget = (target: string | undefined): boolean => !!target && /^5\.0\.\d+$/.test(target);
 
 // ── 결과 타입 ─────────────────────────────────────────
-export type UpdateKind = "parent-version" | "rte-version" | "parent-property" | "rte-change" | "component-update";
+export type UpdateKind = "parent-version" | "rte-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency";
 export interface UpdateInfo {
   /** 프로젝트의 실효 RTE 버전 — (버전 속성 또는 parent 관리 버전)과 RTE 의존성 리터럴 버전 중 가장 낮은 것 */
   from: string | null;
@@ -126,10 +126,46 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
     if (versionBelow(d.version, target) !== true) continue;
     items.push({ file: rel, line: d.line, kind: "rte-version", from: `${d.groupId}:${d.artifactId}:${d.version}`, to: `${d.groupId}:${d.artifactId}:${target}`, action: "auto", reason: `RTE ${target} 기준`, edits: [{ start: d.vSpan.start, end: d.vSpan.end, replacement: target }] });
   }
+  items.push(...duplicateDependencyItems(rel, text));
   // 실효 버전 = (버전 속성 또는 parent 가 관리하는 버전)과 리터럴 버전 중 가장 낮은 것
   const managed = propVersion ?? (parentVersion && /^5\./.test(parentVersion) ? parentVersion : null);
   const effective = [...(managed ? [managed] : []), ...literal].sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
   return { parent, effective, items };
+}
+
+/**
+ * 같은 <dependencies> 안의 중복 선언(groupId:artifactId:type:classifier). Maven 3.9 로컬은 경고지만
+ * GitHub Actions ubuntu-latest 의 Maven 은 "must be unique" 오류로 프로젝트를 읽지 않는다(공식 msa-common-components
+ * EgovQuestionnaire 의 commons-configuration2·commons-lang3, 2026-10-16 CI 실측). 내용이 같으면 뒤 선언을 지우는 auto,
+ * 버전·scope·exclusions 가 다르면 어느 쪽이 맞는지 사람이 정해야 하므로 manual.
+ */
+export function duplicateDependencyItems(rel: string, text: string): MigrationItem[] {
+  const skip: Array<[number, number]> = [];
+  for (const re of [/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, /<plugins>[\s\S]*?<\/plugins>/g, /<profiles>[\s\S]*?<\/profiles>/g, /<!--[\s\S]*?-->/g]) {
+    for (const m of text.matchAll(re)) skip.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  }
+  const inSkip = (i: number) => skip.some(([a, b]) => i >= a && i < b);
+  const norm = (s: string) => s.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, "");
+  const seen = new Map<string, { body: string; line: number }>();
+  const out: MigrationItem[] = [];
+  for (const d of parsePomDeps(text)) {
+    if (inSkip(d.block.start)) continue;
+    const body = text.slice(d.block.start, d.block.end);
+    const type = body.match(/<type>\s*([^<\s]+)/)?.[1] ?? "jar", cls = body.match(/<classifier>\s*([^<\s]+)/)?.[1] ?? "";
+    const key = `${d.groupId}:${d.artifactId}:${type}${cls ? `:${cls}` : ""}`;
+    const first = seen.get(key);
+    if (!first) { seen.set(key, { body: norm(body), line: d.line }); continue; }
+    if (first.body === norm(body)) {
+      const lineStart = text.lastIndexOf("\n", d.block.start) + 1;
+      const start = /^[ \t]*$/.test(text.slice(lineStart, d.block.start)) ? lineStart : d.block.start;
+      const nl = text.slice(d.block.end).match(/^[ \t]*\r?\n/);
+      const end = d.block.end + (start === lineStart && nl ? nl[0].length : 0);
+      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: `${key}${d.version ? `:${d.version}` : ""} (${first.line}행과 같음)`, to: null, action: "auto", reason: `같은 <dependencies> 에 같은 좌표가 두 번 선언됨 — Maven 이 "must be unique" 오류로 빌드를 거부할 수 있어(GitHub Actions ubuntu-latest 실측) 뒤 선언을 지움`, edits: [{ start, end, replacement: "" }] });
+    } else {
+      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: `${key} (${first.line}행과 다름)`, to: null, action: "manual", reason: `같은 좌표가 버전·scope·exclusions 를 달리해 두 번 선언됨 — Maven 은 뒤 선언을 쓰거나 "must be unique" 오류를 낸다. 맞는 하나만 남기세요` });
+    }
+  }
+  return out;
 }
 
 /** Gradle 빌드 파일의 org.egovframe.rte 좌표 리터럴 버전 */
@@ -394,7 +430,7 @@ export async function verifyUpdate(opts: UpdateVerifyOptions): Promise<UpdateVer
 
 // ── 렌더링 ────────────────────────────────────────────
 const KIND_LABEL: Record<string, string> = {
-  "parent-version": "parent 버전", "rte-version": "RTE 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지",
+  "parent-version": "parent 버전", "rte-version": "RTE 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지", "duplicate-dependency": "중복 의존성 선언",
 };
 export const updateKindLabel = (k: string): string => KIND_LABEL[k] ?? k;
 
