@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "base": "1.0.0",
+  "version": "1.0.2",
+  "base": "1.0.1",
   "change": "none",
   "contract": {
     "tools": {
