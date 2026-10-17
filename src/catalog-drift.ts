@@ -239,7 +239,7 @@ export async function checkCatalogDrift(deps: CatalogDriftDeps = {}): Promise<Ca
   }
   if (parentFlags.length) procedure.push(`\`node scripts/generate-dependency-baseline.mjs ${parentFlags.join(" ")}\` 로 기준을 다시 생성(scripts 의 PARENTS 기본값도 올림) → \`npm run test:dependencies\``);
   if (bootBom?.sha256Changed) warnings.push(`spring-boot-dependencies ${bootBom.version} pom 의 sha256 이 고정값과 다릅니다(Maven Central 재배포) — 기준을 다시 생성해 확인하세요`);
-  if (warnings.length) procedure.push("README 의 '변경 이력' 에 갱신 내용을 적고 버전을 올려 릴리스");
+  if (warnings.length) procedure.push("CHANGELOG.md 에 갱신 내용을 적고 버전을 올려 릴리스");
   const errors = [runtime, components, ...parents, bootBom].filter((x) => x && x.error).length;
   const upToDate = !runtime.newerTags.length && !(components?.newerTags.length) && parents.every((p) => !p.newerVersions.length && !p.sha256Changed) && !bootBom?.sha256Changed;
   return {
