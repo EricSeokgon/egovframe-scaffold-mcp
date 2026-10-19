@@ -37,6 +37,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   // v0.41: 프로젝트는 읽기만 하지만 캐시 디렉터리에 사본을 만들고 빌드 도구를 실행(저장소 접근) → build 도구와 같은 성격
   rehearse_egovframe_migration: { title: { ko: "5.x 전환 리허설 (사본에서 실측)", en: "Rehearse 5.x migration (on a copy)" }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
   // v0.42: 새 디렉터리에만 쓰고(비어 있지 않으면 거부) 인터넷에서 받는다
+  // v1.1: 새 디렉터리에만 쓰고 프로젝트는 읽기만 한다. offline=false 면 OSV 조회
+  prepare_egovframe_delivery: { title: { ko: "납품 패키지 만들기", en: "Prepare delivery package" }, annotations: create(true) },
   prepare_egovframe_offline_bundle: { title: { ko: "폐쇄망 오프라인 번들 만들기", en: "Prepare offline bundle (air-gapped)" }, annotations: create(true) },
   check_egovframe_dependencies: { title: { ko: "의존성 점검", en: "Check dependencies" }, annotations: ro(true) },
   diagnose_egovframe_network: { title: { ko: "네트워크 진단", en: "Diagnose network" }, annotations: ro(true) },

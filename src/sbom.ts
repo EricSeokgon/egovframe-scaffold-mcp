@@ -75,6 +75,8 @@ export interface GenerateSbomOptions {
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   now?: () => number;
+  /** v1.1(내부, 납품 패키지): 프로젝트에 쓰지 않고 문서만 만들어 돌려준다(written=false, bom·spdx 에 문서) */
+  noWrite?: boolean;
 }
 
 export interface GenerateSbomResult {
@@ -353,7 +355,7 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   const command = cmd ? [cmd.command, ...cmd.args].join(" ") : `(프로젝트별 ${ws.modules.length}개: ${[...new Set(ws.modules.map((m) => m.buildTool))].join("·")})`;
   const generator: GenerateSbomResult["generator"] = effectiveTool === "maven" && buildTool ? "cyclonedx-maven-plugin" : "egovframe-scaffold-mcp";
   const base: GenerateSbomResult = { projectDir, buildTool: effectiveTool, format, specVersion: spdx ? SPDX_VERSION : CYCLONEDX_SPEC_VERSION, outputPath: relPath, absolutePath, dryRun, written: false, overwritten: false, command, generator, components: 0, direct: 0, transitive: 0, statuses, vulnerabilities: 0, bytes: 0, notes };
-  if (exists && !opts.overwrite && !dryRun) { fs.rmSync(tmpDir, { recursive: true, force: true }); throw new Error(`${relPath} 이 이미 있습니다. 덮어쓰려면 overwrite=true 를 쓰세요.`); }
+  if (exists && !opts.overwrite && !dryRun && !opts.noWrite) { fs.rmSync(tmpDir, { recursive: true, force: true }); throw new Error(`${relPath} 이 이미 있습니다. 덮어쓰려면 overwrite=true 를 쓰세요.`); }
   if (dryRun) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
     notes.push(`dryRun — 실행하지 않았습니다. dryRun=false 로 ${buildTool === "maven" ? "cyclonedx-maven-plugin 을 실행해" : "의존성 트리를 해석해"} ${relPath} 에 ${spdx ? `SPDX 2.3 JSON(CycloneDX ${CYCLONEDX_SPEC_VERSION} 로 만든 뒤 변환)` : `CycloneDX ${CYCLONEDX_SPEC_VERSION} JSON`} 을 씁니다.${exists ? ` 기존 파일이 있어 overwrite=true 가 필요합니다.` : ""}`);
@@ -419,13 +421,13 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
     notes.push(...conv.notes, `SPDX 2.3 으로 변환했습니다 — 패키지 ${conv.doc.packages?.length ?? 0} · 관계 ${conv.doc.relationships?.length ?? 0}. VEX 초안(check_egovframe_sbom vex=true)은 CycloneDX SBOM 에서만 만듭니다.`);
   }
   const json = `${JSON.stringify(spdxDoc ?? bom, null, 2)}\n`;
-  await withFileTransaction(projectDir, "SBOM 생성", (tx) => {
+  if (!opts.noWrite) await withFileTransaction(projectDir, "SBOM 생성", (tx) => {
     tx.writeFile(relPath, json, { mustNotExist: !exists });
     for (const m of modulesWritten) tx.writeFile(m.path, m.json, { mustNotExist: !(opts.overwrite && fs.existsSync(path.join(projectDir, m.path))) });
   });
   const mr = checkMinimumElements(spdxDoc ? spdxToCdx(spdxDoc).bom : bom);
   const minimum = { verdict: mr.verdict, missing: mr.elements.filter((e) => !e.ok).map((e) => e.id), componentsWithGaps: mr.componentsWithGaps, supplierFromCatalog: mr.supplierFromCatalog };
-  return { ...base, written: true, overwritten: exists, durationMs, components: comps.length, direct, transitive: comps.length - direct, statuses, vulnerabilities, ...(osvError ? { osvError } : {}), minimum, bytes: Buffer.byteLength(json), bom, ...(spdxDoc ? { spdx: spdxDoc } : {}), logTail };
+  return { ...base, written: !opts.noWrite, overwritten: !opts.noWrite && exists, durationMs, components: comps.length, direct, transitive: comps.length - direct, statuses, vulnerabilities, ...(osvError ? { osvError } : {}), minimum, bytes: Buffer.byteLength(json), bom, ...(spdxDoc ? { spdx: spdxDoc } : {}), logTail };
 }
 
 /** 결과 요약 Markdown. */

@@ -125,10 +125,22 @@ const glSec = generateGitlabCi("gradle", "21", { secureCoding: true });
 assert(validateGitlabCi(glSec) === null && parseYaml(glSec)["supply-chain"].script.some((x) => x.includes(" secure --project . --sarif-path egovframe-secure.sarif")) && parseYaml(glSec)["supply-chain"].artifacts.paths.includes("egovframe-secure.sarif"), "GitLab: secure 단계·SARIF 보관·공식 스키마 통과");
 const jfSec = generateJenkinsfile("maven", "17", { secureCoding: true });
 assert([...jfSec.matchAll(/^    stage\('([^']+)'\)/gm)].map((x) => x[1]).join() === "Build,SBOM,SBOM check,Secure coding,Assessment" && jfSec.includes("egovframe-secure.sarif") && jfSec.includes("egovframe-secure.md"), "Jenkins: Secure coding 단계·보관");
+// v1.1: delivery=true — 게이트 끝에 납품 패키지 단계
+const dl = supplyChainCommands({ secureCoding: true, delivery: true, supplier: "예시 기관" }, true);
+assert(dl.map((c) => c.id).join() === "sbom,sbom-check,secure,assess,deliver" && dl[4].command === `${npx} deliver --project . --output-dir egovframe-delivery --write --offline=false --supplier "예시 기관" --fail-on failed`, "delivery: assess 다음에 deliver --write(--fail-on failed)");
+const ghDl = parseYaml(generateCiYaml("maven", "17", { delivery: true }));
+assert(ghDl.jobs["supply-chain"].steps.some((x) => typeof x.run === "string" && x.run.includes(" deliver --project . --output-dir egovframe-delivery --write")) && ghDl.jobs["supply-chain"].steps.at(-1).with.path.includes("egovframe-delivery/**"), "GitHub: deliver 단계·패키지 아티팩트");
+const glDl = generateGitlabCi("maven", "17", { delivery: true });
+assert(validateGitlabCi(glDl) === null && parseYaml(glDl)["supply-chain"].artifacts.paths.includes("egovframe-delivery/**"), "GitLab: 패키지 보관·공식 스키마 통과");
+const jfDl = generateJenkinsfile("gradle", "21", { delivery: true });
+assert([...jfDl.matchAll(/^    stage\('([^']+)'\)/gm)].map((x) => x[1]).join() === "Build,SBOM,SBOM check,Assessment,Delivery package" && jfDl.includes("egovframe-delivery/**"), "Jenkins: Delivery package 단계·보관");
+assert(!generateCiYaml("maven", "17", { secureCoding: true }).includes("deliver "), "delivery 가 없으면 단계 없음");
 const pf2 = mkdtempSync(path.join(tmpdir(), "ci-sec-"));
 writeFileSync(path.join(pf2, "pom.xml"), "<project/>");
 assert(generateCiConfig({ projectDir: pf2, dryRun: true, platform: "jenkins", supplyChain: true, secureCoding: true }).content.includes("stage('Secure coding')"), "generateCiConfig secureCoding 전달");
 let threwS = false; try { generateCiConfig({ projectDir: pf2, dryRun: true, secureCoding: true }); } catch (e) { threwS = /supplyChain=true 와 함께/.test(e.message); }
+let threwD = false; try { generateCiConfig({ projectDir: pf2, dryRun: true, delivery: true }); } catch (e) { threwD = /supplyChain=true 와 함께/.test(e.message); }
+assert(threwD && generateCiConfig({ projectDir: pf2, dryRun: true, platform: "github", supplyChain: true, delivery: true }).content.includes("egovframe-delivery"), "generateCiConfig delivery 전달·supplyChain 없이 거부");
 assert(threwS, "supplyChain 없이 secureCoding 만 주면 거부");
 rmSync(pf2, { recursive: true, force: true });
 

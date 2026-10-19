@@ -135,6 +135,8 @@ jobs:
           HADOLINT=/tmp/hadolint KUBECONFORM=/tmp/kubeconform npm run test:deploy-live
       - name: Multi-module and MSA templates (workspace, per-module checks, multi-service compose with Config, Eureka, Gateway, EgovBoard)
         run: HADOLINT=/tmp/hadolint KUBECONFORM=/tmp/kubeconform npm run test:workspace-live
+      - name: Delivery package (official web template, manifest verify, diff against previous, offline bundle OSV)
+        run: npm run test:delivery-live
       - name: Generated Jenkinsfile and .gitlab-ci.yml run on Jenkins LTS and gitlab-ci-local
         run: npm run test:ci-run-live
       - name: Secure coding weaknesses on official templates (pinned counts, SARIF schema)

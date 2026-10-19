@@ -87,6 +87,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 - `check_egovframe_secure_coding(projectDir, sarifPath="egovframe-secure.sarif")` — 개발보안 가이드 보안약점. 공통컴포넌트 원본·수정본·프로젝트 코드로 출처를 나누고, `.egovframe-secure-ignore.json` 으로 검토한 예외를 관리합니다.
 - `generate_egovframe_sbom(projectDir, dryRun=false, supplier="○○기관")` → `check_egovframe_sbom(projectDir, offline=false)` — CycloneDX SBOM 을 만들고 제출 최소 요소 7종과 생성 이후 새 취약점을 점검합니다.
 - `generate_egovframe_report(projectDir, sections=["assessment"], outputPath="assessment.md")` — 전환 난이도·공급망 상태 등급(A–D)과 산식이 들어간 평가서.
+- `prepare_egovframe_delivery(projectDir, outputDir="~/delivery/1차", dryRun=false, offline=false, supplier="○○기관")` — 위 산출물을 전부 한 디렉터리에 모읍니다(SBOM CycloneDX·SPDX, VEX 초안, SARIF, 배포 산출물 포함). 파일별 sha256 과 전체 지문(rootHash)이 든 `delivery-manifest.json` 과 목차가 생기고, 다음 차수에 `previousDelivery` 를 주면 달라진 점(등급·SBOM·새 취약점·새 보안약점)을 `diff.md` 로 냅니다. 받은 쪽은 `verify=true` 로 변조·누락을 확인합니다.
 
 **배포 산출물 만들기**
 
@@ -115,6 +116,7 @@ npx -y egovframe-scaffold-mcp assess     --project . --offline=false --step-summ
 | `check` | 의존성 점검(`--resolve` 면 전이 의존성까지) | `outdated`·`legacy`·`replace`·`unknown`·`vulnerabilities`·`securityMissing` |
 | `sbom` / `sbom-check` | SBOM 생성(`--write` 필요) / 점검·비교·VEX | `minimum`·`gaps`·`newVulns`·`changed` |
 | `secure` | 보안약점 점검(SARIF) | `high`·`medium`·`low`·`total`·`new` |
+| `deliver` | 납품 패키지 생성(`--write`) / 받은 패키지 검증(`--verify`) | `failed`(실패 항목) / `invalid`·`mismatched`·`missing` |
 | `migrate` / `rehearse` | 전환 진단(읽기 전용) / 사본 리허설 | `manual`·`auto` / `errors`·`automation` |
 | `validate` · `diagnose` · `network` · `bundle` | 무결성·진단·네트워크 진단·오프라인 번들 | `invalid`·`issues`·`failed` |
 
@@ -123,10 +125,10 @@ npx -y egovframe-scaffold-mcp assess     --project . --offline=false --step-summ
 **CI 설정 파일 만들기** — 같은 게이트를 세 플랫폼에 만들어 줍니다.
 
 ```text
-generate_egovframe_ci(projectDir, platform="github"|"gitlab"|"jenkins", supplyChain=true, secureCoding=true, supplier="○○기관", failOn="supplyChain:C")
+generate_egovframe_ci(projectDir, platform="github"|"gitlab"|"jenkins", supplyChain=true, secureCoding=true, delivery=true, supplier="○○기관", failOn="supplyChain:C")
 ```
 
-SBOM → 최소 요소 점검 → 보안약점 → 평가서 순서로 실행하고 보고서·SBOM·SARIF 를 아티팩트로 남깁니다. GitHub 는 SARIF 를 code scanning 에 올립니다. 생성 파일은 공식 스키마 검증을 거치고, CI 통합 테스트에서 실제 Jenkins LTS 와 gitlab-ci-local 로 끝까지 실행해 확인합니다. `npmRegistry`·`offlineBundle` 로 사내 레지스트리와 폐쇄망 번들을 지정합니다.
+SBOM → 최소 요소 점검 → 보안약점 → 평가서 순서로 실행하고 보고서·SBOM·SARIF 를 아티팩트로 남깁니다. `delivery=true` 면 끝에 납품 패키지(`egovframe-delivery/`)를 만들어 함께 보관합니다. GitHub 는 SARIF 를 code scanning 에 올립니다. 생성 파일은 공식 스키마 검증을 거치고, CI 통합 테스트에서 실제 Jenkins LTS 와 gitlab-ci-local 로 끝까지 실행해 확인합니다. `npmRegistry`·`offlineBundle` 로 사내 레지스트리와 폐쇄망 번들을 지정합니다.
 
 **폐쇄망에서 쓰기** <a id="폐쇄망에서-쓰기"></a>
 
@@ -144,6 +146,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 
 | 산출물 | 어디서 | 읽는 법 |
 |---|---|---|
+| **납품 패키지** | `deliver --write` / `prepare_egovframe_delivery` | 아래 산출물이 한 디렉터리에 들어 있고 `index.md` 가 목차입니다. `delivery-manifest.json` 의 `rootHash` 가 패키지 전체의 지문이라 공문에 한 줄로 인용할 수 있고, `deliver --verify` 로 받은 그대로인지 확인합니다. 차수 간 변화는 `diff.md` 에 있습니다 |
 | **전환 준비도 평가서** | `assess` / `generate_egovframe_report(sections=["assessment"])` | 6절의 **전환 난이도**(수동 항목·재조립 대상·제거된 API 참조·좌표 세대)와 **공급망 상태**(기준 미만·취약점·보안 설정) 두 등급. A=문제 없음 … D=사업 계획 필요. 요인별 점수와 구간이 표로 나와 근거를 추적할 수 있습니다 |
 | **SBOM** | `sbom` → `sbom-check` | CycloneDX 1.6(기본) 또는 SPDX 2.3. 점검 결과의 "제출 가능/보완 필요"는 NTIA 최소 요소 7종(공급자·구성요소명·버전·고유식별자·의존관계·작성자·생성 시각) 기준입니다. 차수 간 비교(`baselinePath`)로 추가·제거·새 취약점을 설명하고, VEX 초안으로 취약점 판단(영향 없음 등)을 기록합니다 |
 | **보안약점 결과** | `secure` / `check_egovframe_secure_coding` | 개발보안 가이드(2021) 구현단계 항목별 건수와 등급(높음·중간·낮음), 파일·라인·CWE·조치. 공통컴포넌트 **원본**에서 나온 것은 업그레이드 대상, **수정본**·프로젝트 코드는 직접 조치입니다. 패턴 기반 보조 진단이며 공인 진단을 대체하지 않습니다 |
@@ -151,7 +154,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 
 모든 결과는 Markdown(사람용)과 JSON(`--json`, 구조화 출력)으로 받을 수 있어 감리 양식에 옮기거나 대시보드에 넣을 수 있습니다.
 
-## 도구 목록 (34종)
+## 도구 목록 (35종)
 
 파라미터와 동작 상세는 [docs/tools.md](docs/tools.md) 에 있습니다.
 
@@ -161,7 +164,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 | 카탈로그·문서 | `list_egovframe_components` · `search_egovframe_components` · `explain_egovframe_component` · `get_egovframe_guide` · `search_egovframe_docs` · `sync_egovframe_catalog` · `sync_egovframe_templates` |
 | 빌드·진단 | `build_egovframe_project` · `test_egovframe_project` · `validate_egovframe_project` · `diagnose_egovframe_project` · `diagnose_egovframe_network` · `generate_agents_md` |
 | 5.x 전환·유지 | `migrate_egovframe_project` · `rehearse_egovframe_migration` · `reassemble_egovframe_components` · `upgrade_egovframe_project` |
-| 납품 점검 | `check_egovframe_dependencies` · `generate_egovframe_sbom` · `check_egovframe_sbom` · `check_egovframe_secure_coding` · `generate_egovframe_report` |
+| 납품 점검 | `check_egovframe_dependencies` · `generate_egovframe_sbom` · `check_egovframe_sbom` · `check_egovframe_secure_coding` · `generate_egovframe_report` · `prepare_egovframe_delivery` |
 | 배포·CI·폐쇄망 | `generate_egovframe_deploy` · `generate_egovframe_ci` · `prepare_egovframe_offline_bundle` |
 
 MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이 읽을 수 있고, 프롬프트 `scaffold_board_login`·`scaffold_ai_chatbot`·`scaffold_portal`·`maintain_existing` 이 자주 쓰는 흐름을 안내합니다. 모든 도구에 `readOnlyHint`·`destructiveHint` 등 annotations 가 있어 클라이언트가 위험한 도구를 구분합니다.
@@ -183,12 +186,12 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 
 | 문서 | 내용 |
 |---|---|
-| [docs/tools.md](docs/tools.md) | 도구 34종 파라미터·동작·예시, MCP 리소스·프롬프트 |
+| [docs/tools.md](docs/tools.md) | 도구 35종 파라미터·동작·예시, MCP 리소스·프롬프트 |
 | [docs/versioning.md](docs/versioning.md) | 버전 정책, 공개 API 범위, 폐기 절차 |
 | [CHANGELOG.md](CHANGELOG.md) | 버전별 변경 이력 |
 | [docs/development.md](docs/development.md) | 로컬 개발, 검증 체계, 릴리스 절차, 브랜치 보호 (기여자용) |
-| [docs/planning.md](docs/planning.md) | 버전별 기획 원문·결과·선행 조사 기록, 다음 버전 계획(v1.1 납품 패키지 · v1.2 응답 영문화·진행 알림) |
-| 설계 노트 | [전환](docs/design-migration.md) · [의존성 점검](docs/design-dependency-check.md) · [평가서](docs/design-assessment-report.md) · [보안약점](docs/design-secure-coding.md) · [배포](docs/design-deploy.md) · [멀티 모듈·MSA](docs/design-workspace.md) · [CLI·CI](docs/design-cli.md) · [오프라인 번들](docs/design-offline-bundle.md) · [AI 컴포넌트](docs/design-ai-components.md) · [CRUD](docs/design-crud-generation.md) · [설정 생성](docs/design-config-generation.md) · [템플릿 조달](docs/design-initializr-zip-templates.md) · [카탈로그 동기화](docs/design-catalog-sync.md) · [components 파라미터](docs/design-components-parameter.md) |
+| [docs/planning.md](docs/planning.md) | 버전별 기획 원문·결과·선행 조사 기록, 다음 버전 계획(v1.2 응답 영문화·진행 알림) |
+| 설계 노트 | [납품 패키지](docs/design-delivery.md) · [전환](docs/design-migration.md) · [의존성 점검](docs/design-dependency-check.md) · [평가서](docs/design-assessment-report.md) · [보안약점](docs/design-secure-coding.md) · [배포](docs/design-deploy.md) · [멀티 모듈·MSA](docs/design-workspace.md) · [CLI·CI](docs/design-cli.md) · [오프라인 번들](docs/design-offline-bundle.md) · [AI 컴포넌트](docs/design-ai-components.md) · [CRUD](docs/design-crud-generation.md) · [설정 생성](docs/design-config-generation.md) · [템플릿 조달](docs/design-initializr-zip-templates.md) · [카탈로그 동기화](docs/design-catalog-sync.md) · [components 파라미터](docs/design-components-parameter.md) |
 
 ## 기여
 
