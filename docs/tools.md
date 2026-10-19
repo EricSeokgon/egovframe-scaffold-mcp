@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.0)
 
-도구 34종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 35종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -39,6 +39,7 @@
 | `check_egovframe_sbom` | **SBOM 점검** — 기존 CycloneDX·SPDX 2.x SBOM(형식 자동 판별)의 최소 요소 7종(공급자·구성요소명·버전·고유식별자·의존관계·작성자·생성 시각) 충족 여부와 빠진 component, 빌드 도구 없이 purl 로 기준 재판정·OSV 재조회(생성 이후 새 취약점), `baselinePath` 와 비교(추가·제거·버전·판정·취약점), `vex=true` 면 CycloneDX VEX 초안(`in_triage`, BOM-Link, 사람의 판단 보존, CycloneDX 입력만). SBOM 파일은 바꾸지 않음 |
 | `check_egovframe_secure_coding` | **보안약점 점검** — 행안부·KISA 개발보안 가이드(2021) 구현단계 보안약점 중 정적 패턴 14개 항목(규칙 20종: SQL 삽입·XSS·경로 조작·URL 자동접속·OS 명령·XXE·약한 암호·난수·하드코드 정보·쿠키·오류 노출·빈 catch·역직렬화·디버그 코드)을 파일·라인·CWE·등급·조치·출처(공통컴포넌트 원본/수정본/매니페스트 없음·프로젝트·테스트)로. 예외 파일(사유·검토자), `baselinePath` 비교(새 항목), SARIF 2.1.0(`format=sarif`·`sarifPath`). 진단 보조이며 공인 진단을 대체하지 않음 |
 | `generate_egovframe_deploy` | **컨테이너·배포 산출물** — Dockerfile(멀티 스테이지·Classic war → Tomcat 10.1(Servlet 6.1+ 는 11.0) ROOT, Boot jar → Temurin JRE, 비루트·HEALTHCHECK, `buildInImage=false` 면 미리 빌드한 산출물)·`.dockerignore`·`deploy/docker-compose.yml`(DbType 별 DB 컨테이너·초기화 SQL)·`deploy/k8s/<app>.yaml`(Deployment·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 환경 변수·Classic 설정 파일 덮어쓰기, `imageRegistry`(폐쇄망), `dockerfilePath`(템플릿 자체 Dockerfile 과 공존). 새 파일만, `dryRun` 기본 |
+| `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
 | `generate_agents_md` | 프로젝트 진단 결과로 AI 코딩 도구용 `AGENTS.md` 생성 — 빌드·테스트 명령(래퍼 감지), RTE·5.x 전환 상태, DbType, 기본 패키지·설정 디렉터리, 설치 컴포넌트(매니페스트 여부), 규칙(좌표·백업 디렉터리·비밀 정보·의존성 기준), MCP 도구 목록. 기존 파일은 `overwrite` 없이는 거부, `dryRun`, ko/en, 파일명 변경(`CLAUDE.md` 등) |
 
 ## create_egovframe_project 파라미터
@@ -331,6 +332,23 @@ generate_agents_md(projectDir="/work/my-egov-app", lang="en", fileName="CLAUDE.m
 - 감지된 `mavenDependencies`는 결과에 반환합니다. 프로젝트별 dependency management·버전 정책을 보호하기 위해 기존 `pom.xml`과 `web.xml`은 자동 덮어쓰지 않습니다.
 
 상세 스키마와 안전 게이트는 [카탈로그 동기화·완전 조립 설계](design-catalog-sync.md)를 참고하세요.
+
+## 납품 패키지 (`prepare_egovframe_delivery`)
+
+```text
+prepare_egovframe_delivery(projectDir, outputDir="/work/delivery/2026-10-1차")                      # 계획(dryRun) — 항목·위치
+prepare_egovframe_delivery(projectDir, outputDir, dryRun=false, offline=false, supplier="○○기관")    # 생성(OSV 포함)
+prepare_egovframe_delivery(projectDir, outputDir="…/2차", dryRun=false, previousDelivery="…/1차")   # 이전 차수와 비교(diff.md)
+prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)                               # 받은 패키지 재검증
+```
+
+- `include` — 기본 `assessment`·`dependencies`·`sbom`·`sbom-check`·`secure-coding`·`deploy`. `build` 는 로컬 JDK·Maven/Gradle 로 `package` 를 실제 실행하므로 지정할 때만. `sbom-check` 는 `sbom` 이 있어야 합니다.
+- `outputDir` — 없거나 비어 있어야 하고 프로젝트 밖을 권합니다(CI 는 작업 디렉터리 안 `egovframe-delivery/`). 스테이징 뒤 rename 하므로 중간 실패는 흔적이 없습니다.
+- `previousDelivery` — 이전 패키지 디렉터리. 등급·SBOM(추가·제거·버전·새/해소 취약점)·OSV ID·보안약점 지문을 비교하고, 이전 `sbom/vex.cdx.json` 의 사람 판단을 이어 씁니다. 같은 입력이면 "달라진 점 없음"입니다.
+- `verify` — `delivery-manifest.json` 의 파일별 sha256·크기와 rootHash 를 다시 계산해 일치·불일치·누락·manifest 밖 파일을 보고합니다.
+- `zip` — `<outputDir>.zip` 도 만듭니다.
+- CLI: `deliver --output-dir <dir> --write [--previous-delivery <dir>] [--offline=false] [--supplier …] [--zip] [--fail-on failed]` · `deliver --output-dir <dir> --verify [--fail-on invalid]`. `generate_egovframe_ci(supplyChain=true, delivery=true)` 가 게이트 끝에 같은 단계를 넣습니다.
+- 설계: [design-delivery.md](design-delivery.md).
 
 ## 리소스·프롬프트 (MCP Resources/Prompts)
 

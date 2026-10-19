@@ -44,7 +44,7 @@ Requires Node.js 22+ (since 1.0.0; Node 18 and 20 are end-of-life). Downloads go
 | `EGOVFRAME_ALLOWED_ROOTS` | Optional sandbox: every directory argument (`projectDir`, `outputDir`) must be inside one of these roots (path-separator-delimited, realpath-checked). |
 | `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list`. Responses stay Korean. |
 
-## Tools (34)
+## Tools (35)
 
 | Tool | What it does |
 |---|---|
@@ -69,6 +69,7 @@ Requires Node.js 22+ (since 1.0.0; Node 18 and 20 are end-of-life). Downloads go
 | `check_egovframe_dependencies` | Compare dependencies (declared, or with `resolve=true` the whole tree resolved by Maven/Gradle — transitive artifacts with their path, declared-vs-resolved differences) with the official 5.x parent baseline (139 coordinates + BOM families), the full Spring Boot BOM (1,473 coordinates) and the transitive dependencies of the 18 RTE modules (58): ok / outdated / parent-managed / legacy / replace / vendor / unknown, each with the basis it was compared against; security-config presence checks; optional OSV lookup |
 | `reassemble_egovframe_components` | Reassemble the common-component sources copied into a 3.x/4.x project onto v5.0.7: identifies the original tag by git blob ids (no downloads), three-way classifies every file, keeps user changes as patches plus a worklist, backs up and removes files 5.x dropped, writes the manifest (then upgrade/validate/remove work); dryRun by default, one transaction, optional compile verify |
 | `rehearse_egovframe_migration` | Rehearse the 5.x migration on a copy without touching the project: reassemble components (first, so the origin tag is still recognisable), apply the automatic items, compile (every javac error, no 100-error cap), align the copy's pom to the official common-components pom of the pinned tag, compile again. Reports both error counts, missing packages with candidate coordinates, cascade errors, remaining files, a worklist and the pom patch; the original is fingerprinted before and after. The official v4.3.2 tree goes from 6,003 errors (JDK 17; 6,335 on JDK 21) to 1 |
+| `prepare_egovframe_delivery` | **Delivery package** (v1.1): assembles the assessment, dependency action list, SBOM (CycloneDX and SPDX), SBOM check with a VEX draft, secure-coding findings with SARIF and the deployment files in one new directory with `delivery-manifest.json` (sha256 per file, input fingerprint, rootHash) and an `index.md`; failed items stay in the index with the reason. `previousDelivery` adds a diff (grades, SBOM, new or resolved vulnerabilities and weaknesses) and preserves VEX judgements; `verify=true` re-checks a received package. CLI `deliver --write` / `deliver --verify` |
 | `prepare_egovframe_offline_bundle` | For air-gapped (network-separated) environments: on an internet PC, bundle the full OSV Maven dump, the pinned common-components archive, the Initializr zip templates and a mirror of the official common-components tags with a sha256 manifest. On the air-gapped PC set `EGOVFRAME_OFFLINE_BUNDLE`: downloads are served from the bundle after fingerprint checks, OSV lookups use the local dump (snapshot date noted, warning after 30 days) and reassembly uses the mirror. The local dump matched online OSV on 73/73 queries |
 | `generate_egovframe_sbom` | CycloneDX 1.6 JSON (default) or SPDX 2.3 JSON (`bomFormat="spdx-json"`) SBOM without touching build files — Maven via cyclonedx-maven-plugin (hashes, licenses), Gradle from the resolved tree; baseline verdict per component (`egovframe:*` properties), optional OSV `vulnerabilities[]`; writes inside the project only, `dryRun` by default |
 | `check_egovframe_sbom` | Check an existing CycloneDX or SPDX 2.x SBOM (format detected) without changing it: the 7 minimum elements (supplier, name, version, unique identifier, dependency relationship, author, timestamp) per component with a ready / needs-work verdict, a purl-only re-check (changed baseline verdicts, OSV findings published since generation), a diff against `baselinePath`, and with `vex=true` a CycloneDX VEX draft (`in_triage`, BOM-Link) that keeps human decisions |
@@ -197,7 +198,7 @@ The server is described for the [MCP Registry](https://registry.modelcontextprot
 | [docs/versioning.md](docs/versioning.md) | Versioning policy, public API surface, deprecation process |
 | [CHANGELOG.md](CHANGELOG.md) | Per-release change log |
 | [docs/development.md](docs/development.md) | Local development, test suites, release procedure (contributors) |
-| [docs/planning.md](docs/planning.md) | Planning records per version and the next plans (v1.1 delivery package, v1.2 English responses and progress notifications) |
+| [docs/planning.md](docs/planning.md) | Planning records per version and the next plan (v1.2 English responses and progress notifications) |
 
 ## License
 

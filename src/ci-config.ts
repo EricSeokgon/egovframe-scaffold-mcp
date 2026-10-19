@@ -45,6 +45,8 @@ export interface CiSupplyChainOptions {
   supplier?: string;
   /** v0.44: 보안약점 점검 단계(secure --fail-on high, SARIF) */
   secureCoding?: boolean;
+  /** v1.1: 납품 패키지 단계(deliver --write → egovframe-delivery/, 아티팩트로 보관) */
+  delivery?: boolean;
 }
 /** v0.43: 실행 환경 변수(세 플랫폼 공통) */
 export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string }
@@ -69,7 +71,8 @@ export function ciEnvEntries(env: CiEnvOptions = {}): [string, string][] {
 }
 
 /** 공급망 게이트의 CLI 명령(플랫폼 공통). stepSummary 는 GitHub 에서만. */
-export type GateStepId = "sbom" | "sbom-check" | "secure" | "assess";
+export type GateStepId = "sbom" | "sbom-check" | "secure" | "assess" | "deliver";
+export const DELIVERY_DIR = "egovframe-delivery";
 export const SECURE_SARIF = "egovframe-secure.sarif";
 export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary = false): { id: GateStepId; name: string; command: string }[] {
   checkSupplyChain(opts);
@@ -83,9 +86,11 @@ export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary
   }
   if (opts.secureCoding) out.push({ id: "secure", name: "Secure coding weaknesses (SARIF)", command: `${npx} secure --project . --sarif-path ${SECURE_SARIF} --overwrite --out egovframe-secure.md${stepSummary ? " --step-summary" : ""} --fail-on high` });
   out.push({ id: "assess", name: "Migration readiness and supply-chain grades", command: `${npx} assess --project .${offline} --out egovframe-assessment.md${stepSummary ? " --step-summary" : ""} --fail-on ${failOn}` });
+  // v1.1: 납품 패키지 — 게이트가 통과한 뒤 같은 입력으로 묶는다(실패 항목은 패키지 목차에 남고 --fail-on failed 로 단계도 실패)
+  if (opts.delivery) out.push({ id: "deliver", name: "Delivery package (manifest, SBOM, VEX, SARIF, assessment)", command: `${npx} deliver --project . --output-dir ${DELIVERY_DIR} --write${offline}${opts.supplier ? ` --supplier "${opts.supplier}"` : ""} --fail-on failed` });
   return out;
 }
-const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : [])];
+const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : []), ...(opts.delivery ? [`${DELIVERY_DIR}/**`] : [])];
 
 /** GitLab supply-chain job 준비: Node 22 이상 보장(v1.0, engines >=22) */
 export const NODE22_ENSURE = `node -e "process.exit(+process.versions.node.split('.')[0] >= 22 ? 0 : 1)" 2>/dev/null || ((command -v npm >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq nodejs npm)) && npm install -g -s node@22)`;
@@ -248,7 +253,7 @@ export function generateJenkinsfile(buildTool: "maven" | "gradle", jdkInput: str
     ...stage("Build", build),
   ];
   if (supplyChain) {
-    const names: Record<string, string> = { "sbom": "SBOM", "sbom-check": "SBOM check", "secure": "Secure coding", "assess": "Assessment" };
+    const names: Record<string, string> = { "sbom": "SBOM", "sbom-check": "SBOM check", "secure": "Secure coding", "assess": "Assessment", "deliver": "Delivery package" };
     for (const c of supplyChainCommands(supplyChain, false)) L.push(...stage(names[c.id], [`run(${gq(c.command)})`]));
   }
   L.push("  }", "  post {", "    always {");
@@ -265,6 +270,8 @@ export interface CiResult { projectDir: string; platform: CiPlatform; buildTool:
 export interface GenerateCiOptions extends CiEnvOptions {
   /** v0.44: 게이트에 보안약점 점검 단계(SARIF) */
   secureCoding?: boolean;
+  /** v1.1: 게이트 끝에 납품 패키지 단계 */
+  delivery?: boolean;
   projectDir: string;
   platform?: CiPlatform;
   jdk?: string;
@@ -282,8 +289,9 @@ export function generateCiConfig(opts: GenerateCiOptions): CiResult {
   const platform = opts.platform ?? "github";
   if (!(platform in CI_PATHS)) throw new Error(`지원하지 않는 platform: ${platform} (github·gitlab·jenkins)`);
   const buildTool = detectBuildTool(projectDir);
-  const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}), ...(opts.secureCoding ? { secureCoding: true } : {}) } : false;
+  const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}), ...(opts.secureCoding ? { secureCoding: true } : {}), ...(opts.delivery ? { delivery: true } : {}) } : false;
   if (opts.secureCoding && !opts.supplyChain) throw new Error("secureCoding 은 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
+  if (opts.delivery && !opts.supplyChain) throw new Error("delivery 는 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
   const env: CiEnvOptions = { ...(opts.npmRegistry ? { npmRegistry: opts.npmRegistry } : {}), ...(opts.offlineBundle ? { offlineBundle: opts.offlineBundle } : {}) };
   const jdk = opts.jdk ?? "17";
   const content = platform === "gitlab" ? generateGitlabCi(buildTool, jdk, sc, env) : platform === "jenkins" ? generateJenkinsfile(buildTool, jdk, sc, env) : generateCiYaml(buildTool, jdk, sc, env);

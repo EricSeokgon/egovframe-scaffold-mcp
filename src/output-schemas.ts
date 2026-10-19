@@ -317,6 +317,26 @@ export const DeployOutput = loose({
   workspace: loose({ kind: z.string(), appName: z.string(), services: z.array(loose({ name: z.string(), module: z.string(), runtime: z.string(), port: z.number().int(), web: z.boolean(), ownDockerfile: z.boolean(), image: z.string(), env: z.array(z.string()), dependsOn: z.array(z.string()) })), infra: z.array(loose({ name: z.string(), image: z.string() })), skipped: z.array(loose({ module: z.string(), reason: z.string() })), unresolved: z.array(loose({ service: z.string(), key: z.string(), value: z.string() })) }).optional(),
 });
 
+// v1.1: prepare_egovframe_delivery (만들기·verify 두 모양을 한 스키마로 — mode 로 구분)
+const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.unknown()), error: z.string().optional() });
+export const DeliveryOutput = loose({
+  mode: z.enum(["prepare", "verify"]),
+  projectDir: z.string().optional(),
+  outputDir: z.string(),
+  dryRun: z.boolean().optional(),
+  written: z.boolean().optional(),
+  include: z.array(z.string()).optional(),
+  items: z.array(DeliveryItemSchema).optional(),
+  files: z.number().int().optional(),
+  bytes: z.number().int().optional(),
+  rootHash: z.string().nullable().optional(),
+  manifestPath: z.string().optional(),
+  zipPath: z.string().optional(),
+  diff: loose({ previousDir: z.string(), changed: z.boolean(), skipped: z.array(z.string()) }).optional(),
+  verify: loose({ ok: z.boolean(), verified: z.number().int(), mismatched: z.array(loose({ path: z.string(), expected: z.string(), actual: z.string() })), missing: z.array(z.string()), extra: z.array(z.string()), rootHashMatches: z.boolean().nullable(), manifest: loose({ createdAt: z.string(), tool: z.string(), rootHash: z.string(), files: z.number().int(), items: z.number().int() }).nullable() }).optional(),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -329,6 +349,7 @@ export const OUTPUT_SCHEMAS = {
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,
+  prepare_egovframe_delivery: DeliveryOutput,
   generate_egovframe_report: ReportOutput,
   reassemble_egovframe_components: ReassembleOutput,
 } as const;

@@ -20,9 +20,9 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 const now = await m.buildApiContract();
 const diff = m.compareContracts(fixture.contract, now);
 assert(diff.changes.length === 0, `계약이 스냅샷과 같음${diff.changes.length ? ` — ${diff.level}:\n${diff.changes.map((c) => `  ${c.level} ${c.path} — ${c.what}`).join("\n")}\n  의도한 변경이면 npm run api-contract:update 후 diff 를 검토하세요` : ""}`);
-assert(Object.keys(now.tools).length === 34 && Object.values(now.tools).filter((t) => t.output).length === 13, `도구 34종 · 구조화 출력 13종`);
+assert(Object.keys(now.tools).length === 35 && Object.values(now.tools).filter((t) => t.output).length === 14, `도구 35종 · 구조화 출력 14종`);
 assert(now.node === pkg.engines.node && now.node === ">=22", `engines.node ${now.node}`);
-assert(JSON.stringify(now.cli.exitCodes) === JSON.stringify({ ok: 0, failOn: 2, error: 3, usage: 64 }) && Object.keys(now.cli.commands).length === 11, "CLI 명령 11종·종료 코드 0/2/3/64");
+assert(JSON.stringify(now.cli.exitCodes) === JSON.stringify({ ok: 0, failOn: 2, error: 3, usage: 64 }) && Object.keys(now.cli.commands).length === 12, "CLI 명령 12종·종료 코드 0/2/3/64");
 assert(["base", "change", "version"].every((k) => typeof fixture[k] === "string") && ["none", "minor", "major"].includes(fixture.change), `스냅샷 머리말 version ${fixture.version} · base ${fixture.base} · change ${fixture.change}`);
 assert(!JSON.stringify(now).includes("\"description\""), "계약에 설명 문구 없음(문구 변경은 계약 변경이 아님)");
 assert(JSON.stringify(m.compareContracts(now, clone(now))) === JSON.stringify({ level: "none", changes: [] }), "같은 계약 비교 → none");
@@ -46,9 +46,9 @@ const cases = [
   ["출력 필드 추가", (b) => { b.tools[T].output.properties.extra = { type: "number" }; }, "minor"],
   ["구조화 출력 제거", (b) => { b.tools[T].output = null; }, "major"],
   ["도구 제거", (b) => delete b.tools[T], "major"],
-  ["도구 추가", (b) => { b.tools.prepare_egovframe_delivery = { input: { type: "object", properties: {} }, output: null, deprecated: {} }; }, "minor"],
+  ["도구 추가", (b) => { b.tools.future_egovframe_tool = { input: { type: "object", properties: {} }, output: null, deprecated: {} }; }, "minor"],
   ["CLI 명령 제거", (b) => delete b.cli.commands.check, "major"],
-  ["CLI 명령 추가", (b) => { b.cli.commands.deliver = "prepare_egovframe_delivery"; }, "minor"],
+  ["CLI 명령 추가", (b) => { b.cli.commands.future = "future_egovframe_tool"; }, "minor"],
   ["종료 코드 변경", (b) => { b.cli.exitCodes.failOn = 1; }, "major"],
   ["환경 변수 제거", (b) => { b.env = b.env.filter((e) => e !== "EGOVFRAME_LANG"); }, "major"],
   ["Node 최소 버전 상향", (b) => { b.node = ">=24"; }, "major"],

@@ -35,6 +35,7 @@ import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDepl
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
 import { renderBundleMarkdown } from "./offline-bundle.js";
+import { prepareDelivery, verifyDelivery, renderDeliveryMarkdown, renderVerifyMarkdown, DELIVERY_ITEMS, DELIVERY_DEFAULT_INCLUDE } from "./delivery.js";
 import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
 import { toolAnnotations, toolTitle } from "./tool-meta.js";
@@ -716,6 +717,35 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
+  // ── 납품 패키지 (v1.1) ─────────────────────────────────
+  server.registerTool(
+    "prepare_egovframe_delivery",
+    { title: t("prepare_egovframe_delivery"), description: d("prepare_egovframe_delivery", "감리·검수에 내는 산출물을 새 디렉터리 하나에 모읍니다 — 전환 준비도 평가서, 의존성 조치 목록, SBOM(CycloneDX 1.6·SPDX 2.3), SBOM 점검과 VEX 초안, 보안약점 결과와 SARIF, 컨테이너·배포 산출물, (지정 시) 빌드 결과. delivery-manifest.json(파일별 sha256·크기, 도구 버전, 입력 지문, 전체 지문 rootHash)과 목차 index.md 를 쓰고, 실패한 항목은 빼지 않고 이유와 함께 목차에 남깁니다. previousDelivery 를 주면 이전 차수와 비교한 diff.md(등급·SBOM 구성요소와 버전·새/해소 취약점·새/해소 보안약점)를 만들고 이전 VEX 의 사람 판단을 보존합니다. verify=true 면 받은 패키지(outputDir)의 지문을 다시 계산해 변조·누락을 봅니다. 프로젝트는 읽기만 하고(SBOM 도 프로젝트에 쓰지 않음) outputDir 는 비어 있어야 합니다. dryRun(기본)은 계획만, zip=true 면 <outputDir>.zip 도 만듭니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장) — 읽기만 함"),
+      outputDir: z.string().describe("패키지를 만들 디렉터리(프로젝트 밖, 없거나 비어 있어야 함). verify=true 면 검증할 패키지 디렉터리"),
+      include: z.array(z.enum(DELIVERY_ITEMS as [string, ...string[]])).min(1).default(DELIVERY_DEFAULT_INCLUDE).describe("담을 항목(기본: build 를 뺀 전부 — build 는 로컬 JDK·Maven/Gradle 로 package 를 실제 실행)"),
+      previousDelivery: z.string().optional().describe("이전 차수 패키지 디렉터리 — 비교 절(diff.md)과 VEX 판단 보존"),
+      offline: z.boolean().default(true).describe("false 면 OSV 취약점 조회(의존성·SBOM·평가서, 오프라인 번들이 있으면 번들로)"),
+      supplier: z.string().min(1).max(200).optional().describe("SBOM 공급자(없으면 pom <organization><name>)"),
+      zip: z.boolean().default(false).describe("true 면 <outputDir>.zip 도 만듦"),
+      verify: z.boolean().default(false).describe("true 면 만들지 않고 outputDir 의 manifest 지문을 재검증"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 계획만"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.prepare_egovframe_delivery.shape, annotations: toolAnnotations("prepare_egovframe_delivery") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      if (args.verify) {
+        const v = verifyDelivery(args.outputDir);
+        const r = { mode: "verify" as const, outputDir: v.dir, verify: { ok: v.ok, verified: v.verified, mismatched: v.mismatched, missing: v.missing, extra: v.extra, rootHashMatches: v.rootHashMatches, manifest: v.manifest }, notes: v.notes };
+        const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderVerifyMarkdown(v);
+        return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+      }
+      const p = await prepareDelivery({ projectDir: args.projectDir, outputDir: args.outputDir, include: args.include as never, previousDelivery: args.previousDelivery, offline: args.offline, supplier: args.supplier, zip: args.zip, dryRun: args.dryRun });
+      const r = { mode: "prepare" as const, ...p };
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDeliveryMarkdown(p);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
   // ── 전환 리허설 (v0.41) ───────────────────────────────
   server.registerTool(
     "rehearse_egovframe_migration",
@@ -1101,7 +1131,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── CI 설정 생성 도구 (v0.19.0) ────────────────────────
   server.registerTool(
     "generate_egovframe_ci",
-    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 CI 설정을 생성합니다 — platform=github(.github/workflows/egovframe-ci.yml, 기본)·gitlab(.gitlab-ci.yml)·jenkins(Jenkinsfile, Declarative). 빌드도구(maven/gradle) 자동 감지, JDK 지정, 빌드·테스트(GitLab 은 JUnit 리포트). supplyChain=true 면 이 서버의 CLI(npx egovframe-scaffold-mcp)로 SBOM 생성 → 최소 요소 7종 점검(sbom-check --fail-on minimum) → 전환 준비도 평가서(failOn 기준, 기본 supplyChain:D)를 돌려 기준을 넘으면 실패하고 보고서·SBOM 을 아티팩트로 남기는 공급망 게이트를 추가합니다(GitHub 은 PR 요약에 등급, GitLab 은 CycloneDX 리포트). npmRegistry(사내 npm 레지스트리)·offlineBundle(러너에서 본 오프라인 번들 경로)은 환경 변수로 넣습니다. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다."), inputSchema: {
+    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 CI 설정을 생성합니다 — platform=github(.github/workflows/egovframe-ci.yml, 기본)·gitlab(.gitlab-ci.yml)·jenkins(Jenkinsfile, Declarative). 빌드도구(maven/gradle) 자동 감지, JDK 지정, 빌드·테스트(GitLab 은 JUnit 리포트). supplyChain=true 면 이 서버의 CLI(npx egovframe-scaffold-mcp)로 SBOM 생성 → 최소 요소 7종 점검(sbom-check --fail-on minimum) → 전환 준비도 평가서(failOn 기준, 기본 supplyChain:D)를 돌려 기준을 넘으면 실패하고 보고서·SBOM 을 아티팩트로 남기는 공급망 게이트를 추가합니다(GitHub 은 PR 요약에 등급, GitLab 은 CycloneDX 리포트). npmRegistry(사내 npm 레지스트리)·offlineBundle(러너에서 본 오프라인 번들 경로)은 환경 변수로 넣습니다. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다. delivery=true 면 게이트 끝에 납품 패키지 단계(deliver --write → egovframe-delivery/)를 더해 아티팩트로 남깁니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
       platform: z.enum(["github", "gitlab", "jenkins"]).default("github").describe("CI 플랫폼: github(GitHub Actions, 기본) | gitlab(.gitlab-ci.yml) | jenkins(Jenkinsfile, Declarative)"),
       jdk: z.string().regex(CI_JDK_RE, "숫자와 점으로 된 버전만 허용 (예: 17, 21, 1.8)").default("17").describe("JDK 버전 (기본 17, 숫자·점만 허용)"),
@@ -1113,6 +1143,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       npmRegistry: z.string().regex(CI_NPM_REGISTRY_RE, "http(s) URL").optional().describe("사내 npm 레지스트리 URL(NPM_CONFIG_REGISTRY 로 설정 — npx 가 이 서버를 받는 곳)"),
       offlineBundle: z.string().regex(CI_BUNDLE_PATH_RE, "러너에서 본 절대 경로").optional().describe("폐쇄망 러너·에이전트에서 본 오프라인 번들 경로(EGOVFRAME_OFFLINE_BUNDLE 로 설정)"),
       secureCoding: z.boolean().default(false).describe("v0.44: 게이트에 보안약점 점검 단계 추가(secure --fail-on high, SARIF 를 GitHub code scanning 에 업로드·GitLab·Jenkins 는 보관)"),
+      delivery: z.boolean().default(false).describe("v1.1: 게이트 끝에 납품 패키지 단계 추가(deliver --write → egovframe-delivery/ 를 아티팩트로 보관, 실패 항목이 있으면 단계 실패). supplyChain=true 필요"),
     }, annotations: toolAnnotations("generate_egovframe_ci") },
     async (args) => {
       enforceAllowedRoots(args);

@@ -163,3 +163,5 @@ export { buildApiContract, compareContracts, checkVersionBump, normalizeSchema, 
 export type { ApiContract, ContractChange, ChangeLevel } from "./api-contract.js";
 export { DEPRECATED_PARAMS, applyDeprecatedParams } from "./deprecations.js";
 export type { DeprecatedParam } from "./deprecations.js";
+export { prepareDelivery, verifyDelivery, diffDeliveries, readDeliveryData, projectFingerprint, rootHashOf, renderDeliveryMarkdown, renderVerifyMarkdown, renderDeliveryDiffMarkdown, DELIVERY_ITEMS, DELIVERY_DEFAULT_INCLUDE, DELIVERY_MANIFEST, DELIVERY_INDEX } from "./delivery.js";
+export type { PrepareDeliveryOptions, PrepareDeliveryResult, VerifyDeliveryResult, DeliveryManifest, DeliveryItem, DeliveryItemId, DeliveryDiff } from "./delivery.js";
