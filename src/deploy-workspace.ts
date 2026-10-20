@@ -9,6 +9,7 @@ import * as path from "node:path";
 import { analyzeDeploy, loadDeployRules, parseProperties, parseJdbcUrl, renderDockerfile, renderDockerignore, renderKubernetes, type DeployProfile, type DeployRenderOptions } from "./deploy.js";
 import { detectWorkspace, flattenYaml, type Workspace, type WorkspaceModule } from "./workspace.js";
 import { SERVER_VERSION } from "./version.js";
+import { L, tr } from "./lang.js";
 
 const read = (p: string) => { try { return fs.readFileSync(p, "utf8"); } catch { return ""; } };
 export const serviceName = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "svc";
@@ -80,9 +81,9 @@ export function planWorkspaceDeploy(projectDir: string, opts: { appName?: string
   const skipped: WorkspaceDeployPlan["skipped"] = [];
   const services: WorkspaceService[] = [];
   for (const m of ws.modules) {
-    if (m.library) { skipped.push({ module: m.dir, reason: "라이브러리 모듈(실행 단위 아님) — 다른 서비스 이미지 안에 들어갑니다" }); continue; }
+    if (m.library) { skipped.push({ module: m.dir, reason: L("라이브러리 모듈(실행 단위 아님) — 다른 서비스 이미지 안에 들어갑니다", "library module (not a runnable unit) — bundled into other service images") }); continue; }
     const a = analyzeDeploy(path.join(root, m.dir));
-    if (!a.profile) { skipped.push({ module: m.dir, reason: a.unsupported?.reason ?? "분석 실패" }); continue; }
+    if (!a.profile) { skipped.push({ module: m.dir, reason: a.unsupported?.reason ?? L("분석 실패", "analysis failed") }); continue; }
     const name = serviceName(m.name);
     const rootCtx = m.buildTool === "maven" && m.inheritsFrom !== null;
     services.push({
@@ -138,7 +139,7 @@ export function planWorkspaceDeploy(projectDir: string, opts: { appName?: string
     if (slf4jProviderConflict(path.join(root, s.module.dir))) s.env.push({ name: "JAVA_TOOL_OPTIONS", value: `-Dslf4j.provider=${LOGBACK_PROVIDER}`, secret: false });
   }
   const pinned = services.filter((s) => s.env.some((e) => e.name === "JAVA_TOOL_OPTIONS"));
-  if (pinned.length) notes.push(`${pinned.length}개 서비스(${pinned.slice(0, 4).map((s) => s.name).join("·")}${pinned.length > 4 ? " 등" : ""})는 log4j-slf4j2-impl 을 선언하면서 spring-boot-starter-logging(logback·log4j-to-slf4j)도 함께 실어 SLF4J 공급자가 둘입니다. 어느 쪽이 잡히는지는 실행 환경에 따라 달라지고, log4j 쪽이 잡히면 "log4j-slf4j2-impl cannot be present with log4j-to-slf4j" 로 기동에 실패합니다(GitHub Actions 실측). 그래서 JAVA_TOOL_OPTIONS=-Dslf4j.provider 로 logback 을 고정했습니다 — 근본 해결은 둘 중 하나를 빼는 것입니다.`);
+  if (pinned.length) notes.push(L(`${pinned.length}개 서비스(${pinned.slice(0, 4).map((s) => s.name).join("·")}${pinned.length > 4 ? " 등" : ""})는 log4j-slf4j2-impl 을 선언하면서 spring-boot-starter-logging(logback·log4j-to-slf4j)도 함께 실어 SLF4J 공급자가 둘입니다. 어느 쪽이 잡히는지는 실행 환경에 따라 달라지고, log4j 쪽이 잡히면 "log4j-slf4j2-impl cannot be present with log4j-to-slf4j" 로 기동에 실패합니다(GitHub Actions 실측). 그래서 JAVA_TOOL_OPTIONS=-Dslf4j.provider 로 logback 을 고정했습니다 — 근본 해결은 둘 중 하나를 빼는 것입니다.`, `${pinned.length} services (${pinned.slice(0, 4).map((s) => s.name).join("·")}${pinned.length > 4 ? " etc." : ""}) declare log4j-slf4j2-impl while also shipping spring-boot-starter-logging (logback, log4j-to-slf4j), so there are two SLF4J providers. Which one wins depends on the runtime, and if log4j wins, startup fails with "log4j-slf4j2-impl cannot be present with log4j-to-slf4j" (observed on GitHub Actions). logback is therefore pinned via JAVA_TOOL_OPTIONS=-Dslf4j.provider — the real fix is to drop one of the two.`));
   if (configServer) {
     const cfg = moduleConfig(path.join(root, configServer.module.dir));
     const loc = cfg.map((c) => c.map.get("spring.cloud.config.server.native.search-locations")?.value).find(Boolean) ?? null;
@@ -162,8 +163,8 @@ export function planWorkspaceDeploy(projectDir: string, opts: { appName?: string
       }
       configServer.configRepo = { source: path.relative(root, src).split(path.sep).join("/"), mount: "/config-repo", files };
       configServer.env.push({ name: "SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCHLOCATIONS", value: "file:/config-repo/", secret: false });
-      notes.push(`설정 서버(${configServer.name})의 저장소 ${configServer.configRepo.source} 를 deploy/config-repo/ 사본으로 붙입니다(localhost 참조 ${files.reduce((n, f) => n + f.changed, 0)}곳을 서비스 이름으로 바꿈).`);
-    } else if (loc) notes.push(`설정 서버 저장소 위치(${loc})를 작업공간에서 찾지 못했습니다 — 설정 서버가 내주는 설정의 localhost 참조는 바꾸지 않았습니다.`);
+      notes.push(L(`설정 서버(${configServer.name})의 저장소 ${configServer.configRepo.source} 를 deploy/config-repo/ 사본으로 붙입니다(localhost 참조 ${files.reduce((n, f) => n + f.changed, 0)}곳을 서비스 이름으로 바꿈).`, `The config server (${configServer.name}) repository ${configServer.configRepo.source} is attached as a copy under deploy/config-repo/ (${files.reduce((n, f) => n + f.changed, 0)} localhost references rewritten to service names).`));
+    } else if (loc) notes.push(L(`설정 서버 저장소 위치(${loc})를 작업공간에서 찾지 못했습니다 — 설정 서버가 내주는 설정의 localhost 참조는 바꾸지 않았습니다.`, `Config server repository location (${loc}) not found in the workspace — localhost references in the configuration served by the config server were left unchanged.`));
   }
   // 설정 서버를 참조하는 서비스는 설정 서버 뒤에, 디스커버리를 참조하는 서비스는 디스커버리 뒤에 뜨게(이미 dependsOn)
   // 인프라
@@ -186,9 +187,9 @@ export function planWorkspaceDeploy(projectDir: string, opts: { appName?: string
       const initDirs = ["docker-compose/mysql/init", "docker-compose/mariadb/init", "docker-compose/postgres/init", "docker-compose/postgresql/init", "init", "sql"].map((d) => path.join(root, d)).filter((d) => fs.existsSync(d) && fs.readdirSync(d).some((f) => f.endsWith(".sql")));
       const volumes = ["db-data:" + db.data, ...(initDirs[0] ? [`../${path.relative(root, initDirs[0]).split(path.sep).join("/")}:${db.initdb}:ro`] : [])];
       infra.push({ name: "db", kind: "db", image: db.image, port: db.port, env, command: db.command, healthcheck: db.healthcheck, volumes, dataPath: db.data });
-      if (dbPassword !== "CHANGE_ME") notes.push(`DB 계정·비밀번호는 설정 파일에 적힌 값(${user} 계정)을 앱이 그대로 쓰므로 DB 컨테이너 기본값을 같게 두었습니다 — 운영에서는 설정과 .env 의 DB_PASSWORD 를 함께 바꾸세요.`);
-      if (!initDirs.length) notes.push("DB 초기화 SQL 디렉터리를 찾지 못해 빈 DB 로 띄웁니다.");
-    } else notes.push(`DB(${type})는 공개 이미지 규칙이 없어 컨테이너로 띄우지 않습니다 — 연결 정보를 바꾸세요.`);
+      if (dbPassword !== "CHANGE_ME") notes.push(L(`DB 계정·비밀번호는 설정 파일에 적힌 값(${user} 계정)을 앱이 그대로 쓰므로 DB 컨테이너 기본값을 같게 두었습니다 — 운영에서는 설정과 .env 의 DB_PASSWORD 를 함께 바꾸세요.`, `The app uses the DB account and password from the config files (account ${user}), so the DB container defaults were set to match — in production change both the configuration and DB_PASSWORD in .env.`));
+      if (!initDirs.length) notes.push(L("DB 초기화 SQL 디렉터리를 찾지 못해 빈 DB 로 띄웁니다.", "No DB init SQL directory found — the DB starts empty."));
+    } else notes.push(L(`DB(${type})는 공개 이미지 규칙이 없어 컨테이너로 띄우지 않습니다 — 연결 정보를 바꾸세요.`, `DB (${type}) has no public image rule and is not started as a container — change the connection settings.`));
   }
   for (const [name, inf] of Object.entries(rules.infra ?? {})) {
     if (!used.has(name)) continue;
@@ -199,11 +200,11 @@ export function planWorkspaceDeploy(projectDir: string, opts: { appName?: string
       // 브로커 계정: guest 는 원격 접속 불가 → 만든 계정으로
       if (name === "rabbitmq") s.env.push({ name: "SPRING_RABBITMQ_USERNAME", value: inf.user, secret: false }, { name: "SPRING_RABBITMQ_PASSWORD", value: `\${RABBITMQ_PASSWORD:-CHANGE_ME}`, secret: true });
     }
-    notes.push(`${name}: ${inf.note}`);
+    notes.push(`${name}: ${tr(inf, "note")}`);
   }
   for (const s of services) for (const r of s.refs) { const t = [...ports.values()].find((x) => x.host === r.to || r.to.includes(`${x.host}:`) || r.to.includes(`//${x.host}`)); if (t && t.kind !== "service" && !s.dependsOn.includes(t.host)) s.dependsOn.push(t.host); }
   if (configServer) for (const s of services) if (s !== configServer && (s.configRepo === undefined) && s.refs.some((r) => r.to.includes(configServer.name)) && !s.dependsOn.includes(configServer.name)) s.dependsOn.push(configServer.name);
-  if (unresolved.length) notes.push(`대상을 모르는 localhost 참조 ${unresolved.length}건(포트 ${[...new Set(unresolved.map((u) => u.value.match(/:(\d+)/)?.[1]).filter(Boolean))].join("·") || "-"}) — 외부 서비스(검색 엔진 등)는 직접 연결하세요: ${unresolved.slice(0, 4).map((u) => `${u.service} ${u.key}`).join(", ")}`);
+  if (unresolved.length) notes.push(L(`대상을 모르는 localhost 참조 ${unresolved.length}건(포트 ${[...new Set(unresolved.map((u) => u.value.match(/:(\d+)/)?.[1]).filter(Boolean))].join("·") || "-"}) — 외부 서비스(검색 엔진 등)는 직접 연결하세요: ${unresolved.slice(0, 4).map((u) => `${u.service} ${u.key}`).join(", ")}`, `${unresolved.length} localhost references with unknown targets (ports ${[...new Set(unresolved.map((u) => u.value.match(/:(\d+)/)?.[1]).filter(Boolean))].join("·") || "-"}) — connect external services (search engines etc.) yourself: ${unresolved.slice(0, 4).map((u) => `${u.service} ${u.key}`).join(", ")}`));
   const rootPom = read(path.join(root, "pom.xml"));
   const appName = opts.appName ?? serviceName(rootPom.replace(/<parent>[\s\S]*?<\/parent>/, "").match(/<artifactId>\s*([^<\s]+)/)?.[1] ?? path.basename(root));
   const version = rootPom.replace(/<parent>[\s\S]*?<\/parent>/, "").match(/<version>\s*([^<\s$]+)\s*<\/version>/)?.[1] ?? services[0]?.profile.version ?? "1.0.0";
@@ -216,36 +217,36 @@ const composeEscape = (s: string) => s.replace(/\$\{(?![A-Z][A-Z0-9_]*:-)/g, "$$
 const dq = (s: string) => { const v = composeEscape(s); return /\$\{/.test(v) ? `"${v}"` : q(v); };
 
 export function renderWorkspaceCompose(plan: WorkspaceDeployPlan, o: { imageRegistry: string; image: (s: WorkspaceService) => string }): string {
-  const L: string[] = [
-    `# eGovFrame 다중 서비스 로컬 실행 — egovframe-scaffold-mcp ${SERVER_VERSION} generate_egovframe_deploy`,
-    `# 사용: cd deploy && cp .env.example .env && docker compose up --build`,
+  const out: string[] = [
+    L(`# eGovFrame 다중 서비스 로컬 실행 — egovframe-scaffold-mcp ${SERVER_VERSION} generate_egovframe_deploy`, `# eGovFrame multi-service local run — egovframe-scaffold-mcp ${SERVER_VERSION} generate_egovframe_deploy`),
+    L(`# 사용: cd deploy && cp .env.example .env && docker compose up --build`, `# Usage: cd deploy && cp .env.example .env && docker compose up --build`),
     `name: ${plan.appName}`, "services:",
   ];
   const healthy = new Set([...plan.infra.map((i) => i.name), ...plan.services.filter((s) => s.profile.web).map((s) => s.name)]);
   for (const s of plan.services) {
-    L.push(`  ${s.name}:`, "    build:", `      context: ../${s.context || "."}`.replace(/\/\.$/, ""), `      dockerfile: ${s.ownDockerfile ?? s.dockerfile}`, "      args:", `        BASE_REGISTRY: \${BASE_REGISTRY:-${o.imageRegistry}}`, `    image: ${o.image(s)}`);
-    if (s.publish && s.profile.web) L.push("    ports:", `      - "\${${s.name.replace(/-/g, "_").toUpperCase()}_PORT:-${s.profile.port}}:${s.profile.port}"`);
-    if (s.env.length) { L.push("    environment:"); for (const e of s.env) L.push(`      ${e.name}: ${e.secret ? `"${e.value}"` : dq(e.value)}`); }
-    if (s.configRepo) L.push("    volumes:", `      - ./config-repo:${s.configRepo.mount}:ro`);
-    if (s.ownDockerfile && s.profile.web) L.push("    healthcheck:", `      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:${s.profile.port}${s.profile.liveness} || exit 1"]`, "      interval: 15s", "      timeout: 5s", "      retries: 20", "      start_period: 60s");
-    if (s.dependsOn.length) { L.push("    depends_on:"); for (const d of s.dependsOn) L.push(`      ${d}:`, `        condition: ${healthy.has(d) ? "service_healthy" : "service_started"}`); }
-    L.push("    restart: unless-stopped");
+    out.push(`  ${s.name}:`, "    build:", `      context: ../${s.context || "."}`.replace(/\/\.$/, ""), `      dockerfile: ${s.ownDockerfile ?? s.dockerfile}`, "      args:", `        BASE_REGISTRY: \${BASE_REGISTRY:-${o.imageRegistry}}`, `    image: ${o.image(s)}`);
+    if (s.publish && s.profile.web) out.push("    ports:", `      - "\${${s.name.replace(/-/g, "_").toUpperCase()}_PORT:-${s.profile.port}}:${s.profile.port}"`);
+    if (s.env.length) { out.push("    environment:"); for (const e of s.env) out.push(`      ${e.name}: ${e.secret ? `"${e.value}"` : dq(e.value)}`); }
+    if (s.configRepo) out.push("    volumes:", `      - ./config-repo:${s.configRepo.mount}:ro`);
+    if (s.ownDockerfile && s.profile.web) out.push("    healthcheck:", `      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:${s.profile.port}${s.profile.liveness} || exit 1"]`, "      interval: 15s", "      timeout: 5s", "      retries: 20", "      start_period: 60s");
+    if (s.dependsOn.length) { out.push("    depends_on:"); for (const d of s.dependsOn) out.push(`      ${d}:`, `        condition: ${healthy.has(d) ? "service_healthy" : "service_started"}`); }
+    out.push("    restart: unless-stopped");
   }
   for (const i of plan.infra) {
-    L.push(`  ${i.name}:`, `    image: \${BASE_REGISTRY:-${o.imageRegistry}}/${i.image}`);
-    if (Object.keys(i.env).length) { L.push("    environment:"); for (const [k, v] of Object.entries(i.env)) L.push(`      ${k}: ${dq(v)}`); }
-    if (i.command.length) L.push("    command:", ...i.command.map((c) => `      - ${q(c)}`));
-    if (i.volumes.length) L.push("    volumes:", ...i.volumes.map((v) => `      - ${v}`));
-    L.push("    healthcheck:", `      test: ["CMD-SHELL", ${JSON.stringify(i.healthcheck)}]`, "      interval: 10s", "      timeout: 5s", "      retries: 30", "      start_period: 30s", "    restart: unless-stopped");
+    out.push(`  ${i.name}:`, `    image: \${BASE_REGISTRY:-${o.imageRegistry}}/${i.image}`);
+    if (Object.keys(i.env).length) { out.push("    environment:"); for (const [k, v] of Object.entries(i.env)) out.push(`      ${k}: ${dq(v)}`); }
+    if (i.command.length) out.push("    command:", ...i.command.map((c) => `      - ${q(c)}`));
+    if (i.volumes.length) out.push("    volumes:", ...i.volumes.map((v) => `      - ${v}`));
+    out.push("    healthcheck:", `      test: ["CMD-SHELL", ${JSON.stringify(i.healthcheck)}]`, "      interval: 10s", "      timeout: 5s", "      retries: 30", "      start_period: 30s", "    restart: unless-stopped");
   }
   const vols = plan.infra.filter((i) => i.dataPath).map((i) => `  ${i.name}-data: {}`);
-  if (vols.length) L.push("volumes:", ...vols);
-  return L.join("\n").replace(/db-data:/g, "db-data:") + "\n";
+  if (vols.length) out.push("volumes:", ...vols);
+  return out.join("\n").replace(/db-data:/g, "db-data:") + "\n";
 }
 
 export function renderWorkspaceEnv(plan: WorkspaceDeployPlan, imageRegistry: string): string {
   return [
-    "# docker compose 변수 — .env 로 복사해 값을 바꾸세요(.env 는 저장소에 넣지 않음)", `BASE_REGISTRY=${imageRegistry}`,
+    L("# docker compose 변수 — .env 로 복사해 값을 바꾸세요(.env 는 저장소에 넣지 않음)", "# docker compose variables — copy to .env and change the values (do not commit .env)"), `BASE_REGISTRY=${imageRegistry}`,
     ...plan.services.filter((s) => s.publish && s.profile.web).map((s) => `${s.name.replace(/-/g, "_").toUpperCase()}_PORT=${s.profile.port}`),
     ...(plan.infra.some((i) => i.kind === "db") ? ["DB_ROOT_PASSWORD=CHANGE_ME", `DB_PASSWORD=${plan.dbPassword ?? "CHANGE_ME"}`] : []),
     ...plan.infra.filter((i) => i.kind === "infra" && Object.keys(i.env).length).map((i) => `${i.name.toUpperCase()}_PASSWORD=CHANGE_ME`), "",
@@ -260,9 +261,9 @@ export function renderWorkspaceK8s(root: string, plan: WorkspaceDeployPlan, s: W
 }
 
 export function renderConfigRepoConfigMap(plan: WorkspaceDeployPlan, s: WorkspaceService): string {
-  const L = ["apiVersion: v1", "kind: ConfigMap", "metadata:", `  name: ${plan.appName}-config-repo`, "  labels:", "    app.kubernetes.io/managed-by: egovframe-scaffold-mcp", "data:"];
-  for (const f of s.configRepo!.files) { L.push(`  ${f.rel}: |`); for (const l of f.content.split("\n")) L.push(l ? `    ${l}` : ""); }
-  return [`# 설정 서버(${s.name}) 저장소 — ${s.configRepo!.source} 사본(localhost 참조를 Service 이름으로). 인프라 호스트 CHANGE_ME 를 바꾸세요`, "---", ...L].join("\n").replace(/\b(db|rabbitmq|redis):(\d+)/g, (all, h, p) => (plan.infra.some((i) => i.name === h) ? `CHANGE_ME_${h.toUpperCase()}_HOST:${p}` : all)) + "\n";
+  const out = ["apiVersion: v1", "kind: ConfigMap", "metadata:", `  name: ${plan.appName}-config-repo`, "  labels:", "    app.kubernetes.io/managed-by: egovframe-scaffold-mcp", "data:"];
+  for (const f of s.configRepo!.files) { out.push(`  ${f.rel}: |`); for (const l of f.content.split("\n")) out.push(l ? `    ${l}` : ""); }
+  return [L(`# 설정 서버(${s.name}) 저장소 — ${s.configRepo!.source} 사본(localhost 참조를 Service 이름으로). 인프라 호스트 CHANGE_ME 를 바꾸세요`, `# Config server (${s.name}) repository — copy of ${s.configRepo!.source} (localhost references rewritten to Service names). Replace the CHANGE_ME infra hosts`), "---", ...out].join("\n").replace(/\b(db|rabbitmq|redis):(\d+)/g, (all, h, p) => (plan.infra.some((i) => i.name === h) ? `CHANGE_ME_${h.toUpperCase()}_HOST:${p}` : all)) + "\n";
 }
 
 export interface WorkspaceDeployFile { path: string; target: "docker" | "compose" | "k8s"; content: string }

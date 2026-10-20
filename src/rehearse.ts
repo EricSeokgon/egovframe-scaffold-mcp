@@ -14,6 +14,8 @@ import { downloadComponentsZip } from "./components.js";
 import { detectBuildToolAt, runBuild, type BuildError, type BuildTool, type Runner } from "./build-runner.js";
 import { applyMigration, applyTextEdits, linkBuildError, loadMigrationRules, migrateProject, parsePomDeps, parsePomProperties, type MigrationItem, type PomDep, type TextEdit } from "./migrate.js";
 import { reassembleComponents, unifiedPatch } from "./reassemble.js";
+import { L } from "./lang.js";
+import { isAbortError, stepper, subProgress, throwIfAborted, type Progress } from "./progress.js";
 
 export type RehearsalStep = "reassemble" | "migrate" | "verify" | "align-pom";
 export const REHEARSAL_STEPS: RehearsalStep[] = ["reassemble", "migrate", "verify", "align-pom"];
@@ -112,7 +114,7 @@ export function alignPomToReference(project: string, reference: string): PomAlig
       const at = mv ? (mv.index ?? 0) + mv[0].length : (project.indexOf(">", project.indexOf("<project")) + 1);
       edits.push({ start: at, end: at, replacement: `\n\t${block}` });
     }
-    out.parent = `${refParent.groupId}:${refParent.artifactId}:${refParent.version}${prjParent ? ` (기존 ${prjParent.groupId}:${prjParent.artifactId}:${prjParent.version} 교체)` : " (추가)"}`;
+    out.parent = L(`${refParent.groupId}:${refParent.artifactId}:${refParent.version}${prjParent ? ` (기존 ${prjParent.groupId}:${prjParent.artifactId}:${prjParent.version} 교체)` : " (추가)"}`, `${refParent.groupId}:${refParent.artifactId}:${refParent.version}${prjParent ? ` (replaces ${prjParent.groupId}:${prjParent.artifactId}:${prjParent.version})` : " (added)"}`);
   }
   const refProps = parsePomProperties(reference);
   const prjPropsBlock = topLevelProperties(project);
@@ -175,11 +177,11 @@ export function alignPomToReference(project: string, reference: string): PomAlig
       const m = body.match(/[ \t]*<version>[^<]*<\/version>[ \t]*\r?\n?/);
       if (m) edits.push({ start: d.block.start + (m.index ?? 0), end: d.block.start + (m.index ?? 0) + m[0].length, replacement: "" });
     }
-    out.versionsChanged.push(`${key(r)}: ${d.version ?? "(없음)"} → ${r.version ?? "(parent 관리)"}`);
+    out.versionsChanged.push(L(`${key(r)}: ${d.version ?? "(없음)"} → ${r.version ?? "(parent 관리)"}`, `${key(r)}: ${d.version ?? "(none)"} → ${r.version ?? "(managed by parent)"}`));
   }
   if (additions.length) {
     const close = mainDependenciesClose(project);
-    const block = `\t<!-- egovframe-scaffold-mcp 리허설: 공식 공통컴포넌트 기준 pom 에서 추가 -->\n\t\t${additions.join("\n\t\t")}\n\t`;
+    const block = L(`\t<!-- egovframe-scaffold-mcp 리허설: 공식 공통컴포넌트 기준 pom 에서 추가 -->\n\t\t${additions.join("\n\t\t")}\n\t`, `\t<!-- egovframe-scaffold-mcp rehearsal: added from the official common components reference pom -->\n\t\t${additions.join("\n\t\t")}\n\t`);
     if (close !== null) edits.push({ start: close, end: close, replacement: block });
     else { const end = project.lastIndexOf("</project>"); edits.push({ start: end, end, replacement: `\t<dependencies>\n\t${block}</dependencies>\n` }); }
   }
@@ -219,10 +221,10 @@ export function missingPackageOf(e: BuildError): string | null {
 }
 /** 누락 패키지 → 기준 pom 좌표 추정(groupId 가 패키지 접두어인 것 중 artifactId 토큰이 가장 많이 겹치는 것). */
 export function packageHint(pkg: string, reference: PomDep[]): string | null {
-  if (pkg.startsWith("lombok ")) return "다른 컴파일 오류로 Lombok 이 getter·setter·log 를 만들지 못함 — 누락 의존성을 풀면 함께 사라짐";
+  if (pkg.startsWith("lombok ")) return L("다른 컴파일 오류로 Lombok 이 getter·setter·log 를 만들지 못함 — 누락 의존성을 풀면 함께 사라짐", "Lombok could not generate getters/setters/log because of other compile errors — these disappear once the missing dependencies are resolved");
   if (pkg.startsWith("jakarta.")) {
     const j = reference.find((d) => d.groupId.startsWith("jakarta.") && pkg.startsWith(d.groupId)) ?? null;
-    return j ? `${j.groupId}:${j.artifactId}` : "Jakarta EE API — 5.x parent(egovframe-web-config-parent)가 관리";
+    return j ? `${j.groupId}:${j.artifactId}` : L("Jakarta EE API — 5.x parent(egovframe-web-config-parent)가 관리", "Jakarta EE API — managed by the 5.x parent (egovframe-web-config-parent)");
   }
   const segs = pkg.split(".");
   let best: { d: PomDep; score: number } | null = null;
@@ -283,7 +285,7 @@ export function analyzeErrors(errors: BuildError[], workspace: string, items: Mi
     if (!lombokCache.has(type)) { const p = javaIndex.get(type); let v = false; try { v = !!p && /^\s*import\s+lombok\./m.test(fs.readFileSync(p, "utf8")); } catch { v = false; } lombokCache.set(type, v); }
     return lombokCache.get(type)!;
   };
-  const LOMBOK = "lombok (annotation processing 중단)";
+  const LOMBOK = L("lombok (annotation processing 중단)", "lombok (annotation processing aborted)");
   const groups = new Map<string, { direct: number; cascade: number; files: Set<string> }>();
   const g = (pkg: string) => { if (!groups.has(pkg)) groups.set(pkg, { direct: 0, cascade: 0, files: new Set() }); return groups.get(pkg)!; };
   let missingPackage = 0, cascade = 0, other = 0;
@@ -335,6 +337,8 @@ export interface RehearseOptions {
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   now?: () => number;
+  /** v1.2: 진행 알림·취소(signal). 단계 경계에서 취소를 확인하고, 취소되면 사본을 정리(keepWorkspace 가 아니면)한 뒤 AbortError 를 던진다 */
+  progress?: Progress;
 }
 export interface RehearsalPhase {
   ran: boolean;
@@ -379,15 +383,24 @@ const isInside = (child: string, parent: string) => { const r = path.relative(pa
 
 /** 리허설 실행. 프로젝트는 읽기만 한다(실행 전후 지문 비교로 확인). */
 export async function rehearseMigration(opts: RehearseOptions): Promise<RehearseResult> {
+  throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
-  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(L(`프로젝트 디렉터리가 없습니다: ${projectDir}`, `Project directory not found: ${projectDir}`));
   const buildTool = detectBuildToolAt(projectDir);
   const steps = new Set(opts.steps ?? REHEARSAL_STEPS);
-  for (const s of steps) if (!REHEARSAL_STEPS.includes(s)) throw new Error(`알 수 없는 단계: ${s} (가능: ${REHEARSAL_STEPS.join(", ")})`);
+  for (const s of steps) if (!REHEARSAL_STEPS.includes(s)) throw new Error(L(`알 수 없는 단계: ${s} (가능: ${REHEARSAL_STEPS.join(", ")})`, `Unknown step: ${s} (available: ${REHEARSAL_STEPS.join(", ")})`));
   const now = opts.now ?? Date.now;
   const root = path.resolve(opts.workspaceRoot ?? path.join(defaultCacheDir(), "rehearsal"));
-  if (isInside(root, projectDir)) throw new Error(`작업 디렉터리(${root})가 프로젝트 안에 있습니다 — EGOVFRAME_CACHE_DIR 또는 workspaceRoot 를 프로젝트 밖으로 지정하세요`);
+  if (isInside(root, projectDir)) throw new Error(L(`작업 디렉터리(${root})가 프로젝트 안에 있습니다 — EGOVFRAME_CACHE_DIR 또는 workspaceRoot 를 프로젝트 밖으로 지정하세요`, `Workspace directory (${root}) is inside the project — set EGOVFRAME_CACHE_DIR or workspaceRoot to a location outside the project`));
   const notes: string[] = [];
+  // v1.2: 진행 단계 — 사본 복사 + 실제로 수행하는 단계만(steps 옵션 반영)
+  const STEP_LABEL: Record<RehearsalStep, string> = { reassemble: "reassemble components", migrate: "apply migration", verify: "compile", "align-pom": "align pom and compile" };
+  const planned = REHEARSAL_STEPS.filter((s) => steps.has(s));
+  const phaseNames = ["copy project", ...planned.map((s) => STEP_LABEL[s])];
+  const prog = stepper(opts.progress, phaseNames);
+  const phaseIndex = (s: RehearsalStep) => 1 + planned.indexOf(s);
+  let current = 0;
+  const subFor = () => (opts.progress ? subProgress(opts.progress, current, current + 1, phaseNames.length) : undefined);
   const before = fingerprintTree(projectDir);
   fs.mkdirSync(root, { recursive: true });
   const ws = fs.mkdtempSync(path.join(root, `${path.basename(projectDir).replace(/[^\w.-]/g, "_")}-`));
@@ -406,7 +419,7 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
   const compileOpts = buildTool === "maven"
     ? { extraArgs: ["-Dmaven.compiler.fork=true", ...(noEncoding ? ["-Dproject.build.sourceEncoding=UTF-8"] : [])], env: { JDK_JAVAC_OPTIONS: `-Xmaxerrs ${JAVAC_MAX_ERRORS}` } }
     : {};
-  if (noEncoding) notes.push("pom 에 소스 인코딩이 없어 컴파일에 -Dproject.build.sourceEncoding=UTF-8 을 줬습니다(JDK 18+ 기본값과 같음). 실제 pom 에도 지정하기를 권합니다.");
+  if (noEncoding) notes.push(L("pom 에 소스 인코딩이 없어 컴파일에 -Dproject.build.sourceEncoding=UTF-8 을 줬습니다(JDK 18+ 기본값과 같음). 실제 pom 에도 지정하기를 권합니다.", "The pom has no source encoding, so -Dproject.build.sourceEncoding=UTF-8 was passed to the compile (same as the JDK 18+ default). Setting it in the real pom is recommended."));
   let reference: string | null = null;
   const loadReference = async () => {
     if (reference !== null) return reference;
@@ -417,18 +430,24 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
         const e = zip.getEntries().find((x) => /^[^/]+\/pom\.xml$/.test(x.entryName));
         reference = e ? e.getData().toString("utf8") : null;
       }
-    } catch (e) { notes.push(`기준 pom 을 읽지 못했습니다: ${e instanceof Error ? e.message : String(e)}`); reference = null; }
+    } catch (e) { notes.push(L(`기준 pom 을 읽지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, `Failed to read the reference pom: ${e instanceof Error ? e.message : String(e)}`)); reference = null; }
     return reference;
   };
   const step = async (name: RehearsalStep, fn: () => Promise<string>) => {
     const t = now();
-    if (!steps.has(name)) { result.steps.push({ step: name, ran: false, ok: true, durationMs: 0, summary: "건너뜀(steps 에 없음)" }); return; }
+    if (!steps.has(name)) { result.steps.push({ step: name, ran: false, ok: true, durationMs: 0, summary: L("건너뜀(steps 에 없음)", "skipped (not in steps)") }); return; }
+    current = phaseIndex(name);
+    prog.step(current);
     try { const summary = await fn(); result.steps.push({ step: name, ran: true, ok: true, durationMs: now() - t, summary }); }
-    catch (e) { result.steps.push({ step: name, ran: true, ok: false, durationMs: now() - t, summary: "실패", error: e instanceof Error ? e.message : String(e) }); }
+    catch (e) {
+      if (isAbortError(e)) throw e; // 취소는 단계 실패로 기록하지 않고 그대로 전달
+      result.steps.push({ step: name, ran: true, ok: false, durationMs: now() - t, summary: L("실패", "failed"), error: e instanceof Error ? e.message : String(e) });
+    }
   };
   const compile = async (): Promise<RehearsalPhase> => {
-    if (!buildTool) return { ran: false, success: null, reason: "빌드 파일(pom.xml·build.gradle)이 없어 컴파일하지 않음" };
-    const b = await runBuild({ projectDir: ws, goal: "compile", timeoutMs, runner: opts.runner, platform: opts.platform, now, ...compileOpts });
+    if (!buildTool) return { ran: false, success: null, reason: L("빌드 파일(pom.xml·build.gradle)이 없어 컴파일하지 않음", "No build file (pom.xml·build.gradle), so nothing was compiled") };
+    const sub = subFor();
+    const b = await runBuild({ projectDir: ws, goal: "compile", timeoutMs, runner: opts.runner, platform: opts.platform, now, ...compileOpts, ...(sub ? { progress: sub } : {}) });
     const items = migrateProject({ projectDir: ws }).items;
     const ref = (await loadReference()) ?? "";
     const capped = buildTool !== "maven" && (b.errors?.length ?? 0) === 100;
@@ -437,28 +456,30 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
 
   try {
     const t0 = now();
+    prog.step(0);
     const copied = copyProject(projectDir, ws);
     result.workspace.files = copied.files; result.workspace.bytes = copied.bytes; result.workspace.copyMs = now() - t0;
 
     await step("reassemble", async () => {
-      const r = await reassembleComponents({ projectDir: ws, dryRun: false, components: opts.components, sourceTag: opts.sourceTag, origin: opts.origin, readTarget: opts.readTarget, runner: opts.runner, platform: opts.platform });
+      const sub = subFor();
+      const r = await reassembleComponents({ projectDir: ws, dryRun: false, components: opts.components, sourceTag: opts.sourceTag, origin: opts.origin, readTarget: opts.readTarget, runner: opts.runner, platform: opts.platform, ...(sub ? { progress: sub } : {}) });
       result.reassemble = { origin: r.origin.tag, components: r.components.length, actions: { ...r.actions }, worklist: r.worklist.length };
-      return r.components.length ? `원본 ${r.origin.tag ?? "미확인"} → ${r.target.tag}: 컴포넌트 ${r.components.length}종, 교체 ${r.actions.replace}·추가 ${r.actions.add}·삭제 ${r.actions.delete}·유지 ${r.actions.keep}, 작업 목록 ${r.worklist.length}` : "재조립할 공통컴포넌트 없음";
+      return r.components.length ? L(`원본 ${r.origin.tag ?? "미확인"} → ${r.target.tag}: 컴포넌트 ${r.components.length}종, 교체 ${r.actions.replace}·추가 ${r.actions.add}·삭제 ${r.actions.delete}·유지 ${r.actions.keep}, 작업 목록 ${r.worklist.length}`, `origin ${r.origin.tag ?? "unknown"} → ${r.target.tag}: ${r.components.length} component(s), replace ${r.actions.replace}·add ${r.actions.add}·delete ${r.actions.delete}·keep ${r.actions.keep}, worklist ${r.worklist.length}`) : L("재조립할 공통컴포넌트 없음", "no common components to reassemble");
     });
     await step("migrate", async () => {
       const a = await applyMigration({ projectDir: ws, dryRun: false });
       result.migrate = { applied: a.applied, manualRemaining: a.remaining?.manual ?? a.skippedManual, byKind: { ...(a.remaining?.byKind ?? {}) } };
-      return `자동 ${a.applied.items}건(파일 ${a.applied.files}) 적용, 수동 ${result.migrate.manualRemaining}건 남음 (${a.sourceEra})`;
+      return L(`자동 ${a.applied.items}건(파일 ${a.applied.files}) 적용, 수동 ${result.migrate.manualRemaining}건 남음 (${a.sourceEra})`, `${a.applied.items} automatic item(s) applied (${a.applied.files} file(s)), ${result.migrate.manualRemaining} manual item(s) remaining (${a.sourceEra})`);
     });
     await step("verify", async () => {
       result.afterAutomation = await compile();
       const p = result.afterAutomation;
-      return !p.ran ? p.reason! : p.success ? "컴파일 통과" : `컴파일 오류 ${p.analysis!.errors}건(파일 ${p.analysis!.files}) — 누락 패키지 ${p.analysis!.missingPackage} + 연쇄 ${p.analysis!.cascade} + 기타 ${p.analysis!.other}`;
+      return !p.ran ? p.reason! : p.success ? L("컴파일 통과", "compile passed") : L(`컴파일 오류 ${p.analysis!.errors}건(파일 ${p.analysis!.files}) — 누락 패키지 ${p.analysis!.missingPackage} + 연쇄 ${p.analysis!.cascade} + 기타 ${p.analysis!.other}`, `${p.analysis!.errors} compile error(s) in ${p.analysis!.files} file(s) — missing packages ${p.analysis!.missingPackage} + cascade ${p.analysis!.cascade} + other ${p.analysis!.other}`);
     });
     await step("align-pom", async () => {
-      if (buildTool !== "maven") { result.afterPomAlignment = { ran: false, success: null, reason: "pom 맞춤은 Maven 프로젝트만" }; return "건너뜀 — Maven 아님"; }
+      if (buildTool !== "maven") { result.afterPomAlignment = { ran: false, success: null, reason: L("pom 맞춤은 Maven 프로젝트만", "pom alignment applies to Maven projects only") }; return L("건너뜀 — Maven 아님", "skipped — not Maven"); }
       const ref = await loadReference();
-      if (!ref) { result.afterPomAlignment = { ran: false, success: null, reason: "기준 pom 없음" }; throw new Error("기준 pom(공식 공통컴포넌트 고정 태그 pom.xml)을 읽지 못했습니다"); }
+      if (!ref) { result.afterPomAlignment = { ran: false, success: null, reason: L("기준 pom 없음", "no reference pom") }; throw new Error(L("기준 pom(공식 공통컴포넌트 고정 태그 pom.xml)을 읽지 못했습니다", "Failed to read the reference pom (pom.xml of the official common components pinned tag)")); }
       const pomPath = path.join(ws, "pom.xml");
       const beforePom = fs.readFileSync(pomPath, "utf8");
       const al = alignPomToReference(beforePom, ref);
@@ -467,25 +488,27 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
       const lines = patch.split("\n");
       const phase = await compile();
       const cat = loadCatalog().source;
-      result.afterPomAlignment = { ...phase, reference: `${cat.repository ?? "eGovFramework/egovframe-common-components"}@${cat.tag ?? "?"} pom.xml`, parent: al.parent, added: al.added, versionsChanged: al.versionsChanged, scopesChanged: al.scopesChanged, propertiesSet: al.propertiesSet, propertiesRemoved: al.propertiesRemoved, patch: lines.length > 400 ? `${lines.slice(0, 400).join("\n")}\n… (${lines.length - 400}줄 생략 — keepWorkspace=true 로 사본의 pom.xml 확인)` : patch };
-      return !phase.ran ? phase.reason! : `parent ${al.parent ? "교체/추가" : "유지"}·좌표 추가 ${al.added.length}·버전 ${al.versionsChanged.length}·범위 ${al.scopesChanged.length}·속성 ${al.propertiesSet.length + al.propertiesRemoved.length} → ${phase.success ? "컴파일 통과" : `컴파일 오류 ${phase.analysis!.errors}건(파일 ${phase.analysis!.files})`}`;
+      result.afterPomAlignment = { ...phase, reference: `${cat.repository ?? "eGovFramework/egovframe-common-components"}@${cat.tag ?? "?"} pom.xml`, parent: al.parent, added: al.added, versionsChanged: al.versionsChanged, scopesChanged: al.scopesChanged, propertiesSet: al.propertiesSet, propertiesRemoved: al.propertiesRemoved, patch: lines.length > 400 ? L(`${lines.slice(0, 400).join("\n")}\n… (${lines.length - 400}줄 생략 — keepWorkspace=true 로 사본의 pom.xml 확인)`, `${lines.slice(0, 400).join("\n")}\n… (${lines.length - 400} lines omitted — use keepWorkspace=true to inspect pom.xml in the workspace copy)`) : patch };
+      return !phase.ran ? phase.reason! : L(`parent ${al.parent ? "교체/추가" : "유지"}·좌표 추가 ${al.added.length}·버전 ${al.versionsChanged.length}·범위 ${al.scopesChanged.length}·속성 ${al.propertiesSet.length + al.propertiesRemoved.length} → ${phase.success ? "컴파일 통과" : `컴파일 오류 ${phase.analysis!.errors}건(파일 ${phase.analysis!.files})`}`, `parent ${al.parent ? "replaced/added" : "kept"}·coordinates added ${al.added.length}·versions ${al.versionsChanged.length}·scopes ${al.scopesChanged.length}·properties ${al.propertiesSet.length + al.propertiesRemoved.length} → ${phase.success ? "compile passed" : `${phase.analysis!.errors} compile error(s) in ${phase.analysis!.files} file(s)`}`);
     });
   } finally {
     const after = fingerprintTree(projectDir);
     result.original.unchanged = after.sha256 === before.sha256;
-    if (!result.original.unchanged) notes.push("⚠️ 리허설 중 원본 프로젝트 지문이 바뀌었습니다 — 리허설 도중 다른 프로세스가 파일을 고쳤을 수 있습니다");
+    if (!result.original.unchanged) notes.push(L("⚠️ 리허설 중 원본 프로젝트 지문이 바뀌었습니다 — 리허설 도중 다른 프로세스가 파일을 고쳤을 수 있습니다", "⚠️ The original project's fingerprint changed during the rehearsal — another process may have modified files while it ran"));
     if (!opts.keepWorkspace) { fs.rmSync(ws, { recursive: true, force: true }); result.workspace.path = null; }
   }
+  throwIfAborted(prog.signal);
+  prog.finish("rehearsal: done");
 
   // 작업 목록: pom 맞춤으로 사라지는 오류 → 남은 누락 패키지 → 수동 항목·파일
   const a = result.afterAutomation?.analysis, b = result.afterPomAlignment?.analysis;
   if (a && b && a.errors > b.errors) {
     const p = result.afterPomAlignment!;
-    result.worklist.push({ kind: "align-pom", title: `pom 을 ${p.reference} 기준으로 맞추기`, errors: a.errors - b.errors, detail: `${p.parent ? `parent ${p.parent}, ` : ""}좌표 추가 ${p.added?.length ?? 0}·버전 ${p.versionsChanged?.length ?? 0}·범위 ${p.scopesChanged?.length ?? 0}·속성 정리 ${(p.propertiesSet?.length ?? 0) + (p.propertiesRemoved?.length ?? 0)} — 사본에 적용한 변경은 afterPomAlignment.patch` });
+    result.worklist.push({ kind: "align-pom", title: L(`pom 을 ${p.reference} 기준으로 맞추기`, `Align pom to ${p.reference}`), errors: a.errors - b.errors, detail: L(`${p.parent ? `parent ${p.parent}, ` : ""}좌표 추가 ${p.added?.length ?? 0}·버전 ${p.versionsChanged?.length ?? 0}·범위 ${p.scopesChanged?.length ?? 0}·속성 정리 ${(p.propertiesSet?.length ?? 0) + (p.propertiesRemoved?.length ?? 0)} — 사본에 적용한 변경은 afterPomAlignment.patch`, `${p.parent ? `parent ${p.parent}, ` : ""}coordinates added ${p.added?.length ?? 0}·versions ${p.versionsChanged?.length ?? 0}·scopes ${p.scopesChanged?.length ?? 0}·properties cleaned up ${(p.propertiesSet?.length ?? 0) + (p.propertiesRemoved?.length ?? 0)} — the changes applied to the copy are in afterPomAlignment.patch`) });
   }
   const last = b ?? a;
   if (last) {
-    for (const m of last.missingPackages.slice(0, 10)) result.worklist.push({ kind: "missing-package", title: `패키지 ${m.package} 없음`, errors: m.errors, detail: `직접 ${m.direct} + 같은 파일 연쇄 ${m.cascade}, 파일 ${m.files}${m.hint ? ` — 후보 좌표 ${m.hint}` : " — 5.x 대응 라이브러리 확인(벤더 jar 이면 system scope·사내 저장소)"}` });
+    for (const m of last.missingPackages.slice(0, 10)) result.worklist.push({ kind: "missing-package", title: L(`패키지 ${m.package} 없음`, `Package ${m.package} missing`), errors: m.errors, detail: L(`직접 ${m.direct} + 같은 파일 연쇄 ${m.cascade}, 파일 ${m.files}${m.hint ? ` — 후보 좌표 ${m.hint}` : " — 5.x 대응 라이브러리 확인(벤더 jar 이면 system scope·사내 저장소)"}`, `direct ${m.direct} + same-file cascade ${m.cascade}, ${m.files} file(s)${m.hint ? ` — candidate coordinate ${m.hint}` : " — check for a 5.x-compatible library (for a vendor jar, use system scope or an internal repository)"}`) });
     for (const f of last.topFiles) {
       if (result.worklist.length >= (opts.topN ?? 20)) break;
       result.worklist.push({ kind: "file", title: f.file, errors: f.errors, detail: f.sample });
@@ -493,9 +516,9 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
   }
   result.worklist.sort((x, y) => (x.kind === "align-pom" ? -1 : y.kind === "align-pom" ? 1 : 0) || y.errors - x.errors);
   result.worklist = result.worklist.slice(0, opts.topN ?? 20);
-  if (steps.has("reassemble") && steps.has("migrate")) notes.push("재조립을 전환 적용보다 먼저 합니다 — 적용이 컴포넌트 소스를 바꾸면 원본 태그 식별이 깨지기 때문입니다. 실제 프로젝트에서도 같은 순서를 권합니다.");
-  if (buildTool === "maven") notes.push(`컴파일은 maven.compiler.fork=true·JDK_JAVAC_OPTIONS=-Xmaxerrs ${JAVAC_MAX_ERRORS} 로 javac 의 오류 100개 상한 없이 셉니다.`);
-  if (a?.capped || b?.capped) notes.push("오류가 정확히 100건 — javac 기본 상한에 걸렸을 수 있습니다(Gradle 은 compilerArgs 에 -Xmaxerrs 를 직접 지정).");
+  if (steps.has("reassemble") && steps.has("migrate")) notes.push(L("재조립을 전환 적용보다 먼저 합니다 — 적용이 컴포넌트 소스를 바꾸면 원본 태그 식별이 깨지기 때문입니다. 실제 프로젝트에서도 같은 순서를 권합니다.", "Reassembly runs before applying the migration — if the migration changes component sources, the origin tag can no longer be identified. The same order is recommended for the real project."));
+  if (buildTool === "maven") notes.push(L(`컴파일은 maven.compiler.fork=true·JDK_JAVAC_OPTIONS=-Xmaxerrs ${JAVAC_MAX_ERRORS} 로 javac 의 오류 100개 상한 없이 셉니다.`, `Compilation uses maven.compiler.fork=true·JDK_JAVAC_OPTIONS=-Xmaxerrs ${JAVAC_MAX_ERRORS} so errors are counted without javac's 100-error cap.`));
+  if (a?.capped || b?.capped) notes.push(L("오류가 정확히 100건 — javac 기본 상한에 걸렸을 수 있습니다(Gradle 은 compilerArgs 에 -Xmaxerrs 를 직접 지정).", "Exactly 100 errors — javac's default cap may have been hit (for Gradle, set -Xmaxerrs directly in compilerArgs)."));
 
   // 평가서용 최근 결과(패치 본문 제외)
   try {
@@ -504,42 +527,42 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
     const slim = { ...result, afterPomAlignment: result.afterPomAlignment ? { ...result.afterPomAlignment, patch: undefined } : undefined };
     fs.writeFileSync(rec, `${JSON.stringify(slim, null, 2)}\n`);
     result.savedTo = rec;
-  } catch (e) { notes.push(`최근 결과를 저장하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`); }
+  } catch (e) { notes.push(L(`최근 결과를 저장하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, `Failed to save the latest result: ${e instanceof Error ? e.message : String(e)}`)); }
   return result;
 }
 
-const fmtPhase = (p: RehearsalPhase | undefined) => (!p ? "—" : !p.ran ? `건너뜀(${p.reason})` : p.success ? "✅ 통과" : `❌ ${p.analysis?.errors ?? 0}건 / 파일 ${p.analysis?.files ?? 0}${p.timedOut ? " (시간 초과)" : ""}`);
+const fmtPhase = (p: RehearsalPhase | undefined) => (!p ? "—" : !p.ran ? L(`건너뜀(${p.reason})`, `skipped (${p.reason})`) : p.success ? L("✅ 통과", "✅ passed") : L(`❌ ${p.analysis?.errors ?? 0}건 / 파일 ${p.analysis?.files ?? 0}${p.timedOut ? " (시간 초과)" : ""}`, `❌ ${p.analysis?.errors ?? 0} error(s) / ${p.analysis?.files ?? 0} file(s)${p.timedOut ? " (timed out)" : ""}`));
 
 /** 결과 Markdown. */
 export function renderRehearsalMarkdown(r: RehearseResult): string {
-  const L: string[] = [];
-  L.push(`# 표준프레임워크 5.x 전환 리허설`, ``);
-  L.push(`- 경로: ${r.projectDir} · 빌드 ${r.buildTool ?? "없음"} · 시작 ${r.startedAt}`);
-  L.push(`- 사본: 파일 ${r.workspace.files}개(${(r.workspace.bytes / 1048576).toFixed(1)}MB, ${r.workspace.copyMs}ms)${r.workspace.kept && r.workspace.path ? ` → ${r.workspace.path} (유지)` : " — 끝나고 삭제"}`);
-  L.push(`- 원본: ${r.original.unchanged ? "✅ 변경 없음(실행 전후 지문 같음)" : "⚠️ 지문이 바뀜"}`);
+  const out: string[] = [];
+  out.push(L(`# 표준프레임워크 5.x 전환 리허설`, `# eGovFrame 5.x migration rehearsal`), ``);
+  out.push(L(`- 경로: ${r.projectDir} · 빌드 ${r.buildTool ?? "없음"} · 시작 ${r.startedAt}`, `- Path: ${r.projectDir} · build ${r.buildTool ?? "none"} · started ${r.startedAt}`));
+  out.push(L(`- 사본: 파일 ${r.workspace.files}개(${(r.workspace.bytes / 1048576).toFixed(1)}MB, ${r.workspace.copyMs}ms)${r.workspace.kept && r.workspace.path ? ` → ${r.workspace.path} (유지)` : " — 끝나고 삭제"}`, `- Copy: ${r.workspace.files} file(s) (${(r.workspace.bytes / 1048576).toFixed(1)}MB, ${r.workspace.copyMs}ms)${r.workspace.kept && r.workspace.path ? ` → ${r.workspace.path} (kept)` : " — deleted afterwards"}`));
+  out.push(L(`- 원본: ${r.original.unchanged ? "✅ 변경 없음(실행 전후 지문 같음)" : "⚠️ 지문이 바뀜"}`, `- Original: ${r.original.unchanged ? "✅ unchanged (same fingerprint before and after)" : "⚠️ fingerprint changed"}`));
   const A = r.afterAutomation, B = r.afterPomAlignment;
-  L.push(``, `## 결과`, ``, `| 단계 | 컴파일 |`, `|---|---|`, `| 자동 단계 후(재조립·전환 적용) | ${fmtPhase(A)} |`, `| pom 맞춤 후 | ${fmtPhase(B)} |`);
-  if (A?.analysis && B?.analysis && A.analysis.errors > 0) L.push(``, `- **자동 단계 뒤 오류 ${A.analysis.errors}건 중 ${A.analysis.errors - B.analysis.errors}건(${Math.round(((A.analysis.errors - B.analysis.errors) / A.analysis.errors) * 100)}%)은 pom 의존성 문제**이고, pom 을 맞춘 뒤 남는 ${B.analysis.errors}건이 코드 작업입니다.`);
-  L.push(``, `## 단계`, ``);
-  for (const s of r.steps) L.push(`- ${s.ran ? (s.ok ? "✅" : "❌") : "➖"} ${s.step} — ${s.ok ? s.summary : `실패: ${s.error}`}${s.ran ? ` (${s.durationMs}ms)` : ""}`);
+  out.push(``, L(`## 결과`, `## Results`), ``, L(`| 단계 | 컴파일 |`, `| Stage | Compile |`), `|---|---|`, L(`| 자동 단계 후(재조립·전환 적용) | ${fmtPhase(A)} |`, `| After automatic steps (reassemble·migrate) | ${fmtPhase(A)} |`), L(`| pom 맞춤 후 | ${fmtPhase(B)} |`, `| After pom alignment | ${fmtPhase(B)} |`));
+  if (A?.analysis && B?.analysis && A.analysis.errors > 0) out.push(``, L(`- **자동 단계 뒤 오류 ${A.analysis.errors}건 중 ${A.analysis.errors - B.analysis.errors}건(${Math.round(((A.analysis.errors - B.analysis.errors) / A.analysis.errors) * 100)}%)은 pom 의존성 문제**이고, pom 을 맞춘 뒤 남는 ${B.analysis.errors}건이 코드 작업입니다.`, `- **${A.analysis.errors - B.analysis.errors} of the ${A.analysis.errors} errors after the automatic steps (${Math.round(((A.analysis.errors - B.analysis.errors) / A.analysis.errors) * 100)}%) are pom dependency issues**; the ${B.analysis.errors} remaining after pom alignment are code work.`));
+  out.push(``, L(`## 단계`, `## Steps`), ``);
+  for (const s of r.steps) out.push(`- ${s.ran ? (s.ok ? "✅" : "❌") : "➖"} ${s.step} — ${s.ok ? s.summary : L(`실패: ${s.error}`, `failed: ${s.error}`)}${s.ran ? ` (${s.durationMs}ms)` : ""}`);
   const an = (B?.analysis ?? A?.analysis);
   if (an && an.errors) {
-    L.push(``, `## 남은 오류 (${B?.analysis ? "pom 맞춤 후" : "자동 단계 후"})`, ``);
-    L.push(`- 누락 패키지 ${an.missingPackage} · 같은 파일 연쇄 ${an.cascade} · 기타 ${an.other}(수동 항목 연결 ${an.linked.manual} · 규칙으로 설명 ${an.linked.rules} · 분류 불가 ${an.linked.unlinked})`);
-    if (an.missingPackages.length) { L.push(``, `| 누락 패키지 | 오류 | 파일 | 후보 좌표 |`, `|---|---|---|---|`); for (const m of an.missingPackages.slice(0, 12)) L.push(`| \`${m.package}\` | ${m.errors} | ${m.files} | ${m.hint ?? "—"} |`); }
-    if (an.topFiles.length) { L.push(``, `코드 작업이 많은 파일(누락 패키지·연쇄 제외):`); for (const f of an.topFiles.slice(0, 10)) L.push(`- ${f.file} — ${f.errors}건 (${f.sample})`); }
+    out.push(``, L(`## 남은 오류 (${B?.analysis ? "pom 맞춤 후" : "자동 단계 후"})`, `## Remaining errors (${B?.analysis ? "after pom alignment" : "after automatic steps"})`), ``);
+    out.push(L(`- 누락 패키지 ${an.missingPackage} · 같은 파일 연쇄 ${an.cascade} · 기타 ${an.other}(수동 항목 연결 ${an.linked.manual} · 규칙으로 설명 ${an.linked.rules} · 분류 불가 ${an.linked.unlinked})`, `- missing packages ${an.missingPackage} · same-file cascade ${an.cascade} · other ${an.other} (linked to manual items ${an.linked.manual} · explained by rules ${an.linked.rules} · unclassified ${an.linked.unlinked})`));
+    if (an.missingPackages.length) { out.push(``, L(`| 누락 패키지 | 오류 | 파일 | 후보 좌표 |`, `| Missing package | Errors | Files | Candidate coordinate |`), `|---|---|---|---|`); for (const m of an.missingPackages.slice(0, 12)) out.push(`| \`${m.package}\` | ${m.errors} | ${m.files} | ${m.hint ?? "—"} |`); }
+    if (an.topFiles.length) { out.push(``, L(`코드 작업이 많은 파일(누락 패키지·연쇄 제외):`, `Files with the most code work (excluding missing packages and cascades):`)); for (const f of an.topFiles.slice(0, 10)) out.push(L(`- ${f.file} — ${f.errors}건 (${f.sample})`, `- ${f.file} — ${f.errors} error(s) (${f.sample})`)); }
   }
   if (B?.ran) {
-    L.push(``, `## pom 맞춤 (사본에만 적용, ${B.reference})`, ``);
-    if (B.parent) L.push(`- parent: ${B.parent}`);
-    L.push(`- 좌표 추가 ${B.added?.length ?? 0}: ${(B.added ?? []).slice(0, 30).join(", ") || "없음"}`);
-    if (B.versionsChanged?.length) L.push(`- 버전 표기 변경 ${B.versionsChanged.length}: ${B.versionsChanged.slice(0, 15).join("; ")}`);
-    if (B.scopesChanged?.length) L.push(`- 범위(scope) 변경 ${B.scopesChanged.length}: ${B.scopesChanged.join("; ")}`);
-    if (B.propertiesRemoved?.length) L.push(`- parent 값으로 돌린 속성: ${B.propertiesRemoved.join(", ")}`);
-    if (B.propertiesSet?.length) L.push(`- 기준 값으로 맞춘 속성: ${B.propertiesSet.join(", ")}`);
+    out.push(``, L(`## pom 맞춤 (사본에만 적용, ${B.reference})`, `## pom alignment (applied to the copy only, ${B.reference})`), ``);
+    if (B.parent) out.push(`- parent: ${B.parent}`);
+    out.push(L(`- 좌표 추가 ${B.added?.length ?? 0}: ${(B.added ?? []).slice(0, 30).join(", ") || "없음"}`, `- coordinates added ${B.added?.length ?? 0}: ${(B.added ?? []).slice(0, 30).join(", ") || "none"}`));
+    if (B.versionsChanged?.length) out.push(L(`- 버전 표기 변경 ${B.versionsChanged.length}: ${B.versionsChanged.slice(0, 15).join("; ")}`, `- version changes ${B.versionsChanged.length}: ${B.versionsChanged.slice(0, 15).join("; ")}`));
+    if (B.scopesChanged?.length) out.push(L(`- 범위(scope) 변경 ${B.scopesChanged.length}: ${B.scopesChanged.join("; ")}`, `- scope changes ${B.scopesChanged.length}: ${B.scopesChanged.join("; ")}`));
+    if (B.propertiesRemoved?.length) out.push(L(`- parent 값으로 돌린 속성: ${B.propertiesRemoved.join(", ")}`, `- properties reverted to parent values: ${B.propertiesRemoved.join(", ")}`));
+    if (B.propertiesSet?.length) out.push(L(`- 기준 값으로 맞춘 속성: ${B.propertiesSet.join(", ")}`, `- properties set to reference values: ${B.propertiesSet.join(", ")}`));
   }
-  if (r.worklist.length) { L.push(``, `## 작업 목록 (사라지는 오류 순)`, ``); for (const w of r.worklist) L.push(`- **${w.errors}건** ${w.title} — ${w.detail}`); }
-  for (const n of r.notes) L.push(`- ${n}`);
-  L.push(``, `---`, `프로젝트는 바꾸지 않았습니다. 실제 전환은 reassemble_egovframe_components → migrate_egovframe_project(apply) 순서로 진행하고, pom 은 위 변경을 검토해 반영하세요.`);
-  return L.join("\n");
+  if (r.worklist.length) { out.push(``, L(`## 작업 목록 (사라지는 오류 순)`, `## Worklist (by errors eliminated)`), ``); for (const w of r.worklist) out.push(L(`- **${w.errors}건** ${w.title} — ${w.detail}`, `- **${w.errors} error(s)** ${w.title} — ${w.detail}`)); }
+  for (const n of r.notes) out.push(`- ${n}`);
+  out.push(``, `---`, L(`프로젝트는 바꾸지 않았습니다. 실제 전환은 reassemble_egovframe_components → migrate_egovframe_project(apply) 순서로 진행하고, pom 은 위 변경을 검토해 반영하세요.`, `The project was not modified. For the real migration, run reassemble_egovframe_components → migrate_egovframe_project(apply) in that order, and review the changes above before applying them to the pom.`));
+  return out.join("\n");
 }

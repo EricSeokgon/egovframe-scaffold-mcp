@@ -13,6 +13,7 @@ import { detectBuildToolAt, runBuild, type Runner } from "./build-runner.js";
 import { readManifest } from "./manifest.js";
 import { loadCatalog } from "./catalog.js";
 import { detectWorkspace, isMultiModule, moduleOf } from "./workspace.js";
+import { L, tr } from "./lang.js";
 import {
   applyTextEdits, lineAt, linkBuildError, loadMigrationRules, parsePomDeps, parsePomProperties, versionBelow, walkProjectFiles,
   type ApplyFilePlan, type MigrateResult, type MigrationItem, type SourceEra, type TextEdit, type VerifyLink, type VerifyWorkItem,
@@ -91,7 +92,7 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
       parent = { kind: p.kind, groupId: p.groupId, artifactId: p.artifactId, version: vm[2], to: target };
       if (versionBelow(vm[2], target) === true) {
         const start = base + (vm.index ?? 0) + "<version>".length + vm[1].length;
-        items.push({ file: rel, line: lineAt(text, start), kind: "parent-version", from: `${g}:${a}:${vm[2]}`, to: `${g}:${a}:${target}`, action: "auto", reason: `공식 parent 최신 ${rules.latest} — parent 가 RTE·Spring·Jakarta 의존성 버전을 함께 관리한다`, edits: [{ start, end: start + vm[2].length, replacement: target }] });
+        items.push({ file: rel, line: lineAt(text, start), kind: "parent-version", from: `${g}:${a}:${vm[2]}`, to: `${g}:${a}:${target}`, action: "auto", reason: L(`공식 parent 최신 ${rules.latest} — parent 가 RTE·Spring·Jakarta 의존성 버전을 함께 관리한다`, `Latest official parent ${rules.latest} — the parent also manages RTE, Spring and Jakarta dependency versions`), edits: [{ start, end: start + vm[2].length, replacement: target }] });
       }
       // parent 가 관리하는 속성을 예전 parent 의 기본값 그대로 덮어쓴 것 → 목표 parent 값으로
       const oldProps = p.versions[vm[2]]?.properties;
@@ -103,7 +104,7 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
           const m = text.match(new RegExp(`<${escapeRe(key)}>(\\s*)${escapeRe(value)}(\\s*)</${escapeRe(key)}>`));
           if (!m) continue;
           const start = (m.index ?? 0) + key.length + 2 + m[1].length;
-          items.push({ file: rel, line: lineAt(text, start), kind: "parent-property", from: `<${key}>${value}</${key}>`, to: `<${key}>${newProps[key]}</${key}>`, action: "auto", reason: `parent ${vm[2]} 의 기본값을 그대로 덮어쓴 속성 — parent ${target} 값으로 맞춤(의도한 고정이면 속성을 지우고 parent 관리를 쓰는 편이 낫다)`, edits: [{ start, end: start + value.length, replacement: newProps[key] }] });
+          items.push({ file: rel, line: lineAt(text, start), kind: "parent-property", from: `<${key}>${value}</${key}>`, to: `<${key}>${newProps[key]}</${key}>`, action: "auto", reason: L(`parent ${vm[2]} 의 기본값을 그대로 덮어쓴 속성 — parent ${target} 값으로 맞춤(의도한 고정이면 속성을 지우고 parent 관리를 쓰는 편이 낫다)`, `Property that re-declares parent ${vm[2]}'s default verbatim — aligned to the parent ${target} value (if the pin is intentional, remove the property and let the parent manage it instead)`), edits: [{ start, end: start + value.length, replacement: newProps[key] }] });
         }
       }
     }
@@ -116,7 +117,7 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
     propVersion ??= m[2];
     if (versionBelow(m[2], target) !== true) continue;
     const start = (m.index ?? 0) + key.length + 2 + m[1].length;
-    items.push({ file: rel, line: lineAt(text, start), kind: "rte-version", from: `<${key}>${m[2]}</${key}>`, to: `<${key}>${target}</${key}>`, action: "auto", reason: parent ? `parent 가 정한 RTE 버전을 프로젝트가 덮어쓰고 있다 — ${target} 로 맞춤` : `RTE ${target} 기준`, edits: [{ start, end: start + m[2].length, replacement: target }] });
+    items.push({ file: rel, line: lineAt(text, start), kind: "rte-version", from: `<${key}>${m[2]}</${key}>`, to: `<${key}>${target}</${key}>`, action: "auto", reason: parent ? L(`parent 가 정한 RTE 버전을 프로젝트가 덮어쓰고 있다 — ${target} 로 맞춤`, `The project overrides the RTE version set by the parent — aligned to ${target}`) : L(`RTE ${target} 기준`, `RTE ${target} baseline`), edits: [{ start, end: start + m[2].length, replacement: target }] });
   }
   // RTE 의존성의 리터럴 버전
   const literal: string[] = [];
@@ -124,7 +125,7 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
     if (!isRteGroup(d.groupId) || !d.version || !d.vSpan || /\$\{/.test(d.version) || !/^5\./.test(d.version)) continue;
     literal.push(d.version);
     if (versionBelow(d.version, target) !== true) continue;
-    items.push({ file: rel, line: d.line, kind: "rte-version", from: `${d.groupId}:${d.artifactId}:${d.version}`, to: `${d.groupId}:${d.artifactId}:${target}`, action: "auto", reason: `RTE ${target} 기준`, edits: [{ start: d.vSpan.start, end: d.vSpan.end, replacement: target }] });
+    items.push({ file: rel, line: d.line, kind: "rte-version", from: `${d.groupId}:${d.artifactId}:${d.version}`, to: `${d.groupId}:${d.artifactId}:${target}`, action: "auto", reason: L(`RTE ${target} 기준`, `RTE ${target} baseline`), edits: [{ start: d.vSpan.start, end: d.vSpan.end, replacement: target }] });
   }
   items.push(...duplicateDependencyItems(rel, text));
   // 실효 버전 = (버전 속성 또는 parent 가 관리하는 버전)과 리터럴 버전 중 가장 낮은 것
@@ -160,9 +161,9 @@ export function duplicateDependencyItems(rel: string, text: string): MigrationIt
       const start = /^[ \t]*$/.test(text.slice(lineStart, d.block.start)) ? lineStart : d.block.start;
       const nl = text.slice(d.block.end).match(/^[ \t]*\r?\n/);
       const end = d.block.end + (start === lineStart && nl ? nl[0].length : 0);
-      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: `${key}${d.version ? `:${d.version}` : ""} (${first.line}행과 같음)`, to: null, action: "auto", reason: `같은 <dependencies> 에 같은 좌표가 두 번 선언됨 — Maven 이 "must be unique" 오류로 빌드를 거부할 수 있어(GitHub Actions ubuntu-latest 실측) 뒤 선언을 지움`, edits: [{ start, end, replacement: "" }] });
+      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: L(`${key}${d.version ? `:${d.version}` : ""} (${first.line}행과 같음)`, `${key}${d.version ? `:${d.version}` : ""} (same as line ${first.line})`), to: null, action: "auto", reason: L(`같은 <dependencies> 에 같은 좌표가 두 번 선언됨 — Maven 이 "must be unique" 오류로 빌드를 거부할 수 있어(GitHub Actions ubuntu-latest 실측) 뒤 선언을 지움`, `Same coordinate declared twice in one <dependencies> — Maven may reject the build with a "must be unique" error (observed on GitHub Actions ubuntu-latest), so the later declaration is removed`), edits: [{ start, end, replacement: "" }] });
     } else {
-      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: `${key} (${first.line}행과 다름)`, to: null, action: "manual", reason: `같은 좌표가 버전·scope·exclusions 를 달리해 두 번 선언됨 — Maven 은 뒤 선언을 쓰거나 "must be unique" 오류를 낸다. 맞는 하나만 남기세요` });
+      out.push({ file: rel, line: d.line, kind: "duplicate-dependency", from: L(`${key} (${first.line}행과 다름)`, `${key} (differs from line ${first.line})`), to: null, action: "manual", reason: L(`같은 좌표가 버전·scope·exclusions 를 달리해 두 번 선언됨 — Maven 은 뒤 선언을 쓰거나 "must be unique" 오류를 낸다. 맞는 하나만 남기세요`, `Same coordinate declared twice with different version, scope or exclusions — Maven either uses the later one or fails with "must be unique". Keep only the correct declaration`) });
     }
   }
   return out;
@@ -181,7 +182,7 @@ export function planGradleUpdate(rel: string, text: string, target: string): { e
     if (isParent) parentVersion = m[3];
     if (versionBelow(m[3], target) !== true) continue;
     const start = (m.index ?? 0) + 1 + m[1].length + 1 + m[2].length + 1;
-    items.push({ file: rel, line: lineAt(text, m.index ?? 0), kind: isParent ? "parent-version" : "rte-version", from: `${m[1]}:${m[2]}:${m[3]}`, to: `${m[1]}:${m[2]}:${target}`, action: "auto", reason: isParent ? `공식 parent BOM 최신 ${target}` : `RTE ${target} 기준`, edits: [{ start, end: start + m[3].length, replacement: target }] });
+    items.push({ file: rel, line: lineAt(text, m.index ?? 0), kind: isParent ? "parent-version" : "rte-version", from: `${m[1]}:${m[2]}:${m[3]}`, to: `${m[1]}:${m[2]}:${target}`, action: "auto", reason: isParent ? L(`공식 parent BOM 최신 ${target}`, `Latest official parent BOM ${target}`) : L(`RTE ${target} 기준`, `RTE ${target} baseline`), edits: [{ start, end: start + m[3].length, replacement: target }] });
   }
   // 2) v0.47: 버전 변수 — set('egovframeBootParentVersion', '5.0.0') · egovframeBootParentVersion = '5.0.0'
   //    공식 parent BOM·RTE 좌표에만 쓰이면 정의를 바꾸고(auto), 다른 좌표(예: 직접 배포한 공통 모듈)에도 쓰이면 수동으로 둔다 — 그 좌표의 목표 버전이 저장소에 없을 수 있다
@@ -201,9 +202,9 @@ export function planGradleUpdate(rel: string, text: string, target: string): { e
     const line = lineAt(text, d.index ?? 0);
     const kind = egovUses.includes("org.egovframe.boot:egovframe-boot-starter-parent") ? "parent-version" : "rte-version";
     if (others.length) {
-      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: `${target} (공식 parent·RTE 용 변수를 따로 두고)`, action: "manual", reason: `버전 변수 ${name} 가 공식 parent·RTE(${egovUses.join(", ")}) 말고 ${others.join(", ")} 에도 쓰입니다 — 그대로 ${target} 로 바꾸면 그 좌표의 ${target} 이 저장소에 있어야 합니다. 공식 parent·RTE 용 변수를 따로 두고 그것만 ${target} 로 올리세요` });
+      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: L(`${target} (공식 parent·RTE 용 변수를 따로 두고)`, `${target} (with a separate variable for the official parent/RTE)`), action: "manual", reason: L(`버전 변수 ${name} 가 공식 parent·RTE(${egovUses.join(", ")}) 말고 ${others.join(", ")} 에도 쓰입니다 — 그대로 ${target} 로 바꾸면 그 좌표의 ${target} 이 저장소에 있어야 합니다. 공식 parent·RTE 용 변수를 따로 두고 그것만 ${target} 로 올리세요`, `Version variable ${name} is used for ${others.join(", ")} as well as the official parent/RTE (${egovUses.join(", ")}) — changing it to ${target} as is requires ${target} of those coordinates to exist in the repository. Keep a separate variable for the official parent/RTE and raise only that one to ${target}`) });
     } else {
-      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: `${name} = ${target}`, action: "auto", reason: `버전 변수 ${name}(${egovUses.join(", ")} 에만 쓰임) — 공식 parent 최신 ${target}`, edits: [{ start: vStart, end: vStart + value.length, replacement: target }] });
+      items.push({ file: rel, line, kind, from: `${name} = ${value}`, to: `${name} = ${target}`, action: "auto", reason: L(`버전 변수 ${name}(${egovUses.join(", ")} 에만 쓰임) — 공식 parent 최신 ${target}`, `Version variable ${name} (used only for ${egovUses.join(", ")}) — latest official parent ${target}`), edits: [{ start: vStart, end: vStart + value.length, replacement: target }] });
     }
   }
   const effective = found.sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
@@ -234,7 +235,7 @@ const MAX_FILE_BYTES = 2 * 1024 * 1024;
 export function updateProject(opts: UpdateOptions): UpdateResult {
   const rules = opts.rules ?? loadUpdateRules();
   const target = opts.target ?? rules.latest;
-  if (!rules.versions.includes(target)) throw new Error(`지원하지 않는 target: ${target} (5.x 갱신은 ${rules.versions.join("·")} 중 하나, 3.x/4.x 전환은 target="5.x")`);
+  if (!rules.versions.includes(target)) throw new Error(L(`지원하지 않는 target: ${target} (5.x 갱신은 ${rules.versions.join("·")} 중 하나, 3.x/4.x 전환은 target="5.x")`, `Unsupported target: ${target} (a 5.x update takes one of ${rules.versions.join("·")}; a 3.x/4.x migration takes target="5.x")`));
   const dir = path.resolve(opts.projectDir);
   const diag = diagnoseProject({ projectDir: dir });
   const maxFiles = opts.maxFiles ?? 20_000;
@@ -281,10 +282,10 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
   // 3.x/4.x 프로젝트면 갱신이 아니라 전환
   const sourceEra: SourceEra = from ? "5.x" : "unknown";
   if (legacy || (diag.egovVersion && /^[34]\./.test(diag.egovVersion))) {
-    notes.push(`5.x 이전 좌표의 프로젝트입니다 — 먼저 target="5.x" 로 전환(migrate_egovframe_project)한 뒤 갱신하세요.`);
+    notes.push(L(`5.x 이전 좌표의 프로젝트입니다 — 먼저 target="5.x" 로 전환(migrate_egovframe_project)한 뒤 갱신하세요.`, `This project uses pre-5.x coordinates — migrate it first with target="5.x" (migrate_egovframe_project), then update.`));
     return result([], { from: diag.egovVersion, to: target, parent, changes: [], unreferencedChanges: 0, components: null }, diag.egovVersion && /^4\./.test(diag.egovVersion) ? "4.x" : "3.x");
   }
-  if (!from) notes.push("빌드 파일에서 5.x RTE 버전(parent·버전 속성·의존성)을 찾지 못했습니다 — 변경 API 참조는 구간 전체(5.0.0 이후)로 봅니다.");
+  if (!from) notes.push(L("빌드 파일에서 5.x RTE 버전(parent·버전 속성·의존성)을 찾지 못했습니다 — 변경 API 참조는 구간 전체(5.0.0 이후)로 봅니다.", "No 5.x RTE version (parent, version property or dependency) found in the build files — changed-API references are checked over the whole range (since 5.0.0)."));
 
   // 바뀐 API·동작 참조(manual)
   // 구간: from 초과 ~ target 이하(from 미검출이면 target 이하 전부)
@@ -297,11 +298,11 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
         const line = findClassReference(s.text, cls);
         if (line === null) continue;
         hitFiles.add(s.rel);
-        items.push({ file: s.rel, line, kind: "rte-change", from: cls, to: null, action: "manual", reason: `[${c.since} ${c.kind === "api" ? "API 변경" : "동작 변경"}] ${c.summary} — ${c.reason}` });
+        items.push({ file: s.rel, line, kind: "rte-change", from: cls, to: null, action: "manual", reason: `[${c.since} ${c.kind === "api" ? L("API 변경", "API change") : L("동작 변경", "behavior change")}] ${tr(c, "summary")} — ${tr(c, "reason")}` });
         break;
       }
     }
-    if (hitFiles.size) changes.push({ id: c.id, since: c.since, kind: c.kind, summary: c.summary, files: hitFiles.size });
+    if (hitFiles.size) changes.push({ id: c.id, since: c.since, kind: c.kind, summary: tr(c, "summary"), files: hitFiles.size });
   }
 
   // 공통컴포넌트
@@ -315,10 +316,10 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
     if (tool) {
       items.push({
         file: manifest ? ".egovframe-components.json" : diag.detectedComponents[0].matchedPrefix, line: 1, kind: "component-update",
-        from: `공통컴포넌트 ${diag.detectedComponents.length}종${manifestTag ? ` (${manifestTag})` : " (매니페스트 없음)"}`,
-        to: tool === "upgrade_egovframe_project" ? `upgrade_egovframe_project(dryRun=true) 로 ${catalogTag} 와 비교` : `reassemble_egovframe_components(dryRun=true) 로 ${catalogTag} 재조립 계획`,
+        from: L(`공통컴포넌트 ${diag.detectedComponents.length}종${manifestTag ? ` (${manifestTag})` : " (매니페스트 없음)"}`, `${diag.detectedComponents.length} common component(s)${manifestTag ? ` (${manifestTag})` : " (no manifest)"}`),
+        to: tool === "upgrade_egovframe_project" ? L(`upgrade_egovframe_project(dryRun=true) 로 ${catalogTag} 와 비교`, `Compare with ${catalogTag} via upgrade_egovframe_project(dryRun=true)`) : L(`reassemble_egovframe_components(dryRun=true) 로 ${catalogTag} 재조립 계획`, `Plan a ${catalogTag} reassembly via reassemble_egovframe_components(dryRun=true)`),
         action: "manual",
-        reason: `${rules.components.note} 사용자 수정 파일은 force 없이 덮어쓰지 않고(upgrade), 재조립은 수정분을 패치로 남긴다.`,
+        reason: L(`${tr(rules.components, "note")} 사용자 수정 파일은 force 없이 덮어쓰지 않고(upgrade), 재조립은 수정분을 패치로 남긴다.`, `${tr(rules.components, "note")} User-modified files are not overwritten without force (upgrade), and reassembly keeps your modifications as a patch.`),
       });
     }
   }
@@ -388,10 +389,10 @@ export async function applyUpdate(opts: UpdateApplyOptions): Promise<UpdateApply
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
   const backupRel = path.join("migration-backup", `${ts}-update-${randomUUID()}`);
   const planRel = path.join(backupRel, "update-plan.json");
-  await withFileTransaction(dir, `5.x 갱신 적용(${r.update.from ?? "?"} → ${r.target})`, (tx) => {
+  await withFileTransaction(dir, L(`5.x 갱신 적용(${r.update.from ?? "?"} → ${r.target})`, `Apply 5.x update (${r.update.from ?? "?"} → ${r.target})`), (tx) => {
     for (const [file, { before }] of newTexts) {
       const cur = tx.readFile(file);
-      if (cur === null || cur.toString("utf8") !== before) throw new Error(`진단 이후 파일이 변경되어 적용을 중단합니다: ${file}`);
+      if (cur === null || cur.toString("utf8") !== before) throw new Error(L(`진단 이후 파일이 변경되어 적용을 중단합니다: ${file}`, `File changed since diagnosis; aborting apply: ${file}`));
     }
     for (const [file, { before, after }] of newTexts) {
       tx.writeFile(path.join(backupRel, file), before, { mustNotExist: true });
@@ -416,7 +417,7 @@ export interface UpdateVerifyOptions extends UpdateOptions { timeoutMs?: number;
 export async function verifyUpdate(opts: UpdateVerifyOptions): Promise<UpdateVerifyResult> {
   const r = updateProject(opts);
   const dir = r.projectDir;
-  if (!detectBuildToolAt(dir)) return { ...r, mode: "verify", build: { ran: false, success: null, errors: 0, reason: "빌드 파일(pom.xml·build.gradle)이 없어 컴파일 검증을 건너뜀" }, links: [], worklist: [], unlinked: [] };
+  if (!detectBuildToolAt(dir)) return { ...r, mode: "verify", build: { ran: false, success: null, errors: 0, reason: L("빌드 파일(pom.xml·build.gradle)이 없어 컴파일 검증을 건너뜀", "No build file (pom.xml/build.gradle); compile verification skipped") }, links: [], worklist: [], unlinked: [] };
   const b = await runBuild({ projectDir: dir, goal: "compile", timeoutMs: opts.timeoutMs ?? 300_000, runner: opts.runner, platform: opts.platform });
   const errors = b.errors ?? [];
   const migRules = loadMigrationRules();
@@ -429,51 +430,51 @@ export async function verifyUpdate(opts: UpdateVerifyOptions): Promise<UpdateVer
 }
 
 // ── 렌더링 ────────────────────────────────────────────
-const KIND_LABEL: Record<string, string> = {
-  "parent-version": "parent 버전", "rte-version": "RTE 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지", "duplicate-dependency": "중복 의존성 선언",
+const KIND_LABEL: Record<string, () => string> = {
+  "parent-version": () => L("parent 버전", "parent version"), "rte-version": () => L("RTE 버전", "RTE version"), "parent-property": () => L("parent 관리 속성", "parent-managed property"), "rte-change": () => L("바뀐 RTE API·동작", "changed RTE API/behavior"), "component-update": () => L("공통컴포넌트 최신 유지", "common components update"), "duplicate-dependency": () => L("중복 의존성 선언", "duplicate dependency declaration"),
 };
-export const updateKindLabel = (k: string): string => KIND_LABEL[k] ?? k;
+export const updateKindLabel = (k: string): string => KIND_LABEL[k]?.() ?? k;
 
 export function renderUpdateMarkdown(r: UpdateResult | UpdateApplyResult | UpdateVerifyResult): string {
   const mode = (r as { mode?: "apply" | "verify" }).mode;
-  const L: string[] = [];
+  const out: string[] = [];
   const u = r.update;
-  const title = mode === "apply" ? ((r as UpdateApplyResult).dryRun ? "적용 계획(dryRun)" : "적용 결과") : mode === "verify" ? "검증" : "진단";
-  L.push(`# 표준프레임워크 5.x 최신 유지 ${title}`, ``);
-  L.push(`- 경로: ${r.projectDir}`);
-  L.push(`- RTE ${u.from ?? "미검출"} → ${u.to}${u.parent ? ` · parent ${u.parent.artifactId} ${u.parent.version}${u.parent.version === u.to ? "(최신)" : ` → ${u.to}`}` : " · 5.x parent 없음"} (규칙 조사 ${r.rules.surveyedAt})`);
-  L.push(`- 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${u.unreferencedChanges ? ` · 이 구간의 다른 변경 ${u.unreferencedChanges}건은 프로젝트가 참조하지 않음` : ""}`);
-  if (u.components) L.push(`- 공통컴포넌트 ${u.components.detected}종 · ${u.components.manifestTag ? `매니페스트 ${u.components.manifestTag}` : "매니페스트 없음"} · 카탈로그 ${u.components.catalogTag}${u.components.tool ? ` → ${u.components.tool}` : " (최신)"}`);
-  for (const n of r.notes) L.push(`- ${n}`);
-  if (u.modules?.length) L.push(`- 모듈 ${u.modules.length}개: ${u.modules.map((m) => `${m.name} ${m.auto}/${m.manual}`).join(" · ")} (자동/수동)`);
+  const title = mode === "apply" ? ((r as UpdateApplyResult).dryRun ? L("적용 계획(dryRun)", "apply plan (dryRun)") : L("적용 결과", "apply result")) : mode === "verify" ? L("검증", "verification") : L("진단", "diagnosis");
+  out.push(L(`# 표준프레임워크 5.x 최신 유지 ${title}`, `# eGovFrame 5.x update ${title}`), ``);
+  out.push(L(`- 경로: ${r.projectDir}`, `- Path: ${r.projectDir}`));
+  out.push(L(`- RTE ${u.from ?? "미검출"} → ${u.to}${u.parent ? ` · parent ${u.parent.artifactId} ${u.parent.version}${u.parent.version === u.to ? "(최신)" : ` → ${u.to}`}` : " · 5.x parent 없음"} (규칙 조사 ${r.rules.surveyedAt})`, `- RTE ${u.from ?? "not detected"} → ${u.to}${u.parent ? ` · parent ${u.parent.artifactId} ${u.parent.version}${u.parent.version === u.to ? " (latest)" : ` → ${u.to}`}` : " · no 5.x parent"} (rules surveyed ${r.rules.surveyedAt})`));
+  out.push(L(`- 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${u.unreferencedChanges ? ` · 이 구간의 다른 변경 ${u.unreferencedChanges}건은 프로젝트가 참조하지 않음` : ""}`, `- ${r.items.length} item(s) (auto ${r.summary.auto} · manual ${r.summary.manual})${u.unreferencedChanges ? ` · ${u.unreferencedChanges} other change(s) in this range are not referenced by the project` : ""}`));
+  if (u.components) out.push(L(`- 공통컴포넌트 ${u.components.detected}종 · ${u.components.manifestTag ? `매니페스트 ${u.components.manifestTag}` : "매니페스트 없음"} · 카탈로그 ${u.components.catalogTag}${u.components.tool ? ` → ${u.components.tool}` : " (최신)"}`, `- Common components ${u.components.detected} · ${u.components.manifestTag ? `manifest ${u.components.manifestTag}` : "no manifest"} · catalog ${u.components.catalogTag}${u.components.tool ? ` → ${u.components.tool}` : " (latest)"}`));
+  for (const n of r.notes) out.push(`- ${n}`);
+  if (u.modules?.length) out.push(L(`- 모듈 ${u.modules.length}개: ${u.modules.map((m) => `${m.name} ${m.auto}/${m.manual}`).join(" · ")} (자동/수동)`, `- ${u.modules.length} module(s): ${u.modules.map((m) => `${m.name} ${m.auto}/${m.manual}`).join(" · ")} (auto/manual)`));
   if (mode === "apply") {
     const a = r as UpdateApplyResult;
-    L.push(`- ${a.dryRun ? "적용 예정" : "적용"} ${a.applied.items}항목 · 편집 ${a.applied.edits}곳 · 파일 ${a.applied.files}개`);
-    if (a.backupDir) L.push(`- 백업: ${a.backupDir} (원본 + update-plan.json)`);
-    if (a.remaining) L.push(`- 적용 후 재진단: 자동 ${a.remaining.auto} · 수동 ${a.remaining.manual}`);
-    for (const f of a.files) { L.push(``, `### ${f.file} — ${f.items}항목`, ``); for (const p of f.preview.slice(0, 10)) L.push(`- L${p.line}: \`${p.before.trim()}\` → \`${p.after.trim()}\``); }
+    out.push(L(`- ${a.dryRun ? "적용 예정" : "적용"} ${a.applied.items}항목 · 편집 ${a.applied.edits}곳 · 파일 ${a.applied.files}개`, `- ${a.dryRun ? "To apply" : "Applied"}: ${a.applied.items} item(s) · ${a.applied.edits} edit(s) · ${a.applied.files} file(s)`));
+    if (a.backupDir) out.push(L(`- 백업: ${a.backupDir} (원본 + update-plan.json)`, `- Backup: ${a.backupDir} (originals + update-plan.json)`));
+    if (a.remaining) out.push(L(`- 적용 후 재진단: 자동 ${a.remaining.auto} · 수동 ${a.remaining.manual}`, `- Re-diagnosis after apply: auto ${a.remaining.auto} · manual ${a.remaining.manual}`));
+    for (const f of a.files) { out.push(``, L(`### ${f.file} — ${f.items}항목`, `### ${f.file} — ${f.items} item(s)`), ``); for (const p of f.preview.slice(0, 10)) out.push(`- L${p.line}: \`${p.before.trim()}\` → \`${p.after.trim()}\``); }
   }
   if (mode === "verify") {
     const v = r as UpdateVerifyResult;
-    L.push(v.build.ran ? `- 컴파일: ${v.build.success ? "✅ 통과" : `❌ 오류 ${v.build.errors}건`} · \`${v.build.command}\` · ${v.build.durationMs ?? 0}ms` : `- 컴파일: 건너뜀 — ${v.build.reason}`);
-    for (const w of v.worklist.filter((x) => x.errors > 0)) L.push(`- **${w.errors}건** ${w.item.file}:L${w.item.line} \`${w.item.from}\``);
-    for (const e of v.unlinked.slice(0, 20)) L.push(`- (분류 불가) ${e.file}:L${e.line} ${e.message}`);
+    out.push(v.build.ran ? L(`- 컴파일: ${v.build.success ? "✅ 통과" : `❌ 오류 ${v.build.errors}건`} · \`${v.build.command}\` · ${v.build.durationMs ?? 0}ms`, `- Compile: ${v.build.success ? "✅ passed" : `❌ ${v.build.errors} error(s)`} · \`${v.build.command}\` · ${v.build.durationMs ?? 0}ms`) : L(`- 컴파일: 건너뜀 — ${v.build.reason}`, `- Compile: skipped — ${v.build.reason}`));
+    for (const w of v.worklist.filter((x) => x.errors > 0)) out.push(L(`- **${w.errors}건** ${w.item.file}:L${w.item.line} \`${w.item.from}\``, `- **${w.errors} error(s)** ${w.item.file}:L${w.item.line} \`${w.item.from}\``));
+    for (const e of v.unlinked.slice(0, 20)) out.push(L(`- (분류 불가) ${e.file}:L${e.line} ${e.message}`, `- (unlinked) ${e.file}:L${e.line} ${e.message}`));
   }
   const auto = r.items.filter((i) => i.action === "auto");
   const manual = r.items.filter((i) => i.action === "manual");
   if (auto.length && mode !== "apply") {
-    L.push(``, `## 자동 갱신 (${auto.length})`, ``);
-    for (const i of auto) L.push(`- ${i.file}:L${i.line} [${updateKindLabel(i.kind)}] \`${i.from}\` → \`${i.to}\``);
+    out.push(``, L(`## 자동 갱신 (${auto.length})`, `## Automatic updates (${auto.length})`), ``);
+    for (const i of auto) out.push(`- ${i.file}:L${i.line} [${updateKindLabel(i.kind)}] \`${i.from}\` → \`${i.to}\``);
   }
   if (manual.length) {
-    L.push(``, `## 확인할 항목 (${manual.length})`, ``);
-    for (const i of manual.slice(0, 60)) L.push(`- ${i.file}:L${i.line} [${updateKindLabel(i.kind)}] \`${i.from}\`${i.to ? ` → ${i.to}` : ""}`, `  - ${i.reason}`);
-    if (manual.length > 60) L.push(`- … 외 ${manual.length - 60}건`);
+    out.push(``, L(`## 확인할 항목 (${manual.length})`, `## Items to review (${manual.length})`), ``);
+    for (const i of manual.slice(0, 60)) out.push(`- ${i.file}:L${i.line} [${updateKindLabel(i.kind)}] \`${i.from}\`${i.to ? ` → ${i.to}` : ""}`, `  - ${i.reason}`);
+    if (manual.length > 60) out.push(L(`- … 외 ${manual.length - 60}건`, `- … and ${manual.length - 60} more`));
   }
-  if (r.items.length === 0) L.push(``, `갱신 항목 없음 — RTE·parent 가 ${u.to} 기준입니다.`);
-  L.push(``, `---`, mode === "apply" && !(r as UpdateApplyResult).dryRun
-    ? `다음 단계: verify=true 로 compile 을 확인하고, 확인할 항목(바뀐 API·동작)을 검토하세요.`
-    : mode === "apply" ? `적용하려면 dryRun=false 로 다시 호출하세요. 원본은 migration-backup/ 에 보관되고 실패하면 작업 전 상태로 되돌립니다.`
-    : `apply=true 로 자동 항목을 적용하고(dryRun 기본), verify=true 로 compile 을 확인합니다. 이 진단은 파일을 수정하지 않았습니다.`);
-  return L.join("\n");
+  if (r.items.length === 0) out.push(``, L(`갱신 항목 없음 — RTE·parent 가 ${u.to} 기준입니다.`, `Nothing to update — RTE and parent are already at ${u.to}.`));
+  out.push(``, `---`, mode === "apply" && !(r as UpdateApplyResult).dryRun
+    ? L(`다음 단계: verify=true 로 compile 을 확인하고, 확인할 항목(바뀐 API·동작)을 검토하세요.`, `Next step: run with verify=true to check the compile, and review the items to review (changed APIs/behavior).`)
+    : mode === "apply" ? L(`적용하려면 dryRun=false 로 다시 호출하세요. 원본은 migration-backup/ 에 보관되고 실패하면 작업 전 상태로 되돌립니다.`, `To apply, call again with dryRun=false. Originals are kept under migration-backup/ and the project is rolled back on failure.`)
+    : L(`apply=true 로 자동 항목을 적용하고(dryRun 기본), verify=true 로 compile 을 확인합니다. 이 진단은 파일을 수정하지 않았습니다.`, `Use apply=true to apply the automatic items (dryRun by default) and verify=true to check the compile. This diagnosis did not modify any files.`));
+  return out.join("\n");
 }

@@ -108,7 +108,7 @@ async function main() {
     const cands = ccBySimple.get(simpleOf(fq)) ?? [];
     if (cands.length === 1) { ccMoved.push({ from: fq, to: cands[0] }); continue; }
     const curated = cm.replacements[fq];
-    ccRemoved.push({ class: fq, replacement: curated?.replacement ?? null, reason: curated?.reason ?? cm.defaultReason, ...(cands.length > 1 ? { candidates: cands } : {}) });
+    ccRemoved.push({ class: fq, replacement: curated?.replacement ?? null, reason: curated?.reason ?? cm.defaultReason, reason_en: curated?.reason_en ?? cm.defaultReason_en, ...(cands.length > 1 ? { candidates: cands } : {}) });
   }
   for (const k of Object.keys(cm.replacements)) if (!ccRemoved.some((r) => r.class === k)) throw new Error(`components.replacements '${k}' 는 제거 클래스가 아닙니다(규칙이 낡았거나 오타)`);
   for (const r of ccRemoved) if (r.replacement && !ccTo.has(r.replacement)) throw new Error(`components replacement 가 ${cm.toTag} 에 없습니다: ${r.replacement}`);
@@ -182,6 +182,17 @@ async function main() {
   }
 
   // 제거 클래스 ← 큐레이션 사유 필수
+  // v1.2: 응답 영문화 — 한국어 문장 필드(reason·replacement·note)는 큐레이션에 <필드>_en 이 함께 있어야 한다(빠지면 실패)
+  const requireEn = (obj, key, where) => { const v = obj?.[key]; if (typeof v === "string" && /[가-힣]/.test(v) && !(typeof obj[`${key}_en`] === "string" && obj[`${key}_en`])) throw new Error(`${where}: '${key}' 에 영문(${key}_en)이 없습니다 — ${v.slice(0, 40)}…`); };
+  for (const r of mapping.removedClasses) for (const k of ["reason", "replacement"]) requireEn(r, k, `removedClasses '${r.match}'`);
+  for (const l of mapping.libraries.manual) for (const k of ["reason", "replacement"]) requireEn(l, k, `libraries.manual '${l.match}'`);
+  for (const v of mapping.vendorCoordinates?.groupIdPrefixes ?? []) requireEn(v, "note", `vendorCoordinates '${v.groupIdPrefix}'`);
+  for (const ns of mapping.xmlNamespaces.removed) for (const k of ["reason", "replacement"]) requireEn(ns, k, `xmlNamespaces '${ns.uri}'`);
+  for (const m of mapping.modules.removedModules) requireEn(m, "reason", `removedModules '${m.module}'`);
+  for (const a of mapping.jakarta.artifacts) requireEn(a, "note", `jakarta.artifacts '${a.from?.artifactId ?? ""}'`);
+  requireEn(cm, "defaultReason", "components"); for (const [k, r] of Object.entries(cm.replacements)) requireEn(r, "reason", `components.replacements '${k}'`);
+  requireEn(mapping.target.versionProperties, "note", "target.versionProperties"); requireEn(mapping.jakarta, "comment", "jakarta");
+
   const removedRules = mapping.removedClasses.map((r) => ({ ...r, re: r.match.includes("*") ? globToRe(r.match) : null }));
   const matchRemoved = (fq) => removedRules.find((r) => (r.re ? r.re.test(fq) : r.match === fq));
   const removed = [];
@@ -190,7 +201,7 @@ async function main() {
     const rule = matchRemoved(fq);
     if (!rule) { unexplained.push(fq); continue; }
     if (rule.replacement && !to.classes.has(rule.replacement)) throw new Error(`removedClasses '${rule.match}' 의 replacement 가 ${rt.toTag} 에 없습니다: ${rule.replacement}`);
-    removed.push({ class: fq, legacyClass: renamedFrom.get(fq), replacement: rule.replacement ?? null, reason: rule.reason, presentIn4x: mid.classes.has(fq) });
+    removed.push({ class: fq, legacyClass: renamedFrom.get(fq), replacement: rule.replacement ?? null, reason: rule.reason, reason_en: rule.reason_en, presentIn4x: mid.classes.has(fq) });
   }
   if (unexplained.length > 0)
     throw new Error(`${rt.toTag} 에 없는데 migration-mapping.json 에 사유가 없는 클래스 ${unexplained.length}개:\n  ${unexplained.join("\n  ")}`);
@@ -267,7 +278,7 @@ async function main() {
     },
     target: mapping.target,
     coordinates,
-    removedModules: mapping.modules.removedModules.map(({ module, fromArtifactId, reason }) => ({ module, fromArtifactId, reason })),
+    removedModules: mapping.modules.removedModules.map(({ module, fromArtifactId, reason, reason_en }) => ({ module, fromArtifactId, reason, reason_en })),
     newModules,
     packages: {
       prefix: { from: rt.fromPackagePrefix, to: rt.toPackagePrefix },
@@ -277,7 +288,7 @@ async function main() {
       // 공통컴포넌트(egovframework.com.*) — 사용자 프로젝트에 복사된 3.x 소스가 참조할 수 있는 제거·이동 클래스
       components: { prefix: cm.packagePrefix, removed: ccRemoved, moves: ccMoved, evidence: { from: [...ccFrom].filter((f) => f.startsWith(cm.packagePrefix)).length, to: [...ccTo].filter((f) => f.startsWith(cm.packagePrefix)).length, removed: ccRemoved.length, moved: ccMoved.length, added: ccAdded } },
     },
-    jakarta: { packages: mapping.jakarta.packages, artifacts: mapping.jakarta.artifacts, note: mapping.jakarta.comment },
+    jakarta: { packages: mapping.jakarta.packages, artifacts: mapping.jakarta.artifacts, note: mapping.jakarta.comment, note_en: mapping.jakarta.comment_en },
     libraries: mapping.libraries.manual,
     vendorCoordinates: mapping.vendorCoordinates?.groupIdPrefixes ?? [],
     xmlNamespaces: mapping.xmlNamespaces.removed,

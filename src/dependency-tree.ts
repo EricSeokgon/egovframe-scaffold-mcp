@@ -6,6 +6,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { capOutput, defaultRunner, detectBuildToolAt, resolveCommand, type BuildTool, type ResolvedCommand, type Runner } from "./build-runner.js";
+import { AbortError, throwIfAborted, type Progress } from "./progress.js";
 
 export const MAVEN_DEPENDENCY_PLUGIN = "org.apache.maven.plugins:maven-dependency-plugin:3.8.1";
 export type ResolveScope = "runtime" | "all";
@@ -146,10 +147,13 @@ export interface ResolveTreeOptions {
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   now?: () => number;
+  /** v1.2: 진행 알림·취소(signal). 취소되면 프로세스 트리를 끝내고 AbortError 를 던진다 */
+  progress?: Progress;
 }
 
-/** 빌드 도구로 의존성 트리를 해석한다. 빌드 파일이 없거나 실행이 실패하면 예외 대신 ran/success·error 로 알린다. */
+/** 빌드 도구로 의존성 트리를 해석한다. 빌드 파일이 없거나 실행이 실패하면 예외 대신 ran/success·error 로 알린다(취소만 AbortError). */
 export async function resolveDependencyTree(opts: ResolveTreeOptions): Promise<DependencyTreeResult> {
+  throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
   const scope = opts.scope ?? "runtime";
   const buildTool = detectBuildToolAt(projectDir);
@@ -163,8 +167,11 @@ export async function resolveDependencyTree(opts: ResolveTreeOptions): Promise<D
   let buffer = "";
   const started = now();
   try {
-    const r = await runner(cmd, { timeoutMs: opts.timeoutMs ?? 300_000, onData: (c) => (buffer += c) });
+    opts.progress?.report(`${buildTool} dependency tree: ${command}`, 0, 1);
+    const r = await runner(cmd, { timeoutMs: opts.timeoutMs ?? 300_000, onData: (c) => (buffer += c), signal: opts.progress?.signal });
     const durationMs = now() - started;
+    if (r.aborted || opts.progress?.signal?.aborted) throw new AbortError(`${buildTool} dependency tree cancelled after ${durationMs}ms`);
+    opts.progress?.report(`${buildTool} dependency tree: exit ${r.exitCode ?? "-"}${r.timedOut ? " (timeout)" : ""}`, 1, 1);
     const text = buildTool === "maven" ? (fs.existsSync(outputFile) ? fs.readFileSync(outputFile, "utf8") : "") : buffer;
     const parsed = buildTool === "maven" ? parseMavenTree(text) : parseGradleTree(text);
     const ok = r.exitCode === 0 && !r.timedOut && parsed.nodes.length > 0;

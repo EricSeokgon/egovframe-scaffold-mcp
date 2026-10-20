@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { diagnoseProject } from "./diagnose.js";
 import { withFileTransaction } from "./file-transaction.js";
 import { detectBuildToolAt, runBuild, type BuildError, type Runner } from "./build-runner.js";
+import { L, tr } from "./lang.js";
 
 // ── 규칙 ──────────────────────────────────────────────
 export interface MigrationCoordinate { module: string; layer: string; from: { groupId: string; artifactId: string; era: string }[]; to: { groupId: string; artifactId: string } }
@@ -164,19 +165,19 @@ export function classifyRteToken(token: string, rules: MigrationRules = loadMigr
   for (let n = segs.length; n >= 3; n--) {
     const cand = segs.slice(0, n).join(".");
     const removed = ix.removedByClass.get(cand);
-    if (removed) return { kind: "class-removed", from: raw, to: removed.replacement, action: "manual", reason: removed.reason };
+    if (removed) return { kind: "class-removed", from: raw, to: removed.replacement != null ? tr(removed, "replacement") : null, action: "manual", reason: tr(removed, "reason") };
     const moved = ix.movesByClass.get(cand);
-    if (moved) return { kind: "class-moved", from: raw, to: moved + norm.slice(cand.length), action: "auto", reason: `5.x 에서 ${moved} 로 이동` };
+    if (moved) return { kind: "class-moved", from: raw, to: moved + norm.slice(cand.length), action: "auto", reason: L(`5.x 에서 ${moved} 로 이동`, `Moved to ${moved} in 5.x`) };
     if (ix.classes5.has(cand)) {
       // 존재하는 클래스 — 접두어만 바뀐 경우만 보고
-      return legacyPrefix ? { kind: "package", from: raw, to: norm, action: "auto", reason: `패키지 접두어 ${pFrom}* → ${pTo}*` } : null;
+      return legacyPrefix ? { kind: "package", from: raw, to: norm, action: "auto", reason: L(`패키지 접두어 ${pFrom}* → ${pTo}*`, `Package prefix ${pFrom}* → ${pTo}*`) } : null;
     }
   }
   // 2) 패키지 이름 변경 (예: fdl.cryptography → fdl.crypto)
   for (const r of rules.packages.renames) {
     if (norm === r.from.slice(0, -1) || norm.startsWith(r.from)) {
       const to = r.to + norm.slice(r.from.length);
-      return { kind: "package-renamed", from: raw, to, action: "auto", reason: `5.x 에서 패키지 ${r.from}* → ${r.to}*` };
+      return { kind: "package-renamed", from: raw, to, action: "auto", reason: L(`5.x 에서 패키지 ${r.from}* → ${r.to}*`, `Package ${r.from}* → ${r.to}* in 5.x`) };
     }
   }
   // 3) 패키지 자체(와일드카드 import 등) 또는 알 수 없는 클래스
@@ -184,11 +185,11 @@ export function classifyRteToken(token: string, rules: MigrationRules = loadMigr
   const lastSeg = segs[segs.length - 1] ?? "";
   const looksLikeClass = /^[A-Z]/.test(lastSeg);
   if (isPackage || !looksLikeClass) {
-    return legacyPrefix ? { kind: "package", from: raw, to: norm, action: "auto", reason: `패키지 접두어 ${pFrom}* → ${pTo}*` } : null;
+    return legacyPrefix ? { kind: "package", from: raw, to: norm, action: "auto", reason: L(`패키지 접두어 ${pFrom}* → ${pTo}*`, `Package prefix ${pFrom}* → ${pTo}*`) } : null;
   }
   return {
     kind: "class-unknown", from: raw, to: legacyPrefix ? norm : null, action: "manual",
-    reason: `${rules.source.toTag} 소스 트리에 없는 클래스 — 사용자 정의 클래스이거나 5.x 에서 제거된 API 인지 확인`,
+    reason: L(`${rules.source.toTag} 소스 트리에 없는 클래스 — 사용자 정의 클래스이거나 5.x 에서 제거된 API 인지 확인`, `Class not found in the ${rules.source.toTag} source tree — check whether it is a user-defined class or an API removed in 5.x`),
   };
 }
 
@@ -216,9 +217,9 @@ export function classifyComponentToken(token: string, rules: MigrationRules = lo
   for (let n = segs.length; n >= 3; n--) {
     const cand = segs.slice(0, n).join(".");
     const rm = ix.componentRemoved.get(cand);
-    if (rm) return { kind: "component-class-removed", from: token, to: rm.replacement, action: "manual", reason: rm.reason };
+    if (rm) return { kind: "component-class-removed", from: token, to: rm.replacement != null ? tr(rm, "replacement") : null, action: "manual", reason: tr(rm, "reason") };
     const mv = ix.componentMoves.get(cand);
-    if (mv) return { kind: "component-class-moved", from: token, to: mv + token.slice(cand.length), action: "auto", reason: `공통컴포넌트 ${rules.source.components?.toTag ?? "5.x"} 에서 ${mv} 로 이동` };
+    if (mv) return { kind: "component-class-moved", from: token, to: mv + token.slice(cand.length), action: "auto", reason: L(`공통컴포넌트 ${rules.source.components?.toTag ?? "5.x"} 에서 ${mv} 로 이동`, `Moved to ${mv} in common components ${rules.source.components?.toTag ?? "5.x"}`) };
   }
   return null;
 }
@@ -264,7 +265,7 @@ function scanTextLines(rel: string, text: string, rules: MigrationRules, push: (
         const edit: TextEdit = { start, end: start + m[0].length, replacement: to };
         const prev = seen.get(m[0]);
         if (prev) { (prev.edits ??= []).push(edit); continue; }
-        const item: MigrationItem = { file: rel, line: i + 1, kind: "jakarta-package", from: m[0], to, action: "auto", reason: "Jakarta EE 9+ 패키지 이름 변경(Spring 6)", edits: [edit] };
+        const item: MigrationItem = { file: rel, line: i + 1, kind: "jakarta-package", from: m[0], to, action: "auto", reason: L("Jakarta EE 9+ 패키지 이름 변경(Spring 6)", "Jakarta EE 9+ package rename (Spring 6)"), edits: [edit] };
         seen.set(m[0], item);
         push(item);
       }
@@ -286,10 +287,10 @@ function scanWebXml(rel: string, text: string, rules: MigrationRules, push: (i: 
     tag = ver ? tag.replace(/(\s)version="[^"]+"/, `$1version="${w.version}"`) : tag.replace(/<web-app\b/, `<web-app version="${w.version}"`);
     if (/\sxsi:schemaLocation="[^"]*"/.test(tag)) tag = tag.replace(/(\s)xsi:schemaLocation="[^"]*"/, `$1xsi:schemaLocation="${w.schemaLocation}"`);
     const start = open.index ?? 0;
-    push({ file: rel, line, kind: "web-xml", from: `xmlns="${ns}"${ver ? ` version="${ver}"` : ""}`, to: `xmlns="${w.namespace}" version="${w.version}" (schemaLocation: ${w.schemaLocation})`, action: "auto", reason: "Servlet 5.0+(Jakarta) web.xml 스키마", edits: [{ start, end: start + open[0].length, replacement: tag }] });
+    push({ file: rel, line, kind: "web-xml", from: `xmlns="${ns}"${ver ? ` version="${ver}"` : ""}`, to: `xmlns="${w.namespace}" version="${w.version}" (schemaLocation: ${w.schemaLocation})`, action: "auto", reason: L("Servlet 5.0+(Jakarta) web.xml 스키마", "Servlet 5.0+ (Jakarta) web.xml schema"), edits: [{ start, end: start + open[0].length, replacement: tag }] });
   }
   else if (!ns && /<!DOCTYPE web-app/i.test(text))
-    push({ file: rel, line, kind: "web-xml", from: "DOCTYPE web-app (Servlet 2.3 DTD)", to: `xmlns="${w.namespace}" version="${w.version}"`, action: "manual", reason: "DTD 기반 web.xml 은 스키마 기반으로 다시 작성" });
+    push({ file: rel, line, kind: "web-xml", from: "DOCTYPE web-app (Servlet 2.3 DTD)", to: `xmlns="${w.namespace}" version="${w.version}"`, action: "manual", reason: L("DTD 기반 web.xml 은 스키마 기반으로 다시 작성", "Rewrite the DTD-based web.xml as a schema-based one") });
 }
 
 function scanSpringXmlNamespaces(rel: string, text: string, rules: MigrationRules, push: (i: MigrationItem) => void) {
@@ -300,7 +301,7 @@ function scanSpringXmlNamespaces(rel: string, text: string, rules: MigrationRule
       const line = lineAt(text, idx);
       if (!reported.has(line)) {
         reported.add(line);
-        push({ file: rel, line, kind: "xml-namespace", from: ns.uri, to: ns.replacement, action: "manual", reason: ns.reason });
+        push({ file: rel, line, kind: "xml-namespace", from: ns.uri, to: tr(ns, "replacement"), action: "manual", reason: tr(ns, "reason") });
       }
       idx = text.indexOf(ns.uri, idx + ns.uri.length);
     }
@@ -369,8 +370,8 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     const start = m.index ?? 0;
     push({
       file: rel, line: lineAt(text, start), kind: "rte-version", from: `<${key}>${m[1]}</${key}>`,
-      to: `<${RTE_VERSION_PROPERTY}>${t.runtimeVersion}</${RTE_VERSION_PROPERTY}> (또는 parent 관리)`, action: "auto",
-      reason: t.versionProperties.note,
+      to: L(`<${RTE_VERSION_PROPERTY}>${t.runtimeVersion}</${RTE_VERSION_PROPERTY}> (또는 parent 관리)`, `<${RTE_VERSION_PROPERTY}>${t.runtimeVersion}</${RTE_VERSION_PROPERTY}> (or managed by parent)`), action: "auto",
+      reason: tr(t.versionProperties, "note"),
       edits: [{ start, end: start + m[0].length, replacement: `<${RTE_VERSION_PROPERTY}>${t.runtimeVersion}</${RTE_VERSION_PROPERTY}>` }],
     });
   }
@@ -380,7 +381,7 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     const re = new RegExp(`<url>\\s*${escapeRe(url)}\\s*</url>`, "g");
     for (const m of text.matchAll(re)) {
       const start = (m.index ?? 0) + m[0].indexOf(url);
-      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: "표준프레임워크 Maven 저장소는 HTTPS 주소만 유효", edits: [{ start, end: start + url.length, replacement: t.repositoryUrl }] });
+      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: L("표준프레임워크 Maven 저장소는 HTTPS 주소만 유효", "The eGovFrame Maven repository is only reachable over HTTPS"), edits: [{ start, end: start + url.length, replacement: t.repositoryUrl }] });
     }
   }
 
@@ -392,7 +393,7 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     const num = v.startsWith("1.") ? Number(v.slice(2)) : Number.parseInt(v, 10);
     if (Number.isFinite(num) && num < rules.build.javaRelease) {
       const vs = (m.index ?? 0) + m[0].indexOf(m[1], key.length + 2);
-      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${key}>${m[1]}</${key}>`, to: `<${key}>${rules.build.javaRelease}</${key}>`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, edits: [{ start: vs, end: vs + m[1].length, replacement: String(rules.build.javaRelease) }] });
+      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${key}>${m[1]}</${key}>`, to: `<${key}>${rules.build.javaRelease}</${key}>`, action: "auto", reason: L(`5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, `5.x (Spring 6) requires Java ${rules.build.javaRelease} or later`), edits: [{ start: vs, end: vs + m[1].length, replacement: String(rules.build.javaRelease) }] });
     }
   }
   for (const m of text.matchAll(/<(source|target|release)>\s*([^<\s]+)\s*<\/\1>/g)) {
@@ -401,7 +402,7 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     const num = v.startsWith("1.") ? Number(v.slice(2)) : Number.parseInt(v, 10);
     if (Number.isFinite(num) && num < rules.build.javaRelease && /maven-compiler-plugin/.test(text)) {
       const vs = (m.index ?? 0) + m[0].indexOf(m[2], m[1].length + 2);
-      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${m[1]}>${m[2]}</${m[1]}>`, to: `<${m[1]}>${rules.build.javaRelease}</${m[1]}>`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, edits: [{ start: vs, end: vs + m[2].length, replacement: String(rules.build.javaRelease) }] });
+      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "java-release", from: `<${m[1]}>${m[2]}</${m[1]}>`, to: `<${m[1]}>${rules.build.javaRelease}</${m[1]}>`, action: "auto", reason: L(`5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, `5.x (Spring 6) requires Java ${rules.build.javaRelease} or later`), edits: [{ start: vs, end: vs + m[2].length, replacement: String(rules.build.javaRelease) }] });
     }
   }
 
@@ -410,7 +411,7 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
     const m = text.match(new RegExp(`<${escapeRe(key)}>\\s*([^<\\s]+)\\s*</${escapeRe(key)}>`));
     if (!m) continue;
     if (versionBelow(m[1], rules.build.springMinimum) === true)
-      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "spring-version", from: `<${key}>${m[1]}</${key}>`, to: `${rules.build.springMinimum} 이상 (5.x parent 가 관리)`, action: "manual", reason: "Spring 6 로 올리면 javax→jakarta 와 함께 제거된 API(WebSecurityConfigurerAdapter, CommonsMultipartResolver 등) 대응이 필요" });
+      push({ file: rel, line: lineAt(text, m.index ?? 0), kind: "spring-version", from: `<${key}>${m[1]}</${key}>`, to: L(`${rules.build.springMinimum} 이상 (5.x parent 가 관리)`, `${rules.build.springMinimum} or later (managed by the 5.x parent)`), action: "manual", reason: L("Spring 6 로 올리면 javax→jakarta 와 함께 제거된 API(WebSecurityConfigurerAdapter, CommonsMultipartResolver 등) 대응이 필요", "Upgrading to Spring 6 requires handling javax→jakarta plus the removed APIs (WebSecurityConfigurerAdapter, CommonsMultipartResolver, etc.)") });
   }
 
   // 의존성
@@ -435,7 +436,7 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
       const era = coord.from.find((f) => `${f.groupId}:${f.artifactId}` === key)?.era as SourceEra | undefined;
       if (era) ctx.eras.add(era);
       push({
-        file: rel, line: d.line, kind: "coordinate", from: `${key}${verText}`, to: `${coord.to.groupId}:${coord.to.artifactId}${d.version ? `:${t.runtimeVersion}` : ""}`, action: "auto", reason: `5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})`,
+        file: rel, line: d.line, kind: "coordinate", from: `${key}${verText}`, to: `${coord.to.groupId}:${coord.to.artifactId}${d.version ? `:${t.runtimeVersion}` : ""}`, action: "auto", reason: L(`5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})`, `5.x coordinate (${rules.source.toTag} ${coord.layer}/${coord.module})`),
         edits: [{ start: d.gSpan.start, end: d.gSpan.end, replacement: coord.to.groupId }, { start: d.aSpan.start, end: d.aSpan.end, replacement: coord.to.artifactId }, ...rteVersionEdit()],
       });
       continue;
@@ -445,18 +446,18 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
       // 4.x 도 org.egovframe.rte 좌표를 쓴다 — 해석된 버전이 4.* 면 4.x (v0.41 수정: 예전에는 5.x 로 보아 재조립 후보가 5.x 태그로만 좁혀졌다)
       ctx.eras.add(ver && /^4\./.test(ver) ? "4.x" : "5.x");
       if (ver && versionBelow(ver, t.runtimeVersion) === true)
-        push({ file: rel, line: d.line, kind: "rte-version", from: `${key}${verText}`, to: `${key}:${t.runtimeVersion}`, action: "auto", reason: `RTE ${t.runtimeVersion} 기준`, edits: rteVersionEdit() });
+        push({ file: rel, line: d.line, kind: "rte-version", from: `${key}${verText}`, to: `${key}:${t.runtimeVersion}`, action: "auto", reason: L(`RTE ${t.runtimeVersion} 기준`, `Based on RTE ${t.runtimeVersion}`), edits: rteVersionEdit() });
       continue;
     }
     const removedModule = rules.removedModules.find((m) => m.fromArtifactId === d.artifactId && /^(egovframework\.rte|org\.egovframe\.rte)$/.test(d.groupId));
     if (removedModule) {
       ctx.hasRte = true;
-      push({ file: rel, line: d.line, kind: "removed-module", from: `${key}${verText}`, to: null, action: "manual", reason: removedModule.reason });
+      push({ file: rel, line: d.line, kind: "removed-module", from: `${key}${verText}`, to: null, action: "manual", reason: tr(removedModule, "reason") });
       continue;
     }
     if (/^(egovframework\.rte|org\.egovframe\.rte)$/.test(d.groupId)) {
       ctx.hasRte = true;
-      push({ file: rel, line: d.line, kind: "coordinate-unknown", from: `${key}${verText}`, to: null, action: "manual", reason: `${rules.source.toTag} 모듈 목록에 없는 RTE 좌표 — 모듈명 확인 필요` });
+      push({ file: rel, line: d.line, kind: "coordinate-unknown", from: `${key}${verText}`, to: null, action: "manual", reason: L(`${rules.source.toTag} 모듈 목록에 없는 RTE 좌표 — 모듈명 확인 필요`, `RTE coordinate not in the ${rules.source.toTag} module list — check the module name`) });
       continue;
     }
     const jk = ix.jakartaArtifacts.get(key);
@@ -475,7 +476,7 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
         const scope = d.scope ? `\n${inner}<scope>${d.scope}</scope>` : "";
         edits.push({ start: d.block.end, end: d.block.end, replacement: `\n${ind}<dependency>\n${inner}<groupId>${jk.also.groupId}</groupId>\n${inner}<artifactId>${jk.also.artifactId}</artifactId>\n${inner}<version>${jk.also.version}</version>${scope}\n${ind}</dependency>` });
       }
-      push({ file: rel, line: d.line, kind: "jakarta-artifact", from: `${key}${verText}`, to: `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}${also}`, action: "auto", reason: jk.note ?? "Jakarta EE 9+ 좌표", edits });
+      push({ file: rel, line: d.line, kind: "jakarta-artifact", from: `${key}${verText}`, to: `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}${also}`, action: "auto", reason: jk.note != null ? tr(jk, "note") : L("Jakarta EE 9+ 좌표", "Jakarta EE 9+ coordinate"), edits });
       continue;
     }
     for (const lib of rules.libraries) {
@@ -485,7 +486,7 @@ function scanPom(rel: string, text: string, rules: MigrationRules, push: (i: Mig
         const below = versionBelow(ver, lib.match.versionBelow);
         if (below !== true) continue;
       }
-      push({ file: rel, line: d.line, kind: "library", from: `${key}${verText}`, to: lib.replacement, action: "manual", reason: lib.reason });
+      push({ file: rel, line: d.line, kind: "library", from: `${key}${verText}`, to: lib.replacement != null ? tr(lib, "replacement") : null, action: "manual", reason: tr(lib, "reason") });
       break;
     }
   }
@@ -504,20 +505,20 @@ function scanGradle(rel: string, text: string, rules: MigrationRules, push: (i: 
       const era = coord.from.find((f) => `${f.groupId}:${f.artifactId}` === key)?.era as SourceEra | undefined;
       if (era) ctx.eras.add(era);
       const to = `${coord.to.groupId}:${coord.to.artifactId}:${t.runtimeVersion}`;
-      push({ file: rel, line, kind: "coordinate", from: m[0].slice(1, -1), to, action: "auto", reason: `5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})`, edits: [{ ...inner, replacement: to }] });
+      push({ file: rel, line, kind: "coordinate", from: m[0].slice(1, -1), to, action: "auto", reason: L(`5.x 좌표(${rules.source.toTag} ${coord.layer}/${coord.module})`, `5.x coordinate (${rules.source.toTag} ${coord.layer}/${coord.module})`), edits: [{ ...inner, replacement: to }] });
       continue;
     }
     if (ix.toArtifacts.has(key)) { ctx.hasRte = true; ctx.eras.add("5.x"); continue; }
     const jk = ix.jakartaArtifacts.get(key);
     if (jk) {
       const to = `${jk.to.groupId}:${jk.to.artifactId}:${jk.toVersion}`;
-      push({ file: rel, line, kind: "jakarta-artifact", from: m[0].slice(1, -1), to, action: "auto", reason: jk.note ?? "Jakarta EE 9+ 좌표", edits: [{ ...inner, replacement: to }] });
+      push({ file: rel, line, kind: "jakarta-artifact", from: m[0].slice(1, -1), to, action: "auto", reason: jk.note != null ? tr(jk, "note") : L("Jakarta EE 9+ 좌표", "Jakarta EE 9+ coordinate"), edits: [{ ...inner, replacement: to }] });
       continue;
     }
     for (const lib of rules.libraries) {
       if (lib.match.groupId !== m[1] || !globMatch(lib.match.artifactId, m[2])) continue;
       if (lib.match.versionBelow && (!m[3] || versionBelow(m[3], lib.match.versionBelow) !== true)) continue;
-      push({ file: rel, line, kind: "library", from: m[0].slice(1, -1), to: lib.replacement, action: "manual", reason: lib.reason });
+      push({ file: rel, line, kind: "library", from: m[0].slice(1, -1), to: lib.replacement != null ? tr(lib, "replacement") : null, action: "manual", reason: tr(lib, "reason") });
       break;
     }
   }
@@ -528,7 +529,7 @@ function scanGradle(rel: string, text: string, rules: MigrationRules, push: (i: 
       const line = lineAt(text, idx);
       if (!reportedRepoLines.has(line)) {
         reportedRepoLines.add(line);
-        push({ file: rel, line, kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: "표준프레임워크 Maven 저장소는 HTTPS 주소만 유효", edits: [{ start: idx, end: idx + url.length, replacement: t.repositoryUrl }] });
+        push({ file: rel, line, kind: "repository", from: url, to: t.repositoryUrl, action: "auto", reason: L("표준프레임워크 Maven 저장소는 HTTPS 주소만 유효", "The eGovFrame Maven repository is only reachable over HTTPS"), edits: [{ start: idx, end: idx + url.length, replacement: t.repositoryUrl }] });
       }
       idx = text.indexOf(url, idx + url.length);
     }
@@ -538,7 +539,7 @@ function scanGradle(rel: string, text: string, rules: MigrationRules, push: (i: 
     const num = src[1].startsWith("1") && src[1].length === 3 ? 8 : Number.parseInt(src[1], 10);
     if (Number.isFinite(num) && num < rules.build.javaRelease) {
       const vs = (src.index ?? 0) + src[0].length - src[1].length;
-      push({ file: rel, line: lineAt(text, src.index ?? 0), kind: "java-release", from: src[0], to: `${rules.build.javaRelease}`, action: "auto", reason: `5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, edits: [{ start: vs, end: vs + src[1].length, replacement: String(rules.build.javaRelease) }] });
+      push({ file: rel, line: lineAt(text, src.index ?? 0), kind: "java-release", from: src[0], to: `${rules.build.javaRelease}`, action: "auto", reason: L(`5.x(Spring 6) 는 Java ${rules.build.javaRelease} 이상`, `5.x (Spring 6) requires Java ${rules.build.javaRelease} or later`), edits: [{ start: vs, end: vs + src[1].length, replacement: String(rules.build.javaRelease) }] });
     }
   }
 }
@@ -567,7 +568,7 @@ export function walkProjectFiles(root: string, maxFiles: number): string[] {
 export function migrateProject(opts: MigrateOptions): MigrateResult {
   const rules = loadMigrationRules();
   const target = opts.target ?? "5.x";
-  if (target !== "5.x") throw new Error(`지원하지 않는 target: ${target} (5.x 만 지원)`);
+  if (target !== "5.x") throw new Error(L(`지원하지 않는 target: ${target} (5.x 만 지원)`, `Unsupported target: ${target} (only 5.x is supported)`));
   const dir = path.resolve(opts.projectDir);
   const diag = diagnoseProject({ projectDir: dir }); // 존재·빌드 도구·RTE 버전
   const maxFiles = opts.maxFiles ?? 20_000;
@@ -587,7 +588,7 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
   for (const abs of files) {
     let st: fs.Stats;
     try { st = fs.statSync(abs); } catch { continue; }
-    if (st.size > MAX_FILE_BYTES) { notes.push(`건너뜀(2MB 초과): ${path.relative(dir, abs)}`); continue; }
+    if (st.size > MAX_FILE_BYTES) { notes.push(L(`건너뜀(2MB 초과): ${path.relative(dir, abs)}`, `Skipped (over 2MB): ${path.relative(dir, abs)}`)); continue; }
     let text: string;
     try { text = fs.readFileSync(abs, "utf8"); } catch { continue; }
     if (text.includes("\u0000")) continue; // 바이너리
@@ -602,16 +603,16 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
     if (ext === ".java" || ext === ".jsp" || ext === ".jspx" || ext === ".jspf" || ext === ".tag" || ext === ".tagx") { scanTextLines(rel, text, rules, push, { rte: true, javax: true }); continue; }
     if (ext === ".properties" || ext === ".yml" || ext === ".yaml") { scanTextLines(rel, text, rules, push, { rte: true, javax: false }); continue; }
   }
-  if (files.length >= maxFiles) notes.push(`파일 수 상한(${maxFiles})에 도달해 일부만 스캔했습니다.`);
+  if (files.length >= maxFiles) notes.push(L(`파일 수 상한(${maxFiles})에 도달해 일부만 스캔했습니다.`, `Reached the file limit (${maxFiles}); only part of the project was scanned.`));
 
   // parent 권고: RTE 좌표를 쓰는 Maven 프로젝트인데 5.x parent 가 없으면 한 번만 안내(manual)
   const rootPom = files.find((f) => path.relative(dir, f) === "pom.xml");
   if (rootPom && ctx.hasRte && !ctx.has5xParent) {
     const p = rules.target.parents;
     push({
-      file: "pom.xml", line: 1, kind: "parent", from: "(parent 없음 또는 5.x parent 아님)",
+      file: "pom.xml", line: 1, kind: "parent", from: L("(parent 없음 또는 5.x parent 아님)", "(no parent, or not a 5.x parent)"),
       to: p.map((x) => `${x.groupId}:${x.artifactId}:${x.version}(${x.kind})`).join(" | "), action: "manual",
-      reason: "5.x 공식 템플릿은 parent 가 RTE·Spring·Jakarta 의존성 버전을 관리한다. parent 를 쓰지 않으면 각 버전을 직접 맞춰야 한다.",
+      reason: L("5.x 공식 템플릿은 parent 가 RTE·Spring·Jakarta 의존성 버전을 관리한다. parent 를 쓰지 않으면 각 버전을 직접 맞춰야 한다.", "In the official 5.x templates the parent manages the RTE, Spring and Jakarta dependency versions. Without the parent, each version must be aligned by hand."),
     });
   }
 
@@ -623,9 +624,9 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
     if (inside.length === 0) continue;
     componentDirs.push(prefix);
     push({
-      file: c.matchedPrefix, line: 1, kind: "component-reassemble", from: `${c.id} (3.x 소스, 전환 항목 ${inside.length}건)`,
-      to: `reassemble_egovframe_components(components=["${c.id}"]) 로 ${rules.source.components?.toTag ?? "5.x"} 재조립(원본 태그 식별·사용자 수정 패치 보존)`, action: "manual",
-      reason: "공통컴포넌트는 upstream 에서 복사한 소스이고 5.x 에서 내용이 바뀌었다(클래스·매퍼·설정). 텍스트 치환보다 5.x 원본을 다시 조립하고 사용자 수정은 백업과 diff 로 옮기는 편이 안전하다(reassemble_egovframe_components 가 원본 태그를 찾아 사용자 수정만 패치로 남긴다). 치환을 원하면 skipComponents=false(기본)로 두면 된다.",
+      file: c.matchedPrefix, line: 1, kind: "component-reassemble", from: L(`${c.id} (3.x 소스, 전환 항목 ${inside.length}건)`, `${c.id} (3.x source, ${inside.length} migration items)`),
+      to: L(`reassemble_egovframe_components(components=["${c.id}"]) 로 ${rules.source.components?.toTag ?? "5.x"} 재조립(원본 태그 식별·사용자 수정 패치 보존)`, `Reassemble from ${rules.source.components?.toTag ?? "5.x"} with reassemble_egovframe_components(components=["${c.id}"]) (identifies the original tag and keeps user changes as a patch)`), action: "manual",
+      reason: L("공통컴포넌트는 upstream 에서 복사한 소스이고 5.x 에서 내용이 바뀌었다(클래스·매퍼·설정). 텍스트 치환보다 5.x 원본을 다시 조립하고 사용자 수정은 백업과 diff 로 옮기는 편이 안전하다(reassemble_egovframe_components 가 원본 태그를 찾아 사용자 수정만 패치로 남긴다). 치환을 원하면 skipComponents=false(기본)로 두면 된다.", "Common components are source copied from upstream, and their contents changed in 5.x (classes, mappers, configuration). Rather than text substitution, it is safer to reassemble the 5.x originals and carry user changes over via backup and diff (reassemble_egovframe_components finds the original tag and keeps only the user changes as a patch). To substitute instead, leave skipComponents=false (the default)."),
     });
   }
   if (opts.skipComponents && componentDirs.length) {
@@ -633,18 +634,18 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
     for (const i of items) {
       if (i.action !== "auto" || !componentDirs.some((d) => i.file.startsWith(d))) continue;
       i.action = "manual";
-      i.reason = `${i.reason} (skipComponents: 공통컴포넌트 디렉터리는 재조립 대상이라 치환하지 않음)`;
+      i.reason = L(`${i.reason} (skipComponents: 공통컴포넌트 디렉터리는 재조립 대상이라 치환하지 않음)`, `${i.reason} (skipComponents: common-component directories are reassembled, not substituted)`);
       delete i.edits;
       demoted++;
     }
-    if (demoted) notes.push(`skipComponents: 공통컴포넌트 디렉터리 ${componentDirs.length}개의 자동 항목 ${demoted}건을 수동으로 돌렸습니다.`);
+    if (demoted) notes.push(L(`skipComponents: 공통컴포넌트 디렉터리 ${componentDirs.length}개의 자동 항목 ${demoted}건을 수동으로 돌렸습니다.`, `skipComponents: demoted ${demoted} auto item(s) in ${componentDirs.length} common-component director(ies) to manual.`));
   }
 
   items.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.kind.localeCompare(b.kind));
   const byKind: Record<string, number> = {};
   for (const i of items) byKind[i.kind] = (byKind[i.kind] ?? 0) + 1;
   const sourceEra: SourceEra = ctx.eras.has("3.x") ? "3.x" : ctx.eras.has("4.x") ? "4.x" : ctx.eras.has("5.x") ? "5.x" : "unknown";
-  if (!ctx.hasRte) notes.push("빌드 파일에서 표준프레임워크 실행환경(RTE) 좌표를 찾지 못했습니다 — 소스 스캔 결과만 보고합니다.");
+  if (!ctx.hasRte) notes.push(L("빌드 파일에서 표준프레임워크 실행환경(RTE) 좌표를 찾지 못했습니다 — 소스 스캔 결과만 보고합니다.", "No eGovFrame runtime (RTE) coordinates were found in the build files — reporting source scan results only."));
 
   return {
     projectDir: dir, target,
@@ -656,46 +657,47 @@ export function migrateProject(opts: MigrateOptions): MigrateResult {
   };
 }
 
-const KIND_LABEL: Record<MigrationKind, string> = {
-  coordinate: "RTE Maven 좌표", "coordinate-unknown": "알 수 없는 RTE 좌표", "rte-version": "RTE 버전", parent: "5.x parent", repository: "Maven 저장소 URL",
-  "removed-module": "제거된 RTE 모듈", "jakarta-artifact": "Jakarta 의존성 좌표", library: "교체 필요 라이브러리", "java-release": "Java 버전", "spring-version": "Spring 버전",
-  package: "RTE 패키지 접두어", "package-renamed": "RTE 패키지 이름 변경", "class-moved": "RTE 클래스 이동", "class-removed": "제거된 RTE 클래스", "class-unknown": "확인 필요 클래스",
-  "jakarta-package": "javax → jakarta 패키지", "web-xml": "web.xml 스키마", "xml-namespace": "제거된 XML 네임스페이스",
-  "component-class-removed": "제거된 공통컴포넌트 클래스", "component-class-moved": "이동한 공통컴포넌트 클래스", "component-reassemble": "공통컴포넌트 재조립 권고",
-  "parent-version": "parent 버전", "parent-property": "parent 관리 속성", "rte-change": "바뀐 RTE API·동작", "component-update": "공통컴포넌트 최신 유지", "duplicate-dependency": "중복 의존성 선언",
-};
+const kindLabels = (): Record<MigrationKind, string> => ({
+  coordinate: L("RTE Maven 좌표", "RTE Maven coordinate"), "coordinate-unknown": L("알 수 없는 RTE 좌표", "Unknown RTE coordinate"), "rte-version": L("RTE 버전", "RTE version"), parent: "5.x parent", repository: L("Maven 저장소 URL", "Maven repository URL"),
+  "removed-module": L("제거된 RTE 모듈", "Removed RTE module"), "jakarta-artifact": L("Jakarta 의존성 좌표", "Jakarta dependency coordinate"), library: L("교체 필요 라이브러리", "Library to replace"), "java-release": L("Java 버전", "Java version"), "spring-version": L("Spring 버전", "Spring version"),
+  package: L("RTE 패키지 접두어", "RTE package prefix"), "package-renamed": L("RTE 패키지 이름 변경", "RTE package rename"), "class-moved": L("RTE 클래스 이동", "RTE class move"), "class-removed": L("제거된 RTE 클래스", "Removed RTE class"), "class-unknown": L("확인 필요 클래스", "Class to verify"),
+  "jakarta-package": L("javax → jakarta 패키지", "javax → jakarta package"), "web-xml": L("web.xml 스키마", "web.xml schema"), "xml-namespace": L("제거된 XML 네임스페이스", "Removed XML namespace"),
+  "component-class-removed": L("제거된 공통컴포넌트 클래스", "Removed common-component class"), "component-class-moved": L("이동한 공통컴포넌트 클래스", "Moved common-component class"), "component-reassemble": L("공통컴포넌트 재조립 권고", "Common-component reassembly advised"),
+  "parent-version": L("parent 버전", "parent version"), "parent-property": L("parent 관리 속성", "parent-managed property"), "rte-change": L("바뀐 RTE API·동작", "Changed RTE API/behaviour"), "component-update": L("공통컴포넌트 최신 유지", "Keep common components current"), "duplicate-dependency": L("중복 의존성 선언", "Duplicate dependency declaration"),
+});
+const KIND_LABEL = (k: MigrationKind): string => kindLabels()[k];
 
 /** 진단 결과를 Markdown 으로 렌더링한다. */
 export function renderMigrationMarkdown(r: MigrateResult): string {
-  const L: string[] = [];
-  L.push(`# 표준프레임워크 5.x 전환 진단`, ``);
-  L.push(`- 경로: ${r.projectDir}`);
-  L.push(`- 빌드: ${r.buildSystem} · 현재 RTE ${r.rteVersion ?? "미검출"} (${r.sourceEra} 좌표) → 목표 ${r.rules.runtimeVersion} (${r.rules.toTag} 기준, 조사일 ${r.rules.surveyedAt})`);
-  L.push(`- 스캔 파일 ${r.filesScanned}개 · 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual}) · 대상 파일 ${r.summary.files}개`);
-  for (const n of r.notes) L.push(`- ${n}`);
-  L.push(``);
-  if (r.items.length === 0) { L.push(`전환 항목 없음 — 5.x 기준을 이미 만족합니다.`); return L.join("\n"); }
-  L.push(`## 종류별 요약`, ``, `| 종류 | 건수 | 처리 |`, `|---|---|---|`);
+  const out: string[] = [];
+  out.push(L(`# 표준프레임워크 5.x 전환 진단`, `# eGovFrame 5.x migration diagnosis`), ``);
+  out.push(L(`- 경로: ${r.projectDir}`, `- Path: ${r.projectDir}`));
+  out.push(L(`- 빌드: ${r.buildSystem} · 현재 RTE ${r.rteVersion ?? "미검출"} (${r.sourceEra} 좌표) → 목표 ${r.rules.runtimeVersion} (${r.rules.toTag} 기준, 조사일 ${r.rules.surveyedAt})`, `- Build: ${r.buildSystem} · current RTE ${r.rteVersion ?? "not detected"} (${r.sourceEra} coordinates) → target ${r.rules.runtimeVersion} (based on ${r.rules.toTag}, surveyed ${r.rules.surveyedAt})`));
+  out.push(L(`- 스캔 파일 ${r.filesScanned}개 · 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual}) · 대상 파일 ${r.summary.files}개`, `- Scanned ${r.filesScanned} files · ${r.items.length} items (auto ${r.summary.auto} · manual ${r.summary.manual}) · ${r.summary.files} affected files`));
+  for (const n of r.notes) out.push(`- ${n}`);
+  out.push(``);
+  if (r.items.length === 0) { out.push(L(`전환 항목 없음 — 5.x 기준을 이미 만족합니다.`, `No migration items — the project already meets the 5.x baseline.`)); return out.join("\n"); }
+  out.push(L(`## 종류별 요약`, `## Summary by kind`), ``, L(`| 종류 | 건수 | 처리 |`, `| Kind | Count | Action |`), `|---|---|---|`);
   for (const [k, n] of Object.entries(r.summary.byKind).sort((a, b) => b[1] - a[1])) {
     const action = r.items.find((i) => i.kind === k)?.action ?? "auto";
-    L.push(`| ${KIND_LABEL[k as MigrationKind] ?? k} | ${n} | ${action === "auto" ? "자동 치환 가능" : "수동"} |`);
+    out.push(`| ${KIND_LABEL(k as MigrationKind) ?? k} | ${n} | ${action === "auto" ? L("자동 치환 가능", "auto") : L("수동", "manual")} |`);
   }
   const section = (title: string, action: MigrationAction) => {
     const list = r.items.filter((i) => i.action === action);
     if (list.length === 0) return;
-    L.push(``, `## ${title} (${list.length})`, ``);
+    out.push(``, `## ${title} (${list.length})`, ``);
     let curFile = "";
     for (const i of list) {
-      if (i.file !== curFile) { curFile = i.file; L.push(`### ${i.file}`, ``); }
-      const to = i.to ? ` → \`${i.to}\`` : " → (대체 없음)";
-      L.push(`- L${i.line} [${KIND_LABEL[i.kind]}] \`${i.from}\`${to}`);
-      if (action === "manual") L.push(`  - ${i.reason}`);
+      if (i.file !== curFile) { curFile = i.file; out.push(`### ${i.file}`, ``); }
+      const to = i.to ? ` → \`${i.to}\`` : L(" → (대체 없음)", " → (no replacement)");
+      out.push(`- L${i.line} [${KIND_LABEL(i.kind)}] \`${i.from}\`${to}`);
+      if (action === "manual") out.push(`  - ${i.reason}`);
     }
   };
-  section("수동 전환 항목", "manual");
-  section("자동 치환 가능 항목", "auto");
-  L.push(``, `---`, `자동 항목은 2단계(\`migrate_egovframe_project\` apply, v0.30) 에서 치환하고, 수동 항목은 사유에 따라 코드를 고칩니다. 이 진단은 파일을 수정하지 않았습니다.`);
-  return L.join("\n");
+  section(L("수동 전환 항목", "Manual migration items"), "manual");
+  section(L("자동 치환 가능 항목", "Auto-replaceable items"), "auto");
+  out.push(``, `---`, L(`자동 항목은 2단계(\`migrate_egovframe_project\` apply, v0.30) 에서 치환하고, 수동 항목은 사유에 따라 코드를 고칩니다. 이 진단은 파일을 수정하지 않았습니다.`, `Auto items are replaced in stage 2 (\`migrate_egovframe_project\` apply, v0.30); manual items need code changes per their reason. This diagnosis did not modify any files.`));
+  return out.join("\n");
 }
 
 // ── 2단계: 적용 (v0.30.0) ─────────────────────────────
@@ -739,7 +741,7 @@ function previewDiff(before: string, after: string, cap = 60): ApplyFilePlan["pr
   // 삽입으로 줄 수가 달라질 수 있어 앞에서부터 맞춰 보고, 어긋나면 나머지를 통째로 보고하지 않고 앞 구간만 비교한다
   const n = Math.min(a.length, b.length);
   for (let i = 0; i < n && out.length < cap; i++) if (a[i] !== b[i]) out.push({ line: i + 1, before: a[i].trimEnd(), after: b[i].trimEnd() });
-  if (b.length > a.length && out.length < cap) out.push({ line: a.length + 1, before: "", after: `(+${b.length - a.length}줄 삽입)` });
+  if (b.length > a.length && out.length < cap) out.push({ line: a.length + 1, before: "", after: L(`(+${b.length - a.length}줄 삽입)`, `(+${b.length - a.length} lines inserted)`) });
   return out;
 }
 
@@ -781,10 +783,10 @@ export async function applyMigration(opts: ApplyOptions): Promise<MigrateApplyRe
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
   const backupRelDir = path.join("migration-backup", `${ts}-${randomUUID()}`);
   const planRel = path.join(backupRelDir, "migration-plan.json");
-  await withFileTransaction(dir, "5.x 전환 적용", (tx) => {
+  await withFileTransaction(dir, L("5.x 전환 적용", "5.x migration apply"), (tx) => {
     for (const [file, { before }] of newTexts) {
       const current = tx.readFile(file);
-      if (current === null || current.toString("utf8") !== before) throw new Error(`진단 이후 파일이 변경되어 적용을 중단합니다: ${file}`);
+      if (current === null || current.toString("utf8") !== before) throw new Error(L(`진단 이후 파일이 변경되어 적용을 중단합니다: ${file}`, `File changed since diagnosis; aborting apply: ${file}`));
     }
     for (const [file, { before, after }] of newTexts) {
       tx.writeFile(path.join(backupRelDir, file), before, { mustNotExist: true });
@@ -809,36 +811,36 @@ export async function applyMigration(opts: ApplyOptions): Promise<MigrateApplyRe
 
 /** 적용 결과를 Markdown 으로 렌더링한다. */
 export function renderMigrationApplyMarkdown(r: MigrateApplyResult): string {
-  const L: string[] = [];
-  L.push(`# 표준프레임워크 5.x 전환 ${r.dryRun ? "적용 계획(dryRun)" : "적용 결과"}`, ``);
-  L.push(`- 경로: ${r.projectDir}`);
-  L.push(`- 현재 RTE ${r.rteVersion ?? "미검출"} (${r.sourceEra} 좌표) → 목표 ${r.rules.runtimeVersion}`);
-  L.push(`- 진단 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual}) → ${r.dryRun ? "적용 예정" : "적용"} ${r.applied.items}항목 · 편집 ${r.applied.edits}곳 · 파일 ${r.applied.files}개 · 수동 항목 ${r.skippedManual}건은 그대로 둠`);
-  if (r.conflicts.length) L.push(`- ⚠️ 겹치는 편집으로 건너뜀 ${r.conflicts.length}건: ${r.conflicts.slice(0, 5).join(", ")}${r.conflicts.length > 5 ? " …" : ""}`);
-  if (!r.dryRun && r.backupDir) L.push(`- 백업: ${r.backupDir} (원본 파일 + migration-plan.json)`);
-  if (r.remaining) L.push(`- 적용 후 재진단: 자동 ${r.remaining.auto} · 수동 ${r.remaining.manual}`);
-  for (const n of r.notes) L.push(`- ${n}`);
+  const out: string[] = [];
+  out.push(L(`# 표준프레임워크 5.x 전환 ${r.dryRun ? "적용 계획(dryRun)" : "적용 결과"}`, `# eGovFrame 5.x migration ${r.dryRun ? "apply plan (dryRun)" : "apply result"}`), ``);
+  out.push(L(`- 경로: ${r.projectDir}`, `- Path: ${r.projectDir}`));
+  out.push(L(`- 현재 RTE ${r.rteVersion ?? "미검출"} (${r.sourceEra} 좌표) → 목표 ${r.rules.runtimeVersion}`, `- Current RTE ${r.rteVersion ?? "not detected"} (${r.sourceEra} coordinates) → target ${r.rules.runtimeVersion}`));
+  out.push(L(`- 진단 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual}) → ${r.dryRun ? "적용 예정" : "적용"} ${r.applied.items}항목 · 편집 ${r.applied.edits}곳 · 파일 ${r.applied.files}개 · 수동 항목 ${r.skippedManual}건은 그대로 둠`, `- Diagnosed ${r.items.length} items (auto ${r.summary.auto} · manual ${r.summary.manual}) → ${r.dryRun ? "to apply" : "applied"} ${r.applied.items} items · ${r.applied.edits} edits · ${r.applied.files} files · ${r.skippedManual} manual items left as is`));
+  if (r.conflicts.length) out.push(L(`- ⚠️ 겹치는 편집으로 건너뜀 ${r.conflicts.length}건: ${r.conflicts.slice(0, 5).join(", ")}${r.conflicts.length > 5 ? " …" : ""}`, `- ⚠️ Skipped ${r.conflicts.length} due to overlapping edits: ${r.conflicts.slice(0, 5).join(", ")}${r.conflicts.length > 5 ? " …" : ""}`));
+  if (!r.dryRun && r.backupDir) out.push(L(`- 백업: ${r.backupDir} (원본 파일 + migration-plan.json)`, `- Backup: ${r.backupDir} (original files + migration-plan.json)`));
+  if (r.remaining) out.push(L(`- 적용 후 재진단: 자동 ${r.remaining.auto} · 수동 ${r.remaining.manual}`, `- Re-diagnosis after apply: auto ${r.remaining.auto} · manual ${r.remaining.manual}`));
+  for (const n of r.notes) out.push(`- ${n}`);
   if (r.files.length) {
-    L.push(``, `## 파일별 변경${r.dryRun ? " 미리보기" : ""}`);
+    out.push(``, L(`## 파일별 변경${r.dryRun ? " 미리보기" : ""}`, `## Changes by file${r.dryRun ? " (preview)" : ""}`));
     for (const f of r.files) {
-      L.push(``, `### ${f.file} — ${f.items}항목 · ${f.edits}곳`, ``);
+      out.push(``, L(`### ${f.file} — ${f.items}항목 · ${f.edits}곳`, `### ${f.file} — ${f.items} items · ${f.edits} edits`), ``);
       for (const p of f.preview.slice(0, 20)) {
-        if (p.before) L.push(`- L${p.line}: \`${p.before.trim()}\``, `  → \`${p.after.trim()}\``);
-        else L.push(`- L${p.line}: ${p.after}`);
+        if (p.before) out.push(`- L${p.line}: \`${p.before.trim()}\``, `  → \`${p.after.trim()}\``);
+        else out.push(`- L${p.line}: ${p.after}`);
       }
-      if (f.preview.length > 20) L.push(`- … 외 ${f.preview.length - 20}줄`);
+      if (f.preview.length > 20) out.push(L(`- … 외 ${f.preview.length - 20}줄`, `- … and ${f.preview.length - 20} more lines`));
     }
   }
   const manual = r.items.filter((i) => i.action === "manual");
   if (manual.length) {
-    L.push(``, `## 남은 수동 항목 (${manual.length})`, ``);
-    for (const i of manual.slice(0, 50)) L.push(`- ${i.file}:L${i.line} [${KIND_LABEL[i.kind]}] \`${i.from}\`${i.to ? ` → \`${i.to}\`` : ""} — ${i.reason}`);
-    if (manual.length > 50) L.push(`- … 외 ${manual.length - 50}건`);
+    out.push(``, L(`## 남은 수동 항목 (${manual.length})`, `## Remaining manual items (${manual.length})`), ``);
+    for (const i of manual.slice(0, 50)) out.push(`- ${i.file}:L${i.line} [${KIND_LABEL(i.kind)}] \`${i.from}\`${i.to ? ` → \`${i.to}\`` : ""} — ${i.reason}`);
+    if (manual.length > 50) out.push(L(`- … 외 ${manual.length - 50}건`, `- … and ${manual.length - 50} more`));
   }
-  L.push(``, `---`, r.dryRun
-    ? `적용하려면 dryRun=false 로 다시 호출하세요. 적용 시 원본은 migration-backup/ 에 보관되고, 실패하면 작업 전 상태로 되돌립니다.`
-    : `다음 단계: build_egovframe_project(goal="compile") 로 컴파일을 확인하고, 오류가 나면 위 수동 항목부터 처리하세요.`);
-  return L.join("\n");
+  out.push(``, `---`, r.dryRun
+    ? L(`적용하려면 dryRun=false 로 다시 호출하세요. 적용 시 원본은 migration-backup/ 에 보관되고, 실패하면 작업 전 상태로 되돌립니다.`, `To apply, call again with dryRun=false. Originals are kept in migration-backup/ and the project is rolled back on failure.`)
+    : L(`다음 단계: build_egovframe_project(goal="compile") 로 컴파일을 확인하고, 오류가 나면 위 수동 항목부터 처리하세요.`, `Next step: verify compilation with build_egovframe_project(goal="compile"); on errors, start with the manual items above.`));
+  return out.join("\n");
 }
 
 // ── 3단계: 검증 (v0.33.0) ─────────────────────────────
@@ -882,11 +884,11 @@ export function linkBuildError(error: BuildError, items: MigrationItem[], rules:
   // 3) 규칙 카탈로그의 제거 클래스·모듈·네임스페이스 심볼 — 다른 파일(예: 상속한 부모)에 항목이 있을 수 있음
   const ix = index(rules);
   if (symbolName) {
-    for (const r of rules.packages.removed) if (simpleName(r.class) === symbolName) return { error, itemIndex: null, how: "rules-symbol", note: `${r.class} — ${r.reason}` };
-    for (const r of rules.packages.components?.removed ?? []) if (simpleName(r.class) === symbolName) return { error, itemIndex: null, how: "rules-symbol", note: `${r.class} — ${r.reason}` };
+    for (const r of rules.packages.removed) if (simpleName(r.class) === symbolName) return { error, itemIndex: null, how: "rules-symbol", note: `${r.class} — ${tr(r, "reason")}` };
+    for (const r of rules.packages.components?.removed ?? []) if (simpleName(r.class) === symbolName) return { error, itemIndex: null, how: "rules-symbol", note: `${r.class} — ${tr(r, "reason")}` };
   }
   if (pkgMissing && (pkgMissing.startsWith(rules.packages.prefix.from) || pkgMissing.startsWith("javax."))) {
-    return { error, itemIndex: null, how: "rules-symbol", note: `패키지 ${pkgMissing} 는 5.x 에 없음 — 2단계 적용이 끝났는지 확인(${pkgMissing.startsWith("javax.") ? "jakarta" : rules.packages.prefix.to}*)` };
+    return { error, itemIndex: null, how: "rules-symbol", note: L(`패키지 ${pkgMissing} 는 5.x 에 없음 — 2단계 적용이 끝났는지 확인(${pkgMissing.startsWith("javax.") ? "jakarta" : rules.packages.prefix.to}*)`, `Package ${pkgMissing} does not exist in 5.x — check that stage 2 apply has completed (${pkgMissing.startsWith("javax.") ? "jakarta" : rules.packages.prefix.to}*)`) };
   }
   void ix;
   return { error, itemIndex: null, how: "unlinked" };
@@ -899,7 +901,7 @@ export async function verifyMigration(opts: VerifyOptions): Promise<MigrateVerif
   const dir = r.projectDir;
   const base = { ...r, mode: "verify" as const };
   if (!detectBuildToolAt(dir)) {
-    return { ...base, build: { ran: false, success: null, errors: 0, reason: "빌드 파일(pom.xml·build.gradle)이 없어 컴파일 검증을 건너뜀" }, links: [], worklist: [], unlinked: [] };
+    return { ...base, build: { ran: false, success: null, errors: 0, reason: L("빌드 파일(pom.xml·build.gradle)이 없어 컴파일 검증을 건너뜀", "No build file (pom.xml/build.gradle); compile verification skipped") }, links: [], worklist: [], unlinked: [] };
   }
   const b = await runBuild({ projectDir: dir, goal: "compile", timeoutMs: opts.timeoutMs ?? 300_000, runner: opts.runner, platform: opts.platform });
   const errors = b.errors ?? [];
@@ -919,37 +921,37 @@ export async function verifyMigration(opts: VerifyOptions): Promise<MigrateVerif
 
 /** 검증 결과를 Markdown 으로 렌더링한다. */
 export function renderMigrationVerifyMarkdown(r: MigrateVerifyResult): string {
-  const L: string[] = [];
-  L.push(`# 표준프레임워크 5.x 전환 검증`, ``);
-  L.push(`- 경로: ${r.projectDir}`);
-  L.push(`- 진단: 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${r.summary.auto > 0 ? " — ⚠️ 자동 항목이 남아 있습니다. 먼저 apply=true, dryRun=false 로 적용하세요." : ""}`);
-  if (!r.build.ran) L.push(`- 컴파일: 건너뜀 — ${r.build.reason}`);
-  else L.push(`- 컴파일: ${r.build.success ? "✅ 통과" : `❌ 오류 ${r.build.errors}건`}${r.build.timedOut ? " (타임아웃)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`);
+  const out: string[] = [];
+  out.push(L(`# 표준프레임워크 5.x 전환 검증`, `# eGovFrame 5.x migration verification`), ``);
+  out.push(L(`- 경로: ${r.projectDir}`, `- Path: ${r.projectDir}`));
+  out.push(L(`- 진단: 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${r.summary.auto > 0 ? " — ⚠️ 자동 항목이 남아 있습니다. 먼저 apply=true, dryRun=false 로 적용하세요." : ""}`, `- Diagnosis: ${r.items.length} items (auto ${r.summary.auto} · manual ${r.summary.manual})${r.summary.auto > 0 ? " — ⚠️ Auto items remain. Apply them first with apply=true, dryRun=false." : ""}`));
+  if (!r.build.ran) out.push(L(`- 컴파일: 건너뜀 — ${r.build.reason}`, `- Compile: skipped — ${r.build.reason}`));
+  else out.push(L(`- 컴파일: ${r.build.success ? "✅ 통과" : `❌ 오류 ${r.build.errors}건`}${r.build.timedOut ? " (타임아웃)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`, `- Compile: ${r.build.success ? "✅ passed" : `❌ ${r.build.errors} errors`}${r.build.timedOut ? " (timed out)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`));
   const linked = r.links.filter((l) => l.itemIndex !== null).length;
   const byRules = r.links.filter((l) => l.how === "rules-symbol").length;
-  if (r.build.ran && r.build.errors > 0) L.push(`- 연결: 수동 항목과 연결 ${linked} · 규칙 심볼로 설명 ${byRules} · 분류 불가 ${r.unlinked.length}`);
-  for (const n of r.notes) L.push(`- ${n}`);
+  if (r.build.ran && r.build.errors > 0) out.push(L(`- 연결: 수동 항목과 연결 ${linked} · 규칙 심볼로 설명 ${byRules} · 분류 불가 ${r.unlinked.length}`, `- Links: linked to manual items ${linked} · explained by rule symbols ${byRules} · unclassified ${r.unlinked.length}`));
+  for (const n of r.notes) out.push(`- ${n}`);
   const withErrors = r.worklist.filter((w) => w.errors > 0);
   if (withErrors.length) {
-    L.push(``, `## 작업 목록 (오류 해결 수 순)`, ``);
-    for (const w of withErrors) L.push(`- **${w.errors}건** ${w.item.file}:L${w.item.line} [${KIND_LABEL[w.item.kind]}] \`${w.item.from}\`${w.item.to ? ` → \`${w.item.to}\`` : ""}`, `  - ${w.item.reason}`);
+    out.push(``, L(`## 작업 목록 (오류 해결 수 순)`, `## Worklist (by errors resolved)`), ``);
+    for (const w of withErrors) out.push(L(`- **${w.errors}건** ${w.item.file}:L${w.item.line} [${KIND_LABEL(w.item.kind)}] \`${w.item.from}\`${w.item.to ? ` → \`${w.item.to}\`` : ""}`, `- **${w.errors} errors** ${w.item.file}:L${w.item.line} [${KIND_LABEL(w.item.kind)}] \`${w.item.from}\`${w.item.to ? ` → \`${w.item.to}\`` : ""}`), `  - ${w.item.reason}`);
   }
   const rulesOnly = r.links.filter((l) => l.how === "rules-symbol");
   if (rulesOnly.length) {
-    L.push(``, `## 규칙으로 설명되는 오류 (${rulesOnly.length})`, ``);
-    for (const l of rulesOnly.slice(0, 30)) L.push(`- ${normRel(r.projectDir, l.error.file)}:L${l.error.line} ${l.error.message}${l.error.symbol ? ` (${l.error.symbol})` : ""} — ${l.note}`);
+    out.push(``, L(`## 규칙으로 설명되는 오류 (${rulesOnly.length})`, `## Errors explained by rules (${rulesOnly.length})`), ``);
+    for (const l of rulesOnly.slice(0, 30)) out.push(`- ${normRel(r.projectDir, l.error.file)}:L${l.error.line} ${l.error.message}${l.error.symbol ? ` (${l.error.symbol})` : ""} — ${l.note}`);
   }
   if (r.unlinked.length) {
-    L.push(``, `## 분류되지 않은 오류 (${r.unlinked.length})`, ``);
-    for (const e of r.unlinked.slice(0, 30)) L.push(`- ${normRel(r.projectDir, e.file)}:L${e.line} ${e.message}${e.symbol ? ` (${e.symbol})` : ""}`);
-    L.push(``, `전환 규칙과 무관한 오류일 수 있습니다(라이브러리 API 변경, 기존 결함). build_egovframe_project 의 로그를 함께 보세요.`);
+    out.push(``, L(`## 분류되지 않은 오류 (${r.unlinked.length})`, `## Unclassified errors (${r.unlinked.length})`), ``);
+    for (const e of r.unlinked.slice(0, 30)) out.push(`- ${normRel(r.projectDir, e.file)}:L${e.line} ${e.message}${e.symbol ? ` (${e.symbol})` : ""}`);
+    out.push(``, L(`전환 규칙과 무관한 오류일 수 있습니다(라이브러리 API 변경, 기존 결함). build_egovframe_project 의 로그를 함께 보세요.`, `These may be unrelated to the migration rules (library API changes, pre-existing defects). Check the build_egovframe_project log as well.`));
   }
   const rest = r.worklist.filter((w) => w.errors === 0);
   if (rest.length) {
-    L.push(``, `## 컴파일 오류와 연결되지 않은 수동 항목 (${rest.length})`, ``);
-    for (const w of rest.slice(0, 40)) L.push(`- ${w.item.file}:L${w.item.line} [${KIND_LABEL[w.item.kind]}] \`${w.item.from}\``);
-    if (rest.length > 40) L.push(`- … 외 ${rest.length - 40}건`);
+    out.push(``, L(`## 컴파일 오류와 연결되지 않은 수동 항목 (${rest.length})`, `## Manual items not linked to compile errors (${rest.length})`), ``);
+    for (const w of rest.slice(0, 40)) out.push(`- ${w.item.file}:L${w.item.line} [${KIND_LABEL(w.item.kind)}] \`${w.item.from}\``);
+    if (rest.length > 40) out.push(L(`- … 외 ${rest.length - 40}건`, `- … and ${rest.length - 40} more`));
   }
-  if (r.build.ran && r.build.success && r.summary.manual === 0) L.push(``, `전환이 끝났습니다. test_egovframe_project 로 테스트까지 확인하세요.`);
-  return L.join("\n");
+  if (r.build.ran && r.build.success && r.summary.manual === 0) out.push(``, L(`전환이 끝났습니다. test_egovframe_project 로 테스트까지 확인하세요.`, `Migration complete. Run test_egovframe_project to verify the tests as well.`));
+  return out.join("\n");
 }

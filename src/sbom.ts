@@ -17,6 +17,8 @@ import { SERVER_VERSION } from "./version.js";
 import { checkMinimumElements, loadSbomRules, supplierFor } from "./sbom-check.js";
 import { osvProvenanceNote } from "./offline-bundle.js";
 import { cdxToSpdx, spdxToCdx, DEFAULT_SPDX_PATH, SPDX_VERSION, type SpdxDocument } from "./spdx.js";
+import { L } from "./lang.js";
+import { AbortError, stepper, subProgress, throwIfAborted, type Progress } from "./progress.js";
 
 export const CYCLONEDX_MAVEN_PLUGIN = "org.cyclonedx:cyclonedx-maven-plugin:2.9.3";
 export const CYCLONEDX_SPEC_VERSION = "1.6";
@@ -77,6 +79,8 @@ export interface GenerateSbomOptions {
   now?: () => number;
   /** v1.1(내부, 납품 패키지): 프로젝트에 쓰지 않고 문서만 만들어 돌려준다(written=false, bom·spdx 에 문서) */
   noWrite?: boolean;
+  /** v1.2: 진행 알림·취소(signal). 취소되면 프로세스 트리를 끝내고 AbortError 를 던진다(dryRun 은 보고 없음) */
+  progress?: Progress;
 }
 
 export interface GenerateSbomResult {
@@ -115,14 +119,14 @@ const REL_PATH_RE = /^(?!\/)(?!.*(^|\/)\.\.(\/|$))[^\0]+$/;
 /** 출력 경로를 검증하고 절대 경로를 돌려준다(프로젝트 안, symlink 이탈 금지). SBOM·리포트 공용. */
 export function resolveOutputPath(projectDir: string, outputPath: string): { relPath: string; absolutePath: string } {
   const relPath = outputPath.replace(/\\/g, "/").replace(/^\.\//, "");
-  if (!REL_PATH_RE.test(relPath) || path.isAbsolute(outputPath) || /^[A-Za-z]:/.test(outputPath)) throw new Error(`outputPath 는 프로젝트 내부의 상대 경로여야 합니다: ${outputPath}`);
+  if (!REL_PATH_RE.test(relPath) || path.isAbsolute(outputPath) || /^[A-Za-z]:/.test(outputPath)) throw new Error(L(`outputPath 는 프로젝트 내부의 상대 경로여야 합니다: ${outputPath}`, `outputPath must be a relative path inside the project: ${outputPath}`));
   const absolutePath = path.resolve(projectDir, relPath);
   const rel = path.relative(projectDir, absolutePath);
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`출력 경로가 프로젝트 밖입니다: ${outputPath}`);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(L(`출력 경로가 프로젝트 밖입니다: ${outputPath}`, `Output path is outside the project: ${outputPath}`));
   let probe = path.dirname(absolutePath);
   while (!fs.existsSync(probe)) probe = path.dirname(probe);
   const relReal = path.relative(fs.realpathSync(projectDir), fs.realpathSync(probe));
-  if (relReal.startsWith("..") || path.isAbsolute(relReal)) throw new Error(`출력 경로가 symlink 를 통해 프로젝트 밖을 가리킵니다: ${outputPath}`);
+  if (relReal.startsWith("..") || path.isAbsolute(relReal)) throw new Error(L(`출력 경로가 symlink 를 통해 프로젝트 밖을 가리킵니다: ${outputPath}`, `Output path points outside the project through a symlink: ${outputPath}`));
   return { relPath, absolutePath };
 }
 export const resolveSbomOutputPath = resolveOutputPath;
@@ -281,33 +285,37 @@ export function parentKindOf(projectDir: string, buildTool: BuildTool): ParentIn
 
 /** SBOM 을 생성한다. dryRun(기본) 은 명령·출력 경로만 돌려주고 아무것도 실행·기록하지 않는다. */
 /** 빌드 단위 하나의 CycloneDX 문서(Maven 플러그인 또는 해석 트리). */
-async function produceBom(projectDir: string, buildTool: BuildTool, cmd: ResolvedCommand, tmpDir: string, scope: ResolveScope, runner: Runner, opts: GenerateSbomOptions, now: () => number, notes: string[]): Promise<{ bom: SbomDocument; logTail?: string }> {
+async function produceBom(projectDir: string, buildTool: BuildTool, cmd: ResolvedCommand, tmpDir: string, scope: ResolveScope, runner: Runner, opts: GenerateSbomOptions, now: () => number, notes: string[], progress?: Progress): Promise<{ bom: SbomDocument; logTail?: string }> {
   let bom: SbomDocument;
   let logTail: string | undefined;
+    throwIfAborted(progress?.signal);
     if (buildTool === "maven") {
       let buffer = "";
-      const r = await runner(cmd, { timeoutMs: opts.timeoutMs ?? 600_000, onData: (c) => (buffer += c) });
+      progress?.report(`cyclonedx-maven-plugin: ${[cmd.command, ...cmd.args].join(" ")}`, 0, 1);
+      const r = await runner(cmd, { timeoutMs: opts.timeoutMs ?? 600_000, onData: (c) => (buffer += c), signal: progress?.signal });
       logTail = capOutput(buffer, 60).text;
+      if (r.aborted || progress?.signal?.aborted) throw new AbortError("cyclonedx-maven-plugin cancelled");
+      progress?.report(`cyclonedx-maven-plugin: exit ${r.exitCode ?? "-"}${r.timedOut ? " (timeout)" : ""}`, 1, 1);
       const bomFile = path.join(tmpDir, "bom.json");
-      if (r.timedOut) throw new Error(`SBOM 생성 시간 초과(${opts.timeoutMs ?? 600_000}ms)`);
-      if (r.exitCode !== 0 || !fs.existsSync(bomFile)) throw new Error(`cyclonedx-maven-plugin 실패(종료 코드 ${r.exitCode}). 로그 끝:\n${logTail}`);
+      if (r.timedOut) throw new Error(L(`SBOM 생성 시간 초과(${opts.timeoutMs ?? 600_000}ms)`, `SBOM generation timed out (${opts.timeoutMs ?? 600_000}ms)`));
+      if (r.exitCode !== 0 || !fs.existsSync(bomFile)) throw new Error(L(`cyclonedx-maven-plugin 실패(종료 코드 ${r.exitCode}). 로그 끝:\n${logTail}`, `cyclonedx-maven-plugin failed (exit code ${r.exitCode}). Log tail:\n${logTail}`));
       bom = JSON.parse(fs.readFileSync(bomFile, "utf8")) as SbomDocument;
-      if (bom.bomFormat !== "CycloneDX") throw new Error("플러그인 출력이 CycloneDX 문서가 아닙니다");
+      if (bom.bomFormat !== "CycloneDX") throw new Error(L("플러그인 출력이 CycloneDX 문서가 아닙니다", "Plugin output is not a CycloneDX document"));
       // 플러그인이 metadata.timestamp 를 빼는 환경이 있다(CI 실측) — 최소 요소 '생성 시각'은 이 서버가 생성 시각으로 채운다
       const ts = bom.metadata?.timestamp;
       if (!ts || Number.isNaN(Date.parse(ts))) {
         (bom.metadata ??= {}).timestamp = new Date(now()).toISOString().replace(/\.\d{3}Z$/, "Z");
-        notes.push("플러그인 출력에 metadata.timestamp 가 없어 생성 시각을 넣었습니다(최소 요소 '생성 시각').");
+        notes.push(L("플러그인 출력에 metadata.timestamp 가 없어 생성 시각을 넣었습니다(최소 요소 '생성 시각').", "Plugin output had no metadata.timestamp, so the generation time was filled in (minimum element 'timestamp')."));
       }
       const tools = (bom.metadata ??= {}).tools as { components?: unknown[] } | undefined;
       const mine = { type: "application", name: "egovframe-scaffold-mcp", version: SERVER_VERSION };
       if (tools && Array.isArray(tools.components)) tools.components.push(mine); else if (!tools) bom.metadata.tools = { components: [mine] };
     } else {
-      const tree = await resolveDependencyTree({ projectDir, scope, timeoutMs: opts.timeoutMs ?? 600_000, runner, platform: opts.platform, now });
+      const tree = await resolveDependencyTree({ projectDir, scope, timeoutMs: opts.timeoutMs ?? 600_000, runner, platform: opts.platform, now, ...(progress ? { progress } : {}) });
       logTail = tree.logTail;
-      if (!tree.success) throw new Error(`의존성 트리 해석 실패(${tree.error ?? "원인 미상"}). 로그 끝:\n${tree.logTail ?? ""}`);
+      if (!tree.success) throw new Error(L(`의존성 트리 해석 실패(${tree.error ?? "원인 미상"}). 로그 끝:\n${tree.logTail ?? ""}`, `Dependency tree resolution failed (${tree.error ?? "unknown cause"}). Log tail:\n${tree.logTail ?? ""}`));
       bom = buildBomFromTree(gradleRoot(projectDir), tree.artifacts, now);
-      notes.push("Gradle 은 플러그인 없이 해석된 트리로 문서를 만들어 해시·라이선스 정보가 없습니다.");
+      notes.push(L("Gradle 은 플러그인 없이 해석된 트리로 문서를 만들어 해시·라이선스 정보가 없습니다.", "For Gradle the document is built from the resolved tree without a plugin, so it has no hash or license information."));
     }
   return { bom, logTail };
 }
@@ -335,13 +343,14 @@ export function mergeModuleBoms(name: string, parts: { name: string; dir: string
 }
 
 export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateSbomResult> {
+  throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
-  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(L(`프로젝트 디렉터리가 없습니다: ${projectDir}`, `Project directory does not exist: ${projectDir}`));
   const buildTool = detectBuildToolAt(projectDir);
   const ws = detectWorkspace(projectDir);
-  if (!buildTool && !(ws.kind === "independent" && ws.modules.length)) throw new Error(`빌드 파일(pom.xml·build.gradle)을 찾지 못했습니다: ${projectDir}`);
+  if (!buildTool && !(ws.kind === "independent" && ws.modules.length)) throw new Error(L(`빌드 파일(pom.xml·build.gradle)을 찾지 못했습니다: ${projectDir}`, `No build file (pom.xml/build.gradle) found: ${projectDir}`));
   const format: SbomFormat = opts.format ?? "cyclonedx-json";
-  if (format !== "cyclonedx-json" && format !== "spdx-json") throw new Error(`지원하지 않는 format: ${format}`);
+  if (format !== "cyclonedx-json" && format !== "spdx-json") throw new Error(L(`지원하지 않는 format: ${format}`, `Unsupported format: ${format}`));
   const spdx = format === "spdx-json";
   const scope = opts.scope ?? "runtime";
   const { relPath, absolutePath } = resolveSbomOutputPath(projectDir, opts.outputPath ?? (spdx ? DEFAULT_SPDX_PATH : DEFAULT_SBOM_PATH));
@@ -352,13 +361,13 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "egov-sbom-"));
   const cmd = buildTool ? sbomCommand(projectDir, buildTool, scope, tmpDir, opts.platform) : null;
   const effectiveTool: BuildTool = buildTool ?? ws.modules[0].buildTool;
-  const command = cmd ? [cmd.command, ...cmd.args].join(" ") : `(프로젝트별 ${ws.modules.length}개: ${[...new Set(ws.modules.map((m) => m.buildTool))].join("·")})`;
+  const command = cmd ? [cmd.command, ...cmd.args].join(" ") : L(`(프로젝트별 ${ws.modules.length}개: ${[...new Set(ws.modules.map((m) => m.buildTool))].join("·")})`, `(per project, ${ws.modules.length}: ${[...new Set(ws.modules.map((m) => m.buildTool))].join("·")})`);
   const generator: GenerateSbomResult["generator"] = effectiveTool === "maven" && buildTool ? "cyclonedx-maven-plugin" : "egovframe-scaffold-mcp";
   const base: GenerateSbomResult = { projectDir, buildTool: effectiveTool, format, specVersion: spdx ? SPDX_VERSION : CYCLONEDX_SPEC_VERSION, outputPath: relPath, absolutePath, dryRun, written: false, overwritten: false, command, generator, components: 0, direct: 0, transitive: 0, statuses, vulnerabilities: 0, bytes: 0, notes };
-  if (exists && !opts.overwrite && !dryRun && !opts.noWrite) { fs.rmSync(tmpDir, { recursive: true, force: true }); throw new Error(`${relPath} 이 이미 있습니다. 덮어쓰려면 overwrite=true 를 쓰세요.`); }
+  if (exists && !opts.overwrite && !dryRun && !opts.noWrite) { fs.rmSync(tmpDir, { recursive: true, force: true }); throw new Error(L(`${relPath} 이 이미 있습니다. 덮어쓰려면 overwrite=true 를 쓰세요.`, `${relPath} already exists. Use overwrite=true to overwrite it.`)); }
   if (dryRun) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    notes.push(`dryRun — 실행하지 않았습니다. dryRun=false 로 ${buildTool === "maven" ? "cyclonedx-maven-plugin 을 실행해" : "의존성 트리를 해석해"} ${relPath} 에 ${spdx ? `SPDX 2.3 JSON(CycloneDX ${CYCLONEDX_SPEC_VERSION} 로 만든 뒤 변환)` : `CycloneDX ${CYCLONEDX_SPEC_VERSION} JSON`} 을 씁니다.${exists ? ` 기존 파일이 있어 overwrite=true 가 필요합니다.` : ""}`);
+    notes.push(L(`dryRun — 실행하지 않았습니다. dryRun=false 로 ${buildTool === "maven" ? "cyclonedx-maven-plugin 을 실행해" : "의존성 트리를 해석해"} ${relPath} 에 ${spdx ? `SPDX 2.3 JSON(CycloneDX ${CYCLONEDX_SPEC_VERSION} 로 만든 뒤 변환)` : `CycloneDX ${CYCLONEDX_SPEC_VERSION} JSON`} 을 씁니다.${exists ? ` 기존 파일이 있어 overwrite=true 가 필요합니다.` : ""}`, `dryRun — nothing was executed. With dryRun=false, ${buildTool === "maven" ? "cyclonedx-maven-plugin is run" : "the dependency tree is resolved"} and ${spdx ? `SPDX 2.3 JSON (built as CycloneDX ${CYCLONEDX_SPEC_VERSION}, then converted)` : `CycloneDX ${CYCLONEDX_SPEC_VERSION} JSON`} is written to ${relPath}.${exists ? ` The file already exists, so overwrite=true is required.` : ""}`));
     return base;
   }
 
@@ -368,8 +377,14 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   let bom: SbomDocument;
   let logTail: string | undefined;
   const modulesWritten: { path: string; json: string }[] = [];
+  // v1.2: 진행 단계 — 실제로 수행하는 단계만 나열한다(생성[모듈별] → enrich → OSV → SPDX 변환 → 기록)
+  const genSteps = buildTool && cmd ? [buildTool === "maven" ? "cyclonedx-maven-plugin" : "dependency tree"] : ws.modules.map((m) => `${m.buildTool === "maven" ? "cyclonedx-maven-plugin" : "dependency tree"} (module ${m.name})`);
+  const steps = [...genSteps, ...(opts.enrich !== false ? ["enrich components"] : []), ...(opts.offline === false ? ["query OSV"] : []), ...(spdx ? ["convert to SPDX"] : []), ...(opts.noWrite ? [] : ["write SBOM"])];
+  const prog = stepper(opts.progress, steps);
+  let stepNo = 0;
+  const subFor = (i: number, prefix?: string) => (opts.progress ? subProgress(opts.progress, i, i + 1, steps.length, prefix) : undefined);
   try {
-    if (buildTool && cmd) ({ bom, logTail } = await produceBom(projectDir, buildTool, cmd, tmpDir, scope, runner, opts, now, notes));
+    if (buildTool && cmd) { prog.step(stepNo); ({ bom, logTail } = await produceBom(projectDir, buildTool, cmd, tmpDir, scope, runner, opts, now, notes, subFor(stepNo))); stepNo++; }
     else {
       // v0.47: 루트 빌드 파일이 없는 독립 프로젝트 묶음 — 프로젝트마다 만들고 합본(주 component 아래 모듈 component)
       const mods = ws.modules.filter((m) => !m.library || true);
@@ -378,15 +393,17 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
         const mdir = path.join(projectDir, m.dir);
         const mtmp = fs.mkdtempSync(path.join(os.tmpdir(), "egov-sbom-m-"));
         try {
+          prog.step(stepNo);
           const mcmd = sbomCommand(mdir, m.buildTool, scope, mtmp, opts.platform);
-          const r = await produceBom(mdir, m.buildTool, mcmd, mtmp, scope, runner, opts, now, notes);
+          const r = await produceBom(mdir, m.buildTool, mcmd, mtmp, scope, runner, opts, now, notes, subFor(stepNo, `module ${m.name}`));
+          stepNo++;
           parts.push({ name: m.name, dir: m.dir, bom: r.bom });
           logTail = r.logTail;
         } finally { fs.rmSync(mtmp, { recursive: true, force: true }); }
       }
       bom = mergeModuleBoms(path.basename(projectDir), parts, now);
       for (const p of parts) modulesWritten.push({ path: path.posix.join(path.posix.dirname(relPath), "modules", `${p.name}.cdx.json`), json: `${JSON.stringify(p.bom, null, 2)}\n` });
-      notes.push(`작업공간(독립 프로젝트 ${parts.length}개)을 프로젝트마다 만들어 합쳤습니다 — 합본 ${relPath}, 모듈별 ${path.posix.join(path.posix.dirname(relPath), "modules")}/<모듈>.cdx.json.`);
+      notes.push(L(`작업공간(독립 프로젝트 ${parts.length}개)을 프로젝트마다 만들어 합쳤습니다 — 합본 ${relPath}, 모듈별 ${path.posix.join(path.posix.dirname(relPath), "modules")}/<모듈>.cdx.json.`, `Workspace (${parts.length} independent project(s)) was generated per project and merged — combined ${relPath}, per module ${path.posix.join(path.posix.dirname(relPath), "modules")}/<module>.cdx.json.`));
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -403,28 +420,35 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
   const supplier = opts.supplier ?? ident.organization;
   applySbomMetadata(bom, { supplier, author: opts.author ?? supplier, componentName: opts.componentName, componentVersion: opts.componentVersion });
   const supplierFilled = (opts.fillSuppliers ?? opts.enrich !== false) ? fillComponentSuppliers(bom) : 0;
-  if (supplierFilled) notes.push(`공급자가 없던 component ${supplierFilled}종을 공급자 표(catalog/sbom-rules.json)로 보완했습니다(properties egovframe:supplierBasis=catalog).`);
-  if (!supplier) notes.push("공급자·작성자 미지정 — supplier·author 옵션 또는 pom <organization><name> 이 없으면 최소 요소 점검에서 '보완 필요'가 됩니다.");
+  if (supplierFilled) notes.push(L(`공급자가 없던 component ${supplierFilled}종을 공급자 표(catalog/sbom-rules.json)로 보완했습니다(properties egovframe:supplierBasis=catalog).`, `${supplierFilled} component(s) without a supplier were filled from the supplier table (catalog/sbom-rules.json) (properties egovframe:supplierBasis=catalog).`));
+  if (!supplier) notes.push(L("공급자·작성자 미지정 — supplier·author 옵션 또는 pom <organization><name> 이 없으면 최소 요소 점검에서 '보완 필요'가 됩니다.", "Supplier and author not specified — without the supplier/author options or pom <organization><name>, the minimum elements check reports 'needs work'."));
 
-  if (opts.enrich !== false) Object.assign(statuses, enrichBom(bom, buildTool ? parentKindOf(projectDir, buildTool) : "boot"));
+  if (opts.enrich !== false) { prog.step(stepNo++); Object.assign(statuses, enrichBom(bom, buildTool ? parentKindOf(projectDir, buildTool) : "boot")); }
   let vulnerabilities = 0;
   let osvError: string | undefined;
   if (opts.offline === false) {
-    try { vulnerabilities = await attachVulnerabilities(bom, opts.osvQuery ?? defaultOsvQuery); if (!opts.osvQuery) { const n = osvProvenanceNote(); if (n) notes.push(n); } } catch (e) { osvError = `OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`; }
+    prog.step(stepNo++);
+    try { vulnerabilities = await attachVulnerabilities(bom, opts.osvQuery ?? defaultOsvQuery); if (!opts.osvQuery) { const n = osvProvenanceNote(); if (n) notes.push(n); } } catch (e) { if (e instanceof Error && e.name === "AbortError") throw e; osvError = L(`OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`, `OSV query failed: ${e instanceof Error ? e.message : String(e)}`); }
+    throwIfAborted(opts.progress?.signal);
   }
 
   // v0.43: SPDX 2.3 — CycloneDX 로 만든 문서를 변환해 쓰고, 최소 요소는 SPDX 를 다시 읽은 모양으로 점검(점검 도구와 같은 경로)
   let spdxDoc: SpdxDocument | undefined;
   if (spdx) {
+    prog.step(stepNo++);
     const conv = cdxToSpdx(bom, { now });
     spdxDoc = conv.doc;
-    notes.push(...conv.notes, `SPDX 2.3 으로 변환했습니다 — 패키지 ${conv.doc.packages?.length ?? 0} · 관계 ${conv.doc.relationships?.length ?? 0}. VEX 초안(check_egovframe_sbom vex=true)은 CycloneDX SBOM 에서만 만듭니다.`);
+    notes.push(...conv.notes, L(`SPDX 2.3 으로 변환했습니다 — 패키지 ${conv.doc.packages?.length ?? 0} · 관계 ${conv.doc.relationships?.length ?? 0}. VEX 초안(check_egovframe_sbom vex=true)은 CycloneDX SBOM 에서만 만듭니다.`, `Converted to SPDX 2.3 — ${conv.doc.packages?.length ?? 0} package(s) · ${conv.doc.relationships?.length ?? 0} relationship(s). A VEX draft (check_egovframe_sbom vex=true) is only produced from a CycloneDX SBOM.`));
   }
   const json = `${JSON.stringify(spdxDoc ?? bom, null, 2)}\n`;
-  if (!opts.noWrite) await withFileTransaction(projectDir, "SBOM 생성", (tx) => {
-    tx.writeFile(relPath, json, { mustNotExist: !exists });
-    for (const m of modulesWritten) tx.writeFile(m.path, m.json, { mustNotExist: !(opts.overwrite && fs.existsSync(path.join(projectDir, m.path))) });
-  });
+  if (!opts.noWrite) {
+    prog.step(stepNo++);
+    await withFileTransaction(projectDir, L("SBOM 생성", "SBOM generation"), (tx) => {
+      tx.writeFile(relPath, json, { mustNotExist: !exists });
+      for (const m of modulesWritten) tx.writeFile(m.path, m.json, { mustNotExist: !(opts.overwrite && fs.existsSync(path.join(projectDir, m.path))) });
+    });
+  }
+  prog.finish("SBOM: done");
   const mr = checkMinimumElements(spdxDoc ? spdxToCdx(spdxDoc).bom : bom);
   const minimum = { verdict: mr.verdict, missing: mr.elements.filter((e) => !e.ok).map((e) => e.id), componentsWithGaps: mr.componentsWithGaps, supplierFromCatalog: mr.supplierFromCatalog };
   return { ...base, written: !opts.noWrite, overwritten: !opts.noWrite && exists, durationMs, components: comps.length, direct, transitive: comps.length - direct, statuses, vulnerabilities, ...(osvError ? { osvError } : {}), minimum, bytes: Buffer.byteLength(json), bom, ...(spdxDoc ? { spdx: spdxDoc } : {}), logTail };
@@ -432,21 +456,21 @@ export async function generateSbom(opts: GenerateSbomOptions): Promise<GenerateS
 
 /** 결과 요약 Markdown. */
 export function renderSbomMarkdown(r: GenerateSbomResult): string {
-  const L: string[] = [];
-  L.push(r.format === "spdx-json" ? `# SBOM 생성 (SPDX 2.3 JSON)` : `# SBOM 생성 (CycloneDX ${r.specVersion} JSON)`, ``);
-  L.push(`- 경로: ${r.projectDir} · 빌드 ${r.buildTool} · 생성기 ${r.generator}`);
-  L.push(`- 출력: ${r.outputPath}${r.written ? ` (${r.bytes} bytes${r.overwritten ? ", 덮어씀" : ""})` : r.dryRun ? " (dryRun — 쓰지 않음)" : ""}`);
-  L.push(`- 명령: \`${r.command}\``);
+  const out: string[] = [];
+  out.push(r.format === "spdx-json" ? L(`# SBOM 생성 (SPDX 2.3 JSON)`, `# SBOM generation (SPDX 2.3 JSON)`) : L(`# SBOM 생성 (CycloneDX ${r.specVersion} JSON)`, `# SBOM generation (CycloneDX ${r.specVersion} JSON)`), ``);
+  out.push(L(`- 경로: ${r.projectDir} · 빌드 ${r.buildTool} · 생성기 ${r.generator}`, `- Path: ${r.projectDir} · build ${r.buildTool} · generator ${r.generator}`));
+  out.push(L(`- 출력: ${r.outputPath}${r.written ? ` (${r.bytes} bytes${r.overwritten ? ", 덮어씀" : ""})` : r.dryRun ? " (dryRun — 쓰지 않음)" : ""}`, `- Output: ${r.outputPath}${r.written ? ` (${r.bytes} bytes${r.overwritten ? ", overwritten" : ""})` : r.dryRun ? " (dryRun — not written)" : ""}`));
+  out.push(L(`- 명령: \`${r.command}\``, `- Command: \`${r.command}\``));
   if (r.written) {
-    L.push(`- component ${r.components}종 = 직접 ${r.direct} + 전이 ${r.transitive}${r.durationMs !== undefined ? ` · ${r.durationMs}ms` : ""}`);
+    out.push(L(`- component ${r.components}종 = 직접 ${r.direct} + 전이 ${r.transitive}${r.durationMs !== undefined ? ` · ${r.durationMs}ms` : ""}`, `- ${r.components} component(s) = ${r.direct} direct + ${r.transitive} transitive${r.durationMs !== undefined ? ` · ${r.durationMs}ms` : ""}`));
     const s = r.statuses;
     const total = Object.values(s).reduce((a, b) => a + b, 0);
-    if (total) L.push(`- 기준 판정(egovframe:status): 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 벤더 ${s.vendor} · 기준 없음 ${s.unknown}`);
-    if (r.minimum) L.push(`- 최소 요소 7종: ${r.minimum.verdict === "ready" ? "✅ 제출 가능" : `⚠️ 보완 필요(${r.minimum.missing.join("·")}) — check_egovframe_sbom 으로 상세 확인`}`);
-    L.push(`- 취약점(vulnerabilities[]): ${r.osvError ? r.osvError : r.vulnerabilities}${!r.osvError && r.vulnerabilities === 0 && r.bom?.vulnerabilities === undefined ? " (offline — 조회 안 함; offline=false 로 OSV 조회)" : ""}`);
-    if (r.bom?.vulnerabilities?.length) for (const v of r.bom.vulnerabilities.slice(0, 15)) L.push(`  - ${v.id}: ${v.affects.map((a) => a.ref.replace(/^pkg:maven\//, "").replace(/\?type=.*$/, "")).join(", ")}`);
+    if (total) out.push(L(`- 기준 판정(egovframe:status): 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 벤더 ${s.vendor} · 기준 없음 ${s.unknown}`, `- Baseline status (egovframe:status): meets baseline ${s.ok} · below baseline ${s.outdated} · migration target ${s.legacy} · needs replacement ${s.replace} · vendor ${s.vendor} · no baseline ${s.unknown}`));
+    if (r.minimum) out.push(L(`- 최소 요소 7종: ${r.minimum.verdict === "ready" ? "✅ 제출 가능" : `⚠️ 보완 필요(${r.minimum.missing.join("·")}) — check_egovframe_sbom 으로 상세 확인`}`, `- 7 minimum elements: ${r.minimum.verdict === "ready" ? "✅ ready to submit" : `⚠️ needs work (${r.minimum.missing.join("·")}) — see check_egovframe_sbom for details`}`));
+    out.push(L(`- 취약점(vulnerabilities[]): ${r.osvError ? r.osvError : r.vulnerabilities}${!r.osvError && r.vulnerabilities === 0 && r.bom?.vulnerabilities === undefined ? " (offline — 조회 안 함; offline=false 로 OSV 조회)" : ""}`, `- Vulnerabilities (vulnerabilities[]): ${r.osvError ? r.osvError : r.vulnerabilities}${!r.osvError && r.vulnerabilities === 0 && r.bom?.vulnerabilities === undefined ? " (offline — not queried; use offline=false to query OSV)" : ""}`));
+    if (r.bom?.vulnerabilities?.length) for (const v of r.bom.vulnerabilities.slice(0, 15)) out.push(`  - ${v.id}: ${v.affects.map((a) => a.ref.replace(/^pkg:maven\//, "").replace(/\?type=.*$/, "")).join(", ")}`);
   }
-  for (const n of r.notes) L.push(`- ${n}`);
-  L.push(``, `---`, `SBOM 은 공공 SW 공급망 보안 로드맵(2027년 공공기관 SBOM 등록)에 맞춘 표준 형식(CycloneDX 1.6 · SPDX 2.3)입니다. 기준 판정은 check_egovframe_dependencies 와 같은 규칙입니다.`);
-  return L.join("\n");
+  for (const n of r.notes) out.push(`- ${n}`);
+  out.push(``, `---`, L(`SBOM 은 공공 SW 공급망 보안 로드맵(2027년 공공기관 SBOM 등록)에 맞춘 표준 형식(CycloneDX 1.6 · SPDX 2.3)입니다. 기준 판정은 check_egovframe_dependencies 와 같은 규칙입니다.`, `The SBOM uses the standard formats (CycloneDX 1.6 · SPDX 2.3) aligned with Korea's public-sector software supply-chain security roadmap (SBOM registration for public institutions in 2027). Baseline status uses the same rules as check_egovframe_dependencies.`));
+  return out.join("\n");
 }

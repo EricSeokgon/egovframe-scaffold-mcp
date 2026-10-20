@@ -17,7 +17,8 @@ import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
 import { checkSecureCoding } from "./secure-coding.js";
 import { updateProject, type UpdateInfo } from "./update.js";
-const SECURE_ORIGIN_KO: Record<string, string> = { component: "공통컴포넌트 원본", "component-modified": "공통컴포넌트 수정본", "component-unmanaged": "공통컴포넌트(매니페스트 없음)", project: "프로젝트 코드", test: "테스트" };
+import { L, tr } from "./lang.js";
+const SECURE_ORIGIN_KO: Record<string, string> = { get component() { return L("공통컴포넌트 원본", "common component (original)"); }, get "component-modified"() { return L("공통컴포넌트 수정본", "common component (modified)"); }, get "component-unmanaged"() { return L("공통컴포넌트(매니페스트 없음)", "common component (no manifest)"); }, get project() { return L("프로젝트 코드", "project code"); }, get test() { return L("테스트", "test"); } };
 
 // ── 등급 산식 (데이터) ─────────────────────────────────
 export type Grade = "A" | "B" | "C" | "D";
@@ -32,24 +33,24 @@ export const REMOVED_API_KINDS: MigrationKind[] = ["class-removed", "component-c
 export const ERA_POINTS: Record<SourceEra, number> = { "5.x": 0, "4.x": 1, "3.x": 2, unknown: 1 };
 
 export const MIGRATION_RUBRIC: Rubric = {
-  id: "migration", title: "전환 난이도",
+  id: "migration", get title() { return L("전환 난이도", "Migration difficulty"); },
   factors: [
-    { id: "manual", label: "수동 전환 항목 수", bands: COUNT_BANDS(20, 100), source: "migrate_egovframe_project 진단의 action=manual 항목 수" },
-    { id: "reassemble", label: "재조립 권고 공통컴포넌트 수", bands: COUNT_BANDS(5, 20), source: "kind=component-reassemble 항목 수(컴포넌트 단위)" },
-    { id: "removedApi", label: "제거된 API 참조 수", bands: COUNT_BANDS(10, 100), source: `kind ∈ {${REMOVED_API_KINDS.join(", ")}} 항목 수` },
-    { id: "era", label: "현재 좌표 세대", bands: [{ upTo: 0, points: 0 }, { upTo: 1, points: 1 }, { upTo: null, points: 2 }], source: "sourceEra: 5.x=0 · 4.x=1 · unknown=1 · 3.x=2 (값 자체가 점수)" },
+    { id: "manual", get label() { return L("수동 전환 항목 수", "Manual migration items"); }, bands: COUNT_BANDS(20, 100), get source() { return L("migrate_egovframe_project 진단의 action=manual 항목 수", "count of action=manual items in the migrate_egovframe_project diagnosis"); } },
+    { id: "reassemble", get label() { return L("재조립 권고 공통컴포넌트 수", "Common components recommended for reassembly"); }, bands: COUNT_BANDS(5, 20), get source() { return L("kind=component-reassemble 항목 수(컴포넌트 단위)", "count of kind=component-reassemble items (per component)"); } },
+    { id: "removedApi", get label() { return L("제거된 API 참조 수", "Removed API references"); }, bands: COUNT_BANDS(10, 100), get source() { return L(`kind ∈ {${REMOVED_API_KINDS.join(", ")}} 항목 수`, `count of items with kind ∈ {${REMOVED_API_KINDS.join(", ")}}`); } },
+    { id: "era", get label() { return L("현재 좌표 세대", "Current coordinate generation"); }, bands: [{ upTo: 0, points: 0 }, { upTo: 1, points: 1 }, { upTo: null, points: 2 }], get source() { return L("sourceEra: 5.x=0 · 4.x=1 · unknown=1 · 3.x=2 (값 자체가 점수)", "sourceEra: 5.x=0 · 4.x=1 · unknown=1 · 3.x=2 (the value is the score)"); } },
   ],
   grades: [{ upTo: 0, grade: "A" }, { upTo: 3, grade: "B" }, { upTo: 7, grade: "C" }, { upTo: null, grade: "D" }],
 };
 
 export const SUPPLY_CHAIN_RUBRIC: Rubric = {
-  id: "supplyChain", title: "공급망 상태",
+  id: "supplyChain", get title() { return L("공급망 상태", "Supply-chain status"); },
   factors: [
-    { id: "outdated", label: "기준 미만 의존성 수", bands: COUNT_BANDS(3, 10), source: "check_egovframe_dependencies status=outdated (resolve=true 면 전이 포함)" },
-    { id: "legacyReplace", label: "전환 대상·교체 필요 의존성 수", bands: COUNT_BANDS(3, 10), source: "status ∈ {legacy, replace}" },
-    { id: "vulnerabilities", label: "알려진 취약점이 있는 의존성 수", bands: COUNT_BANDS(2, 9), source: "OSV 조회 결과(offline=false 일 때만; 미조회면 0점으로 계산하고 표시)" },
-    { id: "securityMissing", label: "보안 설정 누락 수", bands: [{ upTo: 0, points: 0 }, { upTo: 2, points: 1 }, { upTo: null, points: 2 }], source: "보안 설정 점검 status=missing 수(sec.security·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)" },
-    { id: "platform", label: "5.x parent·Java 기준", bands: [{ upTo: 0, points: 0 }, { upTo: 1, points: 1 }, { upTo: null, points: 2 }], source: "5.x parent 미사용·구버전이면 +1, Java 가 기준 미만·미검출이면 +1 (값 자체가 점수)" },
+    { id: "outdated", get label() { return L("기준 미만 의존성 수", "Dependencies below baseline"); }, bands: COUNT_BANDS(3, 10), get source() { return L("check_egovframe_dependencies status=outdated (resolve=true 면 전이 포함)", "check_egovframe_dependencies status=outdated (includes transitive when resolve=true)"); } },
+    { id: "legacyReplace", get label() { return L("전환 대상·교체 필요 의존성 수", "Dependencies that are migration targets or need replacement"); }, bands: COUNT_BANDS(3, 10), source: "status ∈ {legacy, replace}" },
+    { id: "vulnerabilities", get label() { return L("알려진 취약점이 있는 의존성 수", "Dependencies with known vulnerabilities"); }, bands: COUNT_BANDS(2, 9), get source() { return L("OSV 조회 결과(offline=false 일 때만; 미조회면 0점으로 계산하고 표시)", "OSV query result (only when offline=false; counted as 0 points and flagged when not queried)"); } },
+    { id: "securityMissing", get label() { return L("보안 설정 누락 수", "Missing security configurations"); }, bands: [{ upTo: 0, points: 0 }, { upTo: 2, points: 1 }, { upTo: null, points: 2 }], get source() { return L("보안 설정 점검 status=missing 수(sec.security·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)", "count of security checks with status=missing (sec.security, CSRF, XSS filter, security headers, HTTPS repositories)"); } },
+    { id: "platform", get label() { return L("5.x parent·Java 기준", "5.x parent and Java baseline"); }, bands: [{ upTo: 0, points: 0 }, { upTo: 1, points: 1 }, { upTo: null, points: 2 }], get source() { return L("5.x parent 미사용·구버전이면 +1, Java 가 기준 미만·미검출이면 +1 (값 자체가 점수)", "+1 if the 5.x parent is missing or outdated, +1 if Java is below baseline or not detected (the value is the score)"); } },
   ],
   grades: [{ upTo: 0, grade: "A" }, { upTo: 3, grade: "B" }, { upTo: 7, grade: "C" }, { upTo: null, grade: "D" }],
 };
@@ -155,14 +156,14 @@ export interface AssessmentResult {
   notes: string[];
 }
 
-const MANUAL_KIND_LABEL: Record<string, string> = {
-  coordinate: "RTE Maven 좌표", "coordinate-unknown": "알 수 없는 RTE 좌표", "rte-version": "RTE 버전", parent: "5.x parent", repository: "Maven 저장소 URL",
-  "removed-module": "제거된 RTE 모듈", "jakarta-artifact": "Jakarta 의존성 좌표", library: "교체 필요 라이브러리", "java-release": "Java 버전", "spring-version": "Spring 버전",
-  package: "RTE 패키지 접두어", "package-renamed": "RTE 패키지 이름 변경", "class-moved": "RTE 클래스 이동", "class-removed": "제거된 RTE 클래스", "class-unknown": "확인 필요 클래스",
-  "jakarta-package": "javax → jakarta 패키지", "web-xml": "web.xml 스키마", "xml-namespace": "제거된 XML 네임스페이스",
-  "component-class-removed": "제거된 공통컴포넌트 클래스", "component-class-moved": "이동한 공통컴포넌트 클래스", "component-reassemble": "공통컴포넌트 재조립 권고",
+const MANUAL_KIND_LABEL: Record<string, [ko: string, en: string]> = {
+  coordinate: ["RTE Maven 좌표", "RTE Maven coordinate"], "coordinate-unknown": ["알 수 없는 RTE 좌표", "Unknown RTE coordinate"], "rte-version": ["RTE 버전", "RTE version"], parent: ["5.x parent", "5.x parent"], repository: ["Maven 저장소 URL", "Maven repository URL"],
+  "removed-module": ["제거된 RTE 모듈", "Removed RTE module"], "jakarta-artifact": ["Jakarta 의존성 좌표", "Jakarta dependency coordinate"], library: ["교체 필요 라이브러리", "Library needing replacement"], "java-release": ["Java 버전", "Java version"], "spring-version": ["Spring 버전", "Spring version"],
+  package: ["RTE 패키지 접두어", "RTE package prefix"], "package-renamed": ["RTE 패키지 이름 변경", "Renamed RTE package"], "class-moved": ["RTE 클래스 이동", "Moved RTE class"], "class-removed": ["제거된 RTE 클래스", "Removed RTE class"], "class-unknown": ["확인 필요 클래스", "Class needing verification"],
+  "jakarta-package": ["javax → jakarta 패키지", "javax → jakarta package"], "web-xml": ["web.xml 스키마", "web.xml schema"], "xml-namespace": ["제거된 XML 네임스페이스", "Removed XML namespace"],
+  "component-class-removed": ["제거된 공통컴포넌트 클래스", "Removed common-component class"], "component-class-moved": ["이동한 공통컴포넌트 클래스", "Moved common-component class"], "component-reassemble": ["공통컴포넌트 재조립 권고", "Common component reassembly recommended"],
 };
-export const kindLabel = (k: string): string => MANUAL_KIND_LABEL[k] ?? k;
+export const kindLabel = (k: string): string => { const l = MANUAL_KIND_LABEL[k]; return l ? L(l[0], l[1]) : k; };
 
 /** 수동 항목을 (종류, from) 으로 묶어 건수 순 상위 N 을 만든다. */
 export function groupManualItems(items: MigrationItem[], topN: number): { top: AssessmentResult["migration"]["manualTop"]; groups: number } {
@@ -181,10 +182,10 @@ export function groupManualItems(items: MigrationItem[], topN: number): { top: A
 /** 조치 문구: 판정과 기준으로 사람이 할 일을 한 줄로. */
 export function actionFor(f: DependencyFinding): string {
   switch (f.status) {
-    case "outdated": return f.note?.includes("parent 가 정한") ? f.note : `${f.baseline ?? "기준"} 이상으로 올림${f.note ? ` (${f.note})` : ""}`;
-    case "legacy": return f.baseline ? `${f.baseline} 로 전환${f.note ? ` — ${f.note}` : ""}` : (f.note ?? "5.x 좌표로 전환");
-    case "replace": return f.baseline ? `${f.baseline} 로 교체${f.note ? ` — ${f.note}` : ""}` : `제거${f.note ? ` — ${f.note}` : ""}`;
-    case "unversioned": return "버전을 명시하거나 5.x parent 로 관리";
+    case "outdated": return (f.note?.includes("parent 가 정한") || f.note?.includes("set by the parent")) ? f.note : L(`${f.baseline ?? "기준"} 이상으로 올림${f.note ? ` (${f.note})` : ""}`, `Raise to ${f.baseline ?? "baseline"} or higher${f.note ? ` (${f.note})` : ""}`);
+    case "legacy": return f.baseline ? L(`${f.baseline} 로 전환${f.note ? ` — ${f.note}` : ""}`, `Migrate to ${f.baseline}${f.note ? ` — ${f.note}` : ""}`) : (f.note ?? L("5.x 좌표로 전환", "Migrate to the 5.x coordinate"));
+    case "replace": return f.baseline ? L(`${f.baseline} 로 교체${f.note ? ` — ${f.note}` : ""}`, `Replace with ${f.baseline}${f.note ? ` — ${f.note}` : ""}`) : L(`제거${f.note ? ` — ${f.note}` : ""}`, `Remove${f.note ? ` — ${f.note}` : ""}`);
+    case "unversioned": return L("버전을 명시하거나 5.x parent 로 관리", "Specify a version or manage it via the 5.x parent");
     default: return f.note ?? "";
   }
 }
@@ -202,17 +203,17 @@ function readVex(projectDir: string, rel: string): NonNullable<AssessmentResult[
 
 function readSbom(projectDir: string, rel: string): AssessmentResult["sbom"] {
   const abs = path.resolve(projectDir, rel);
-  if (!fs.existsSync(abs)) return { present: false, path: rel, note: `SBOM 없음 — generate_egovframe_sbom(dryRun=false) 으로 ${rel} 에 CycloneDX 문서를 만들 수 있습니다.` };
+  if (!fs.existsSync(abs)) return { present: false, path: rel, note: L(`SBOM 없음 — generate_egovframe_sbom(dryRun=false) 으로 ${rel} 에 CycloneDX 문서를 만들 수 있습니다.`, `No SBOM — generate_egovframe_sbom(dryRun=false) can create a CycloneDX document at ${rel}.`) };
   try {
     const doc = JSON.parse(fs.readFileSync(abs, "utf8")) as SbomDocument & { vulnerabilities?: unknown[] };
-    if (doc.bomFormat !== "CycloneDX") return { present: false, path: rel, note: `${rel} 은 CycloneDX 문서가 아닙니다(bomFormat=${String(doc.bomFormat)}).` };
+    if (doc.bomFormat !== "CycloneDX") return { present: false, path: rel, note: L(`${rel} 은 CycloneDX 문서가 아닙니다(bomFormat=${String(doc.bomFormat)}).`, `${rel} is not a CycloneDX document (bomFormat=${String(doc.bomFormat)}).`) };
     const m = checkMinimumElements(doc);
     const minimum = { verdict: m.verdict, missing: m.elements.filter((e) => !e.ok).map((e) => e.label) };
     const vexRel = path.posix.join(path.posix.dirname(rel), path.posix.basename(DEFAULT_VEX_PATH));
     const vex = readVex(projectDir, vexRel);
-    return { present: true, path: rel, components: (doc.components ?? []).length, specVersion: doc.specVersion, timestamp: doc.metadata?.timestamp, vulnerabilities: Array.isArray(doc.vulnerabilities) ? doc.vulnerabilities.length : 0, minimum, vex, note: `CycloneDX ${doc.specVersion} · component ${(doc.components ?? []).length}종${doc.metadata?.timestamp ? ` · 생성 ${doc.metadata.timestamp}` : ""}` };
+    return { present: true, path: rel, components: (doc.components ?? []).length, specVersion: doc.specVersion, timestamp: doc.metadata?.timestamp, vulnerabilities: Array.isArray(doc.vulnerabilities) ? doc.vulnerabilities.length : 0, minimum, vex, note: L(`CycloneDX ${doc.specVersion} · component ${(doc.components ?? []).length}종${doc.metadata?.timestamp ? ` · 생성 ${doc.metadata.timestamp}` : ""}`, `CycloneDX ${doc.specVersion} · ${(doc.components ?? []).length} components${doc.metadata?.timestamp ? ` · generated ${doc.metadata.timestamp}` : ""}`) };
   } catch (e) {
-    return { present: false, path: rel, note: `${rel} 을 읽지 못했습니다: ${e instanceof Error ? e.message : String(e)}` };
+    return { present: false, path: rel, note: L(`${rel} 을 읽지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, `Could not read ${rel}: ${e instanceof Error ? e.message : String(e)}`) };
   }
 }
 
@@ -237,7 +238,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
     try {
       const u = updateProject({ projectDir, maxFiles: opts.maxFiles });
       update = { from: u.update.from, to: u.update.to, parentVersion: u.update.parent?.version ?? null, auto: u.summary.auto, manual: u.summary.manual, changes: u.update.changes, components: u.update.components, ...(u.update.modules ? { modules: u.update.modules } : {}) };
-    } catch (e) { notes.push(`5.x 최신 유지 점검 실패: ${e instanceof Error ? e.message : String(e)}`); }
+    } catch (e) { notes.push(L(`5.x 최신 유지 점검 실패: ${e instanceof Error ? e.message : String(e)}`, `5.x keep-current check failed: ${e instanceof Error ? e.message : String(e)}`)); }
   }
 
   // 의존성
@@ -248,7 +249,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const vulnQueried = dep.offline === false && !dep.osvError;
   const vulns = dep.vulnerabilities ?? [];
   const resolution = dep.resolution ? { ran: dep.resolution.ran, success: dep.resolution.success, scope: dep.resolution.scope, artifacts: dep.resolution.artifacts, direct: dep.resolution.direct, transitive: dep.resolution.transitive, differs: dep.resolution.differs.length, ...(dep.resolution.error ? { error: dep.resolution.error } : {}) } : undefined;
-  if (opts.resolve && dep.buildSystem === "unknown") notes.push("resolve=true 이지만 빌드 파일이 없어 전이 의존성은 해석하지 않았습니다.");
+  if (opts.resolve && dep.buildSystem === "unknown") notes.push(L("resolve=true 이지만 빌드 파일이 없어 전이 의존성은 해석하지 않았습니다.", "resolve=true but no build file was found, so transitive dependencies were not resolved."));
 
   // 보안
   const security = { ok: dep.checks.filter((c) => c.status === "ok").length, missing: dep.checks.filter((c) => c.status === "missing").length, na: dep.checks.filter((c) => c.status === "n/a").length, checks: dep.checks };
@@ -269,13 +270,13 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const migration = computeGrade(MIGRATION_RUBRIC, { manual: mig.summary.manual, reassemble: reassemble.length, removedApi: removedApiRefs, era: ERA_POINTS[mig.sourceEra] }, { era: `sourceEra=${mig.sourceEra}` });
   const platformPoints = (dep.parent.kind === "web" || dep.parent.kind === "boot" ? (dep.parent.status === "ok" ? 0 : 1) : 1) + (dep.java.status === "ok" ? 0 : 1);
   const scCaveats: string[] = [];
-  if (!vulnQueried) scCaveats.push(dep.osvError ? `취약점 조회 실패(${dep.osvError}) — 취약점 요인은 0점으로 계산` : "알려진 취약점을 조회하지 않았습니다(offline=true) — 취약점 요인은 0점으로 계산. offline=false 로 조회해야 확정 등급입니다");
-  if (dep.resolution && !dep.resolution.success) scCaveats.push(`전이 의존성 해석 실패(${dep.resolution.error ?? "원인 미상"}) — 선언된 의존성만 반영`);
+  if (!vulnQueried) scCaveats.push(dep.osvError ? L(`취약점 조회 실패(${dep.osvError}) — 취약점 요인은 0점으로 계산`, `Vulnerability query failed (${dep.osvError}) — the vulnerability factor is counted as 0 points`) : L("알려진 취약점을 조회하지 않았습니다(offline=true) — 취약점 요인은 0점으로 계산. offline=false 로 조회해야 확정 등급입니다", "Known vulnerabilities were not queried (offline=true) — the vulnerability factor is counted as 0 points. Query with offline=false for a final grade"));
+  if (dep.resolution && !dep.resolution.success) scCaveats.push(L(`전이 의존성 해석 실패(${dep.resolution.error ?? "원인 미상"}) — 선언된 의존성만 반영`, `Transitive dependency resolution failed (${dep.resolution.error ?? "unknown cause"}) — only declared dependencies are reflected`));
   const supplyChain = computeGrade(SUPPLY_CHAIN_RUBRIC, {
     outdated: dep.summary.outdated, legacyReplace: dep.summary.legacy + dep.summary.replace, vulnerabilities: vulnQueried ? vulns.length : 0, securityMissing: security.missing, platform: platformPoints,
   }, {
-    vulnerabilities: vulnQueried ? `OSV 조회 ${new Date(now()).toISOString().slice(0, 10)}` : "미조회",
-    platform: `parent ${dep.parent.kind === "none" ? "없음" : `${dep.parent.kind}/${dep.parent.status}`} · Java ${dep.java.value ?? "미검출"}/${dep.java.status}`,
+    vulnerabilities: vulnQueried ? L(`OSV 조회 ${new Date(now()).toISOString().slice(0, 10)}`, `OSV queried ${new Date(now()).toISOString().slice(0, 10)}`) : L("미조회", "not queried"),
+    platform: L(`parent ${dep.parent.kind === "none" ? "없음" : `${dep.parent.kind}/${dep.parent.status}`} · Java ${dep.java.value ?? "미검출"}/${dep.java.status}`, `parent ${dep.parent.kind === "none" ? "none" : `${dep.parent.kind}/${dep.parent.status}`} · Java ${dep.java.value ?? "not detected"}/${dep.java.status}`),
   }, scCaveats);
 
   return {
@@ -310,59 +311,59 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   };
 }
 
-function renderGrade(L: string[], title: string, g: GradeResult): void {
-  L.push(`### ${title}: **${g.grade}** (${g.score}/${g.max}점, ${g.scale})`, ``, `| 요인 | 값 | 구간 | 점수 | 비고 |`, `|---|---|---|---|---|`);
-  for (const f of g.factors) L.push(`| ${f.label} | ${f.value} | ${f.band} | ${f.points} | ${f.note ?? ""} |`);
-  for (const c of g.caveats) L.push(`- ⚠️ ${c}`);
-  L.push(``);
+function renderGrade(out: string[], title: string, g: GradeResult): void {
+  out.push(L(`### ${title}: **${g.grade}** (${g.score}/${g.max}점, ${g.scale})`, `### ${title}: Grade **${g.grade}** (${g.score}/${g.max} points, ${g.scale})`), ``, L(`| 요인 | 값 | 구간 | 점수 | 비고 |`, `| Factor | Value | Band | Points | Note |`), `|---|---|---|---|---|`);
+  for (const f of g.factors) out.push(`| ${f.label} | ${f.value} | ${f.band} | ${f.points} | ${f.note ?? ""} |`);
+  for (const c of g.caveats) out.push(`- ⚠️ ${c}`);
+  out.push(``);
 }
-function renderFormula(L: string[], rubric: Rubric): void {
-  L.push(`**${rubric.title} 산식** — 요인별 점수를 더한 합계로 등급을 정합니다(${describeScale(rubric)}).`, ``);
+function renderFormula(out: string[], rubric: Rubric): void {
+  out.push(L(`**${rubric.title} 산식** — 요인별 점수를 더한 합계로 등급을 정합니다(${describeScale(rubric)}).`, `**${rubric.title} formula** — the grade is the sum of per-factor points (${describeScale(rubric)}).`), ``);
   for (const f of rubric.factors) {
     let lower = 0;
     const bands = f.bands.map((b) => { const s = b.upTo === null ? `${lower}+→${b.points}` : lower === b.upTo ? `${b.upTo}→${b.points}` : `${lower}–${b.upTo}→${b.points}`; lower = (b.upTo ?? 0) + 1; return s; });
-    L.push(`- ${f.label}: ${bands.join(", ")} — ${f.source}`);
+    out.push(`- ${f.label}: ${bands.join(", ")} — ${f.source}`);
   }
-  L.push(``);
+  out.push(``);
 }
 
 /** 평가서 Markdown. */
 export function renderAssessmentMarkdown(r: AssessmentResult): string {
-  const L: string[] = [];
+  const out: string[] = [];
   const o = r.overview;
-  L.push(`# 표준프레임워크 5.x 전환 준비도 평가서`, ``);
-  L.push(`- 경로: ${r.projectDir}`);
-  L.push(`- 생성: ${r.generatedAt} · ${r.tool.name} ${r.tool.version} · 전환 규칙 ${r.tool.rulesTag}(조사 ${r.tool.rulesSurveyedAt}) · 의존성 기준 조사 ${r.tool.baselineSurveyedAt}`);
-  L.push(`- **전환 난이도 ${r.grades.migration.grade} · 공급망 상태 ${r.grades.supplyChain.grade}** (산식은 6절)`);
-  for (const n of r.notes) L.push(`- ${n}`);
-  L.push(``, `## 1. 프로젝트 개요`, ``);
-  L.push(`| 항목 | 값 |`, `|---|---|`);
-  L.push(`| 빌드 도구 | ${o.buildSystem}${o.isEgovProject ? " (egovframe 좌표 있음)" : ""} |`);
-  L.push(`| RTE | ${o.rteVersion ?? "미검출"} (${o.sourceEra} 좌표) → 목표 ${r.tool.targetRuntime} |`);
-  L.push(`| parent | ${o.parent.kind === "none" ? "없음" : `${o.parent.groupId}:${o.parent.artifactId}:${o.parent.version ?? "?"} (${o.parent.kind}, ${o.parent.status})`} |`);
-  L.push(`| Java | ${o.java.value ?? "미검출"} (${o.java.status}) |`);
-  L.push(`| DbType | ${o.database ?? "미설정"} |`);
-  L.push(`| 공통컴포넌트 | ${o.components.count}종${o.components.count ? `: ${o.components.ids.slice(0, 12).join(", ")}${o.components.count > 12 ? " …" : ""}` : ""} |`);
-  L.push(`| AI 계층 / 매니페스트 | ${o.aiLayer ? "있음" : "없음"} / ${o.hasManifest ? "있음" : "없음"} |`);
-  L.push(`| 스캔 파일 | ${o.filesScanned}개 |`);
+  out.push(L(`# 표준프레임워크 5.x 전환 준비도 평가서`, `# eGovFrame 5.x migration readiness assessment`), ``);
+  out.push(L(`- 경로: ${r.projectDir}`, `- Path: ${r.projectDir}`));
+  out.push(L(`- 생성: ${r.generatedAt} · ${r.tool.name} ${r.tool.version} · 전환 규칙 ${r.tool.rulesTag}(조사 ${r.tool.rulesSurveyedAt}) · 의존성 기준 조사 ${r.tool.baselineSurveyedAt}`, `- Generated: ${r.generatedAt} · ${r.tool.name} ${r.tool.version} · migration rules ${r.tool.rulesTag} (surveyed ${r.tool.rulesSurveyedAt}) · dependency baseline surveyed ${r.tool.baselineSurveyedAt}`));
+  out.push(L(`- **전환 난이도 ${r.grades.migration.grade} · 공급망 상태 ${r.grades.supplyChain.grade}** (산식은 6절)`, `- **Migration difficulty ${r.grades.migration.grade} · Supply-chain status ${r.grades.supplyChain.grade}** (formula in section 6)`));
+  for (const n of r.notes) out.push(`- ${n}`);
+  out.push(``, L(`## 1. 프로젝트 개요`, `## 1. Project overview`), ``);
+  out.push(L(`| 항목 | 값 |`, `| Item | Value |`), `|---|---|`);
+  out.push(L(`| 빌드 도구 | ${o.buildSystem}${o.isEgovProject ? " (egovframe 좌표 있음)" : ""} |`, `| Build tool | ${o.buildSystem}${o.isEgovProject ? " (egovframe coordinates present)" : ""} |`));
+  out.push(L(`| RTE | ${o.rteVersion ?? "미검출"} (${o.sourceEra} 좌표) → 목표 ${r.tool.targetRuntime} |`, `| RTE | ${o.rteVersion ?? "not detected"} (${o.sourceEra} coordinates) → target ${r.tool.targetRuntime} |`));
+  out.push(L(`| parent | ${o.parent.kind === "none" ? "없음" : `${o.parent.groupId}:${o.parent.artifactId}:${o.parent.version ?? "?"} (${o.parent.kind}, ${o.parent.status})`} |`, `| parent | ${o.parent.kind === "none" ? "none" : `${o.parent.groupId}:${o.parent.artifactId}:${o.parent.version ?? "?"} (${o.parent.kind}, ${o.parent.status})`} |`));
+  out.push(L(`| Java | ${o.java.value ?? "미검출"} (${o.java.status}) |`, `| Java | ${o.java.value ?? "not detected"} (${o.java.status}) |`));
+  out.push(L(`| DbType | ${o.database ?? "미설정"} |`, `| DbType | ${o.database ?? "not set"} |`));
+  out.push(L(`| 공통컴포넌트 | ${o.components.count}종${o.components.count ? `: ${o.components.ids.slice(0, 12).join(", ")}${o.components.count > 12 ? " …" : ""}` : ""} |`, `| Common components | ${o.components.count}${o.components.count ? `: ${o.components.ids.slice(0, 12).join(", ")}${o.components.count > 12 ? " …" : ""}` : ""} |`));
+  out.push(L(`| AI 계층 / 매니페스트 | ${o.aiLayer ? "있음" : "없음"} / ${o.hasManifest ? "있음" : "없음"} |`, `| AI layer / manifest | ${o.aiLayer ? "yes" : "no"} / ${o.hasManifest ? "yes" : "no"} |`));
+  out.push(L(`| 스캔 파일 | ${o.filesScanned}개 |`, `| Files scanned | ${o.filesScanned} |`));
   if (r.modules?.length) {
-    L.push(``, `### 모듈 (${r.modules.length}개 — 등급은 전체 합산)`, ``, `| 모듈 | 빌드 | 의존성 | 기준 미만 | 전환·교체 | 최신 유지 자동/수동 | 보안약점 |`, `|---|---|---|---|---|---|---|`);
-    for (const m of r.modules) L.push(`| ${m.dir || m.name} | ${m.buildTool} | ${m.dependencies} | ${m.outdated} | ${m.legacyReplace} | ${m.updateAuto}/${m.updateManual} | ${m.secure} |`);
+    out.push(``, L(`### 모듈 (${r.modules.length}개 — 등급은 전체 합산)`, `### Modules (${r.modules.length} — grades are aggregated over all)`), ``, L(`| 모듈 | 빌드 | 의존성 | 기준 미만 | 전환·교체 | 최신 유지 자동/수동 | 보안약점 |`, `| Module | Build | Dependencies | Below baseline | Migrate/replace | Keep-current auto/manual | Security weaknesses |`), `|---|---|---|---|---|---|---|`);
+    for (const m of r.modules) out.push(`| ${m.dir || m.name} | ${m.buildTool} | ${m.dependencies} | ${m.outdated} | ${m.legacyReplace} | ${m.updateAuto}/${m.updateManual} | ${m.secure} |`);
   }
 
   const m = r.migration;
-  L.push(``, `## 2. 전환 범위`, ``);
-  if (m.items === 0) L.push(`전환 항목 없음 — 5.x 기준을 이미 만족합니다.`);
+  out.push(``, L(`## 2. 전환 범위`, `## 2. Migration scope`), ``);
+  if (m.items === 0) out.push(L(`전환 항목 없음 — 5.x 기준을 이미 만족합니다.`, `No migration items — the project already meets the 5.x baseline.`));
   else {
-    L.push(`- 항목 ${m.items}건 = 자동 치환 ${m.auto} + 수동 ${m.manual} · 대상 파일 ${m.files}개`);
-    L.push(`- 재조립 권고 공통컴포넌트 ${m.reassemble.length}종${m.reassemble.length ? `: ${m.reassemble.slice(0, 12).join(", ")}${m.reassemble.length > 12 ? " …" : ""}` : ""}`);
-    L.push(`- 제거된 API 참조 ${m.removedApiRefs}건 (${REMOVED_API_KINDS.map(kindLabel).join(" · ")})`);
-    for (const n of m.notes) L.push(`- ${n}`);
-    L.push(``, `| 종류 | 건수 | 처리 |`, `|---|---|---|`);
-    for (const [k, n] of Object.entries(m.byKind).sort((a, b) => b[1] - a[1])) L.push(`| ${kindLabel(k)} | ${n} | ${m.manualByKind[k] ? (m.manualByKind[k] === n ? "수동" : `수동 ${m.manualByKind[k]} · 자동 ${n - m.manualByKind[k]}`) : "자동 치환 가능"} |`);
+    out.push(L(`- 항목 ${m.items}건 = 자동 치환 ${m.auto} + 수동 ${m.manual} · 대상 파일 ${m.files}개`, `- Items ${m.items} = auto-rewrite ${m.auto} + manual ${m.manual} · ${m.files} files affected`));
+    out.push(L(`- 재조립 권고 공통컴포넌트 ${m.reassemble.length}종${m.reassemble.length ? `: ${m.reassemble.slice(0, 12).join(", ")}${m.reassemble.length > 12 ? " …" : ""}` : ""}`, `- Common components recommended for reassembly ${m.reassemble.length}${m.reassemble.length ? `: ${m.reassemble.slice(0, 12).join(", ")}${m.reassemble.length > 12 ? " …" : ""}` : ""}`));
+    out.push(L(`- 제거된 API 참조 ${m.removedApiRefs}건 (${REMOVED_API_KINDS.map(kindLabel).join(" · ")})`, `- Removed API references ${m.removedApiRefs} (${REMOVED_API_KINDS.map(kindLabel).join(" · ")})`));
+    for (const n of m.notes) out.push(`- ${n}`);
+    out.push(``, L(`| 종류 | 건수 | 처리 |`, `| Kind | Count | Handling |`), `|---|---|---|`);
+    for (const [k, n] of Object.entries(m.byKind).sort((a, b) => b[1] - a[1])) out.push(`| ${kindLabel(k)} | ${n} | ${m.manualByKind[k] ? (m.manualByKind[k] === n ? L("수동", "manual") : L(`수동 ${m.manualByKind[k]} · 자동 ${n - m.manualByKind[k]}`, `manual ${m.manualByKind[k]} · auto ${n - m.manualByKind[k]}`)) : L("자동 치환 가능", "auto-rewritable")} |`);
     if (m.manualTop.length) {
-      L.push(``, `### 예상 수동 작업 (상위 ${m.manualTop.length} / ${m.manualTotalGroups}묶음)`, ``, `| 종류 | 대상 | 건수 | 파일 | 대체 | 예 |`, `|---|---|---|---|---|---|`);
-      for (const t of m.manualTop) L.push(`| ${kindLabel(t.kind)} | \`${t.from}\` | ${t.count} | ${t.files} | ${t.to ? `\`${t.to}\`` : "(대체 없음)"} | ${t.example} |`);
+      out.push(``, L(`### 예상 수동 작업 (상위 ${m.manualTop.length} / ${m.manualTotalGroups}묶음)`, `### Expected manual work (top ${m.manualTop.length} of ${m.manualTotalGroups} groups)`), ``, L(`| 종류 | 대상 | 건수 | 파일 | 대체 | 예 |`, `| Kind | Target | Count | Files | Replacement | Example |`), `|---|---|---|---|---|---|`);
+      for (const t of m.manualTop) out.push(`| ${kindLabel(t.kind)} | \`${t.from}\` | ${t.count} | ${t.files} | ${t.to ? `\`${t.to}\`` : L("(대체 없음)", "(no replacement)")} | ${t.example} |`);
     }
   }
 
@@ -370,58 +371,58 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
   const s = d.summary;
   if (m.update) {
     const u = m.update;
-    L.push(``, `### 5.x 최신 유지 (\`migrate_egovframe_project(target="${u.to}")\`)`, ``);
-    if (u.auto === 0 && u.manual === 0) L.push(`- RTE ${u.from ?? "미검출"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} — ${u.to} 기준을 만족합니다.`);
+    out.push(``, L(`### 5.x 최신 유지 (\`migrate_egovframe_project(target="${u.to}")\`)`, `### 5.x keep-current (\`migrate_egovframe_project(target="${u.to}")\`)`), ``);
+    if (u.auto === 0 && u.manual === 0) out.push(L(`- RTE ${u.from ?? "미검출"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} — ${u.to} 기준을 만족합니다.`, `- RTE ${u.from ?? "not detected"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} — meets the ${u.to} baseline.`));
     else {
-      L.push(`- RTE ${u.from ?? "미검출"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} → ${u.to}: 자동 갱신 ${u.auto} · 확인할 항목 ${u.manual}`);
-      for (const c of u.changes) L.push(`- [${c.since} ${c.kind === "api" ? "API" : "동작"}] ${c.summary} — 참조 파일 ${c.files}개`);
-      if (u.components?.tool) L.push(`- 공통컴포넌트 ${u.components.detected}종 → \`${u.components.tool}\` 로 ${u.components.catalogTag} 기준 맞춤`);
+      out.push(L(`- RTE ${u.from ?? "미검출"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} → ${u.to}: 자동 갱신 ${u.auto} · 확인할 항목 ${u.manual}`, `- RTE ${u.from ?? "not detected"}${u.parentVersion ? ` · parent ${u.parentVersion}` : ""} → ${u.to}: auto-update ${u.auto} · items to review ${u.manual}`));
+      for (const c of u.changes) out.push(L(`- [${c.since} ${c.kind === "api" ? "API" : "동작"}] ${tr(c, "summary")} — 참조 파일 ${c.files}개`, `- [${c.since} ${c.kind === "api" ? "API" : "behavior"}] ${tr(c, "summary")} — ${c.files} referencing files`));
+      if (u.components?.tool) out.push(L(`- 공통컴포넌트 ${u.components.detected}종 → \`${u.components.tool}\` 로 ${u.components.catalogTag} 기준 맞춤`, `- Common components ${u.components.detected} → align to ${u.components.catalogTag} with \`${u.components.tool}\``));
     }
   }
-  L.push(``, `## 3. 의존성`, ``);
-  L.push(`- 의존성 ${d.findings}건(선언 ${d.declared}${d.transitive ? ` + 전이 ${d.transitive}` : ""}): 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · parent 관리 ${s.managed} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 벤더 배포 ${s.vendor} · 기준 없음 ${s.unknown} · 버전 없음 ${s.unversioned}`);
-  if (d.resolution) L.push(d.resolution.success ? `- 해석된 트리(${d.resolution.scope}): artifact ${d.resolution.artifacts}종 = 직접 ${d.resolution.direct} + 전이 ${d.resolution.artifacts - d.resolution.direct} · 선언과 다르게 해석 ${d.resolution.differs}건` : `- 해석된 트리: 실패 (${d.resolution.error ?? "원인 미상"}) — 선언만 판정`);
-  L.push(`- 알려진 취약점: ${d.vulnerabilities.queried ? `${d.vulnerabilities.dependencies}개 의존성 · ${d.vulnerabilities.ids}건 (OSV)` : d.osvError ? `조회 실패 — ${d.osvError}` : "미조회(offline=true)"}`);
-  for (const n of d.notes) L.push(`- ${n}`);
+  out.push(``, L(`## 3. 의존성`, `## 3. Dependencies`), ``);
+  out.push(L(`- 의존성 ${d.findings}건(선언 ${d.declared}${d.transitive ? ` + 전이 ${d.transitive}` : ""}): 기준 충족 ${s.ok} · 기준 미만 ${s.outdated} · parent 관리 ${s.managed} · 전환 대상 ${s.legacy} · 교체 필요 ${s.replace} · 벤더 배포 ${s.vendor} · 기준 없음 ${s.unknown} · 버전 없음 ${s.unversioned}`, `- Dependencies ${d.findings} (declared ${d.declared}${d.transitive ? ` + transitive ${d.transitive}` : ""}): meets baseline ${s.ok} · below baseline ${s.outdated} · managed by parent ${s.managed} · migration target ${s.legacy} · needs replacement ${s.replace} · vendor ${s.vendor} · no baseline ${s.unknown} · unversioned ${s.unversioned}`));
+  if (d.resolution) out.push(d.resolution.success ? L(`- 해석된 트리(${d.resolution.scope}): artifact ${d.resolution.artifacts}종 = 직접 ${d.resolution.direct} + 전이 ${d.resolution.artifacts - d.resolution.direct} · 선언과 다르게 해석 ${d.resolution.differs}건`, `- Resolved tree (${d.resolution.scope}): ${d.resolution.artifacts} artifacts = direct ${d.resolution.direct} + transitive ${d.resolution.artifacts - d.resolution.direct} · resolved differently from declaration ${d.resolution.differs}`) : L(`- 해석된 트리: 실패 (${d.resolution.error ?? "원인 미상"}) — 선언만 판정`, `- Resolved tree: failed (${d.resolution.error ?? "unknown cause"}) — declared only`));
+  out.push(L(`- 알려진 취약점: ${d.vulnerabilities.queried ? `${d.vulnerabilities.dependencies}개 의존성 · ${d.vulnerabilities.ids}건 (OSV)` : d.osvError ? `조회 실패 — ${d.osvError}` : "미조회(offline=true)"}`, `- Known vulnerabilities: ${d.vulnerabilities.queried ? `${d.vulnerabilities.dependencies} dependencies · ${d.vulnerabilities.ids} advisories (OSV)` : d.osvError ? `query failed — ${d.osvError}` : "not queried (offline=true)"}`));
+  for (const n of d.notes) out.push(`- ${n}`);
   if (d.actions.length) {
-    L.push(``, `### 조치 목록 (${d.actions.length})`, ``, `| 좌표 | 현재 | 상태 | 조치 | 위치 |`, `|---|---|---|---|---|`);
-    for (const a of d.actions) L.push(`| ${a.groupId}:${a.artifactId} | ${a.version ?? "-"} | ${STATUS_LABEL[a.status]} | ${a.action} | ${a.origin === "transitive" ? "(전이)" : `${a.file}:${a.line}`} |`);
+    out.push(``, L(`### 조치 목록 (${d.actions.length})`, `### Action list (${d.actions.length})`), ``, L(`| 좌표 | 현재 | 상태 | 조치 | 위치 |`, `| Coordinate | Current | Status | Action | Location |`), `|---|---|---|---|---|`);
+    for (const a of d.actions) out.push(`| ${a.groupId}:${a.artifactId} | ${a.version ?? "-"} | ${STATUS_LABEL[a.status]} | ${a.action} | ${a.origin === "transitive" ? L("(전이)", "(transitive)") : `${a.file}:${a.line}`} |`);
   }
   if (d.vulnerabilities.items.length) {
-    L.push(``, `### 알려진 취약점 (${d.vulnerabilities.items.length})`, ``);
-    for (const v of d.vulnerabilities.items) L.push(`- ${v.dependency}:${v.version} — ${v.ids.slice(0, 6).join(", ")}${v.ids.length > 6 ? ` 외 ${v.ids.length - 6}건` : ""}`);
+    out.push(``, L(`### 알려진 취약점 (${d.vulnerabilities.items.length})`, `### Known vulnerabilities (${d.vulnerabilities.items.length})`), ``);
+    for (const v of d.vulnerabilities.items) out.push(`- ${v.dependency}:${v.version} — ${v.ids.slice(0, 6).join(", ")}${v.ids.length > 6 ? L(` 외 ${v.ids.length - 6}건`, ` and ${v.ids.length - 6} more`) : ""}`);
   }
-  if (d.vendor.length) L.push(``, `벤더·기관 배포(기준 없음, 등급 미반영) ${d.vendor.length}건: ${d.vendor.join(", ")}`);
-  if (d.unknown.length) L.push(``, `기준 없음(판단 보류, 등급 미반영) ${d.unknown.length}건: ${d.unknown.join(", ")}`);
+  if (d.vendor.length) out.push(``, L(`벤더·기관 배포(기준 없음, 등급 미반영) ${d.vendor.length}건: ${d.vendor.join(", ")}`, `Vendor/agency distributed (no baseline, not graded) ${d.vendor.length}: ${d.vendor.join(", ")}`));
+  if (d.unknown.length) out.push(``, L(`기준 없음(판단 보류, 등급 미반영) ${d.unknown.length}건: ${d.unknown.join(", ")}`, `No baseline (no verdict, not graded) ${d.unknown.length}: ${d.unknown.join(", ")}`));
 
-  L.push(``, `## 4. 보안 설정 점검`, ``, `- 충족 ${r.security.ok} · 누락 ${r.security.missing} · 해당 없음 ${r.security.na}`, ``);
+  out.push(``, L(`## 4. 보안 설정 점검`, `## 4. Security configuration checks`), ``, L(`- 충족 ${r.security.ok} · 누락 ${r.security.missing} · 해당 없음 ${r.security.na}`, `- ok ${r.security.ok} · missing ${r.security.missing} · n/a ${r.security.na}`), ``);
   for (const c of r.security.checks) {
     const mark = c.status === "ok" ? "✅" : c.status === "missing" ? "⚠️" : "➖";
-    L.push(`- ${mark} ${c.title}: ${c.status}${c.hint ? ` — ${c.hint}` : ""}`);
-    for (const e of c.evidence.slice(0, 2)) L.push(`  - ${e.file}${e.line ? `:${e.line}` : ""} \`${e.text}\``);
+    out.push(`- ${mark} ${c.title}: ${c.status}${c.hint ? ` — ${c.hint}` : ""}`);
+    for (const e of c.evidence.slice(0, 2)) out.push(`  - ${e.file}${e.line ? `:${e.line}` : ""} \`${e.text}\``);
   }
 
   const sc = r.secureCoding;
-  L.push(``, `### 보안약점 패턴 (개발보안 가이드 구현단계, \`check_egovframe_secure_coding\`)`, ``);
-  if (sc.error) L.push(`- 점검 실패: ${sc.error}`);
+  out.push(``, L(`### 보안약점 패턴 (개발보안 가이드 구현단계, \`check_egovframe_secure_coding\`)`, `### Security weakness patterns (Secure Coding Guide implementation phase, \`check_egovframe_secure_coding\`)`), ``);
+  if (sc.error) out.push(L(`- 점검 실패: ${sc.error}`, `- Check failed: ${sc.error}`));
   else {
-    L.push(`- 높음 ${sc.high} · 중간 ${sc.medium} · 낮음 ${sc.low} (합계 ${sc.total}${sc.suppressed ? ` · 예외 처리 ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — 출처 ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`);
-    for (const b of sc.byRule.slice(0, 6)) L.push(`  - ${b.guideItem} \`${b.rule}\` ${b.count}건`);
-    L.push(`- 등급 산식에는 넣지 않습니다(패턴 기반 진단 보조). 파일·라인·조치는 check_egovframe_secure_coding, CI 는 SARIF 로.`);
+    out.push(L(`- 높음 ${sc.high} · 중간 ${sc.medium} · 낮음 ${sc.low} (합계 ${sc.total}${sc.suppressed ? ` · 예외 처리 ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — 출처 ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`, `- High ${sc.high} · medium ${sc.medium} · low ${sc.low} (total ${sc.total}${sc.suppressed ? ` · suppressed ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — origin ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`));
+    for (const b of sc.byRule.slice(0, 6)) out.push(L(`  - ${b.guideItem} \`${b.rule}\` ${b.count}건`, `  - ${b.guideItem} \`${b.rule}\` ${b.count}`));
+    out.push(L(`- 등급 산식에는 넣지 않습니다(패턴 기반 진단 보조). 파일·라인·조치는 check_egovframe_secure_coding, CI 는 SARIF 로.`, `- Not part of the grade formula (pattern-based diagnostic aid). File/line/remediation via check_egovframe_secure_coding; SARIF for CI.`));
   }
 
-  L.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? ` · vulnerabilities ${r.sbom.vulnerabilities}건` : ""}` : `➖ ${r.sbom.note}`}`);
-  if (r.sbom.minimum) L.push(`- 최소 요소 7종: ${r.sbom.minimum.verdict === "ready" ? "✅ 제출 가능" : `⚠️ 보완 필요(${r.sbom.minimum.missing.join("·")})`} — 상세는 \`check_egovframe_sbom\``);
-  if (r.sbom.vex) L.push(`- VEX: ${r.sbom.vex.present ? `${r.sbom.vex.path} · 항목 ${r.sbom.vex.vulnerabilities ?? 0}건(${Object.entries(r.sbom.vex.states ?? {}).map(([k, n]) => `${k} ${n}`).join(" · ") || "없음"})${r.sbom.vex.timestamp ? ` · 마지막 점검 ${r.sbom.vex.timestamp}` : ""}` : `없음 — check_egovframe_sbom(vex=true) 로 취약점별 판단 기록(${r.sbom.vex.path})을 시작할 수 있습니다`}`);
+  out.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? L(` · vulnerabilities ${r.sbom.vulnerabilities}건`, ` · vulnerabilities ${r.sbom.vulnerabilities}`) : ""}` : `➖ ${r.sbom.note}`}`);
+  if (r.sbom.minimum) out.push(L(`- 최소 요소 7종: ${r.sbom.minimum.verdict === "ready" ? "✅ 제출 가능" : `⚠️ 보완 필요(${r.sbom.minimum.missing.join("·")})`} — 상세는 \`check_egovframe_sbom\``, `- Minimum elements (7): ${r.sbom.minimum.verdict === "ready" ? "✅ ready to submit" : `⚠️ needs work (${r.sbom.minimum.missing.join("·")})`} — details via \`check_egovframe_sbom\``));
+  if (r.sbom.vex) out.push(L(`- VEX: ${r.sbom.vex.present ? `${r.sbom.vex.path} · 항목 ${r.sbom.vex.vulnerabilities ?? 0}건(${Object.entries(r.sbom.vex.states ?? {}).map(([k, n]) => `${k} ${n}`).join(" · ") || "없음"})${r.sbom.vex.timestamp ? ` · 마지막 점검 ${r.sbom.vex.timestamp}` : ""}` : `없음 — check_egovframe_sbom(vex=true) 로 취약점별 판단 기록(${r.sbom.vex.path})을 시작할 수 있습니다`}`, `- VEX: ${r.sbom.vex.present ? `${r.sbom.vex.path} · ${r.sbom.vex.vulnerabilities ?? 0} entries (${Object.entries(r.sbom.vex.states ?? {}).map(([k, n]) => `${k} ${n}`).join(" · ") || "none"})${r.sbom.vex.timestamp ? ` · last checked ${r.sbom.vex.timestamp}` : ""}` : `none — check_egovframe_sbom(vex=true) can start a per-vulnerability analysis record (${r.sbom.vex.path})`}`));
 
-  L.push(``, `## 6. 등급과 근거`, ``);
-  renderGrade(L, "전환 난이도", r.grades.migration);
-  renderGrade(L, "공급망 상태", r.grades.supplyChain);
-  if (r.rehearsal) L.push(`**실측(리허설 ${r.rehearsal.at})**: 재조립·전환 적용 후 컴파일 오류 ${r.rehearsal.afterAutomation ?? "—"}건 → pom 맞춤 후 ${r.rehearsal.afterPomAlignment ?? "—"}건${r.rehearsal.origin ? ` · 원본 태그 ${r.rehearsal.origin}` : ""} — 등급 산식과 별개로 rehearse_egovframe_migration 이 프로젝트 사본에서 잰 값입니다.`, ``);
-  else L.push(`실측 없음 — \`rehearse_egovframe_migration\` 으로 프로젝트 사본에서 자동 단계 후 남는 컴파일 오류를 잴 수 있습니다.`, ``);
-  renderFormula(L, MIGRATION_RUBRIC);
-  renderFormula(L, SUPPLY_CHAIN_RUBRIC);
-  L.push(`벤더 배포·기준 없음·버전 없음 의존성과 공통컴포넌트 수 자체는 등급에 넣지 않습니다. 비용·공수는 산정하지 않습니다 — 건수와 등급까지가 이 평가서의 범위입니다.`);
-  L.push(``, `---`, `읽기 전용 분석입니다. 리허설은 \`rehearse_egovframe_migration\`, 재조립은 \`reassemble_egovframe_components\`(전환 적용보다 먼저), 자동 항목은 \`migrate_egovframe_project\`(apply), SBOM 은 \`generate_egovframe_sbom\` 으로 진행합니다.`);
-  return L.join("\n");
+  out.push(``, L(`## 6. 등급과 근거`, `## 6. Grades and evidence`), ``);
+  renderGrade(out, L("전환 난이도", "Migration difficulty"), r.grades.migration);
+  renderGrade(out, L("공급망 상태", "Supply-chain status"), r.grades.supplyChain);
+  if (r.rehearsal) out.push(L(`**실측(리허설 ${r.rehearsal.at})**: 재조립·전환 적용 후 컴파일 오류 ${r.rehearsal.afterAutomation ?? "—"}건 → pom 맞춤 후 ${r.rehearsal.afterPomAlignment ?? "—"}건${r.rehearsal.origin ? ` · 원본 태그 ${r.rehearsal.origin}` : ""} — 등급 산식과 별개로 rehearse_egovframe_migration 이 프로젝트 사본에서 잰 값입니다.`, `**Measured (rehearsal ${r.rehearsal.at})**: compile errors after reassembly and migration ${r.rehearsal.afterAutomation ?? "—"} → after pom alignment ${r.rehearsal.afterPomAlignment ?? "—"}${r.rehearsal.origin ? ` · origin tag ${r.rehearsal.origin}` : ""} — measured by rehearse_egovframe_migration on a copy of the project, independent of the grade formula.`), ``);
+  else out.push(L(`실측 없음 — \`rehearse_egovframe_migration\` 으로 프로젝트 사본에서 자동 단계 후 남는 컴파일 오류를 잴 수 있습니다.`, `No measurement — \`rehearse_egovframe_migration\` can measure the compile errors remaining after the automated steps on a copy of the project.`), ``);
+  renderFormula(out, MIGRATION_RUBRIC);
+  renderFormula(out, SUPPLY_CHAIN_RUBRIC);
+  out.push(L(`벤더 배포·기준 없음·버전 없음 의존성과 공통컴포넌트 수 자체는 등급에 넣지 않습니다. 비용·공수는 산정하지 않습니다 — 건수와 등급까지가 이 평가서의 범위입니다.`, `Vendor, no-baseline and unversioned dependencies and the number of common components are not graded. Cost and effort are not estimated — counts and grades are the scope of this assessment.`));
+  out.push(``, `---`, L(`읽기 전용 분석입니다. 리허설은 \`rehearse_egovframe_migration\`, 재조립은 \`reassemble_egovframe_components\`(전환 적용보다 먼저), 자동 항목은 \`migrate_egovframe_project\`(apply), SBOM 은 \`generate_egovframe_sbom\` 으로 진행합니다.`, `This is a read-only analysis. Rehearse with \`rehearse_egovframe_migration\`, reassemble with \`reassemble_egovframe_components\` (before applying the migration), apply automatic items with \`migrate_egovframe_project\` (apply), and generate the SBOM with \`generate_egovframe_sbom\`.`));
+  return out.join("\n");
 }

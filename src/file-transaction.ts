@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { isAbortError } from "./progress.js";
 
 interface FileSnapshot {
   relPath: string;
@@ -275,6 +276,8 @@ export async function withFileTransaction<T>(
     return result;
   } catch (error) {
     const report = transaction.rollback();
+    // v1.2: 취소(AbortError)는 롤백한 뒤 그대로 전달한다 — 핸들러·CLI 가 취소로 구분할 수 있게
+    if (isAbortError(error)) throw error;
     const reason = error instanceof Error ? error.message : String(error);
     throw new TransactionError("transaction", label, reason, report);
   }
@@ -329,6 +332,7 @@ export async function withDirectoryTransaction<T>(
         failures.push({ path: directory, error: String(rollbackError) });
       }
     }
+    if (isAbortError(error)) throw error;
     const reason = error instanceof Error ? error.message : String(error);
     throw new TransactionError("directory transaction", label, reason, {
       filesAttempted: 0,

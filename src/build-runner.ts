@@ -5,6 +5,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
+import { AbortError, throwIfAborted, type Progress } from "./progress.js";
 
 export type BuildTool = "maven" | "gradle";
 export type BuildGoal = "compile" | "test" | "package";
@@ -32,12 +33,14 @@ export interface ResolvedCommand {
 export interface RunnerResult {
   exitCode: number | null;
   timedOut: boolean;
+  /** v1.2: 취소(AbortSignal)로 프로세스 트리를 끝냈음 */
+  aborted?: boolean;
 }
 
 /** 실제 실행 추상화. 테스트에서는 가짜 runner를 주입한다. */
 export type Runner = (
   cmd: ResolvedCommand,
-  opts: { timeoutMs: number; onData: (chunk: string) => void },
+  opts: { timeoutMs: number; onData: (chunk: string) => void; /** v1.2: 취소 신호 — 받으면 프로세스 트리를 끝내고 aborted 로 돌려준다 */ signal?: AbortSignal },
 ) => Promise<RunnerResult>;
 
 export interface BuildRunResult {
@@ -239,25 +242,31 @@ export const defaultRunner: Runner = (cmd, opts) =>
       windowsHide: true,
     });
     let timedOut = false;
+    let aborted = false;
     let settled = false;
     let graceTimer: NodeJS.Timeout | undefined;
+    const onAbort = () => { aborted = true; killTree(); };
     const finish = (exitCode: number | null) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       if (graceTimer) clearTimeout(graceTimer);
-      resolve({ exitCode, timedOut });
+      opts.signal?.removeEventListener("abort", onAbort);
+      resolve({ exitCode, timedOut, ...(aborted ? { aborted: true } : {}) });
     };
-    const timer = setTimeout(() => {
-      timedOut = true;
+    // 타임아웃·취소 공통: 트리를 끝내고, 그룹 밖으로 빠져나간 프로세스가 파이프를 붙잡아도 호출이 끝나도록 보장한다.
+    const killTree = () => {
+      if (settled || graceTimer) return;
       killProcessTree(child.pid);
-      // 그룹 밖으로 빠져나간 프로세스가 파이프를 붙잡아도 호출이 끝나도록 보장한다.
       graceTimer = setTimeout(() => {
         child.stdout?.destroy();
         child.stderr?.destroy();
         finish(null);
       }, KILL_GRACE_MS);
-    }, opts.timeoutMs);
+    };
+    const timer = setTimeout(() => { timedOut = true; killTree(); }, opts.timeoutMs);
+    if (opts.signal?.aborted) onAbort();
+    else opts.signal?.addEventListener("abort", onAbort, { once: true });
     child.stdout?.on("data", (d) => opts.onData(d.toString()));
     child.stderr?.on("data", (d) => opts.onData(d.toString()));
     child.on("error", () => finish(null));
@@ -281,7 +290,10 @@ export async function runBuild(opts: {
   extraArgs?: string[];
   /** v0.41: 빌드 프로세스 환경 변수 추가 */
   env?: Record<string, string>;
+  /** v1.2: 진행 알림·취소(signal). 취소되면 프로세스 트리를 끝내고 AbortError 를 던진다 */
+  progress?: Progress;
 }): Promise<BuildRunResult> {
+  throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) {
     throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
@@ -306,8 +318,11 @@ export async function runBuild(opts: {
   const timeoutMs = opts.timeoutMs ?? 300_000;
   let buffer = "";
   const started = now();
-  const result = await runner(resolved, { timeoutMs, onData: (chunk) => (buffer += chunk) });
+  opts.progress?.report(`${buildTool} ${goal}: ${command}`, 0, 1);
+  const result = await runner(resolved, { timeoutMs, onData: (chunk) => (buffer += chunk), signal: opts.progress?.signal });
   const durationMs = now() - started;
+  if (result.aborted || opts.progress?.signal?.aborted) throw new AbortError(`${buildTool} ${goal} cancelled after ${durationMs}ms`);
+  opts.progress?.report(`${buildTool} ${goal}: exit ${result.exitCode ?? "-"}${result.timedOut ? " (timeout)" : ""}`, 1, 1);
 
   const errors = parseBuildErrors(buildTool, buffer);
   const capped = capOutput(buffer, opts.maxLogLines ?? 200);

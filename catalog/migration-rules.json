@@ -42,14 +42,16 @@
         "groupId": "org.egovframe.web",
         "artifactId": "egovframe-web-config-parent",
         "version": "5.0.1",
-        "evidence": "Initializr egovframe-web 템플릿 pom(5.0.0), egovframe-web-sample v5.0.1"
+        "evidence": "Initializr egovframe-web 템플릿 pom(5.0.0), egovframe-web-sample v5.0.1",
+        "evidence_en": "Initializr egovframe-web template pom (5.0.0), egovframe-web-sample v5.0.1"
       },
       {
         "kind": "boot",
         "groupId": "org.egovframe.boot",
         "artifactId": "egovframe-boot-starter-parent",
         "version": "5.0.1",
-        "evidence": "Initializr egovframe-boot-web 템플릿 pom(5.0.0)"
+        "evidence": "Initializr egovframe-boot-web 템플릿 pom(5.0.0)",
+        "evidence_en": "Initializr egovframe-boot-web template pom (5.0.0)"
       }
     ],
     "versionProperties": {
@@ -58,7 +60,8 @@
         "org.egovframe.rte.version",
         "egovframe.rte.version"
       ],
-      "note": "5.x 공식 템플릿은 parent 가 RTE 버전을 관리하므로 의존성에 <version> 을 두지 않는다. parent 를 쓰지 않으면 <org.egovframe.rte.version>5.0.2</org.egovframe.rte.version> 를 두고 각 의존성에 ${org.egovframe.rte.version} 을 쓴다."
+      "note": "5.x 공식 템플릿은 parent 가 RTE 버전을 관리하므로 의존성에 <version> 을 두지 않는다. parent 를 쓰지 않으면 <org.egovframe.rte.version>5.0.2</org.egovframe.rte.version> 를 두고 각 의존성에 ${org.egovframe.rte.version} 을 쓴다.",
+      "note_en": "In the official 5.x templates the parent manages the RTE version, so dependencies carry no <version>. Without the parent, declare <org.egovframe.rte.version>5.0.2</org.egovframe.rte.version> and use ${org.egovframe.rte.version} in each dependency."
     },
     "webXml": {
       "legacyNamespaces": [
@@ -69,7 +72,8 @@
       "namespace": "https://jakarta.ee/xml/ns/jakartaee",
       "version": "5.0",
       "schemaLocation": "https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd",
-      "evidence": "Initializr egovframe-web 템플릿 src/main/webapp/WEB-INF/web.xml"
+      "evidence": "Initializr egovframe-web 템플릿 src/main/webapp/WEB-INF/web.xml",
+      "evidence_en": "Initializr egovframe-web template src/main/webapp/WEB-INF/web.xml"
     }
   },
   "coordinates": [
@@ -438,7 +442,8 @@
     {
       "module": "spring-modules-validation",
       "fromArtifactId": "spring-modules-validation",
-      "reason": "5.x 실행환경에서 제외됨(Presentation/spring-modules-validation 이 v5.0.2-Final 트리에 없음). Commons Validator 기반 검증은 jakarta.validation(hibernate-validator)으로 옮긴다. 5.x 템플릿은 jakarta.validation-api + hibernate-validator 를 사용."
+      "reason": "5.x 실행환경에서 제외됨(Presentation/spring-modules-validation 이 v5.0.2-Final 트리에 없음). Commons Validator 기반 검증은 jakarta.validation(hibernate-validator)으로 옮긴다. 5.x 템플릿은 jakarta.validation-api + hibernate-validator 를 사용.",
+      "reason_en": "Dropped from the 5.x runtime (Presentation/spring-modules-validation is absent from the v5.0.2-Final tree). Move Commons Validator based validation to jakarta.validation (hibernate-validator). The 5.x templates use jakarta.validation-api + hibernate-validator."
     }
   ],
   "newModules": [
@@ -525,6 +530,7 @@
         "legacyClass": "egovframework.rte.fdl.access.bean.AccessDataSourceFactoryBean",
         "replacement": "org.egovframe.rte.fdl.access.bean.DataSourceFactoryBean",
         "reason": "5.x 에서 클래스명 변경",
+        "reason_en": "Class renamed in 5.x",
         "presentIn4x": true
       },
       {
@@ -532,6 +538,7 @@
         "legacyClass": "egovframework.rte.fdl.access.config.EgovAccessConfigBeanDefinitionParser",
         "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
         "reason": "egov-access XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-access:config> 설정을 EgovAccessConfiguration(Java Config)으로 옮긴다.",
+        "reason_en": "The egov-access XML namespace (spring.handlers) was removed in 5.x. Move the <egov-access:config> settings to EgovAccessConfiguration (Java Config).",
         "presentIn4x": true
       },
       {
@@ -539,6 +546,7 @@
         "legacyClass": "egovframework.rte.fdl.access.config.EgovAccessConfigNameHandler",
         "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
         "reason": "egov-access XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-access:config> 설정을 EgovAccessConfiguration(Java Config)으로 옮긴다.",
+        "reason_en": "The egov-access XML namespace (spring.handlers) was removed in 5.x. Move the <egov-access:config> settings to EgovAccessConfiguration (Java Config).",
         "presentIn4x": true
       },
       {
@@ -546,6 +554,7 @@
         "legacyClass": "egovframework.rte.fdl.cmmn.AbstractServiceImpl",
         "replacement": "org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl",
         "reason": "5.x 에서 제거. 서비스 구현 상위 클래스는 EgovAbstractServiceImpl 만 남음",
+        "reason_en": "Removed in 5.x; EgovAbstractServiceImpl is the only remaining service base class",
         "presentIn4x": false
       },
       {
@@ -553,6 +562,7 @@
         "legacyClass": "egovframework.rte.fdl.cmmn.exception.manager.AbsExceptionHandleManager",
         "replacement": "org.egovframe.rte.fdl.cmmn.exception.manager.DefaultExceptionHandleManager",
         "reason": "5.x 에서 추상 관리자 제거. DefaultExceptionHandleManager 를 사용(상속 코드는 ExceptionHandleManager 인터페이스 구현으로 조정)",
+        "reason_en": "Abstract manager removed in 5.x. Use DefaultExceptionHandleManager (subclasses should implement the ExceptionHandleManager interface instead)",
         "presentIn4x": false
       },
       {
@@ -560,6 +570,7 @@
         "legacyClass": "egovframework.rte.fdl.cmmn.trace.manager.AbsTraceHandleManager",
         "replacement": "org.egovframe.rte.fdl.cmmn.trace.manager.DefaultTraceHandleManager",
         "reason": "5.x 에서 추상 관리자 제거. DefaultTraceHandleManager 를 사용",
+        "reason_en": "Abstract manager removed in 5.x. Use DefaultTraceHandleManager",
         "presentIn4x": false
       },
       {
@@ -567,6 +578,7 @@
         "legacyClass": "egovframework.rte.fdl.cryptography.config.EgovCryptoConfigBeanDefinitionParser",
         "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
         "reason": "egov-crypto XML 네임스페이스가 5.x 에서 제거됨. <egov-crypto:config> 설정을 EgovCryptoConfiguration(Java Config)으로 옮긴다.",
+        "reason_en": "The egov-crypto XML namespace was removed in 5.x. Move the <egov-crypto:config> settings to EgovCryptoConfiguration (Java Config).",
         "presentIn4x": true
       },
       {
@@ -574,6 +586,7 @@
         "legacyClass": "egovframework.rte.fdl.cryptography.config.EgovCryptoNameHandler",
         "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
         "reason": "egov-crypto XML 네임스페이스가 5.x 에서 제거됨. <egov-crypto:config> 설정을 EgovCryptoConfiguration(Java Config)으로 옮긴다.",
+        "reason_en": "The egov-crypto XML namespace was removed in 5.x. Move the <egov-crypto:config> settings to EgovCryptoConfiguration (Java Config).",
         "presentIn4x": true
       },
       {
@@ -581,6 +594,7 @@
         "legacyClass": "egovframework.rte.fdl.idgnr.impl.EgovSequenceIdGnrService",
         "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovSequenceIdGnrServiceImpl",
         "reason": "5.x 에서 비-Impl 별칭 클래스 제거",
+        "reason_en": "Non-Impl alias class removed in 5.x",
         "presentIn4x": true
       },
       {
@@ -588,6 +602,7 @@
         "legacyClass": "egovframework.rte.fdl.idgnr.impl.EgovTableIdGnrService",
         "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl",
         "reason": "5.x 에서 비-Impl 별칭 클래스 제거",
+        "reason_en": "Non-Impl alias class removed in 5.x",
         "presentIn4x": true
       },
       {
@@ -595,6 +610,7 @@
         "legacyClass": "egovframework.rte.fdl.idgnr.impl.EgovUUIdGnrService",
         "replacement": "org.egovframe.rte.fdl.idgnr.impl.EgovUUIdGnrServiceImpl",
         "reason": "5.x 에서 비-Impl 별칭 클래스 제거",
+        "reason_en": "Non-Impl alias class removed in 5.x",
         "presentIn4x": true
       },
       {
@@ -602,6 +618,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityConfigBeanDefinitionParser",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -609,6 +626,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityConfigInitializerBeanDefinitionParser",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -616,6 +634,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityConfigShare",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -623,6 +642,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityHttp",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -630,6 +650,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.EgovSecurityNameHandler",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -637,6 +658,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.EgovSecuritySecuredObjectConfigBeanDefinitionParser",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -644,6 +666,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.SecuredObjectConfig",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -651,6 +674,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.SecurityConfig",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -658,6 +682,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.SecurityConfigInitializer",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -665,6 +690,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.internal.CsrfAccessDeniedUrlFactoryBean",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -672,6 +698,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.internal.EgovSessionInformationExpiredStrategy",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -679,6 +706,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.internal.ErrorIfMaximumExceededFactoryBean",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -686,6 +714,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.internal.ExpiredUrlFactoryBean",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -693,6 +722,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.internal.LoginFormUrlFactoryBean",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -700,6 +730,7 @@
         "legacyClass": "egovframework.rte.fdl.security.config.internal.MaximumSessionsFactoryBean",
         "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
         "reason": "egov-security XML 네임스페이스(spring.handlers)가 5.x 에서 제거됨. <egov-security:config>·<egov-security:initializer>·<egov-security:secured-object-config> 를 EgovSecurityConfiguration + EgovSecurityConfig(Java Config)으로 옮긴다. 세션·CSRF·로그인 URL 옵션은 EgovSecurityConfig 속성으로 흡수됨.",
+        "reason_en": "The egov-security XML namespace (spring.handlers) was removed in 5.x. Move <egov-security:config>, <egov-security:initializer> and <egov-security:secured-object-config> to EgovSecurityConfiguration + EgovSecurityConfig (Java Config). Session, CSRF and login-URL options became EgovSecurityConfig properties.",
         "presentIn4x": true
       },
       {
@@ -707,6 +738,7 @@
         "legacyClass": "egovframework.rte.fdl.security.intercept.CsrfAccessDeniedHandler",
         "replacement": "org.egovframe.rte.fdl.security.bean.EgovAccessDeniedHandler",
         "reason": "5.x 에서 EgovAccessDeniedHandler 로 대체",
+        "reason_en": "Replaced by EgovAccessDeniedHandler in 5.x",
         "presentIn4x": true
       },
       {
@@ -714,6 +746,7 @@
         "legacyClass": "egovframework.rte.fdl.security.intercept.LookupAttributesMethodReplacer",
         "replacement": null,
         "reason": "5.x 에서 제거(XML 네임스페이스 내부용). 대체 없음 — Java Config 의 EgovSecurityConfig 로 구성",
+        "reason_en": "Removed in 5.x (internal to the XML namespace). No replacement — configure through EgovSecurityConfig in Java Config",
         "presentIn4x": true
       },
       {
@@ -721,6 +754,7 @@
         "legacyClass": "egovframework.rte.fdl.xml.EgovConcreteDOMFactory",
         "replacement": "org.egovframe.rte.fdl.xml.EgovDOMValidatorService",
         "reason": "5.x 에서 팩터리 클래스 제거. 검증 서비스 클래스를 직접 사용",
+        "reason_en": "Factory class removed in 5.x. Use the validation service class directly",
         "presentIn4x": true
       },
       {
@@ -728,6 +762,7 @@
         "legacyClass": "egovframework.rte.fdl.xml.EgovConcreteSAXFactory",
         "replacement": "org.egovframe.rte.fdl.xml.EgovSAXValidatorService",
         "reason": "5.x 에서 팩터리 클래스 제거. 검증 서비스 클래스를 직접 사용",
+        "reason_en": "Factory class removed in 5.x. Use the validation service class directly",
         "presentIn4x": true
       },
       {
@@ -735,6 +770,7 @@
         "legacyClass": "egovframework.rte.fdl.xml.abstractXMLFactoryService",
         "replacement": "org.egovframe.rte.fdl.xml.EgovAbstractXMLFactoryService",
         "reason": "5.x 에서 클래스명 변경(대소문자 포함)",
+        "reason_en": "Class renamed in 5.x (including letter case)",
         "presentIn4x": true
       },
       {
@@ -742,6 +778,7 @@
         "legacyClass": "egovframework.rte.psl.dataaccess.mapper.Mapper",
         "replacement": "org.egovframe.rte.psl.dataaccess.mapper.EgovMapper",
         "reason": "5.x 에서 @Mapper → @EgovMapper 로 이름 변경(MyBatis 의 org.apache.ibatis.annotations.Mapper 와 충돌 회피). MapperConfigurer 의 annotationClass 도 함께 바꾼다.",
+        "reason_en": "Renamed @Mapper → @EgovMapper in 5.x (avoids a clash with MyBatis org.apache.ibatis.annotations.Mapper). Change the annotationClass of MapperConfigurer as well.",
         "presentIn4x": true
       },
       {
@@ -749,6 +786,7 @@
         "legacyClass": "egovframework.rte.ptl.mvc.bind.AnnotationCommandMapArgumentResolver",
         "replacement": null,
         "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "reason_en": "The @CommandMap argument resolver and EgovRequestMappingHandlerAdapter were removed in 5.x. Switch to @RequestParam Map<String,Object> or @ModelAttribute, and replace the adapter bean definition in XML with <mvc:annotation-driven/> (or WebMvcConfigurer)",
         "presentIn4x": true
       },
       {
@@ -756,6 +794,7 @@
         "legacyClass": "egovframework.rte.ptl.mvc.bind.CommandMapArgumentResolver",
         "replacement": null,
         "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "reason_en": "The @CommandMap argument resolver and EgovRequestMappingHandlerAdapter were removed in 5.x. Switch to @RequestParam Map<String,Object> or @ModelAttribute, and replace the adapter bean definition in XML with <mvc:annotation-driven/> (or WebMvcConfigurer)",
         "presentIn4x": true
       },
       {
@@ -763,6 +802,7 @@
         "legacyClass": "egovframework.rte.ptl.mvc.bind.annotation.CommandMap",
         "replacement": null,
         "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "reason_en": "The @CommandMap argument resolver and EgovRequestMappingHandlerAdapter were removed in 5.x. Switch to @RequestParam Map<String,Object> or @ModelAttribute, and replace the adapter bean definition in XML with <mvc:annotation-driven/> (or WebMvcConfigurer)",
         "presentIn4x": true
       },
       {
@@ -770,6 +810,7 @@
         "legacyClass": "egovframework.rte.ptl.mvc.bind.annotation.EgovRequestMappingHandlerAdapter",
         "replacement": null,
         "reason": "5.x 에서 @CommandMap 인자 해석기·EgovRequestMappingHandlerAdapter 제거. @RequestParam Map<String,Object> 또는 @ModelAttribute 로 바꾸고, XML 의 어댑터 bean 정의를 <mvc:annotation-driven/>(또는 WebMvcConfigurer)로 대체",
+        "reason_en": "The @CommandMap argument resolver and EgovRequestMappingHandlerAdapter were removed in 5.x. Switch to @RequestParam Map<String,Object> or @ModelAttribute, and replace the adapter bean definition in XML with <mvc:annotation-driven/> (or WebMvcConfigurer)",
         "presentIn4x": true
       },
       {
@@ -777,6 +818,7 @@
         "legacyClass": "egovframework.rte.ptl.mvc.handler.SimpleUrlAnnotationHandlerMapping",
         "replacement": null,
         "reason": "5.x 에서 제거. Spring MVC 기본 RequestMappingHandlerMapping(@RequestMapping) 사용",
+        "reason_en": "Removed in 5.x. Use the default Spring MVC RequestMappingHandlerMapping (@RequestMapping)",
         "presentIn4x": true
       },
       {
@@ -784,6 +826,7 @@
         "legacyClass": "egovframework.rte.ptl.mvc.validation.RteFieldChecks",
         "replacement": null,
         "reason": "5.x 에서 제거(spring-modules-validation/Commons Validator 의존). jakarta.validation 제약 애너테이션과 hibernate-validator 로 옮긴다",
+        "reason_en": "Removed in 5.x (depended on spring-modules-validation/Commons Validator). Move to jakarta.validation constraint annotations and hibernate-validator",
         "presentIn4x": true
       }
     ],
@@ -793,277 +836,332 @@
         {
           "class": "egovframework.com.cmm.util.EgovMybaitsUtil",
           "replacement": "egovframework.com.cmm.util.EgovMybatisUtil",
-          "reason": "v5.0.6 에서 오타 클래스명이 EgovMybatisUtil 로 바로잡힘(단순명이 달라 자동 이동 판정에서 빠지므로 수동 대응표)"
+          "reason": "v5.0.6 에서 오타 클래스명이 EgovMybatisUtil 로 바로잡힘(단순명이 달라 자동 이동 판정에서 빠지므로 수동 대응표)",
+          "reason_en": "The misspelled class name was corrected to EgovMybatisUtil in v5.0.6 (the simple name differs, so automatic move detection misses it — mapped manually)"
         },
         {
           "class": "egovframework.com.ext.oauth.service.EgovSignupService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.ext.oauth.service.KakaoAPI20",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.ext.oauth.service.impl.EgovSignInAdapterServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.ext.oauth.service.impl.EgovSignupServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.sec.rnc.service.EgovRlnmManageService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.sec.rnc.service.EgovSocketClient",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.sec.rnc.service.EgovTimedSocket",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.sec.rnc.service.impl.EgovRlnmManageServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.sec.rnc.web.EgovRlnmManageController",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.sts.dst.web.EgovDtaUseStatsContoller",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.sym.mnu.bmm.service.EgovBkmkMenuManageservice",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.bnr.service.Banner",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.bnt.service.BndtCeckManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.bnt.service.BndtDiary",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.bnt.service.BndtManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.ctn.service.CtsnnManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.EgovFacebookConfig",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.FacebookSecurityContext",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.FacebookUser",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.service.impl.EgovSimpleConnectionSignUp",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.web.FacebookSimpleSignInAdapter",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.web.FacebookUserCookieGenerator",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.fbk.web.FacebookUserInterceptor",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.isg.service.IntnetSvcGuidance",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.lsi.service.LoginScrinImage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.msi.service.MainImage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.mtg.service.MtgPlaceManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.mtg.service.MtgPlaceResve",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.noi.service.Notification",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.nws.service.NewsDefaultVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.pwm.service.PopupManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.rec.service.RecomendSiteDefaultVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.sit.service.SiteDefaultVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.EgovTwitterRecptnService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.EgovTwitterTrnsmitService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.TwitterInfo",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.impl.EgovTwitterRecptnServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.tir.service.impl.EgovTwitterTrnsmitServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.uas.service.UserAbsnce",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.ion.vct.service.VcatnManage",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.umt.service.EgovUserManageService",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.umt.service.UserManageVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.umt.service.impl.EgovUserManageServiceImpl",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.umt.service.impl.UserManageDAO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.uss.umt.web.EgovUserManageController",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sec.filter.CertProcessFilter",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sec.filter.CertProcessRequestWrapper",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sec.service.CertInfoVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sec.service.EgovCertInfoUtil",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sec.web.EgovCertLoginController",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sim.service.EgovNetInfo",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sys.pxy.service.ProxyLogVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sys.pxy.service.ProxySvcVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         },
         {
           "class": "egovframework.com.utl.sys.ssy.service.SynchrnServerVO",
           "replacement": null,
-          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다."
+          "reason": "공통컴포넌트 v5.0.7 소스 트리에 없는 클래스(v3.10.0 에는 있음). 5.x 공통컴포넌트는 reassemble_egovframe_components(또는 add_egovframe_components)로 다시 조립하고, 이 클래스를 쓰는 사용자 코드는 5.0.7 의 대응 기능으로 옮긴다.",
+          "reason_en": "Class absent from the Common Components v5.0.7 source tree (present in v3.10.0). Reassemble the 5.x Common Components with reassemble_egovframe_components (or add_egovframe_components) and move user code that uses this class to the corresponding 5.0.7 feature."
         }
       ],
       "moves": [
@@ -1226,7 +1324,8 @@
         },
         "toVersion": "6.0.0",
         "scope": "provided",
-        "note": "5.x 템플릿에서는 parent 가 버전을 관리"
+        "note": "5.x 템플릿에서는 parent 가 버전을 관리",
+        "note_en": "In the 5.x templates the parent manages the version"
       },
       {
         "from": {
@@ -1279,7 +1378,8 @@
           "artifactId": "jakarta.servlet.jsp.jstl",
           "version": "3.0.1"
         },
-        "note": "JSTL 은 API + 구현(glassfish) 두 개가 필요. JSP 의 taglib uri(http://java.sun.com/jsp/jstl/core)는 JSTL 3.0 에서도 그대로 동작"
+        "note": "JSTL 은 API + 구현(glassfish) 두 개가 필요. JSP 의 taglib uri(http://java.sun.com/jsp/jstl/core)는 JSTL 3.0 에서도 그대로 동작",
+        "note_en": "JSTL needs both the API and an implementation (glassfish). The JSP taglib uri (http://java.sun.com/jsp/jstl/core) still works with JSTL 3.0"
       },
       {
         "from": {
@@ -1323,7 +1423,8 @@
           "artifactId": "jakarta.servlet.jsp.jstl"
         },
         "toVersion": "3.0.1",
-        "note": "Apache taglibs-standard 1.2.x 는 javax JSTL 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체"
+        "note": "Apache taglibs-standard 1.2.x 는 javax JSTL 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체",
+        "note_en": "Apache taglibs-standard 1.2.x is a javax JSTL implementation. Replace with the Jakarta JSTL 3.0 implementation (glassfish)"
       },
       {
         "from": {
@@ -1346,7 +1447,8 @@
           "artifactId": "jakarta.servlet.jsp.jstl"
         },
         "toVersion": "3.0.1",
-        "note": "JSTL 1.1 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체"
+        "note": "JSTL 1.1 구현. Jakarta JSTL 3.0 구현(glassfish)으로 교체",
+        "note_en": "JSTL 1.1 implementation. Replace with the Jakarta JSTL 3.0 implementation (glassfish)"
       },
       {
         "from": {
@@ -1369,7 +1471,8 @@
           "artifactId": "jakarta.validation-api"
         },
         "toVersion": "3.1.1",
-        "note": "hibernate-validator 는 8.x 이상"
+        "note": "hibernate-validator 는 8.x 이상",
+        "note_en": "hibernate-validator 8.x or later"
       },
       {
         "from": {
@@ -1458,7 +1561,8 @@
           "artifactId": "jakarta.json"
         },
         "toVersion": "2.0.1",
-        "note": "5.x 템플릿은 org.eclipse:yasson + org.glassfish:jakarta.json"
+        "note": "5.x 템플릿은 org.eclipse:yasson + org.glassfish:jakarta.json",
+        "note_en": "The 5.x templates use org.eclipse:yasson + org.glassfish:jakarta.json"
       },
       {
         "from": {
@@ -1551,10 +1655,12 @@
           "artifactId": "jakarta.faces-api"
         },
         "toVersion": "4.1.2",
-        "note": "Jakarta Faces 4.1(Spring Boot 3.5 BOM 기준 4.1.2). 구현체(Mojarra org.glassfish:jakarta.faces 4.x)도 함께 교체"
+        "note": "Jakarta Faces 4.1(Spring Boot 3.5 BOM 기준 4.1.2). 구현체(Mojarra org.glassfish:jakarta.faces 4.x)도 함께 교체",
+        "note_en": "Jakarta Faces 4.1 (4.1.2 per the Spring Boot 3.5 BOM). Replace the implementation (Mojarra org.glassfish:jakarta.faces 4.x) as well"
       }
     ],
-    "note": "Spring 6 / Jakarta EE 9+ 에서 이름이 바뀐 패키지만 나열한다. JDK 에 포함된 javax.* (javax.sql, javax.xml.parsers, javax.crypto, javax.naming, javax.net, javax.swing, javax.imageio, javax.management, javax.security.*, javax.script, javax.annotation.processing, javax.transaction.xa 등)는 대상이 아니다."
+    "note": "Spring 6 / Jakarta EE 9+ 에서 이름이 바뀐 패키지만 나열한다. JDK 에 포함된 javax.* (javax.sql, javax.xml.parsers, javax.crypto, javax.naming, javax.net, javax.swing, javax.imageio, javax.management, javax.security.*, javax.script, javax.annotation.processing, javax.transaction.xa 등)는 대상이 아니다.",
+    "note_en": "Lists only the packages renamed in Spring 6 / Jakarta EE 9+. javax.* packages that ship with the JDK (javax.sql, javax.xml.parsers, javax.crypto, javax.naming, javax.net, javax.swing, javax.imageio, javax.management, javax.security.*, javax.script, javax.annotation.processing, javax.transaction.xa, etc.) are not covered."
   },
   "libraries": [
     {
@@ -1563,7 +1669,8 @@
         "artifactId": "commons-dbcp"
       },
       "replacement": "org.apache.commons:commons-dbcp2",
-      "reason": "DBCP 1.x 는 Java 17·Jakarta 환경에서 유지보수 종료. commons-dbcp2 로 바꾸고 BasicDataSource 패키지(org.apache.commons.dbcp2)와 속성명(maxActive→maxTotal, maxWait→maxWaitMillis)을 수정"
+      "reason": "DBCP 1.x 는 Java 17·Jakarta 환경에서 유지보수 종료. commons-dbcp2 로 바꾸고 BasicDataSource 패키지(org.apache.commons.dbcp2)와 속성명(maxActive→maxTotal, maxWait→maxWaitMillis)을 수정",
+      "reason_en": "DBCP 1.x is unmaintained on Java 17 / Jakarta. Switch to commons-dbcp2 and update the BasicDataSource package (org.apache.commons.dbcp2) and property names (maxActive→maxTotal, maxWait→maxWaitMillis)"
     },
     {
       "match": {
@@ -1571,7 +1678,9 @@
         "artifactId": "log4j"
       },
       "replacement": "org.apache.logging.log4j:log4j-core (또는 logback)",
-      "reason": "Log4j 1.x 는 EOL(보안 취약). log4j2 또는 5.x 템플릿 기본인 logback 으로 옮기고 log4j.xml 설정을 변환"
+      "replacement_en": "org.apache.logging.log4j:log4j-core (or logback)",
+      "reason": "Log4j 1.x 는 EOL(보안 취약). log4j2 또는 5.x 템플릿 기본인 logback 으로 옮기고 log4j.xml 설정을 변환",
+      "reason_en": "Log4j 1.x is EOL (known vulnerabilities). Move to log4j2 or to logback, the 5.x template default, and convert the log4j.xml configuration"
     },
     {
       "match": {
@@ -1579,7 +1688,9 @@
         "artifactId": "commons-fileupload"
       },
       "replacement": "Servlet 3.0+ multipart(StandardServletMultipartResolver) 또는 org.apache.commons:commons-fileupload2-jakarta-servlet6",
-      "reason": "commons-fileupload 1.x 는 javax.servlet 에 묶여 있어 Jakarta 에서 동작하지 않음. CommonsMultipartResolver 는 Spring 6 에서 제거됨"
+      "replacement_en": "Servlet 3.0+ multipart (StandardServletMultipartResolver) or org.apache.commons:commons-fileupload2-jakarta-servlet6",
+      "reason": "commons-fileupload 1.x 는 javax.servlet 에 묶여 있어 Jakarta 에서 동작하지 않음. CommonsMultipartResolver 는 Spring 6 에서 제거됨",
+      "reason_en": "commons-fileupload 1.x is tied to javax.servlet and does not work on Jakarta. CommonsMultipartResolver was removed in Spring 6"
     },
     {
       "match": {
@@ -1587,7 +1698,8 @@
         "artifactId": "tiles-*"
       },
       "replacement": null,
-      "reason": "Apache Tiles 는 종료된 프로젝트로 Jakarta 버전이 없고 Spring 6 에서 Tiles 지원이 제거됨. JSP include/레이아웃 태그 또는 Thymeleaf 로 대체"
+      "reason": "Apache Tiles 는 종료된 프로젝트로 Jakarta 버전이 없고 Spring 6 에서 Tiles 지원이 제거됨. JSP include/레이아웃 태그 또는 Thymeleaf 로 대체",
+      "reason_en": "Apache Tiles is a retired project with no Jakarta release, and Spring 6 dropped Tiles support. Replace with JSP include/layout tags or Thymeleaf"
     },
     {
       "match": {
@@ -1596,7 +1708,9 @@
         "versionBelow": "6.0.0"
       },
       "replacement": "Spring 6.x (5.x parent 가 관리)",
-      "reason": "명시 버전이 6 미만. 5.x 템플릿처럼 parent 에 버전 관리를 맡기거나 6.x 로 올린다"
+      "replacement_en": "Spring 6.x (managed by the 5.x parent)",
+      "reason": "명시 버전이 6 미만. 5.x 템플릿처럼 parent 에 버전 관리를 맡기거나 6.x 로 올린다",
+      "reason_en": "Explicit version below 6. Let the parent manage the version as the 5.x templates do, or raise it to 6.x"
     },
     {
       "match": {
@@ -1605,7 +1719,8 @@
         "versionBelow": "6.0.0"
       },
       "replacement": "Spring Security 6.x",
-      "reason": "Spring Security 6 에서 WebSecurityConfigurerAdapter·antMatchers 제거. SecurityFilterChain bean 방식으로 재작성"
+      "reason": "Spring Security 6 에서 WebSecurityConfigurerAdapter·antMatchers 제거. SecurityFilterChain bean 방식으로 재작성",
+      "reason_en": "Spring Security 6 removed WebSecurityConfigurerAdapter and antMatchers. Rewrite as a SecurityFilterChain bean"
     },
     {
       "match": {
@@ -1614,7 +1729,8 @@
         "versionBelow": "8.0.0"
       },
       "replacement": "org.hibernate.validator:hibernate-validator 8.x",
-      "reason": "8.x 부터 jakarta.validation 을 구현. groupId 도 org.hibernate.validator 로 바뀜"
+      "reason": "8.x 부터 jakarta.validation 을 구현. groupId 도 org.hibernate.validator 로 바뀜",
+      "reason_en": "Implements jakarta.validation from 8.x; the groupId also changed to org.hibernate.validator"
     },
     {
       "match": {
@@ -1623,7 +1739,8 @@
         "versionBelow": "8.0.0"
       },
       "replacement": "org.hibernate.validator:hibernate-validator 8.x",
-      "reason": "8.x 부터 jakarta.validation 을 구현"
+      "reason": "8.x 부터 jakarta.validation 을 구현",
+      "reason_en": "Implements jakarta.validation from 8.x"
     },
     {
       "match": {
@@ -1632,7 +1749,8 @@
         "versionBelow": "6.0.0"
       },
       "replacement": "org.hibernate.orm:hibernate-core 6.x",
-      "reason": "Hibernate 6 부터 jakarta.persistence 를 구현하며 groupId 가 org.hibernate.orm 으로 바뀜"
+      "reason": "Hibernate 6 부터 jakarta.persistence 를 구현하며 groupId 가 org.hibernate.orm 으로 바뀜",
+      "reason_en": "Hibernate 6 implements jakarta.persistence and the groupId changed to org.hibernate.orm"
     },
     {
       "match": {
@@ -1641,7 +1759,8 @@
         "versionBelow": "3.0.0"
       },
       "replacement": "org.mybatis:mybatis-spring 3.x",
-      "reason": "mybatis-spring 3.x 가 Spring 6 대상"
+      "reason": "mybatis-spring 3.x 가 Spring 6 대상",
+      "reason_en": "mybatis-spring 3.x targets Spring 6"
     },
     {
       "match": {
@@ -1650,7 +1769,8 @@
         "versionBelow": "5.0.0"
       },
       "replacement": "org.apache.poi:poi 5.x",
-      "reason": "fdl.excel 5.x 가 POI 5 를 사용. 3.x 시절 POI 3.x 는 API 가 다름(HSSF/XSSF 공통화)"
+      "reason": "fdl.excel 5.x 가 POI 5 를 사용. 3.x 시절 POI 3.x 는 API 가 다름(HSSF/XSSF 공통화)",
+      "reason_en": "fdl.excel 5.x uses POI 5. The POI 3.x of the 3.x era has a different API (HSSF/XSSF unified)"
     },
     {
       "match": {
@@ -1658,7 +1778,8 @@
         "artifactId": "spring-modules-validation"
       },
       "replacement": "jakarta.validation:jakarta.validation-api + org.hibernate.validator:hibernate-validator",
-      "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용"
+      "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용",
+      "reason_en": "Dropped from the 5.x runtime (Commons Validator based). The 5.x templates use jakarta.validation"
     },
     {
       "match": {
@@ -1666,7 +1787,8 @@
         "artifactId": "spring-modules-validation"
       },
       "replacement": "jakarta.validation:jakarta.validation-api + org.hibernate.validator:hibernate-validator",
-      "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용"
+      "reason": "5.x 실행환경에서 제외됨(Commons Validator 기반). 5.x 템플릿은 jakarta.validation 을 사용",
+      "reason_en": "Dropped from the 5.x runtime (Commons Validator based). The 5.x templates use jakarta.validation"
     },
     {
       "match": {
@@ -1674,7 +1796,8 @@
         "artifactId": "junit"
       },
       "replacement": "org.junit.jupiter:junit-jupiter",
-      "reason": "5.x 템플릿은 JUnit 5(Jupiter)·spring-test 6 을 사용. JUnit 4 는 vintage 엔진 없이는 실행되지 않음"
+      "reason": "5.x 템플릿은 JUnit 5(Jupiter)·spring-test 6 을 사용. JUnit 4 는 vintage 엔진 없이는 실행되지 않음",
+      "reason_en": "The 5.x templates use JUnit 5 (Jupiter) and spring-test 6. JUnit 4 tests do not run without the vintage engine"
     },
     {
       "match": {
@@ -1682,7 +1805,8 @@
         "artifactId": "mysql-connector-java"
       },
       "replacement": "com.mysql:mysql-connector-j",
-      "reason": "MySQL Connector/J 는 8.0.31 부터 좌표가 com.mysql:mysql-connector-j 로 바뀜(옛 좌표는 갱신 중단). RTE 5.x psl-data-jpa 와 Spring Boot BOM 이 새 좌표를 관리"
+      "reason": "MySQL Connector/J 는 8.0.31 부터 좌표가 com.mysql:mysql-connector-j 로 바뀜(옛 좌표는 갱신 중단). RTE 5.x psl-data-jpa 와 Spring Boot BOM 이 새 좌표를 관리",
+      "reason_en": "MySQL Connector/J moved to com.mysql:mysql-connector-j from 8.0.31 (the old coordinate is no longer updated). RTE 5.x psl-data-jpa and the Spring Boot BOM manage the new coordinate"
     },
     {
       "match": {
@@ -1690,7 +1814,9 @@
         "artifactId": "ojdbc"
       },
       "replacement": "com.oracle.database.jdbc:ojdbc11 (Java 17 이상, Maven Central)",
-      "reason": "ojdbc:ojdbc 는 3.x 시절 표준프레임워크 저장소에만 있던 좌표. Oracle 이 Maven Central 에 공개하는 com.oracle.database.jdbc:ojdbc11(또는 ojdbc17) 을 쓰며 Spring Boot BOM 이 버전을 관리"
+      "replacement_en": "com.oracle.database.jdbc:ojdbc11 (Java 17+, Maven Central)",
+      "reason": "ojdbc:ojdbc 는 3.x 시절 표준프레임워크 저장소에만 있던 좌표. Oracle 이 Maven Central 에 공개하는 com.oracle.database.jdbc:ojdbc11(또는 ojdbc17) 을 쓰며 Spring Boot BOM 이 버전을 관리",
+      "reason_en": "ojdbc:ojdbc existed only in the 3.x-era eGovFrame repository. Use com.oracle.database.jdbc:ojdbc11 (or ojdbc17), which Oracle publishes on Maven Central; the Spring Boot BOM manages the version"
     },
     {
       "match": {
@@ -1698,7 +1824,8 @@
         "artifactId": "*"
       },
       "replacement": "com.fasterxml.jackson.core:jackson-databind (Jackson 2.x)",
-      "reason": "Jackson 1.x(org.codehaus.jackson) 는 2013년 종료. Spring 6 은 Jackson 2.x 만 지원하며 패키지도 com.fasterxml.jackson 으로 바뀜(ObjectMapper import 수정)"
+      "reason": "Jackson 1.x(org.codehaus.jackson) 는 2013년 종료. Spring 6 은 Jackson 2.x 만 지원하며 패키지도 com.fasterxml.jackson 으로 바뀜(ObjectMapper import 수정)",
+      "reason_en": "Jackson 1.x (org.codehaus.jackson) ended in 2013. Spring 6 supports only Jackson 2.x and the package changed to com.fasterxml.jackson (fix the ObjectMapper import)"
     },
     {
       "match": {
@@ -1706,7 +1833,9 @@
         "artifactId": "xbean"
       },
       "replacement": "org.apache.xmlbeans:xmlbeans (POI 5.x 가 전이로 가져옴)",
-      "reason": "xmlbeans:xbean 2.x 는 2006년 좌표. RTE 5.x fdl-excel 의 POI 5.4 가 org.apache.xmlbeans:xmlbeans 5.x 를 전이로 가져오므로 직접 선언은 제거"
+      "replacement_en": "org.apache.xmlbeans:xmlbeans (pulled in transitively by POI 5.x)",
+      "reason": "xmlbeans:xbean 2.x 는 2006년 좌표. RTE 5.x fdl-excel 의 POI 5.4 가 org.apache.xmlbeans:xmlbeans 5.x 를 전이로 가져오므로 직접 선언은 제거",
+      "reason_en": "xmlbeans:xbean 2.x is a 2006 coordinate. POI 5.4 in RTE 5.x fdl-excel pulls org.apache.xmlbeans:xmlbeans 5.x transitively, so remove the direct declaration"
     },
     {
       "match": {
@@ -1714,7 +1843,9 @@
         "artifactId": "ehcache*"
       },
       "replacement": "org.ehcache:ehcache 3.x (JCache) 또는 Caffeine",
-      "reason": "Ehcache 2.x 는 종료됐고 Spring 6 에서 EhCacheCacheManager(spring-context-support) 지원이 제거됨. JCache(JSR-107) 기반 Ehcache 3 또는 Caffeine 으로 캐시 설정을 바꿈"
+      "replacement_en": "org.ehcache:ehcache 3.x (JCache) or Caffeine",
+      "reason": "Ehcache 2.x 는 종료됐고 Spring 6 에서 EhCacheCacheManager(spring-context-support) 지원이 제거됨. JCache(JSR-107) 기반 Ehcache 3 또는 Caffeine 으로 캐시 설정을 바꿈",
+      "reason_en": "Ehcache 2.x is discontinued and Spring 6 removed EhCacheCacheManager (spring-context-support). Move the cache configuration to JCache (JSR-107) based Ehcache 3 or Caffeine"
     },
     {
       "match": {
@@ -1722,7 +1853,9 @@
         "artifactId": "httpclient"
       },
       "replacement": "org.apache.httpcomponents.client5:httpclient5 (Spring Boot BOM 관리)",
-      "reason": "Spring 6 의 HttpComponentsClientHttpRequestFactory·RestTemplate 연동은 HttpClient 5 만 지원. 코드가 HttpClient 4 API 를 직접 쓰면 패키지(org.apache.hc.client5)와 API 를 함께 옮김"
+      "replacement_en": "org.apache.httpcomponents.client5:httpclient5 (managed by the Spring Boot BOM)",
+      "reason": "Spring 6 의 HttpComponentsClientHttpRequestFactory·RestTemplate 연동은 HttpClient 5 만 지원. 코드가 HttpClient 4 API 를 직접 쓰면 패키지(org.apache.hc.client5)와 API 를 함께 옮김",
+      "reason_en": "Spring 6 HttpComponentsClientHttpRequestFactory/RestTemplate integration supports HttpClient 5 only. Code that uses the HttpClient 4 API directly must move to the new package (org.apache.hc.client5) and API"
     },
     {
       "match": {
@@ -1730,7 +1863,8 @@
         "artifactId": "antlr"
       },
       "replacement": null,
-      "reason": "ANTLR 3 는 3.x 의 spring-modules-validation 이 쓰던 전이 의존성. 5.x 에서 해당 모듈이 제거됐고(ptl-mvc 가 commons-validator 를 직접 사용) Hibernate 6 은 antlr4-runtime 을 전이로 가져오므로 직접 선언은 제거"
+      "reason": "ANTLR 3 는 3.x 의 spring-modules-validation 이 쓰던 전이 의존성. 5.x 에서 해당 모듈이 제거됐고(ptl-mvc 가 commons-validator 를 직접 사용) Hibernate 6 은 antlr4-runtime 을 전이로 가져오므로 직접 선언은 제거",
+      "reason_en": "ANTLR 3 was a transitive dependency of spring-modules-validation in 3.x. That module is gone in 5.x (ptl-mvc uses commons-validator directly) and Hibernate 6 pulls antlr4-runtime transitively, so remove the direct declaration"
     },
     {
       "match": {
@@ -1738,67 +1872,82 @@
         "artifactId": "*"
       },
       "replacement": "Spring Security OAuth2 Client(spring-security-oauth2-client) 또는 공통컴포넌트 5.x 의 소셜 로그인",
-      "reason": "Spring Social 은 2019년 종료(Spring 6 호환 버전 없음). 공통컴포넌트 5.x 도 Facebook 어댑터(FacebookSimpleSignInAdapter 등)를 제거했으므로 Spring Security OAuth2 Client 로 재구성"
+      "replacement_en": "Spring Security OAuth2 Client (spring-security-oauth2-client) or the social login of Common Components 5.x",
+      "reason": "Spring Social 은 2019년 종료(Spring 6 호환 버전 없음). 공통컴포넌트 5.x 도 Facebook 어댑터(FacebookSimpleSignInAdapter 등)를 제거했으므로 Spring Security OAuth2 Client 로 재구성",
+      "reason_en": "Spring Social ended in 2019 (no Spring 6 compatible release). Common Components 5.x also removed the Facebook adapters (FacebookSimpleSignInAdapter etc.), so rebuild on Spring Security OAuth2 Client"
     }
   ],
   "vendorCoordinates": [
     {
       "groupIdPrefix": "project",
-      "note": "system scope 로 프로젝트 안 로컬 jar 를 붙이는 관행(groupId 'project') — 공개 저장소 기준 없음. SBOM 에서 공급자·버전을 확인하고 가능하면 공개 좌표(예: com.oracle.database.jdbc)로 바꾸세요"
+      "note": "system scope 로 프로젝트 안 로컬 jar 를 붙이는 관행(groupId 'project') — 공개 저장소 기준 없음. SBOM 에서 공급자·버전을 확인하고 가능하면 공개 좌표(예: com.oracle.database.jdbc)로 바꾸세요",
+      "note_en": "Local jar attached with system scope (groupId 'project') — no public repository baseline. Check the supplier and version in the SBOM and switch to a public coordinate (e.g. com.oracle.database.jdbc) where possible"
     },
     {
       "groupIdPrefix": "altibase",
-      "note": "Altibase JDBC — 벤더 배포 jar. 표준프레임워크 저장소 또는 벤더 사이트의 DBMS 버전에 맞는 드라이버 사용"
+      "note": "Altibase JDBC — 벤더 배포 jar. 표준프레임워크 저장소 또는 벤더 사이트의 DBMS 버전에 맞는 드라이버 사용",
+      "note_en": "Altibase JDBC — vendor-distributed jar. Use the driver matching your DBMS version from the eGovFrame repository or the vendor site"
     },
     {
       "groupIdPrefix": "com.altibase",
-      "note": "Altibase JDBC — 벤더 배포 jar"
+      "note": "Altibase JDBC — 벤더 배포 jar",
+      "note_en": "Altibase JDBC — vendor-distributed jar"
     },
     {
       "groupIdPrefix": "com.tmax.tibero",
-      "note": "Tibero JDBC — 벤더 배포 jar. DBMS 버전에 맞는 드라이버 사용"
+      "note": "Tibero JDBC — 벤더 배포 jar. DBMS 버전에 맞는 드라이버 사용",
+      "note_en": "Tibero JDBC — vendor-distributed jar. Use the driver matching your DBMS version"
     },
     {
       "groupIdPrefix": "cubrid",
-      "note": "CUBRID JDBC — 벤더 배포 jar(Maven Central 의 cubrid:cubrid-jdbc 는 구버전만 있음). DBMS 버전에 맞는 드라이버 사용"
+      "note": "CUBRID JDBC — 벤더 배포 jar(Maven Central 의 cubrid:cubrid-jdbc 는 구버전만 있음). DBMS 버전에 맞는 드라이버 사용",
+      "note_en": "CUBRID JDBC — vendor-distributed jar (cubrid:cubrid-jdbc on Maven Central has only old versions). Use the driver matching your DBMS version"
     },
     {
       "groupIdPrefix": "kr.go.gpki",
-      "note": "행정전자서명(GPKI) API — 기관 배포 jar. 표준 저장소에 없으며 배포본 버전을 따름"
+      "note": "행정전자서명(GPKI) API — 기관 배포 jar. 표준 저장소에 없으며 배포본 버전을 따름",
+      "note_en": "Government PKI (GPKI) API — agency-distributed jar. Not in a public repository; follow the distributed version"
     },
     {
       "groupIdPrefix": "kr.go.mgov",
-      "note": "모바일 전자정부(mGov) API — 기관 배포 jar. 배포본 버전을 따름"
+      "note": "모바일 전자정부(mGov) API — 기관 배포 jar. 배포본 버전을 따름",
+      "note_en": "Mobile e-Government (mGov) API — agency-distributed jar. Follow the distributed version"
     },
     {
       "groupIdPrefix": "kr.go",
-      "note": "정부 기관 배포 라이브러리 — 공개 저장소 기준 없음. 배포본 버전을 따름"
+      "note": "정부 기관 배포 라이브러리 — 공개 저장소 기준 없음. 배포본 버전을 따름",
+      "note_en": "Government agency distributed library — no public repository baseline. Follow the distributed version"
     },
     {
       "groupIdPrefix": "com.goldilocks",
-      "note": "GOLDILOCKS JDBC — 벤더 배포 jar"
+      "note": "GOLDILOCKS JDBC — 벤더 배포 jar",
+      "note_en": "GOLDILOCKS JDBC — vendor-distributed jar"
     }
   ],
   "xmlNamespaces": [
     {
       "uri": "http://maven.egovframe.go.kr/schema/egov-access",
       "replacement": "org.egovframe.rte.fdl.access.config.EgovAccessConfiguration",
-      "reason": "5.x 에서 egov-access 네임스페이스 제거. Java Config 로 전환"
+      "reason": "5.x 에서 egov-access 네임스페이스 제거. Java Config 로 전환",
+      "reason_en": "egov-access namespace removed in 5.x. Switch to Java Config"
     },
     {
       "uri": "http://maven.egovframe.go.kr/schema/egov-crypto",
       "replacement": "org.egovframe.rte.fdl.crypto.config.EgovCryptoConfiguration",
-      "reason": "5.x 에서 egov-crypto 네임스페이스 제거. Java Config 로 전환"
+      "reason": "5.x 에서 egov-crypto 네임스페이스 제거. Java Config 로 전환",
+      "reason_en": "egov-crypto namespace removed in 5.x. Switch to Java Config"
     },
     {
       "uri": "http://maven.egovframe.go.kr/schema/egov-security",
       "replacement": "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration",
-      "reason": "5.x 에서 egov-security 네임스페이스 제거. Java Config 로 전환"
+      "reason": "5.x 에서 egov-security 네임스페이스 제거. Java Config 로 전환",
+      "reason_en": "egov-security namespace removed in 5.x. Switch to Java Config"
     },
     {
       "uri": "http://www.springmodules.org/validation/bean/validator",
       "replacement": "jakarta.validation",
-      "reason": "spring-modules-validation 이 5.x 실행환경에서 제외됨"
+      "reason": "spring-modules-validation 이 5.x 실행환경에서 제외됨",
+      "reason_en": "spring-modules-validation was dropped from the 5.x runtime"
     }
   ],
   "build": {

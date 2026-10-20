@@ -17,6 +17,7 @@ import { withFileTransaction } from "./file-transaction.js";
 import { MANIFEST_FILE, readManifest, type Manifest } from "./manifest.js";
 import { migrateProject, type SourceEra } from "./migrate.js";
 import { runBuild, type BuildError, type Runner } from "./build-runner.js";
+import { isAbortError, stepper, subProgress, throwIfAborted, type Progress } from "./progress.js";
 
 export type ReassembleState =
   | "identical" // 현재 = 목표 → 그대로
@@ -70,6 +71,8 @@ export interface ReassembleOptions {
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   faultInjection?: "after-files";
+  /** v1.2: 진행 알림·취소(signal). 단계 경계에서 취소를 확인하고, 적용 중 취소되면 transaction 을 롤백한 뒤 AbortError 를 던진다 */
+  progress?: Progress;
 }
 export interface ReassembleResult {
   projectDir: string;
@@ -144,6 +147,7 @@ export async function unifiedPatch(rel: string, before: Buffer, after: Buffer): 
 
 /** 재조립 계획(및 적용). */
 export async function reassembleComponents(opts: ReassembleOptions): Promise<ReassembleResult> {
+  throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
   if (opts.database && !ECC_DB_TYPES.includes(opts.database)) throw new Error(`database는 ${ECC_DB_TYPES.join("|")} 중 하나여야 합니다: ${opts.database}`);
@@ -177,6 +181,11 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   const target = { tag: targetTag, commit: catalog.source.commit ?? null };
   const base = (): ReassembleResult => ({ projectDir, dryRun, target, sourceEra, origin: { tag: null, mode: opts.sourceTag && opts.sourceTag !== "auto" ? "fixed" : "auto", candidates: [] }, components: [], summary: emptyStates(), actions: emptyActions(), files: [], worklist: [], sql: [], manifestUpdated: false, notes });
   if (selected.length === 0) { notes.push("재조립할 공통컴포넌트를 찾지 못했습니다(감지된 컴포넌트 없음)."); return base(); }
+  // v1.2: 진행 단계 — 실제로 수행하는 단계만(원본 식별 → 분류 → [목표 파일 수집 → 적용 → [컴파일]])
+  const steps = ["identify origin", "classify files", ...(dryRun ? [] : ["fetch target files", "write files", ...(opts.verify ? ["compile"] : [])])];
+  const prog = stepper(opts.progress, steps);
+  let stepNo = 0;
+  const subFor = (i: number) => (opts.progress ? subProgress(opts.progress, i, i + 1, steps.length) : undefined);
 
   // ── 경로 수집: 프로젝트(소스 접두어 아래) · 목표(접두어 + 자산 경로) ──
   const selectedIds = new Set(selected.map((c) => c.id));
@@ -194,6 +203,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   // ── 원본 태그 ──
   let originTag: string | null = null;
   const result = base();
+  prog.step(stepNo++);
   const tags = await origin.listTags();
   if (!tags.includes(targetTag)) throw new Error(`목표 태그 ${targetTag} 가 공통컴포넌트 저장소에 없습니다`);
   if (opts.sourceTag && opts.sourceTag !== "auto") {
@@ -203,6 +213,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
     const major = ERA_MAJOR[sourceEra];
     const candidates = tags.filter((t) => /^v?\d/.test(t) && (!major || String(tagVersionMajor(t)) === major) && compareTags(t, targetTag) <= 0);
     for (const t of candidates) {
+      throwIfAborted(prog.signal);
       const blobs = await origin.listBlobs(t, queryPaths);
       let matched = 0;
       for (const rel of sourceFiles) { const id = blobs.get(rel); if (id && currentIds.get(rel)!.includes(id)) matched++; }
@@ -216,9 +227,11 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   }
   result.origin.tag = originTag;
   if (originTag && result.origin.candidates[0] && result.origin.candidates[0].ratio < 0.5) notes.push(`원본 태그 ${originTag} 와의 일치율이 ${Math.round(result.origin.candidates[0].ratio * 100)}% 입니다 — 소스를 많이 고쳤거나 다른 버전일 수 있으니 sourceTag 지정을 검토하세요.`);
+  throwIfAborted(prog.signal);
   const originBlobs = originTag ? await origin.listBlobs(originTag, queryPaths) : new Map<string, string>();
   const targetBlobs = await origin.listBlobs(targetTag, queryPaths);
-  try { target.commit = await origin.resolveCommit(targetTag); } catch { /* 고정 커밋 유지 */ }
+  try { target.commit = await origin.resolveCommit(targetTag); } catch (e) { if (isAbortError(e)) throw e; /* 고정 커밋 유지 */ }
+  prog.step(stepNo++);
   if (catalog.source.commit && target.commit && target.commit !== catalog.source.commit) throw new Error(`목표 태그 ${targetTag} 의 커밋(${target.commit.slice(0, 7)})이 카탈로그 고정 커밋(${catalog.source.commit.slice(0, 7)})과 다릅니다(태그 이동)`);
 
   // ── 3-way 분류 ──
@@ -274,10 +287,12 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   result.files = files;
   if (dryRun) {
     notes.push(`dryRun — 파일을 쓰지 않았습니다. dryRun=false 로 ${result.actions.replace + result.actions.add}개 파일을 ${targetTag} 로 쓰고 ${result.actions.delete}개를 백업 후 지웁니다.`);
+    prog.finish("reassemble: plan ready");
     return result;
   }
 
   // ── 적용 ──
+  prog.step(stepNo++);
   const writePaths = files.filter((f) => f.action === "replace" || f.action === "add" || f.action === "keep-reference" || f.state === "identical").map((f) => f.path);
   let sqlPlan: { relPath: string; content: Buffer; componentId: string }[] = [];
   let targetContent: Map<string, Buffer>;
@@ -300,10 +315,12 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
   const backupRel = `migration-backup/${ts}-reassemble-${randomUUID().slice(0, 8)}`;
   const patchFor = new Map<string, Buffer>();
+  throwIfAborted(prog.signal);
   for (const f of files) {
     if (f.state !== "user-modified" && f.state !== "removed-modified") continue;
     const o = originBlobs.get(f.path);
     if (!o) continue;
+    throwIfAborted(prog.signal);
     const patch = await unifiedPatch(f.path, await origin.readBlob(o), readCurrent(f.path));
     if (!patch.length) continue;
     const rel = `${backupRel}/patches/${f.componentId}/${f.path}.patch`;
@@ -313,8 +330,12 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
     if (w) w.patch = rel;
   }
   const hashOf = (b: Buffer) => "sha256:" + createHash("sha256").update(b).digest("hex");
+  prog.step(stepNo++);
+  // 적용 중 취소되면 transaction 이 롤백하고 AbortError 를 그대로 전달한다(withFileTransaction)
   await withFileTransaction(projectDir, "공통컴포넌트 재조립", async (tx) => {
+    throwIfAborted(prog.signal);
     for (const f of files) {
+      throwIfAborted(prog.signal);
       if (f.action === "keep" && f.state !== "identical") continue;
       const current = tx.readFile(f.path);
       if (current && (f.action === "replace" || f.action === "delete" || f.action === "keep-reference")) {
@@ -335,6 +356,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
       result.sql.push(s.relPath);
     }
     if (opts.faultInjection === "after-files") throw new Error("reassemble fault injection: after-files");
+    throwIfAborted(prog.signal);
     const m: Manifest = manifest ?? { schemaVersion: 3, source: { ...catalog.source }, components: {} };
     m.source = { ...m.source, ...catalog.source };
     const now = new Date().toISOString();
@@ -361,7 +383,9 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   result.planPath = path.join(projectDir, backupRel, "reassemble-plan.json");
 
   if (opts.verify) {
-    const b = await runBuild({ projectDir, goal: "compile", timeoutMs: opts.timeoutMs ?? 300_000, runner: opts.runner, platform: opts.platform }).catch((e: Error) => ({ ran: false, error: e.message }) as never);
+    prog.step(stepNo++);
+    const sub = subFor(stepNo - 1);
+    const b = await runBuild({ projectDir, goal: "compile", timeoutMs: opts.timeoutMs ?? 300_000, runner: opts.runner, platform: opts.platform, ...(sub ? { progress: sub } : {}) }).catch((e: Error) => { if (isAbortError(e)) throw e; return { ran: false, error: e.message } as never; });
     const errs: BuildError[] = (b as { errors?: BuildError[] }).errors ?? [];
     const relOf = (f: string) => { const r = path.isAbsolute(f) ? path.relative(projectDir, f) : f; return r.split(path.sep).join("/").replace(/^\.\//, ""); };
     const inFiles = new Map<string, number>();
@@ -372,6 +396,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
       ? { ran: true, success: (b as { success?: boolean }).success ?? null, command: (b as { command?: string }).command, durationMs: (b as { durationMs?: number }).durationMs, errors: errs.length, inReassembled: errs.filter((e) => reassembled.has(relOf(e.file))).length }
       : { ran: false, success: null, errors: 0, inReassembled: 0, reason: (b as { error?: string }).error ?? "빌드를 실행하지 못했습니다" };
   }
+  prog.finish("reassemble: done");
   return result;
 }
 

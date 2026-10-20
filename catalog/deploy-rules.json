@@ -17,11 +17,13 @@
     "tomcat": {
       "port": 8080,
       "webapps": "/usr/local/tomcat/webapps",
-      "note": "Classic war — 기본 Tomcat 10.1(Servlet 6.0, 5.x 템플릿의 jakarta.servlet-api 5.0·6.0 과 commons-fileupload2-jakarta-servlet6 호환), pom 이 jakarta.servlet-api 6.1 이상을 직접 선언하면 Tomcat 11.0. ROOT 로 풀어서 배포"
+      "note": "Classic war — 기본 Tomcat 10.1(Servlet 6.0, 5.x 템플릿의 jakarta.servlet-api 5.0·6.0 과 commons-fileupload2-jakarta-servlet6 호환), pom 이 jakarta.servlet-api 6.1 이상을 직접 선언하면 Tomcat 11.0. ROOT 로 풀어서 배포",
+      "note_en": "Classic war — Tomcat 10.1 by default (Servlet 6.0, compatible with jakarta.servlet-api 5.0/6.0 and commons-fileupload2-jakarta-servlet6 of the 5.x templates); Tomcat 11.0 when the pom declares jakarta.servlet-api 6.1 or later directly. Deployed unpacked as ROOT"
     },
     "boot": {
       "port": 8080,
-      "note": "Boot 실행 jar — java -jar"
+      "note": "Boot 실행 jar — java -jar",
+      "note_en": "Boot executable jar — java -jar"
     }
   },
   "user": {
@@ -97,18 +99,29 @@
     "goldilocks": "상용 DB — 연결 정보로만 연결",
     "hsql": "내장(메모리) DB — DB 컨테이너 없이 앱만 띄움"
   },
+  "externalDatabases_en": {
+    "oracle": "No public image is used for licensing reasons — connect to the agency DB or a separate container by connection settings only",
+    "tibero": "Commercial DB — connected by connection settings only",
+    "altibase": "Commercial DB — connected by connection settings only",
+    "cubrid": "The official image tags and initialization do not match the template scripts — connected by connection settings only",
+    "goldilocks": "Commercial DB — connected by connection settings only",
+    "hsql": "Embedded (in-memory) DB — only the app is started, no DB container"
+  },
   "unsupported": [
     {
       "id": "no-build-file",
-      "reason": "pom.xml·build.gradle 이 없습니다(프론트엔드·정적 자산 템플릿은 각자의 배포 방식을 쓰세요)"
+      "reason": "pom.xml·build.gradle 이 없습니다(프론트엔드·정적 자산 템플릿은 각자의 배포 방식을 쓰세요)",
+      "reason_en": "No pom.xml or build.gradle (frontend and static asset templates use their own deployment)"
     },
     {
       "id": "multi-module",
-      "reason": "멀티 모듈(pom <modules>·settings.gradle include) 프로젝트 — 모듈별로 이미지를 만들어야 해 1차 범위 밖입니다(MSA 템플릿은 저장소의 자체 배포 구성을 쓰세요)"
+      "reason": "멀티 모듈(pom <modules>·settings.gradle include) 프로젝트 — 모듈별로 이미지를 만들어야 해 1차 범위 밖입니다(MSA 템플릿은 저장소의 자체 배포 구성을 쓰세요)",
+      "reason_en": "Multi-module project (pom <modules> / settings.gradle include) — each module needs its own image, which is out of scope here (MSA templates ship their own deployment configuration)"
     },
     {
       "id": "not-runnable",
-      "reason": "war 도 실행 jar(Spring Boot)도 아닌 라이브러리 jar — 실행할 수 있는 배포 단위가 없습니다"
+      "reason": "war 도 실행 jar(Spring Boot)도 아닌 라이브러리 jar — 실행할 수 있는 배포 단위가 없습니다",
+      "reason_en": "Library jar, neither a war nor an executable (Spring Boot) jar — nothing runnable to deploy"
     }
   ],
   "infra": {
@@ -121,13 +134,15 @@
         "user": "RABBITMQ_DEFAULT_USER",
         "password": "RABBITMQ_DEFAULT_PASS"
       },
-      "note": "guest 계정은 원격 접속이 막혀 있어 egov 계정을 만들고 앱의 spring.rabbitmq.username·password 를 환경 변수로 덮어씁니다"
+      "note": "guest 계정은 원격 접속이 막혀 있어 egov 계정을 만들고 앱의 spring.rabbitmq.username·password 를 환경 변수로 덮어씁니다",
+      "note_en": "The guest account cannot connect remotely, so an egov account is created and the app's spring.rabbitmq.username/password are overridden through environment variables"
     },
     "redis": {
       "image": "redis:7.4",
       "port": 6379,
       "healthcheck": "redis-cli ping",
-      "note": "인증 없음(로컬 실행용)"
+      "note": "인증 없음(로컬 실행용)",
+      "note_en": "No authentication (for local runs)"
     }
   }
 }
