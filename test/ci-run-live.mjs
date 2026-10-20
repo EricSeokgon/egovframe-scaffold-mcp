@@ -76,6 +76,9 @@ try {
     copyFileSync(path.join(REPO, "test/fixtures/jenkins/egov-job.groovy"), path.join(img, "egov-job.groovy"));
     writeFileSync(path.join(img, "ca.crt"), proxyCa ? readFileSync(proxyCa) : "");
     writeFileSync(path.join(img, "settings.xml"), mavenSettings ?? "<settings/>\n");
+    // v1.1.0 배포 CI 실측: maven.egovframe.go.kr 503 이 MAVEN_ARGS 의 요청 재시도(5회·3초)보다 길게 이어져 Jenkins 안의 mvn 이 떨어졌다.
+    // 호스트의 mvn-retry 는 컨테이너 안까지 미치지 않으므로 같은 대리 실행기를 이미지의 PATH 맨 앞(/usr/local/bin/mvn)에 둔다.
+    copyFileSync(path.join(REPO, "scripts/mvn-retry.sh"), path.join(img, "mvn-retry.sh"));
     const cliJava = proxy ? `-Dhttps.proxyHost=${proxy.hostname} -Dhttps.proxyPort=${proxy.port} -Dhttp.proxyHost=${proxy.hostname} -Dhttp.proxyPort=${proxy.port}` : "";
     writeFileSync(path.join(img, "Dockerfile"), [
       `FROM ${JENKINS_IMAGE}`,
@@ -88,6 +91,9 @@ try {
       // 배포판 nodejs 는 22 미만 — npm 레지스트리의 node@22 를 전역으로(engines >=22, v1.0)
       ` && NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt npm install -g -s node@22 && node -v \\`,
       ` && git config --system safe.directory '*'`,
+      `COPY mvn-retry.sh /usr/local/bin/mvn`,
+      `RUN chmod 0755 /usr/local/bin/mvn && sed -i 's/\\r$//' /usr/local/bin/mvn`,
+      `ENV REAL_MVN=/usr/bin/mvn`,
       `USER jenkins`,
       `COPY --chown=jenkins:jenkins settings.xml /var/jenkins_home/.m2/settings.xml`,
       `COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/ref/plugins.txt`,
