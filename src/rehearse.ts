@@ -42,6 +42,8 @@ export function fingerprintTree(root: string): TreeFingerprint {
 /** 프로젝트를 작업 디렉터리로 복사한다(빌드 산출물·VCS·백업 제외, symlink 는 링크 그대로). */
 export function copyProject(src: string, dest: string): { files: number; bytes: number } {
   let files = 0, bytes = 0;
+  // 호출부가 mkdtemp 로 만든 빈 디렉터리를 넘긴다. Node 24 의 cpSync 는 errorOnExist 이면 기존 대상 디렉터리도 EEXIST 로 거부하므로 빈 대상은 먼저 지운다.
+  try { if (fs.statSync(dest).isDirectory() && fs.readdirSync(dest).length === 0) fs.rmdirSync(dest); } catch { /* 대상 없음 */ }
   fs.cpSync(src, dest, {
     recursive: true, verbatimSymlinks: true, errorOnExist: true, force: false,
     filter: (from) => {

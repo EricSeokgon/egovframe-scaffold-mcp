@@ -3,7 +3,7 @@
 //   (2) en: 같은 호출의 출력에 한글이 없다(허용 목록: 프로젝트 파일에서 인용한 원문·고유명사)
 //   (3) 언어 전환 API: setLang·getLang·L, EGOVFRAME_LANG, CLI --lang
 //   goldens 갱신: node test/i18n.mjs --update (렌더러를 의도적으로 바꿨을 때만, diff 를 PR 에서 검토)
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,15 +22,17 @@ const fixedNow = () => Date.UTC(2026, 9, 20, 1, 2, 3);
 const HANGUL = /[가-힣]/;
 
 // 출력에서 환경에 따라 달라지는 부분만 가린다(경로·실행 시간·버전). 문구는 그대로여야 한다.
-const normalize = (s, json = false) => s
-  .split(root).join("<root>").split(root.replace(/\\/g, "/")).join("<root>")
+// Windows 는 tmpdir 이 8.3 단축 이름(RUNNER~1)일 수 있어 realpath(긴 이름)도 함께 가린다. JSON 출력에는 '\\' 로 이스케이프된 형태로 들어간다.
+let realRoot = root; try { realRoot = realpathSync.native(root); } catch { /* 그대로 */ }
+const rootForms = [...new Set([root, realRoot].flatMap((r) => [JSON.stringify(r).slice(1, -1), r, r.replace(/\\/g, "/")]))].sort((a, b) => b.length - a.length);
+const normalize = (s, json = false) => rootForms.reduce((acc, r) => acc.split(r).join("<root>"), s)
   .replace(/\d+(\.\d+)?\s?(ms|초)\b/g, "<t>")
   .replace(/egovframe-scaffold-mcp \d+\.\d+\.\d+/g, "egovframe-scaffold-mcp <v>")
   .replace(/"version": "\d+\.\d+\.\d+"/g, '"version": "<v>"')
   .replace(/urn:uuid:[0-9a-f-]{36}/g, "urn:uuid:<id>")
   .replace(/egov-sbom-[A-Za-z0-9]+/g, "egov-sbom-<tmp>")
   // Windows 경로 구분자(goldens 는 POSIX 에서 생성): JSON 은 이스케이프된 '\\\\', Markdown 은 단어 사이의 '\\' 만
-  .replace(json ? /\\\\/g : /(?<=[\w.)-])\\(?=[\w.])/g, "/");
+  .replace(json ? /\\\\/g : /(?<=[\w.)>-])\\(?=[\w.])/g, "/");
 
 // 한 언어로 전부 실행해 {이름: 정규화한 출력} 을 만든다
 async function runAll(lang) {
