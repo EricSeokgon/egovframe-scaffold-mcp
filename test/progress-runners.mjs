@@ -78,22 +78,29 @@ try {
   // ── defaultRunner: AbortSignal 로 실제 자식 프로세스 트리 종료 ──────
   {
     const pidFile = path.join(proj, "child.pid");
+    // 스크립트 파일 + (Windows) .cmd 래퍼 — defaultRunner 는 Windows 에서 shell:true 라 -e 인자·공백 있는 node 경로가 cmd 에서 깨진다
+    const script = path.join(proj, "child.js");
+    writeFileSync(script, `require("fs").writeFileSync(${JSON.stringify(pidFile)}, String(process.pid)); setTimeout(() => {}, 60000);\n`);
+    const isWin = process.platform === "win32";
+    const wrapper = path.join(proj, "child.cmd");
+    if (isWin) writeFileSync(wrapper, `@echo off\r\n"${process.execPath}" "${script}"\r\n`);
+    const cmd = isWin ? { command: wrapper, args: [] } : { command: process.execPath, args: [script] };
     const ac = new AbortController();
+    const run = defaultRunner({ ...cmd, cwd: proj, usedWrapper: false }, { timeoutMs: 30_000, onData: () => {}, signal: ac.signal });
+    // 자식이 실제로 뜬 뒤(pid 기록) 취소한다 — Windows 는 node 기동이 느려 고정 지연으로는 기록 전에 취소될 수 있다
+    for (let i = 0; i < 200 && !existsSync(pidFile); i++) await sleep(50);
     const started = Date.now();
-    setTimeout(() => ac.abort(), 200);
-    const r = await defaultRunner(
-      { command: process.execPath, args: ["-e", "require('fs').writeFileSync(process.argv[1], String(process.pid)); setTimeout(()=>{}, 60000)", pidFile], cwd: tmpdir(), usedWrapper: false },
-      { timeoutMs: 30_000, onData: () => {}, signal: ac.signal },
-    );
+    ac.abort();
+    const r = await run;
     const elapsed = Date.now() - started;
     assert(r.aborted === true && r.timedOut === false, `defaultRunner: 취소 시 aborted=true (exitCode ${r.exitCode})`);
     assert(elapsed < 5_000, `defaultRunner: 취소 후 5초 안에 settle (${elapsed}ms)`);
     let pid = 0;
-    for (let i = 0; i < 20 && !pid; i++) { if (existsSync(pidFile)) pid = Number(readFileSync(pidFile, "utf8")); else await sleep(50); }
+    for (let i = 0; i < 20 && !pid; i++) { if (existsSync(pidFile)) pid = Number(readFileSync(pidFile, "utf8")) || 0; if (!pid) await sleep(50); }
     assert(pid > 0, `defaultRunner: 자식이 pid 를 기록 (${pid})`);
     let gone = false;
     for (let i = 0; i < 30 && !gone; i++) {
-      try { process.kill(pid, 0); await sleep(100); } catch (e) { gone = e.code === "ESRCH" || e.code === "EPERM"; }
+      try { process.kill(pid, 0); await sleep(100); } catch (e) { gone = e.code === "ESRCH"; }
     }
     assert(gone, "defaultRunner: 취소 후 자식 프로세스가 사라짐 (ESRCH)");
   }

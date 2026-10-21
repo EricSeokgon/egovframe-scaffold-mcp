@@ -22,17 +22,27 @@ const fixedNow = () => Date.UTC(2026, 9, 20, 1, 2, 3);
 const HANGUL = /[가-힣]/;
 
 // 출력에서 환경에 따라 달라지는 부분만 가린다(경로·실행 시간·버전). 문구는 그대로여야 한다.
-// Windows 는 tmpdir 이 8.3 단축 이름(RUNNER~1)일 수 있어 realpath(긴 이름)도 함께 가린다. JSON 출력에는 '\\' 로 이스케이프된 형태로 들어간다.
-let realRoot = root; try { realRoot = realpathSync.native(root); } catch { /* 그대로 */ }
-const rootForms = [...new Set([root, realRoot].flatMap((r) => [JSON.stringify(r).slice(1, -1), r, r.replace(/\\/g, "/")]))].sort((a, b) => b.length - a.length);
-const normalize = (s, json = false) => rootForms.reduce((acc, r) => acc.split(r).join("<root>"), s)
-  .replace(/\d+(\.\d+)?\s?(ms|초)\b/g, "<t>")
-  .replace(/egovframe-scaffold-mcp \d+\.\d+\.\d+/g, "egovframe-scaffold-mcp <v>")
-  .replace(/"version": "\d+\.\d+\.\d+"/g, '"version": "<v>"')
-  .replace(/urn:uuid:[0-9a-f-]{36}/g, "urn:uuid:<id>")
-  .replace(/egov-sbom-[A-Za-z0-9]+/g, "egov-sbom-<tmp>")
-  // Windows 경로 구분자(goldens 는 POSIX 에서 생성): JSON 은 이스케이프된 '\\\\', Markdown 은 단어 사이의 '\\' 만
-  .replace(json ? /\\\\/g : /(?<=[\w.)>-])\\(?=[\w.])/g, "/");
+//   Windows: 임시 경로가 8.3 짧은 이름(RUNNER~1)과 realpath 두 형태로 나올 수 있고, JSON 안에서는 '\\' 로 이스케이프된다.
+const pathForms = (p) => {
+  const forms = new Set([p, p.replace(/\\/g, "/")]);
+  try { const r = realpathSync.native(p); forms.add(r); forms.add(r.replace(/\\/g, "/")); } catch { /* 없음 */ }
+  for (const f of [...forms]) forms.add(JSON.stringify(f).slice(1, -1));
+  return [...forms].sort((a, b) => b.length - a.length);
+};
+const ROOT_FORMS = pathForms(root);
+const TMP_FORMS = pathForms(tmpdir()).filter((f) => f !== "/tmp"); // portability: ok goldens 표기로 바꾸는 치환
+const normalize = (s, json = false) => {
+  for (const f of ROOT_FORMS) s = s.split(f).join("<root>");
+  for (const f of TMP_FORMS) s = s.split(f).join("/tmp"); // portability: ok goldens(POSIX 생성) 표기로 치환
+  return s
+    .replace(/\d+(\.\d+)?\s?(ms|초)\b/g, "<t>")
+    .replace(/egovframe-scaffold-mcp \d+\.\d+\.\d+/g, "egovframe-scaffold-mcp <v>")
+    .replace(/"version": "\d+\.\d+\.\d+"/g, '"version": "<v>"')
+    .replace(/urn:uuid:[0-9a-f-]{36}/g, "urn:uuid:<id>")
+    .replace(/egov-sbom-[A-Za-z0-9]+/g, "egov-sbom-<tmp>")
+    // Windows 경로 구분자: JSON 은 이스케이프된 '\\\\', Markdown 은 경로 조각 사이의 '\\' 만(<root>\x 포함)
+    .replace(json ? /\\\\(?=[\w.<])/g : /(?<=[\w.)>-])\\(?=[\w.<])/g, "/");
+};
 
 // 한 언어로 전부 실행해 {이름: 정규화한 출력} 을 만든다
 async function runAll(lang) {

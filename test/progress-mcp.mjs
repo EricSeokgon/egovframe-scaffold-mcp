@@ -62,15 +62,15 @@ try {
     const events = [];
     const call = client.callTool({ name: "build_egovframe_project", arguments: { projectDir: proj, goal: "compile", timeoutMs: 50_000 } }, undefined, { signal: ac.signal, onprogress: (p) => events.push(p) });
     const t0 = Date.now();
-    while (!existsSync(pidFile) && Date.now() - t0 < 10_000) await sleep(50);
-    assert(existsSync(pidFile), "가짜 빌드 프로세스 시작(pid 기록)");
-    const pid = Number(readFileSync(pidFile, "utf8"));
+    let pid = 0; // 파일이 생긴 직후엔 내용이 비어 있을 수 있다(Windows)
+    while (!pid && Date.now() - t0 < 20_000) { if (existsSync(pidFile)) pid = Number(readFileSync(pidFile, "utf8")) || 0; if (!pid) await sleep(50); }
+    assert(pid > 0, `가짜 빌드 프로세스 시작(pid ${pid} 기록)`);
     ac.abort(new Error("user cancelled"));
     const err = await call.then(() => null, (e) => e);
     assert(err && /abort|cancel/i.test(String(err?.name ?? "") + String(err?.message ?? "")), `클라이언트 호출은 취소 오류로 끝남 (${err?.name}: ${String(err?.message).slice(0, 60)})`);
     let alive = true;
-    for (let i = 0; i < 60 && alive; i++) { try { process.kill(pid, 0); await sleep(50); } catch { alive = false; } }
-    assert(!alive, `자식 프로세스(pid ${pid})가 취소 뒤 3초 안에 종료됨`);
+    for (let i = 0; i < 200 && alive; i++) { try { process.kill(pid, 0); await sleep(50); } catch { alive = false; } }
+    assert(!alive, `자식 프로세스(pid ${pid})가 취소 뒤 10초 안에 종료됨(Windows taskkill /T 포함)`);
     assert(events.length >= 1 && /compile/.test(events[0].message ?? ""), "취소 전 시작 단계 알림은 도착");
     await close();
   }
