@@ -92,6 +92,8 @@ assert([...files].some((f) => f.startsWith("catalog/config-templates/") && f.end
 assert(![...files].some((f) => /^(test|scripts|src|\.github|node_modules)\//.test(f) || f.endsWith(".map") || f === "server.json" || f.startsWith(".")), "tarball 제외: test·scripts·src·.github·소스맵·숨김 파일");
 // v0.46: 규칙 생성기의 입력(큐레이션 *-mapping.json)은 실행에 쓰지 않는다 — 생성 결과(*-rules.json·catalog)만 싣는다
 assert(![...files].some((f) => /^catalog\/[^/]*-mapping\.json$/.test(f)), "tarball 제외: 생성기 입력 catalog/*-mapping.json");
+// v1.2: 기획 기록(docs/planning.md, 160KB+)은 저장소 문서이지 패키지 문서가 아니다 — 영문 응답·_en 규칙 데이터로 압축 크기가 600KB 를 넘어 제외
+assert(!files.has("docs/planning.md") && files.has("docs/design-i18n.md"), "tarball 제외: docs/planning.md(설계 문서는 포함)");
 // v0.46: 풀린 크기 상한 2MB → 2.5MB. 0.46.0 이 2.09MB(README 0.29MB·카탈로그 0.6MB·dist)로 여유가 10KB 뿐이었다. 압축 상한(600KB)은 그대로 둔다
 assert(info && info.unpackedSize <= 2.5 * 1024 * 1024 && info.size <= 600 * 1024, `tarball 크기 상한 (압축 ${info?.size} ≤ 600KB, 풀면 ${info?.unpackedSize} ≤ 2.5MB)`);
 

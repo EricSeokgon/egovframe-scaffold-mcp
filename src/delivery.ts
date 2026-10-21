@@ -16,6 +16,8 @@ import { checkSecureCoding, renderSecureCodingMarkdown, toSarif, type SecureCodi
 import { generateDeploy, renderDeployMarkdown, type GenerateDeployResult } from "./deploy.js";
 import { runBuild, detectBuildToolAt, type BuildRunResult } from "./build-runner.js";
 import type { Runner } from "./build-runner.js";
+import { L } from "./lang.js";
+import { isAbortError, stepper, subProgress, throwIfAborted, type Progress } from "./progress.js";
 
 export const DELIVERY_MANIFEST = "delivery-manifest.json";
 export const DELIVERY_INDEX = "index.md";
@@ -26,7 +28,7 @@ export const DELIVERY_ITEMS: DeliveryItemId[] = ["assessment", "dependencies", "
 /** 기본 포함(빌드는 시간이 걸리고 환경 의존이라 지정할 때만) */
 export const DELIVERY_DEFAULT_INCLUDE: DeliveryItemId[] = ["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy"];
 export const DELIVERY_ITEM_LABEL: Record<DeliveryItemId, string> = {
-  assessment: "전환 준비도 평가서", dependencies: "의존성 조치 목록", sbom: "SBOM(CycloneDX·SPDX)", "sbom-check": "SBOM 점검·VEX 초안", "secure-coding": "보안약점 점검(SARIF)", deploy: "컨테이너·배포 산출물", build: "빌드 결과",
+  get assessment() { return L("전환 준비도 평가서", "Migration readiness assessment"); }, get dependencies() { return L("의존성 조치 목록", "Dependency action list"); }, get sbom() { return "SBOM(CycloneDX·SPDX)"; }, get "sbom-check"() { return L("SBOM 점검·VEX 초안", "SBOM check and VEX draft"); }, get "secure-coding"() { return L("보안약점 점검(SARIF)", "Secure coding check (SARIF)"); }, get deploy() { return L("컨테이너·배포 산출물", "Container and deployment artifacts"); }, get build() { return L("빌드 결과", "Build result"); },
 };
 
 export interface DeliveryFile { path: string; sha256: string; bytes: number }
@@ -74,6 +76,8 @@ export interface PrepareDeliveryOptions {
   osvQuery?: OsvQuery;
   runner?: Runner;
   now?: () => number;
+  /** v1.2: 진행 알림·취소(signal). 항목마다 보고하고, 취소되면 항목 실패로 기록하지 않고 아무것도 쓰지 않은 채 AbortError 를 던진다(dryRun 은 보고 없음) */
+  progress?: Progress;
 }
 export interface PrepareDeliveryResult {
   projectDir: string;
@@ -155,9 +159,9 @@ export function verifyDelivery(dir: string): VerifyDeliveryResult {
   const root = path.resolve(dir);
   const notes: string[] = [];
   const mf = path.join(root, DELIVERY_MANIFEST);
-  if (!fs.existsSync(mf)) return { dir: root, ok: false, manifest: null, verified: 0, mismatched: [], missing: [DELIVERY_MANIFEST], extra: [], rootHashMatches: null, notes: [`${DELIVERY_MANIFEST} 가 없습니다 — 납품 패키지 디렉터리가 아니거나 manifest 가 지워졌습니다.`] };
+  if (!fs.existsSync(mf)) return { dir: root, ok: false, manifest: null, verified: 0, mismatched: [], missing: [DELIVERY_MANIFEST], extra: [], rootHashMatches: null, notes: [L(`${DELIVERY_MANIFEST} 가 없습니다 — 납품 패키지 디렉터리가 아니거나 manifest 가 지워졌습니다.`, `${DELIVERY_MANIFEST} not found — this is not a delivery package directory, or the manifest was deleted.`)] };
   let m: DeliveryManifest;
-  try { m = JSON.parse(fs.readFileSync(mf, "utf8")); } catch (e) { return { dir: root, ok: false, manifest: null, verified: 0, mismatched: [], missing: [], extra: [], rootHashMatches: null, notes: [`${DELIVERY_MANIFEST} JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`] }; }
+  try { m = JSON.parse(fs.readFileSync(mf, "utf8")); } catch (e) { return { dir: root, ok: false, manifest: null, verified: 0, mismatched: [], missing: [], extra: [], rootHashMatches: null, notes: [L(`${DELIVERY_MANIFEST} JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`, `Failed to parse ${DELIVERY_MANIFEST} JSON: ${e instanceof Error ? e.message : String(e)}`)] }; }
   const mismatched: VerifyDeliveryResult["mismatched"] = [];
   const missing: string[] = [];
   let verified = 0;
@@ -175,8 +179,8 @@ export function verifyDelivery(dir: string): VerifyDeliveryResult {
   const extra = walkFiles(root).filter((p) => p !== DELIVERY_MANIFEST && !listed.has(p));
   const rootHashMatches = missing.length === 0 ? rootHashOf(actualFiles) === m.rootHash : null;
   const ok = mismatched.length === 0 && missing.length === 0 && rootHashMatches === true;
-  if (extra.length) notes.push(`manifest 에 없는 파일 ${extra.length}개 — 검증 대상은 아니지만 패키지에 섞여 있습니다: ${extra.slice(0, 5).join(", ")}${extra.length > 5 ? " …" : ""}`);
-  if (!ok) notes.push("지문이 맞지 않습니다 — 전송 중 손상되었거나 만든 뒤 바뀐 파일입니다. 만든 쪽의 rootHash 와 대조하세요.");
+  if (extra.length) notes.push(L(`manifest 에 없는 파일 ${extra.length}개 — 검증 대상은 아니지만 패키지에 섞여 있습니다: ${extra.slice(0, 5).join(", ")}${extra.length > 5 ? " …" : ""}`, `${extra.length} file(s) not in the manifest — not verified, but present in the package: ${extra.slice(0, 5).join(", ")}${extra.length > 5 ? " …" : ""}`));
+  if (!ok) notes.push(L("지문이 맞지 않습니다 — 전송 중 손상되었거나 만든 뒤 바뀐 파일입니다. 만든 쪽의 rootHash 와 대조하세요.", "Fingerprints do not match — files were corrupted in transit or changed after packaging. Compare against the sender's rootHash."));
   return { dir: root, ok, manifest: { createdAt: m.createdAt, tool: `${m.tool.name} ${m.tool.version}`, rootHash: m.rootHash, files: m.files.length, items: m.items.length }, verified, mismatched, missing, extra, rootHashMatches, notes };
 }
 
@@ -199,16 +203,16 @@ export function diffDeliveries(previousDir: string, prev: PreviousData, cur: Pre
   const skipped: string[] = [];
   let grades: DeliveryDiff["grades"] = null;
   if (prev.assessment && cur.assessment) grades = { migration: { from: prev.assessment.grades.migration.grade, to: cur.assessment.grades.migration.grade }, supplyChain: { from: prev.assessment.grades.supplyChain.grade, to: cur.assessment.grades.supplyChain.grade } };
-  else skipped.push(`평가서 등급: ${!prev.assessment ? "이전" : "현재"} 패키지에 assessment/assessment.json 없음`);
+  else skipped.push(L(`평가서 등급: ${!prev.assessment ? "이전" : "현재"} 패키지에 assessment/assessment.json 없음`, `Assessment grades: assessment/assessment.json missing in the ${!prev.assessment ? "previous" : "current"} package`));
   let sbom: SbomDiff | null = null;
   if (prev.sbom && cur.sbom) sbom = diffSboms(cur.sbom, prev.sbom, path.posix.join(path.basename(previousDir), "sbom/bom.cdx.json"), currentOsv);
-  else skipped.push(`SBOM: ${!prev.sbom ? "이전" : "현재"} 패키지에 sbom/bom.cdx.json 없음`);
+  else skipped.push(L(`SBOM: ${!prev.sbom ? "이전" : "현재"} 패키지에 sbom/bom.cdx.json 없음`, `SBOM: sbom/bom.cdx.json missing in the ${!prev.sbom ? "previous" : "current"} package`));
   let vulnerabilities: DeliveryDiff["vulnerabilities"] = null;
   if (prev.dependencies && cur.dependencies) { const a = vulnIds(prev.dependencies), b = vulnIds(cur.dependencies); vulnerabilities = { added: [...b].filter((x) => !a.has(x)).sort(), resolved: [...a].filter((x) => !b.has(x)).sort() }; }
-  else skipped.push(`의존성 취약점: ${!prev.dependencies ? "이전" : "현재"} 패키지에 dependencies/dependencies.json 없음`);
+  else skipped.push(L(`의존성 취약점: ${!prev.dependencies ? "이전" : "현재"} 패키지에 dependencies/dependencies.json 없음`, `Dependency vulnerabilities: dependencies/dependencies.json missing in the ${!prev.dependencies ? "previous" : "current"} package`));
   let secureCoding: DeliveryDiff["secureCoding"] = null;
   if (prev.secure && cur.secure) { const a = new Set(prev.secure.findings.map((f) => f.fingerprint)), b = new Set(cur.secure.findings.map((f) => f.fingerprint)); secureCoding = { added: [...b].filter((x) => !a.has(x)).length, resolved: [...a].filter((x) => !b.has(x)).length, from: prev.secure.summary.total, to: cur.secure.summary.total }; }
-  else skipped.push(`보안약점: ${!prev.secure ? "이전" : "현재"} 패키지에 secure-coding/secure-coding.json 없음`);
+  else skipped.push(L(`보안약점: ${!prev.secure ? "이전" : "현재"} 패키지에 secure-coding/secure-coding.json 없음`, `Secure coding: secure-coding/secure-coding.json missing in the ${!prev.secure ? "previous" : "current"} package`));
   const dependencies = prev.dependencies && cur.dependencies ? { from: prev.dependencies.summary as unknown as Record<string, number>, to: cur.dependencies.summary as unknown as Record<string, number> } : null;
   const changed = !!(
     (grades && (grades.migration.from !== grades.migration.to || grades.supplyChain.from !== grades.supplyChain.to)) ||
@@ -221,56 +225,57 @@ export function diffDeliveries(previousDir: string, prev: PreviousData, cur: Pre
 }
 
 export function renderDeliveryDiffMarkdown(d: DeliveryDiff): string {
-  const L: string[] = [`# 이전 차수와 비교`, ``, `- 이전 패키지: \`${d.previousDir}\`${d.previousCreatedAt ? ` (${d.previousCreatedAt})` : ""}`, `- 결과: **${d.changed ? "달라진 점 있음" : "달라진 점 없음"}**`, ``];
-  if (d.grades) L.push(`## 등급`, ``, `| 축 | 이전 | 현재 |`, `|---|---|---|`, `| 전환 난이도 | ${d.grades.migration.from} | ${d.grades.migration.to} |`, `| 공급망 상태 | ${d.grades.supplyChain.from} | ${d.grades.supplyChain.to} |`, ``);
+  const out: string[] = [L(`# 이전 차수와 비교`, `# Comparison with previous delivery`), ``, L(`- 이전 패키지: \`${d.previousDir}\`${d.previousCreatedAt ? ` (${d.previousCreatedAt})` : ""}`, `- Previous package: \`${d.previousDir}\`${d.previousCreatedAt ? ` (${d.previousCreatedAt})` : ""}`), L(`- 결과: **${d.changed ? "달라진 점 있음" : "달라진 점 없음"}**`, `- Result: **${d.changed ? "changes found" : "no changes"}**`), ``];
+  if (d.grades) out.push(L(`## 등급`, `## Grades`), ``, L(`| 축 | 이전 | 현재 |`, `| Axis | Previous | Current |`), `|---|---|---|`, L(`| 전환 난이도 | ${d.grades.migration.from} | ${d.grades.migration.to} |`, `| Migration difficulty | ${d.grades.migration.from} | ${d.grades.migration.to} |`), L(`| 공급망 상태 | ${d.grades.supplyChain.from} | ${d.grades.supplyChain.to} |`, `| Supply chain status | ${d.grades.supplyChain.from} | ${d.grades.supplyChain.to} |`), ``);
   if (d.sbom) {
-    L.push(`## SBOM`, ``, `- 추가 ${d.sbom.added.length} · 제거 ${d.sbom.removed.length} · 버전 변경 ${d.sbom.versionChanged.length} · 그대로 ${d.sbom.unchanged}`, `- 새 취약점 ${d.sbom.newVulnerabilities.length} · 해소된 취약점 ${d.sbom.resolvedVulnerabilities.length}`, ``);
-    for (const a of d.sbom.added.slice(0, 20)) L.push(`- 추가: ${a.component}${a.version ? `@${a.version}` : ""}`);
-    for (const r of d.sbom.removed.slice(0, 20)) L.push(`- 제거: ${r.component}${r.version ? `@${r.version}` : ""}`);
-    for (const v of d.sbom.versionChanged.slice(0, 20)) L.push(`- 버전: ${v.component} ${v.from} → ${v.to}`);
-    for (const v of d.sbom.newVulnerabilities.slice(0, 20)) L.push(`- 새 취약점: ${v.id} (${v.components.join(", ")})`);
-    if (d.sbom.added.length + d.sbom.removed.length + d.sbom.versionChanged.length + d.sbom.newVulnerabilities.length) L.push(``);
+    out.push(`## SBOM`, ``, L(`- 추가 ${d.sbom.added.length} · 제거 ${d.sbom.removed.length} · 버전 변경 ${d.sbom.versionChanged.length} · 그대로 ${d.sbom.unchanged}`, `- added ${d.sbom.added.length} · removed ${d.sbom.removed.length} · version changed ${d.sbom.versionChanged.length} · unchanged ${d.sbom.unchanged}`), L(`- 새 취약점 ${d.sbom.newVulnerabilities.length} · 해소된 취약점 ${d.sbom.resolvedVulnerabilities.length}`, `- new vulnerabilities ${d.sbom.newVulnerabilities.length} · resolved vulnerabilities ${d.sbom.resolvedVulnerabilities.length}`), ``);
+    for (const a of d.sbom.added.slice(0, 20)) out.push(L(`- 추가: ${a.component}${a.version ? `@${a.version}` : ""}`, `- added: ${a.component}${a.version ? `@${a.version}` : ""}`));
+    for (const r of d.sbom.removed.slice(0, 20)) out.push(L(`- 제거: ${r.component}${r.version ? `@${r.version}` : ""}`, `- removed: ${r.component}${r.version ? `@${r.version}` : ""}`));
+    for (const v of d.sbom.versionChanged.slice(0, 20)) out.push(L(`- 버전: ${v.component} ${v.from} → ${v.to}`, `- version: ${v.component} ${v.from} → ${v.to}`));
+    for (const v of d.sbom.newVulnerabilities.slice(0, 20)) out.push(L(`- 새 취약점: ${v.id} (${v.components.join(", ")})`, `- new vulnerability: ${v.id} (${v.components.join(", ")})`));
+    if (d.sbom.added.length + d.sbom.removed.length + d.sbom.versionChanged.length + d.sbom.newVulnerabilities.length) out.push(``);
   }
-  if (d.vulnerabilities) L.push(`## 의존성 취약점(OSV)`, ``, `- 새로 생김 ${d.vulnerabilities.added.length}${d.vulnerabilities.added.length ? `: ${d.vulnerabilities.added.slice(0, 10).join(", ")}` : ""}`, `- 해소 ${d.vulnerabilities.resolved.length}${d.vulnerabilities.resolved.length ? `: ${d.vulnerabilities.resolved.slice(0, 10).join(", ")}` : ""}`, ``);
-  if (d.secureCoding) L.push(`## 보안약점`, ``, `- 총 ${d.secureCoding.from} → ${d.secureCoding.to} · 새 항목 ${d.secureCoding.added} · 해소 ${d.secureCoding.resolved}`, ``);
+  if (d.vulnerabilities) out.push(L(`## 의존성 취약점(OSV)`, `## Dependency vulnerabilities (OSV)`), ``, L(`- 새로 생김 ${d.vulnerabilities.added.length}${d.vulnerabilities.added.length ? `: ${d.vulnerabilities.added.slice(0, 10).join(", ")}` : ""}`, `- newly found ${d.vulnerabilities.added.length}${d.vulnerabilities.added.length ? `: ${d.vulnerabilities.added.slice(0, 10).join(", ")}` : ""}`), L(`- 해소 ${d.vulnerabilities.resolved.length}${d.vulnerabilities.resolved.length ? `: ${d.vulnerabilities.resolved.slice(0, 10).join(", ")}` : ""}`, `- resolved ${d.vulnerabilities.resolved.length}${d.vulnerabilities.resolved.length ? `: ${d.vulnerabilities.resolved.slice(0, 10).join(", ")}` : ""}`), ``);
+  if (d.secureCoding) out.push(L(`## 보안약점`, `## Secure coding findings`), ``, L(`- 총 ${d.secureCoding.from} → ${d.secureCoding.to} · 새 항목 ${d.secureCoding.added} · 해소 ${d.secureCoding.resolved}`, `- total ${d.secureCoding.from} → ${d.secureCoding.to} · new ${d.secureCoding.added} · resolved ${d.secureCoding.resolved}`), ``);
   if (d.dependencies?.from && d.dependencies.to) {
-    L.push(`## 의존성 판정`, ``, `| 판정 | 이전 | 현재 |`, `|---|---|---|`);
-    for (const k of Object.keys(d.dependencies.to)) L.push(`| ${k} | ${d.dependencies.from[k] ?? 0} | ${d.dependencies.to[k]} |`);
-    L.push(``);
+    out.push(L(`## 의존성 판정`, `## Dependency verdicts`), ``, L(`| 판정 | 이전 | 현재 |`, `| Verdict | Previous | Current |`), `|---|---|---|`);
+    for (const k of Object.keys(d.dependencies.to)) out.push(`| ${k} | ${d.dependencies.from[k] ?? 0} | ${d.dependencies.to[k]} |`);
+    out.push(``);
   }
-  if (d.skipped.length) L.push(`## 비교하지 못한 항목`, ``, ...d.skipped.map((s) => `- ${s}`), ``);
-  return L.join("\n");
+  if (d.skipped.length) out.push(L(`## 비교하지 못한 항목`, `## Items not compared`), ``, ...d.skipped.map((s) => `- ${s}`), ``);
+  return out.join("\n");
 }
 
 // ── 패키지 만들기 ──────────────────────────────────────
 type Staged = { rel: string; content: string | Buffer }[];
 
 export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<PrepareDeliveryResult> {
+  throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
-  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(L(`프로젝트 디렉터리가 없습니다: ${projectDir}`, `Project directory not found: ${projectDir}`));
   const outputDir = path.resolve(opts.outputDir);
   const include = (opts.include?.length ? opts.include : DELIVERY_DEFAULT_INCLUDE).filter((x, i, a) => a.indexOf(x) === i);
-  for (const id of include) if (!DELIVERY_ITEMS.includes(id)) throw new Error(`알 수 없는 항목: ${id} (지원: ${DELIVERY_ITEMS.join(", ")})`);
-  if (include.includes("sbom-check") && !include.includes("sbom")) throw new Error("sbom-check 는 sbom 항목이 있어야 합니다(이 패키지의 SBOM 을 점검).");
+  for (const id of include) if (!DELIVERY_ITEMS.includes(id)) throw new Error(L(`알 수 없는 항목: ${id} (지원: ${DELIVERY_ITEMS.join(", ")})`, `Unknown item: ${id} (supported: ${DELIVERY_ITEMS.join(", ")})`));
+  if (include.includes("sbom-check") && !include.includes("sbom")) throw new Error(L("sbom-check 는 sbom 항목이 있어야 합니다(이 패키지의 SBOM 을 점검).", "sbom-check requires the sbom item (it checks this package's SBOM)."));
   const dryRun = opts.dryRun !== false;
   const offline = opts.offline !== false;
   const now = opts.now ?? Date.now;
   const notes: string[] = [];
   const rel = path.relative(projectDir, outputDir);
-  if (!rel.startsWith("..") && !path.isAbsolute(rel)) throw new Error(`outputDir 는 프로젝트 밖이어야 합니다(프로젝트는 읽기만 함): ${outputDir}`);
-  if (fs.existsSync(outputDir) && fs.readdirSync(outputDir).length) throw new Error(`outputDir 가 비어 있지 않습니다: ${outputDir} — 차수마다 새 디렉터리를 지정하세요(이전 차수는 previousDelivery 로 비교)`);
+  if (!rel.startsWith("..") && !path.isAbsolute(rel)) throw new Error(L(`outputDir 는 프로젝트 밖이어야 합니다(프로젝트는 읽기만 함): ${outputDir}`, `outputDir must be outside the project (the project is read-only): ${outputDir}`));
+  if (fs.existsSync(outputDir) && fs.readdirSync(outputDir).length) throw new Error(L(`outputDir 가 비어 있지 않습니다: ${outputDir} — 차수마다 새 디렉터리를 지정하세요(이전 차수는 previousDelivery 로 비교)`, `outputDir is not empty: ${outputDir} — use a new directory for each delivery (compare with the previous one via previousDelivery)`));
   let previousDir: string | undefined;
   if (opts.previousDelivery) {
     previousDir = path.resolve(opts.previousDelivery);
-    if (!fs.existsSync(path.join(previousDir, DELIVERY_MANIFEST))) throw new Error(`previousDelivery 에 ${DELIVERY_MANIFEST} 가 없습니다: ${previousDir}`);
+    if (!fs.existsSync(path.join(previousDir, DELIVERY_MANIFEST))) throw new Error(L(`previousDelivery 에 ${DELIVERY_MANIFEST} 가 없습니다: ${previousDir}`, `${DELIVERY_MANIFEST} not found in previousDelivery: ${previousDir}`));
   }
   const fp = projectFingerprint(projectDir);
   const buildTool = detectBuildToolAt(projectDir);
   const items: DeliveryItem[] = include.map((id) => ({ id, label: DELIVERY_ITEM_LABEL[id], status: "skipped", durationMs: 0, files: [], summary: {} }));
   const result: PrepareDeliveryResult = { projectDir, outputDir, dryRun, written: false, include, items, files: 0, bytes: 0, rootHash: null, notes };
   if (dryRun) {
-    notes.push(`dryRun — 만들지 않았습니다. dryRun=false 로 ${include.length}개 항목(${include.map((i) => DELIVERY_ITEM_LABEL[i]).join("·")})을 ${outputDir} 에 씁니다${previousDir ? `. 이전 차수 ${previousDir} 와 비교합니다` : ""}.`);
-    if (offline) notes.push("offline — OSV 취약점은 조회하지 않습니다(offline=false 또는 오프라인 번들).");
+    notes.push(L(`dryRun — 만들지 않았습니다. dryRun=false 로 ${include.length}개 항목(${include.map((i) => DELIVERY_ITEM_LABEL[i]).join("·")})을 ${outputDir} 에 씁니다${previousDir ? `. 이전 차수 ${previousDir} 와 비교합니다` : ""}.`, `dryRun — nothing was created. With dryRun=false, ${include.length} item(s) (${include.map((i) => DELIVERY_ITEM_LABEL[i]).join("·")}) will be written to ${outputDir}${previousDir ? ` and compared with the previous delivery ${previousDir}` : ""}.`));
+    if (offline) notes.push(L("offline — OSV 취약점은 조회하지 않습니다(offline=false 또는 오프라인 번들).", "offline — OSV vulnerabilities will not be queried (use offline=false or an offline bundle)."));
     return result;
   }
 
@@ -280,10 +285,19 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   const ctx: { sbom?: GenerateSbomResult; assessment?: AssessmentResult; secure?: SecureCodingResult; dependencies?: CheckDependenciesResult; deploy?: GenerateDeployResult; build?: BuildRunResult; checkOsv?: Parameters<typeof diffSboms>[3] } = {};
   const prevData = previousDir ? readDeliveryData(previousDir) : null;
 
+  // v1.2: 진행 단계 — 실행 순서대로의 항목 + 패키지 기록. 취소는 항목 경계에서 확인하고 AbortError 를 그대로 전달한다(아무것도 쓰지 않음)
+  const RUN_ORDER: DeliveryItemId[] = ["sbom", "sbom-check", "dependencies", "secure-coding", "assessment", "deploy", "build"];
+  const planned = RUN_ORDER.filter((id) => include.includes(id));
+  const steps = [...planned, "write package"];
+  const prog = stepper(opts.progress, steps);
+  const subFor = (id: DeliveryItemId) => { const i = planned.indexOf(id); return opts.progress ? subProgress(opts.progress, i, i + 1, steps.length, id) : undefined; };
+
   const run = async (id: DeliveryItemId, fn: (item: DeliveryItem) => Promise<void>) => {
     const item = items.find((x) => x.id === id)!;
     const t0 = now();
+    prog.step(planned.indexOf(id));
     try { await fn(item); item.status = "ok"; } catch (e) {
+      if (isAbortError(e)) throw e;
       // 실패한 항목의 파일은 패키지에 넣지 않는다(목차에 이유만 남김)
       item.status = "failed"; item.error = e instanceof Error ? e.message : String(e);
       const drop = new Set(item.files); item.files = [];
@@ -293,8 +307,9 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   };
 
   if (include.includes("sbom")) await run("sbom", async (item) => {
-    const r = await generateSbom({ projectDir, dryRun: false, noWrite: true, offline, osvQuery: opts.osvQuery, supplier: opts.supplier, author: opts.author, runner: opts.runner, now });
-    if (!r.bom) throw new Error("SBOM 문서를 만들지 못했습니다");
+    const sub = subFor("sbom");
+    const r = await generateSbom({ projectDir, dryRun: false, noWrite: true, offline, osvQuery: opts.osvQuery, supplier: opts.supplier, author: opts.author, runner: opts.runner, now, ...(sub ? { progress: sub } : {}) });
+    if (!r.bom) throw new Error(L("SBOM 문서를 만들지 못했습니다", "Failed to generate the SBOM document"));
     ctx.sbom = r;
     item.files.push(put("sbom/bom.cdx.json", json(r.bom)));
     const sp = cdxToSpdx(r.bom, { now });
@@ -304,7 +319,7 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   });
   if (include.includes("sbom-check")) await run("sbom-check", async (item) => {
     const bom = ctx.sbom?.bom;
-    if (!bom) throw new Error("SBOM 항목이 실패해 점검할 문서가 없습니다");
+    if (!bom) throw new Error(L("SBOM 항목이 실패해 점검할 문서가 없습니다", "The sbom item failed, so there is no document to check"));
     const minimum = checkMinimumElements(bom);
     const parentKind = buildTool === "maven" ? parentKindOf(projectDir, "maven") : "none";
     const recheck = await recheckSbom(bom, { parentKind, offline, osvQuery: opts.osvQuery });
@@ -324,13 +339,14 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
       document: { format: "cyclonedx", specVersion: bom.specVersion ?? CYCLONEDX_SPEC_VERSION, serialNumber: bom.serialNumber ?? null, version: bom.version ?? 1, timestamp: bom.metadata?.timestamp ?? null, components: (bom.components ?? []).length, tools: [], vulnerabilities: (bom.vulnerabilities ?? []).length },
       minimum, recheck, ...(diff ? { diff } : {}),
       vex: { path: "sbom/vex.cdx.json", dryRun: false, written: true, created: vex.created, added: vex.added, extended: vex.extended, preserved: vex.preserved, notDetected: vex.notDetected, states: vex.states, usedBomLink: vex.usedBomLink, vulnerabilities: vex.doc.vulnerabilities.length },
-      notes: offline ? ["offline — OSV 재조회 안 함"] : [],
+      notes: offline ? [L("offline — OSV 재조회 안 함", "offline — OSV not re-queried")] : [],
     };
     item.files.push(put("sbom-check/sbom-check.md", `${renderSbomCheckMarkdown(cr)}\n`), put("sbom-check/sbom-check.json", json(cr)));
     item.summary = { verdict: minimum.verdict, gaps: minimum.componentsWithGaps, newVulnerabilities: recheck.osv.newIds.length, vex: { added: vex.added, preserved: vex.preserved, vulnerabilities: vex.doc.vulnerabilities.length }, ...(diff ? { sbomDiff: { added: diff.added.length, removed: diff.removed.length, versionChanged: diff.versionChanged.length, newVulnerabilities: diff.newVulnerabilities.length } } : {}) };
   });
   if (include.includes("dependencies")) await run("dependencies", async (item) => {
-    const r = await checkDependencies({ projectDir, offline, osvQuery: opts.osvQuery });
+    const sub = subFor("dependencies");
+    const r = await checkDependencies({ projectDir, offline, osvQuery: opts.osvQuery, ...(sub ? { progress: sub } : {}) });
     ctx.dependencies = r;
     item.files.push(put("dependencies/dependencies.md", `${renderDependencyMarkdown(r)}\n`), put("dependencies/dependencies.json", json(r)));
     item.summary = { findings: r.findings.length, ...r.summary, vulnerabilities: (r.vulnerabilities ?? []).length };
@@ -351,18 +367,19 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   if (include.includes("deploy")) await run("deploy", async (item) => {
     const r = await generateDeploy({ projectDir, dryRun: true });
     ctx.deploy = r;
-    if (!r.supported) throw new Error(`배포 산출물 대상 아님: ${r.unsupported?.reason ?? "분석 실패"}`);
+    if (!r.supported) throw new Error(L(`배포 산출물 대상 아님: ${r.unsupported?.reason ?? "분석 실패"}`, `Not eligible for deployment artifacts: ${r.unsupported?.reason ?? "analysis failed"}`));
     for (const f of r.files) if (f.content !== undefined) item.files.push(put(`deploy/${f.path}`, f.content));
     item.files.push(put("deploy/deploy.md", `${renderDeployMarkdown(r)}\n`));
     item.summary = { files: r.files.length, runtime: r.profile?.runtime ?? r.workspace?.kind ?? null, ...(r.workspace ? { services: r.workspace.services.length } : {}) };
   });
   if (include.includes("build")) await run("build", async (item) => {
-    const r = await runBuild({ projectDir, goal: "package", timeoutMs: opts.timeoutMs ?? 900_000, runner: opts.runner, now });
+    const sub = subFor("build");
+    const r = await runBuild({ projectDir, goal: "package", timeoutMs: opts.timeoutMs ?? 900_000, runner: opts.runner, now, ...(sub ? { progress: sub } : {}) });
     ctx.build = r;
     const { logTail, ...rest } = r;
     item.files.push(put("build/build.json", json(rest)), put("build/build.log", `${logTail ?? ""}\n`));
     item.summary = { success: r.success ?? null, errors: (r.errors ?? []).length, command: r.command };
-    if (r.success === false) throw new Error(`빌드 실패(종료 코드 ${r.exitCode ?? "?"}${r.timedOut ? ", 타임아웃" : ""}) — 오류 ${(r.errors ?? []).length}건`);
+    if (r.success === false) throw new Error(L(`빌드 실패(종료 코드 ${r.exitCode ?? "?"}${r.timedOut ? ", 타임아웃" : ""}) — 오류 ${(r.errors ?? []).length}건`, `Build failed (exit code ${r.exitCode ?? "?"}${r.timedOut ? ", timed out" : ""}) — ${(r.errors ?? []).length} error(s)`));
   });
 
   // 이전 차수 비교
@@ -374,9 +391,10 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   }
 
   // 파일 목록·지문·목차·manifest
+  prog.step(planned.length);
   const createdAt = new Date(now()).toISOString();
   const files: DeliveryFile[] = staged.map((s) => { const buf = Buffer.isBuffer(s.content) ? s.content : Buffer.from(s.content, "utf8"); return { path: s.rel, sha256: sha256(buf), bytes: buf.length }; });
-  const indexWithout = renderDeliveryIndex({ createdAt, projectName: path.basename(projectDir), items, files, rootHash: "(아래)", previous: previousDir, diff });
+  const indexWithout = renderDeliveryIndex({ createdAt, projectName: path.basename(projectDir), items, files, rootHash: L("(아래)", "(below)"), previous: previousDir, diff });
   const indexBuf = Buffer.from(`${indexWithout}\n`, "utf8");
   files.push({ path: DELIVERY_INDEX, sha256: sha256(indexBuf), bytes: indexBuf.length });
   const rootHash = rootHashOf(files);
@@ -407,46 +425,47 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
     const zip = new AdmZip();
     zip.addLocalFolder(outputDir, path.basename(outputDir));
     const zp = `${outputDir}.zip`;
-    if (fs.existsSync(zp)) throw new Error(`zip 이 이미 있습니다: ${zp}`);
+    if (fs.existsSync(zp)) throw new Error(L(`zip 이 이미 있습니다: ${zp}`, `zip already exists: ${zp}`));
     zip.writeZip(zp);
     result.zipPath = zp;
   }
   const failed = items.filter((i) => i.status === "failed");
-  if (failed.length) notes.push(`${failed.length}개 항목 실패 — 목차(index.md)에 이유를 남겼습니다: ${failed.map((f) => `${f.id}(${f.error})`).join("; ")}`);
-  if (offline) notes.push("offline — OSV 취약점은 조회하지 않았습니다(offline=false 또는 오프라인 번들로 포함).");
-  notes.push(`rootHash ${rootHash} — 받은 쪽은 prepare_egovframe_delivery(verify=true, outputDir) 또는 CLI deliver --verify 로 같은 값이 나오는지 확인합니다.`);
+  if (failed.length) notes.push(L(`${failed.length}개 항목 실패 — 목차(index.md)에 이유를 남겼습니다: ${failed.map((f) => `${f.id}(${f.error})`).join("; ")}`, `${failed.length} item(s) failed — reasons are recorded in the index (index.md): ${failed.map((f) => `${f.id}(${f.error})`).join("; ")}`));
+  if (offline) notes.push(L("offline — OSV 취약점은 조회하지 않았습니다(offline=false 또는 오프라인 번들로 포함).", "offline — OSV vulnerabilities were not queried (use offline=false or include them via an offline bundle)."));
+  notes.push(L(`rootHash ${rootHash} — 받은 쪽은 prepare_egovframe_delivery(verify=true, outputDir) 또는 CLI deliver --verify 로 같은 값이 나오는지 확인합니다.`, `rootHash ${rootHash} — the recipient verifies that the same value is produced with prepare_egovframe_delivery(verify=true, outputDir) or CLI deliver --verify.`));
+  prog.finish("delivery: done");
   return result;
 }
 
 function renderDeliveryIndex(o: { createdAt: string; projectName: string; items: DeliveryItem[]; files: DeliveryFile[]; rootHash: string; previous?: string; diff?: DeliveryDiff }): string {
-  const L: string[] = [`# 납품 패키지 — ${o.projectName}`, ``, `- 만든 시각: ${o.createdAt}`, `- 도구: egovframe-scaffold-mcp ${SERVER_VERSION}`, `- 파일 ${o.files.length}개 · 전체 지문(rootHash)은 \`${DELIVERY_MANIFEST}\` 의 \`rootHash\``, ...(o.previous ? [`- 이전 차수: \`${o.previous}\` → [diff.md](diff.md)${o.diff ? ` (${o.diff.changed ? "달라진 점 있음" : "달라진 점 없음"})` : ""}`] : []), ``, `## 항목`, ``, `| 항목 | 상태 | 파일 | 요약 |`, `|---|---|---|---|`];
+  const out: string[] = [L(`# 납품 패키지 — ${o.projectName}`, `# Delivery package — ${o.projectName}`), ``, L(`- 만든 시각: ${o.createdAt}`, `- Created: ${o.createdAt}`), L(`- 도구: egovframe-scaffold-mcp ${SERVER_VERSION}`, `- Tool: egovframe-scaffold-mcp ${SERVER_VERSION}`), L(`- 파일 ${o.files.length}개 · 전체 지문(rootHash)은 \`${DELIVERY_MANIFEST}\` 의 \`rootHash\``, `- ${o.files.length} file(s) · the package fingerprint (rootHash) is \`rootHash\` in \`${DELIVERY_MANIFEST}\``), ...(o.previous ? [L(`- 이전 차수: \`${o.previous}\` → [diff.md](diff.md)${o.diff ? ` (${o.diff.changed ? "달라진 점 있음" : "달라진 점 없음"})` : ""}`, `- Previous delivery: \`${o.previous}\` → [diff.md](diff.md)${o.diff ? ` (${o.diff.changed ? "changes found" : "no changes"})` : ""}`)] : []), ``, L(`## 항목`, `## Items`), ``, L(`| 항목 | 상태 | 파일 | 요약 |`, `| Item | Status | Files | Summary |`), `|---|---|---|---|`];
   for (const it of o.items) {
-    const status = it.status === "ok" ? "✅ 생성" : it.status === "failed" ? `❌ 실패 — ${it.error}` : "— 건너뜀";
+    const status = it.status === "ok" ? L("✅ 생성", "✅ generated") : it.status === "failed" ? L(`❌ 실패 — ${it.error}`, `❌ failed — ${it.error}`) : L("— 건너뜀", "— skipped");
     const sum = Object.entries(it.summary).filter(([, v]) => v !== null && typeof v !== "object").map(([k, v]) => `${k} ${v}`).join(" · ");
-    L.push(`| ${it.label} (\`${it.id}\`) | ${status} | ${it.files.map((f) => `[${path.posix.basename(f)}](${f})`).join(" · ") || "—"} | ${sum || "—"} |`);
+    out.push(`| ${it.label} (\`${it.id}\`) | ${status} | ${it.files.map((f) => `[${path.posix.basename(f)}](${f})`).join(" · ") || "—"} | ${sum || "—"} |`);
   }
-  L.push(``, `## 검증`, ``, `받은 쪽에서 \`npx -y egovframe-scaffold-mcp deliver --verify --output-dir <이 디렉터리>\` 를 실행하면 \`${DELIVERY_MANIFEST}\` 의 sha256 과 rootHash 를 다시 계산해 변조·누락을 확인합니다.`, ``, `## 파일`, ``, `| 경로 | 크기 | sha256 |`, `|---|---|---|`);
-  for (const f of [...o.files].sort((a, b) => a.path.localeCompare(b.path))) L.push(`| ${f.path} | ${f.bytes} | \`${f.sha256.slice(0, 16)}…\` |`);
-  return L.join("\n");
+  out.push(``, L(`## 검증`, `## Verification`), ``, L(`받은 쪽에서 \`npx -y egovframe-scaffold-mcp deliver --verify --output-dir <이 디렉터리>\` 를 실행하면 \`${DELIVERY_MANIFEST}\` 의 sha256 과 rootHash 를 다시 계산해 변조·누락을 확인합니다.`, `The recipient runs \`npx -y egovframe-scaffold-mcp deliver --verify --output-dir <this directory>\` to recompute the sha256 values and rootHash in \`${DELIVERY_MANIFEST}\` and detect tampering or missing files.`), ``, L(`## 파일`, `## Files`), ``, L(`| 경로 | 크기 | sha256 |`, `| Path | Size | sha256 |`), `|---|---|---|`);
+  for (const f of [...o.files].sort((a, b) => a.path.localeCompare(b.path))) out.push(`| ${f.path} | ${f.bytes} | \`${f.sha256.slice(0, 16)}…\` |`);
+  return out.join("\n");
 }
 
 export function renderDeliveryMarkdown(r: PrepareDeliveryResult): string {
-  const L: string[] = [`# 납품 패키지${r.dryRun ? " (dryRun — 계획)" : ""}`, ``, `- 프로젝트: \`${r.projectDir}\``, `- 출력: \`${r.outputDir}\`${r.zipPath ? ` + \`${r.zipPath}\`` : ""}`, `- 항목 ${r.include.length}개 · ${r.written ? `파일 ${r.files}개 · ${(r.bytes / 1024).toFixed(0)}KB · rootHash \`${r.rootHash}\`` : "아직 만들지 않음"}`, ``, `| 항목 | 상태 | 소요 | 요약 |`, `|---|---|---|---|`];
+  const out: string[] = [L(`# 납품 패키지${r.dryRun ? " (dryRun — 계획)" : ""}`, `# Delivery package${r.dryRun ? " (dryRun — plan)" : ""}`), ``, L(`- 프로젝트: \`${r.projectDir}\``, `- Project: \`${r.projectDir}\``), L(`- 출력: \`${r.outputDir}\`${r.zipPath ? ` + \`${r.zipPath}\`` : ""}`, `- Output: \`${r.outputDir}\`${r.zipPath ? ` + \`${r.zipPath}\`` : ""}`), L(`- 항목 ${r.include.length}개 · ${r.written ? `파일 ${r.files}개 · ${(r.bytes / 1024).toFixed(0)}KB · rootHash \`${r.rootHash}\`` : "아직 만들지 않음"}`, `- ${r.include.length} item(s) · ${r.written ? `${r.files} file(s) · ${(r.bytes / 1024).toFixed(0)}KB · rootHash \`${r.rootHash}\`` : "not created yet"}`), ``, L(`| 항목 | 상태 | 소요 | 요약 |`, `| Item | Status | Time | Summary |`), `|---|---|---|---|`];
   for (const it of r.items) {
     const sum = Object.entries(it.summary).filter(([, v]) => v !== null && typeof v !== "object").map(([k, v]) => `${k} ${v}`).join(" · ");
-    L.push(`| ${it.label} | ${it.status === "ok" ? "생성" : it.status === "failed" ? `실패 — ${it.error}` : r.dryRun ? "예정" : "건너뜀"} | ${it.durationMs ? `${(it.durationMs / 1000).toFixed(1)}초` : "—"} | ${sum || "—"} |`);
+    out.push(`| ${it.label} | ${it.status === "ok" ? L("생성", "generated") : it.status === "failed" ? L(`실패 — ${it.error}`, `failed — ${it.error}`) : r.dryRun ? L("예정", "planned") : L("건너뜀", "skipped")} | ${it.durationMs ? L(`${(it.durationMs / 1000).toFixed(1)}초`, `${(it.durationMs / 1000).toFixed(1)}s`) : "—"} | ${sum || "—"} |`);
   }
-  if (r.diff) L.push(``, `## 이전 차수와 비교`, ``, `- ${r.diff.changed ? "달라진 점 있음" : "달라진 점 없음"} — 자세한 내용은 패키지의 diff.md`, ...(r.diff.grades ? [`- 등급: 전환 ${r.diff.grades.migration.from} → ${r.diff.grades.migration.to}, 공급망 ${r.diff.grades.supplyChain.from} → ${r.diff.grades.supplyChain.to}`] : []), ...(r.diff.sbom ? [`- SBOM: 추가 ${r.diff.sbom.added.length} · 제거 ${r.diff.sbom.removed.length} · 버전 변경 ${r.diff.sbom.versionChanged.length} · 새 취약점 ${r.diff.sbom.newVulnerabilities.length}`] : []), ...(r.diff.secureCoding ? [`- 보안약점: ${r.diff.secureCoding.from} → ${r.diff.secureCoding.to} (새 ${r.diff.secureCoding.added} · 해소 ${r.diff.secureCoding.resolved})`] : []));
-  if (r.notes.length) L.push(``, `## 참고`, ``, ...r.notes.map((n) => `- ${n}`));
-  return L.join("\n");
+  if (r.diff) out.push(``, L(`## 이전 차수와 비교`, `## Comparison with previous delivery`), ``, L(`- ${r.diff.changed ? "달라진 점 있음" : "달라진 점 없음"} — 자세한 내용은 패키지의 diff.md`, `- ${r.diff.changed ? "changes found" : "no changes"} — see diff.md in the package for details`), ...(r.diff.grades ? [L(`- 등급: 전환 ${r.diff.grades.migration.from} → ${r.diff.grades.migration.to}, 공급망 ${r.diff.grades.supplyChain.from} → ${r.diff.grades.supplyChain.to}`, `- Grades: migration ${r.diff.grades.migration.from} → ${r.diff.grades.migration.to}, supply chain ${r.diff.grades.supplyChain.from} → ${r.diff.grades.supplyChain.to}`)] : []), ...(r.diff.sbom ? [L(`- SBOM: 추가 ${r.diff.sbom.added.length} · 제거 ${r.diff.sbom.removed.length} · 버전 변경 ${r.diff.sbom.versionChanged.length} · 새 취약점 ${r.diff.sbom.newVulnerabilities.length}`, `- SBOM: added ${r.diff.sbom.added.length} · removed ${r.diff.sbom.removed.length} · version changed ${r.diff.sbom.versionChanged.length} · new vulnerabilities ${r.diff.sbom.newVulnerabilities.length}`)] : []), ...(r.diff.secureCoding ? [L(`- 보안약점: ${r.diff.secureCoding.from} → ${r.diff.secureCoding.to} (새 ${r.diff.secureCoding.added} · 해소 ${r.diff.secureCoding.resolved})`, `- Secure coding findings: ${r.diff.secureCoding.from} → ${r.diff.secureCoding.to} (new ${r.diff.secureCoding.added} · resolved ${r.diff.secureCoding.resolved})`)] : []));
+  if (r.notes.length) out.push(``, L(`## 참고`, `## Notes`), ``, ...r.notes.map((n) => `- ${n}`));
+  return out.join("\n");
 }
 
 export function renderVerifyMarkdown(v: VerifyDeliveryResult): string {
-  const L: string[] = [`# 납품 패키지 검증 — ${v.ok ? "✅ 일치" : "❌ 불일치"}`, ``, `- 디렉터리: \`${v.dir}\``];
-  if (v.manifest) L.push(`- manifest: ${v.manifest.createdAt} · ${v.manifest.tool} · 항목 ${v.manifest.items} · 파일 ${v.manifest.files}`, `- rootHash: \`${v.manifest.rootHash}\` — ${v.rootHashMatches === null ? "계산 불가(누락 있음)" : v.rootHashMatches ? "일치" : "불일치"}`);
-  L.push(`- 지문 일치 ${v.verified} · 불일치 ${v.mismatched.length} · 누락 ${v.missing.length} · manifest 밖 파일 ${v.extra.length}`);
-  for (const m of v.mismatched) L.push(`  - 불일치: ${m.path} (기대 ${m.expected.slice(0, 12)}… / 실제 ${m.actual.slice(0, 12)}…)`);
-  for (const m of v.missing) L.push(`  - 누락: ${m}`);
-  if (v.notes.length) L.push(``, ...v.notes.map((n) => `- ${n}`));
-  return L.join("\n");
+  const out: string[] = [L(`# 납품 패키지 검증 — ${v.ok ? "✅ 일치" : "❌ 불일치"}`, `# Delivery package verification — ${v.ok ? "✅ match" : "❌ mismatch"}`), ``, L(`- 디렉터리: \`${v.dir}\``, `- Directory: \`${v.dir}\``)];
+  if (v.manifest) out.push(L(`- manifest: ${v.manifest.createdAt} · ${v.manifest.tool} · 항목 ${v.manifest.items} · 파일 ${v.manifest.files}`, `- manifest: ${v.manifest.createdAt} · ${v.manifest.tool} · items ${v.manifest.items} · files ${v.manifest.files}`), L(`- rootHash: \`${v.manifest.rootHash}\` — ${v.rootHashMatches === null ? "계산 불가(누락 있음)" : v.rootHashMatches ? "일치" : "불일치"}`, `- rootHash: \`${v.manifest.rootHash}\` — ${v.rootHashMatches === null ? "cannot compute (files missing)" : v.rootHashMatches ? "match" : "mismatch"}`));
+  out.push(L(`- 지문 일치 ${v.verified} · 불일치 ${v.mismatched.length} · 누락 ${v.missing.length} · manifest 밖 파일 ${v.extra.length}`, `- fingerprints: match ${v.verified} · mismatch ${v.mismatched.length} · missing ${v.missing.length} · files outside manifest ${v.extra.length}`));
+  for (const m of v.mismatched) out.push(L(`  - 불일치: ${m.path} (기대 ${m.expected.slice(0, 12)}… / 실제 ${m.actual.slice(0, 12)}…)`, `  - mismatch: ${m.path} (expected ${m.expected.slice(0, 12)}… / actual ${m.actual.slice(0, 12)}…)`));
+  for (const m of v.missing) out.push(L(`  - 누락: ${m}`, `  - missing: ${m}`));
+  if (v.notes.length) out.push(``, ...v.notes.map((n) => `- ${n}`));
+  return out.join("\n");
 }

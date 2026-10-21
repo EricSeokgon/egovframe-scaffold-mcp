@@ -18,6 +18,7 @@ import {
   parseBuildErrors,
   resolveCommand,
 } from "./build-runner.js";
+import { AbortError, throwIfAborted, type Progress } from "./progress.js";
 
 export type TestOutcome = "passed" | "failed" | "error" | "skipped";
 
@@ -299,7 +300,10 @@ export async function runTests(opts: {
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   now?: () => number;
+  /** v1.2: 진행 알림·취소(signal). 취소되면 프로세스 트리를 끝내고 AbortError 를 던진다 */
+  progress?: Progress;
 }): Promise<TestRunResult> {
+  throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) {
     throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
@@ -335,8 +339,11 @@ export async function runTests(opts: {
   // 실행 전 리포트 스냅샷: 이번 실행이 새로 쓰거나 다시 쓴 리포트만 결과에 넣는다.
   const previous = snapshotReports(reportDirAbs);
   const started = now();
-  const result = await runner(resolved, { timeoutMs, onData: (chunk) => (buffer += chunk) });
+  opts.progress?.report(`${buildTool} test: ${command}`, 0, 1);
+  const result = await runner(resolved, { timeoutMs, onData: (chunk) => (buffer += chunk), signal: opts.progress?.signal });
   const durationMs = now() - started;
+  if (result.aborted || opts.progress?.signal?.aborted) throw new AbortError(`${buildTool} test cancelled after ${durationMs}ms`);
+  opts.progress?.report(`${buildTool} test: exit ${result.exitCode ?? "-"}${result.timedOut ? " (timeout)" : ""}`, 1, 1);
 
   // 이번 실행이 쓴 리포트만 읽는다(실행 전 스냅샷 대비 새 파일 또는 mtime 이 커진 파일).
   const reports = readJUnitReports(reportDirAbs, { previous });

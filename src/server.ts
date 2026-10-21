@@ -35,6 +35,7 @@ import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDepl
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
 import { renderBundleMarkdown } from "./offline-bundle.js";
+import { progressFromExtra } from "./progress.js";
 import { prepareDelivery, verifyDelivery, renderDeliveryMarkdown, renderVerifyMarkdown, DELIVERY_ITEMS, DELIVERY_DEFAULT_INCLUDE } from "./delivery.js";
 import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
@@ -614,9 +615,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       resolveTimeoutMs: z.number().int().min(10_000).max(1_800_000).default(300_000).describe("해석 명령 타임아웃(ms)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_dependencies.shape, annotations: toolAnnotations("check_egovframe_dependencies") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await checkDependencies({ projectDir: args.projectDir, offline: args.offline, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs });
+      const r = await checkDependencies({ progress: progressFromExtra(extra), projectDir: args.projectDir, offline: args.offline, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDependencyMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -634,9 +635,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       timeoutMs: z.number().int().min(10_000).max(1_800_000).default(300_000).describe("verify 컴파일 타임아웃(ms)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.reassemble_egovframe_components.shape, annotations: toolAnnotations("reassemble_egovframe_components") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await reassembleComponents({ projectDir: args.projectDir, components: args.components, sourceTag: args.sourceTag, database: args.database, dryRun: args.dryRun, verify: args.verify, timeoutMs: args.timeoutMs });
+      const r = await reassembleComponents({ progress: progressFromExtra(extra), projectDir: args.projectDir, components: args.components, sourceTag: args.sourceTag, database: args.database, dryRun: args.dryRun, verify: args.verify, timeoutMs: args.timeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderReassembleMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -692,9 +693,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       timeoutMs: z.number().int().min(10_000).max(1_800_000).default(600_000).describe("생성 명령 타임아웃(ms)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.generate_egovframe_sbom.shape, annotations: toolAnnotations("generate_egovframe_sbom") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await generateSbom({ projectDir: args.projectDir, outputPath: args.outputPath, format: args.bomFormat, scope: args.scope, enrich: args.enrich, offline: args.offline, overwrite: args.overwrite, dryRun: args.dryRun, timeoutMs: args.timeoutMs, supplier: args.supplier, author: args.author, componentName: args.componentName, componentVersion: args.componentVersion, fillSuppliers: args.fillSuppliers });
+      const r = await generateSbom({ progress: progressFromExtra(extra), projectDir: args.projectDir, outputPath: args.outputPath, format: args.bomFormat, scope: args.scope, enrich: args.enrich, offline: args.offline, overwrite: args.overwrite, dryRun: args.dryRun, timeoutMs: args.timeoutMs, supplier: args.supplier, author: args.author, componentName: args.componentName, componentVersion: args.componentVersion, fillSuppliers: args.fillSuppliers });
       const { bom: _bom, spdx: _spdx, ...structured } = r; // 문서 전체는 파일에 있으므로 구조화 출력에서 제외
       const text = args.format === "json" ? JSON.stringify(structured, null, 2) : renderSbomMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: structured as unknown as Record<string, unknown> };
@@ -710,9 +711,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       dryRun: z.boolean().default(true).describe("true(기본)면 받을 목록만"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.prepare_egovframe_offline_bundle.shape, annotations: toolAnnotations("prepare_egovframe_offline_bundle") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await prepareEgovframeOfflineBundle({ outputDir: args.outputDir, include: args.include, templates: args.templates, dryRun: args.dryRun });
+      const r = await prepareEgovframeOfflineBundle({ progress: progressFromExtra(extra), outputDir: args.outputDir, include: args.include, templates: args.templates, dryRun: args.dryRun });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderBundleMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -732,7 +733,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       dryRun: z.boolean().default(true).describe("true(기본)면 계획만"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.prepare_egovframe_delivery.shape, annotations: toolAnnotations("prepare_egovframe_delivery") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
       if (args.verify) {
         const v = verifyDelivery(args.outputDir);
@@ -740,7 +741,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderVerifyMarkdown(v);
         return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
       }
-      const p = await prepareDelivery({ projectDir: args.projectDir, outputDir: args.outputDir, include: args.include as never, previousDelivery: args.previousDelivery, offline: args.offline, supplier: args.supplier, zip: args.zip, dryRun: args.dryRun });
+      const p = await prepareDelivery({ progress: progressFromExtra(extra), projectDir: args.projectDir, outputDir: args.outputDir, include: args.include as never, previousDelivery: args.previousDelivery, offline: args.offline, supplier: args.supplier, zip: args.zip, dryRun: args.dryRun });
       const r = { mode: "prepare" as const, ...p };
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDeliveryMarkdown(p);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
@@ -759,9 +760,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       topN: z.number().int().min(1).max(100).default(20).describe("작업 목록 수"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.rehearse_egovframe_migration.shape, annotations: toolAnnotations("rehearse_egovframe_migration") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await rehearseMigration({ projectDir: args.projectDir, steps: args.steps, components: args.components, sourceTag: args.sourceTag === "auto" ? undefined : args.sourceTag, keepWorkspace: args.keepWorkspace, timeoutMs: args.timeoutMs, topN: args.topN });
+      const r = await rehearseMigration({ progress: progressFromExtra(extra), projectDir: args.projectDir, steps: args.steps, components: args.components, sourceTag: args.sourceTag === "auto" ? undefined : args.sourceTag, keepWorkspace: args.keepWorkspace, timeoutMs: args.timeoutMs, topN: args.topN });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderRehearsalMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -1183,9 +1184,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         .describe("반환 로그의 최대 줄 수(마지막 N줄). 기본 200줄"),
       dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령만 반환"),
     }, annotations: toolAnnotations("build_egovframe_project") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await runBuild({
+      const r = await runBuild({ progress: progressFromExtra(extra),
         projectDir: args.projectDir,
         goal: args.goal,
         timeoutMs: args.timeoutSeconds * 1000,
@@ -1265,9 +1266,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         .describe("반환할 실패·오류 케이스 최대 수. 기본 50"),
       dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령·리포트 위치만 반환"),
     }, annotations: toolAnnotations("test_egovframe_project") },
-    async (args) => {
+    async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await runTests({
+      const r = await runTests({ progress: progressFromExtra(extra),
         projectDir: args.projectDir,
         testFilter: args.testFilter,
         timeoutMs: args.timeoutSeconds * 1000,

@@ -51,7 +51,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 
 | 변수 | 용도 |
 |---|---|
-| `EGOVFRAME_LANG=en` | 도구 설명을 영문으로(응답 본문은 한국어) |
+| `EGOVFRAME_LANG=en` | 도구 설명과 응답 본문(평가서·전환·의존성·SBOM·보안약점·배포·납품 결과의 라벨·헤더·사유)을 영문으로(v1.2). CLI 는 `--lang en` |
 | `EGOVFRAME_ALLOWED_ROOTS` | 도구가 읽고 쓸 수 있는 디렉터리 제한(여러 개는 OS 경로 구분자로). 미설정 시 제한 없음 |
 | `EGOVFRAME_OFFLINE_BUNDLE` | 폐쇄망 오프라인 번들 디렉터리([폐쇄망](#폐쇄망에서-쓰기)) |
 | `EGOVFRAME_CACHE_DIR` | 공통컴포넌트 아카이브·태그 미러 캐시 위치(기본 `~/.cache/egovframe-scaffold-mcp`) |
@@ -120,7 +120,7 @@ npx -y egovframe-scaffold-mcp assess     --project . --offline=false --step-summ
 | `migrate` / `rehearse` | 전환 진단(읽기 전용) / 사본 리허설 | `manual`·`auto` / `errors`·`automation` |
 | `validate` · `diagnose` · `network` · `bundle` | 무결성·진단·네트워크 진단·오프라인 번들 | `invalid`·`issues`·`failed` |
 
-공통 옵션은 `--project`(기본 현재 디렉터리)·`--json`(MCP 구조화 출력과 같은 객체)·`--out`·`--step-summary`(GitHub Actions 요약)·`--fail-on` 이고, 나머지는 도구 파라미터와 같은 이름(kebab-case)입니다. 종료 코드는 0 통과 · 2 기준 초과 · 3 실행 실패 · 64 사용법 오류입니다.
+공통 옵션은 `--project`(기본 현재 디렉터리)·`--json`(MCP 구조화 출력과 같은 객체)·`--out`·`--step-summary`(GitHub Actions 요약)·`--fail-on`·`--lang ko|en`(응답 언어, v1.2) 이고, 나머지는 도구 파라미터와 같은 이름(kebab-case)입니다. 종료 코드는 0 통과 · 2 기준 초과 · 3 실행 실패 · 64 사용법 오류입니다.
 
 **CI 설정 파일 만들기** — 같은 게이트를 세 플랫폼에 만들어 줍니다.
 
@@ -190,8 +190,8 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 | [docs/versioning.md](docs/versioning.md) | 버전 정책, 공개 API 범위, 폐기 절차 |
 | [CHANGELOG.md](CHANGELOG.md) | 버전별 변경 이력 |
 | [docs/development.md](docs/development.md) | 로컬 개발, 검증 체계, 릴리스 절차, 브랜치 보호 (기여자용) |
-| [docs/planning.md](docs/planning.md) | 버전별 기획 원문·결과·선행 조사 기록, 다음 버전 계획(v1.2 응답 영문화·진행 알림) |
-| 설계 노트 | [납품 패키지](docs/design-delivery.md) · [전환](docs/design-migration.md) · [의존성 점검](docs/design-dependency-check.md) · [평가서](docs/design-assessment-report.md) · [보안약점](docs/design-secure-coding.md) · [배포](docs/design-deploy.md) · [멀티 모듈·MSA](docs/design-workspace.md) · [CLI·CI](docs/design-cli.md) · [오프라인 번들](docs/design-offline-bundle.md) · [AI 컴포넌트](docs/design-ai-components.md) · [CRUD](docs/design-crud-generation.md) · [설정 생성](docs/design-config-generation.md) · [템플릿 조달](docs/design-initializr-zip-templates.md) · [카탈로그 동기화](docs/design-catalog-sync.md) · [components 파라미터](docs/design-components-parameter.md) |
+| [docs/planning.md](docs/planning.md) | 버전별 기획 원문·결과·선행 조사 기록(저장소 문서, npm 패키지에는 넣지 않음) |
+| 설계 노트 | [응답 영문화·진행 알림](docs/design-i18n.md) · [납품 패키지](docs/design-delivery.md) · [전환](docs/design-migration.md) · [의존성 점검](docs/design-dependency-check.md) · [평가서](docs/design-assessment-report.md) · [보안약점](docs/design-secure-coding.md) · [배포](docs/design-deploy.md) · [멀티 모듈·MSA](docs/design-workspace.md) · [CLI·CI](docs/design-cli.md) · [오프라인 번들](docs/design-offline-bundle.md) · [AI 컴포넌트](docs/design-ai-components.md) · [CRUD](docs/design-crud-generation.md) · [설정 생성](docs/design-config-generation.md) · [템플릿 조달](docs/design-initializr-zip-templates.md) · [카탈로그 동기화](docs/design-catalog-sync.md) · [components 파라미터](docs/design-components-parameter.md) |
 
 ## 기여
 

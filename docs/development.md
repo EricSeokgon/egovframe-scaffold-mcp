@@ -62,6 +62,8 @@ npm run prepublishOnly   # 빌드 + 게이트 테스트 전부(릴리스 전 필
 - CI 생성 레벨: `generate_egovframe_ci`의 maven/gradle 감지·YAML·dryRun 무기록·기존 파일 거부·빌드파일 부재 예외·`jdk`·`failOn`·`supplier`·환경 변수 주입 입력 거부, 세 플랫폼 공통 게이트 명령(sbom → sbom-check → assess), 생성 `.gitlab-ci.yml` 의 GitLab 공식 CI 스키마(v19.4.1-ee 고정물) 통과, `Jenkinsfile` 의 Declarative 구조(pipeline·agent·options·stages·post, 괄호 짝, 단계 순서)·Windows 경로 이스케이프, 공급자 단서 없을 때 게이트 실패 예고 (`npm run test:ci`, 네트워크 불필요)
 - CRUD 생성 레벨: 공식 wizard 그룹, Classic/Boot 분기, DB 생성키, JUnit 5, dryRun, PK·경로 검증, 충돌 시 전체 무기록 검증 (`npm run test:crud`, 네트워크 불필요)
 - CRUD 컴파일 레벨: 공식 simple-backend/Boot CRUD 7파일과 web-sample/Classic CRUD 9파일 생성 → JDK 17에서 `mvn -q -DskipTests compile` (`npm run test:crud-integration`, 네트워크 필요, CI 실행)
+- 응답 영문화 레벨(v1.2, `test:i18n` 44단언): 고정 프로젝트 2개로 17개 출력(전환·의존성·평가서·5.x 갱신·보안약점·배포·SBOM 점검·SBOM·납품·검증)을 `ko` 로 만들어 goldens(`test/fixtures/i18n-golden-ko.json`, 영문화 전 코드로 생성)와 바이트 비교, `en` 으로 다시 만들어 한글 0줄, 규칙 데이터 7파일의 한국어 문장 필드마다 `_en` 존재, `setLang`·`langFromEnv`·CLI `--lang`/`EGOVFRAME_LANG` 우선순위와 복원. 렌더러 문구를 바꿀 때만 `npm run i18n:golden` 으로 goldens 갱신
+- 진행 알림·취소 레벨(v1.2, `test:progress` = `progress-runners` 38 + `progress-tools` 41 + `progress-mcp` 10 단언): 실제 자식 프로세스 취소(pid 소멸), 러너·의존성 해석·SBOM·납품·재조립·리허설·오프라인 번들의 단계 순서·단조 증가·하위 진행 분수, 취소 시 `AbortError`·부분 출력 없음·프로젝트 트리 불변·작업공간 삭제, MCP in-memory 클라이언트의 `progressToken` 알림 순서·토큰 없으면 무알림·`notifications/cancelled` 로 가짜 `mvnw` 트리 종료
 - 안전성 레벨: 19개 도구 공통 허용 root의 미설정 호환·격리·`..` 이탈·symlink 우회·다중 root·비대상 인자 무해 6케이스와 구조화 rollback 필드를 검증합니다 (`npm run test:allowed-roots`, `npm run test:transaction`, 네트워크 불필요).
 
 ## 릴리스 절차 (매 버전 공통)

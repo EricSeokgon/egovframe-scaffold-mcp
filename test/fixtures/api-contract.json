@@ -1,7 +1,7 @@
 {
-  "version": "1.1.0",
-  "base": "1.0.2",
-  "change": "minor",
+  "version": "1.2.0",
+  "base": "1.1.0",
+  "change": "none",
   "contract": {
     "tools": {
       "add_ai_components": {

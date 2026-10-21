@@ -42,7 +42,28 @@ Requires Node.js 22+ (since 1.0.0; Node 18 and 20 are end-of-life). Downloads go
 | Variable | Purpose |
 |---|---|
 | `EGOVFRAME_ALLOWED_ROOTS` | Optional sandbox: every directory argument (`projectDir`, `outputDir`) must be inside one of these roots (path-separator-delimited, realpath-checked). |
-| `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list`. Responses stay Korean. |
+| `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list` **and English responses** (v1.2): the Markdown body and sentence fields of the assessment, migration, dependency, SBOM, secure-coding, deployment and delivery results. The CLI takes `--lang en` (overrides the variable). |
+
+With `EGOVFRAME_LANG=en` a response looks like this (`check_egovframe_secure_coding`, or `npx -y egovframe-scaffold-mcp secure --project . --lang en`):
+
+```markdown
+# Secure coding weakness scan (/work/app)
+
+- Basis: Ministry of the Interior and Safety / KISA, Software Development Security Guide … 2021 revision — 20 rules (2026-10-13)
+- 3 files (java 1 · config 1 · jsp 1)
+- **high 1 · medium 2 · low 1** (total 4)
+
+## By item
+
+| Weakness (guide item) | Rule | Default severity | Count |
+|---|---|---|---|
+| Cross-site scripting | `xss-jsp-request` | high | 1 |
+| Hard-coded sensitive information | `hardcoded-config-password` | medium | 1 |
+| OS command injection | `os-command` | medium | 1 |
+| Information exposure through error messages | `print-stack-trace` | low | 1 |
+```
+
+Structured output (`structuredContent`, `--json`) keeps the same keys in both languages; only sentence fields such as `reason`, `message`, `fix` and `note` follow the language. Text quoted from the project and official document search results stay as they are. Long-running tools (`rehearse_egovframe_migration`, `prepare_egovframe_offline_bundle`, `generate_egovframe_sbom`, `check_egovframe_dependencies(resolve=true)`, `build_egovframe_project`, `test_egovframe_project`, `reassemble_egovframe_components`, `prepare_egovframe_delivery`) send `notifications/progress` when the client passes a `progressToken`, and `notifications/cancelled` stops the child process tree and rolls back files (v1.2, [docs/design-i18n.md](docs/design-i18n.md)).
 
 ## Tools (35)
 
@@ -194,11 +215,12 @@ The server is described for the [MCP Registry](https://registry.modelcontextprot
 | Document | Contents |
 |---|---|
 | [README.md](README.md) | Usage scenarios for AI-tool users, CI/DevOps and auditors (Korean) |
-| [docs/tools.md](docs/tools.md) | Parameters, behaviour and examples of all 34 tools; MCP resources and prompts |
+| [docs/tools.md](docs/tools.md) | Parameters, behaviour and examples of all 35 tools; MCP resources and prompts |
+| [docs/design-i18n.md](docs/design-i18n.md) | English responses (`L(ko, en)`, `_en` rule fields, byte-identical Korean goldens) and progress notifications / cancellation (v1.2, Korean) |
 | [docs/versioning.md](docs/versioning.md) | Versioning policy, public API surface, deprecation process |
 | [CHANGELOG.md](CHANGELOG.md) | Per-release change log |
 | [docs/development.md](docs/development.md) | Local development, test suites, release procedure (contributors) |
-| [docs/planning.md](docs/planning.md) | Planning records per version and the next plan (v1.2 English responses and progress notifications) |
+| [docs/planning.md](docs/planning.md) | Planning records per version with outcomes (repository only, not in the npm package) |
 
 ## License
 

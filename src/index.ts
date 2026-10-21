@@ -165,3 +165,8 @@ export { DEPRECATED_PARAMS, applyDeprecatedParams } from "./deprecations.js";
 export type { DeprecatedParam } from "./deprecations.js";
 export { prepareDelivery, verifyDelivery, diffDeliveries, readDeliveryData, projectFingerprint, rootHashOf, renderDeliveryMarkdown, renderVerifyMarkdown, renderDeliveryDiffMarkdown, DELIVERY_ITEMS, DELIVERY_DEFAULT_INCLUDE, DELIVERY_MANIFEST, DELIVERY_INDEX } from "./delivery.js";
 export type { PrepareDeliveryOptions, PrepareDeliveryResult, VerifyDeliveryResult, DeliveryManifest, DeliveryItem, DeliveryItemId, DeliveryDiff } from "./delivery.js";
+export { L, tr, isEn, getLang, setLang, langFromEnv } from "./lang.js";
+export type { Lang } from "./lang.js";
+// v1.2 — 진행 알림·취소
+export { AbortError, isAbortError, throwIfAborted, NOOP_PROGRESS, collectProgress, subProgress, stepper, progressFromExtra } from "./progress.js";
+export type { Progress, ProgressEvent } from "./progress.js";

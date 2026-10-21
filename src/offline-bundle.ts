@@ -8,6 +8,7 @@ import * as path from "node:path";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import AdmZip from "adm-zip";
+import { AbortError, stepper, subProgress, throwIfAborted, type Progress } from "./progress.js";
 
 export const BUNDLE_ENV = "EGOVFRAME_OFFLINE_BUNDLE";
 export const BUNDLE_MANIFEST = "bundle-manifest.json";
@@ -195,10 +196,12 @@ export interface PrepareBundleOptions {
   /** 담을 템플릿 id(기본: 고정 지문이 있는 Initializr zip 템플릿 전부) */
   templates?: string[];
   dryRun?: boolean;
-  /** 테스트 주입 */
-  download?: (url: string) => Promise<{ buffer: Buffer; lastModified: string | null }>;
+  /** 테스트 주입(signal 은 v1.2 취소 신호 — 받으면 중단해도 된다) */
+  download?: (url: string, signal?: AbortSignal) => Promise<{ buffer: Buffer; lastModified: string | null }>;
   originUrl?: string;
   now?: () => number;
+  /** v1.2: 진행 알림·취소(signal). 다운로드는 항목마다 보고하고, 취소되면 받던 것·git 을 끊고 부분 출력을 지운 뒤 AbortError 를 던진다(dryRun 은 보고 없음) */
+  progress?: Progress;
 }
 export interface PrepareBundleResult {
   outputDir: string;
@@ -212,19 +215,37 @@ export interface PrepareBundleResult {
   notes: string[];
 }
 
-async function defaultDownload(url: string): Promise<{ buffer: Buffer; lastModified: string | null }> {
+async function defaultDownload(url: string, signal?: AbortSignal): Promise<{ buffer: Buffer; lastModified: string | null }> {
   // 번들을 만드는 쪽은 인터넷 PC 다 — 번들 훅을 거치지 않고 직접 받는다
+  throwIfAborted(signal);
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 600_000);
+  // v1.2: 취소 신호가 오면 받던 요청도 끊는다(리스너는 끝나면 제거)
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort, { once: true });
   try {
     const res = await fetch(url, { signal: controller.signal, headers: { "User-Agent": "egovframe-scaffold-mcp" } });
     if (!res.ok) throw new Error(`다운로드 실패 (${res.status}): ${url}`);
     const lm = res.headers.get("last-modified");
     return { buffer: Buffer.from(await res.arrayBuffer()), lastModified: lm ? new Date(lm).toISOString() : null };
-  } finally { clearTimeout(t); }
+  } catch (e) {
+    if (signal?.aborted) throw new AbortError(`download cancelled: ${url}`);
+    throw e;
+  } finally { clearTimeout(t); signal?.removeEventListener("abort", onAbort); }
 }
-function git(args: string[], cwd?: string): Promise<string> {
-  return new Promise((resolve, reject) => execFile("git", args, { cwd, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, windowsHide: true }, (err, out, errOut) => (err ? reject(new Error(`git ${args[0]} 실패: ${(errOut || err.message).trim().split("\n").slice(-2).join(" ")}`)) : resolve(out))));
+function git(args: string[], cwd?: string, signal?: AbortSignal): Promise<string> {
+  throwIfAborted(signal);
+  return new Promise((resolve, reject) => {
+    const child = execFile("git", args, { cwd, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, windowsHide: true }, (err, out, errOut) => {
+      signal?.removeEventListener("abort", onAbort);
+      if (signal?.aborted) reject(new AbortError(`git ${args[0]} cancelled`));
+      else if (err) reject(new Error(`git ${args[0]} 실패: ${(errOut || err.message).trim().split("\n").slice(-2).join(" ")}`));
+      else resolve(out);
+    });
+    // v1.2: 취소되면 자식 프로세스를 끝낸다(콜백이 err 로 오고 위에서 AbortError 로 바꾼다)
+    const onAbort = () => { try { child.kill(); } catch { /* 이미 종료 */ } };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 const dirBytes = (d: string): number => { let n = 0; for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); n += e.isDirectory() ? dirBytes(p) : fs.statSync(p).size; } return n; };
 
@@ -239,6 +260,7 @@ export function bundleSources(catalog: { repository: string; commit: string | nu
 
 /** 번들을 만든다(인터넷 PC). dryRun(기본) 이면 받을 목록만. */
 export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalog: Parameters<typeof bundleSources>[0]; templateList: Parameters<typeof bundleSources>[1]; serverVersion: string }): Promise<PrepareBundleResult> {
+  throwIfAborted(opts.progress?.signal);
   const outputDir = path.resolve(opts.outputDir);
   const include = opts.include ?? BUNDLE_INCLUDES;
   const dryRun = opts.dryRun !== false;
@@ -257,13 +279,24 @@ export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalo
   if (dryRun) { notes.push(`dryRun — 받지 않았습니다. dryRun=false 로 ${sources.length}개 파일${include.includes("origin") ? " + 원본 태그 미러" : ""}를 받아 ${outputDir} 에 씁니다.`); result.totalBytes = result.items.reduce((s, i) => s + (i.bytes ?? 0), 0); return result; }
 
   const download = opts.download ?? defaultDownload;
+  // v1.2: 진행 단계 — 실제로 수행하는 단계만(다운로드[항목별] → 원본 미러 → 기록)
+  const steps = [...(sources.length ? ["download artifacts"] : []), ...(include.includes("origin") ? ["mirror origin tags"] : []), "write bundle"];
+  const prog = stepper(opts.progress, steps);
+  let stepNo = 0;
+  const signal = prog.signal;
   const staging = `${outputDir}.partial-${process.pid}`;
   fs.rmSync(staging, { recursive: true, force: true });
   fs.mkdirSync(staging, { recursive: true });
   const files: BundleFile[] = [];
   try {
+    if (sources.length) prog.step(stepNo);
+    const dl = sources.length && opts.progress ? subProgress(opts.progress, stepNo, stepNo + 1, steps.length) : undefined;
+    if (sources.length) stepNo++;
     for (const [i, s] of sources.entries()) {
-      const { buffer, lastModified } = await download(s.url);
+      throwIfAborted(signal);
+      dl?.report(`download ${i + 1}/${sources.length} ${s.id}`, i, sources.length);
+      const { buffer, lastModified } = await download(s.url, signal);
+      throwIfAborted(signal);
       const sha = sha256Hex(buffer);
       if (s.expected && (s.expected.sha256 !== sha || s.expected.bytes !== buffer.length)) throw new Error(`고정 지문과 다릅니다(${s.id}): 크기 ${buffer.length}/${s.expected.bytes}, sha256 ${sha.slice(0, 12)}…/${s.expected.sha256.slice(0, 12)}… — upstream 이 바뀌었는지 sync 도구로 확인하세요`);
       const abs = path.join(staging, s.path);
@@ -274,19 +307,22 @@ export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalo
       files.push(f);
       result.items[i] = { ...result.items[i], bytes: buffer.length, sha256: sha, verified: s.expected ? true : null, ...(s.kind === "osv" ? { note: `레코드 ${f.records}건, 원본 갱신 ${lastModified ?? "미상"}` } : {}) };
     }
+    if (sources.length) dl?.report(`download ${sources.length}/${sources.length} done`, sources.length, sources.length);
     let origin: BundleOrigin | undefined;
     if (include.includes("origin")) {
+      prog.step(stepNo++);
       const dir = path.join(staging, originRel);
       fs.mkdirSync(dir, { recursive: true });
-      await git(["init", "--quiet", "--bare", dir]);
-      await git(["remote", "add", "origin", opts.originUrl ?? `https://github.com/${opts.catalog.repository}.git`], dir);
+      await git(["init", "--quiet", "--bare", dir], undefined, signal);
+      await git(["remote", "add", "origin", opts.originUrl ?? `https://github.com/${opts.catalog.repository}.git`], dir, signal);
       // 태그마다 depth 1(내용 포함) — 재조립의 원본 식별·패치 생성에 필요한 blob 이 모두 들어 있다(실측 22태그 ≈38MB)
-      await git(["fetch", "--quiet", "--depth", "1", "origin", "+refs/tags/*:refs/tags/*"], dir);
-      await git(["remote", "remove", "origin"], dir);
-      const tags = (await git(["for-each-ref", "--format=%(refname:short)", "refs/tags"], dir)).split("\n").filter(Boolean);
+      await git(["fetch", "--quiet", "--depth", "1", "origin", "+refs/tags/*:refs/tags/*"], dir, signal);
+      await git(["remote", "remove", "origin"], dir, signal);
+      const tags = (await git(["for-each-ref", "--format=%(refname:short)", "refs/tags"], dir, signal)).split("\n").filter(Boolean);
       origin = { path: originRel, repository: opts.catalog.repository, tags, fetchedAt: new Date(now()).toISOString(), bytes: dirBytes(dir) };
       result.origin = { repository: origin.repository, tags: tags.length, bytes: origin.bytes, path: originRel };
     }
+    prog.step(stepNo++);
     const manifest: BundleManifest = { schemaVersion: 1, createdAt: new Date(now()).toISOString(), serverVersion: opts.serverVersion, catalog: { repository: opts.catalog.repository, tag: opts.catalog.tag, commit: opts.catalog.commit }, files, ...(origin ? { origin } : {}) };
     fs.writeFileSync(path.join(staging, BUNDLE_MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`);
     fs.mkdirSync(path.dirname(outputDir), { recursive: true });
@@ -299,6 +335,7 @@ export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalo
   result.written = true;
   result.manifestPath = path.join(outputDir, BUNDLE_MANIFEST);
   result.totalBytes = files.reduce((s, f) => s + f.bytes, 0) + (result.origin?.bytes ?? 0);
+  prog.finish("bundle: done");
   return result;
 }
 

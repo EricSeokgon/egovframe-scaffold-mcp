@@ -14,6 +14,7 @@ import { CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, parentKindOf, resolveOutputP
 import { SERVER_VERSION } from "./version.js";
 import { osvProvenanceNote } from "./offline-bundle.js";
 import { isSpdxDocument, spdxToCdx } from "./spdx.js";
+import { L, tr, isEn } from "./lang.js";
 
 export const DEFAULT_VEX_PATH = "sbom/vex.cdx.json";
 
@@ -77,7 +78,7 @@ export function coordinateOf(c: SbomComponent): MavenCoordinate | null {
   return null;
 }
 const keyOf = (c: MavenCoordinate) => `${c.groupId}:${c.artifactId}`;
-const labelOf = (c: SbomComponent) => { const k = coordinateOf(c); return k ? `${keyOf(k)}${k.version ? `@${k.version}` : ""}` : (c.name || c["bom-ref"] || "(이름 없음)"); };
+const labelOf = (c: SbomComponent) => { const k = coordinateOf(c); return k ? `${keyOf(k)}${k.version ? `@${k.version}` : ""}` : (c.name || c["bom-ref"] || L("(이름 없음)", "(unnamed)")); };
 
 /** 공급자 카탈로그에서 groupId 에 맞는 항목(가장 긴 접두어). */
 export function supplierFor(groupId: string, rules: SbomRules = loadSbomRules()): SbomSupplierEntry | null {
@@ -115,7 +116,7 @@ export function checkMinimumElements(bom: SbomDocument, rules: SbomRules = loadS
       let ok: boolean;
       if (r.check === "timestamp") { const v = valuesAt(bom, "metadata.timestamp")[0]; ok = !!v && !Number.isNaN(Date.parse(v)); }
       else ok = (r.fields ?? []).some((f) => valuesAt(bom, f).length > 0);
-      elements.push({ id: r.id, label: r.label, labelEn: r.labelEn, level: r.level, satisfied: ok ? 1 : 0, total: 1, ok, missing: ok ? [] : ["metadata"], hint: r.hint });
+      elements.push({ id: r.id, label: (isEn() ? r.labelEn : r.label), labelEn: r.labelEn, level: r.level, satisfied: ok ? 1 : 0, total: 1, ok, missing: ok ? [] : ["metadata"], hint: tr(r, "hint") });
       continue;
     }
     const missing: string[] = [];
@@ -124,9 +125,9 @@ export function checkMinimumElements(bom: SbomDocument, rules: SbomRules = loadS
       let ok: boolean;
       if (r.check === "dependency-ref") ok = !!c["bom-ref"] && depRefs.has(c["bom-ref"]);
       else ok = (r.fields ?? []).some((f) => valuesAt(c, f).length > 0) || (isPrimary && (r.primaryFields ?? []).some((f) => valuesAt(bom, f).length > 0));
-      if (ok) satisfied++; else { gaps.add(i); missing.push(`${isPrimary ? "(주) " : ""}${labelOf(c)}`); }
+      if (ok) satisfied++; else { gaps.add(i); missing.push(`${isPrimary ? L("(주) ", "(primary) ") : ""}${labelOf(c)}`); }
     });
-    elements.push({ id: r.id, label: r.label, labelEn: r.labelEn, level: r.level, satisfied, total: comps.length, ok: satisfied === comps.length, missing: missing.slice(0, 20), hint: r.hint });
+    elements.push({ id: r.id, label: (isEn() ? r.labelEn : r.label), labelEn: r.labelEn, level: r.level, satisfied, total: comps.length, ok: satisfied === comps.length, missing: missing.slice(0, 20), hint: tr(r, "hint") });
   }
   const supplierFromCatalog = comps.filter(({ c }) => (c.properties ?? []).some((p) => p.name === "egovframe:supplierBasis" && p.value === "catalog")).length;
   return { verdict: elements.every((e) => e.ok) ? "ready" : "needs-work", elements, componentsWithGaps: gaps.size, components: comps.length, supplierFromCatalog };
@@ -198,7 +199,7 @@ export async function recheckSbom(bom: SbomDocument, opts: { parentKind?: Parent
       osv.newIds = [...found].filter((id) => !recorded.has(id)).sort();
       osv.goneIds = [...recorded].filter((id) => !found.has(id)).sort();
     } catch (e) {
-      osv.error = `OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`;
+      osv.error = L(`OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`, `OSV query failed: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
   return { components: targets.length, summary, changed, unrecorded, osv };
@@ -253,7 +254,7 @@ export function diffSboms(current: SbomDocument, baseline: SbomDocument, baselin
     const prev = a.get(key);
     if (!prev) { added.push({ component: key, version: cur.versions.join(",") || null }); continue; }
     const pv = prev.versions.join(","), cv = cur.versions.join(",");
-    if (pv !== cv) versionChanged.push({ component: key, from: pv || "(없음)", to: cv || "(없음)" });
+    if (pv !== cv) versionChanged.push({ component: key, from: pv || L("(없음)", "(none)"), to: cv || L("(없음)", "(none)") });
     if (prev.status && cur.status && prev.status !== cur.status) statusChanged.push({ component: key, from: prev.status, to: cur.status });
     if (pv === cv && (!prev.status || !cur.status || prev.status === cur.status)) unchanged++;
   }
@@ -312,7 +313,7 @@ export function mergeVex(bom: SbomDocument, detected: Map<string, Set<string>>, 
     doc.vulnerabilities.push({
       id, "bom-ref": `vex:${id}${n ? `:${n + 1}` : ""}`,
       source: { name: "OSV", url: `https://osv.dev/vulnerability/${id}` },
-      analysis: { state: "in_triage", detail: "egovframe-scaffold-mcp 가 탐지해 추가한 초안 — 영향 여부(not_affected·exploitable 등)와 근거는 담당자가 채웁니다.", firstIssued: ts },
+      analysis: { state: "in_triage", detail: L("egovframe-scaffold-mcp 가 탐지해 추가한 초안 — 영향 여부(not_affected·exploitable 등)와 근거는 담당자가 채웁니다.", "Draft added by egovframe-scaffold-mcp on detection — the owner fills in the impact (not_affected, exploitable, etc.) and justification."), firstIssued: ts },
       affects: fresh.map((ref) => ({ ref })),
     });
     added++;
@@ -353,15 +354,15 @@ export interface CheckSbomResult {
 /** SBOM 을 읽는다. CycloneDX 는 그대로, SPDX 2.x JSON(v0.43)은 같은 점검 규칙을 쓰도록 내부 CycloneDX 모양으로 옮긴다. */
 function readBom(projectDir: string, rel: string, what: string): { relPath: string; absolutePath: string; bom: SbomDocument; format: "cyclonedx" | "spdx"; notes: string[] } {
   const { relPath, absolutePath } = resolveOutputPath(projectDir, rel);
-  if (!fs.existsSync(absolutePath)) throw new Error(`${what} 이 없습니다: ${relPath}${what === "SBOM" ? " — generate_egovframe_sbom(dryRun=false) 으로 먼저 만드세요." : ""}`);
+  if (!fs.existsSync(absolutePath)) throw new Error(L(`${what} 이 없습니다: ${relPath}${what === "SBOM" ? " — generate_egovframe_sbom(dryRun=false) 으로 먼저 만드세요." : ""}`, `${what} not found: ${relPath}${what === "SBOM" ? " — generate it first with generate_egovframe_sbom(dryRun=false)." : ""}`));
   let raw: unknown;
-  try { raw = JSON.parse(fs.readFileSync(absolutePath, "utf8")); } catch (e) { throw new Error(`${what}(${relPath}) JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`); }
+  try { raw = JSON.parse(fs.readFileSync(absolutePath, "utf8")); } catch (e) { throw new Error(L(`${what}(${relPath}) JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`, `Failed to parse ${what} (${relPath}) as JSON: ${e instanceof Error ? e.message : String(e)}`)); }
   if (isSpdxDocument(raw)) {
     const { bom, notes } = spdxToCdx(raw);
-    return { relPath, absolutePath, bom, format: "spdx", notes: [`${what}(${relPath}) 은 ${raw.spdxVersion} 문서입니다 — 최소 요소를 SPDX 필드(PackageSupplier·PackageName·PackageVersion·externalRefs purl·DEPENDS_ON·creators·created)로 점검합니다.`, ...notes] };
+    return { relPath, absolutePath, bom, format: "spdx", notes: [L(`${what}(${relPath}) 은 ${raw.spdxVersion} 문서입니다 — 최소 요소를 SPDX 필드(PackageSupplier·PackageName·PackageVersion·externalRefs purl·DEPENDS_ON·creators·created)로 점검합니다.`, `${what} (${relPath}) is a ${raw.spdxVersion} document — minimum elements are checked against SPDX fields (PackageSupplier, PackageName, PackageVersion, externalRefs purl, DEPENDS_ON, creators, created).`), ...notes] };
   }
   const bom = raw as SbomDocument;
-  if (!bom || bom.bomFormat !== "CycloneDX") throw new Error(`${what}(${relPath}) 이 CycloneDX·SPDX 2.x JSON 문서가 아닙니다(bomFormat=${String(bom?.bomFormat)}).`);
+  if (!bom || bom.bomFormat !== "CycloneDX") throw new Error(L(`${what}(${relPath}) 이 CycloneDX·SPDX 2.x JSON 문서가 아닙니다(bomFormat=${String(bom?.bomFormat)}).`, `${what} (${relPath}) is not a CycloneDX or SPDX 2.x JSON document (bomFormat=${String(bom?.bomFormat)}).`));
   return { relPath, absolutePath, bom, format: "cyclonedx", notes: [] };
 }
 const toolNames = (bom: SbomDocument): string[] => {
@@ -373,33 +374,33 @@ const toolNames = (bom: SbomDocument): string[] => {
 /** SBOM 을 점검한다. SBOM 은 바꾸지 않고, vex=true(dryRun=false)일 때만 VEX 파일을 쓴다. */
 export async function checkSbom(opts: CheckSbomOptions): Promise<CheckSbomResult> {
   const projectDir = path.resolve(opts.projectDir);
-  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(L(`프로젝트 디렉터리가 없습니다: ${projectDir}`, `Project directory does not exist: ${projectDir}`));
   const { relPath, absolutePath, bom, format, notes: readNotes } = readBom(projectDir, opts.sbomPath ?? DEFAULT_SBOM_PATH, "SBOM");
   const notes: string[] = [...readNotes];
-  if (opts.vex && format === "spdx") throw new Error("VEX 초안은 CycloneDX SBOM 에서만 만듭니다 — generate_egovframe_sbom 기본 형식(sbom/bom.cdx.json)을 sbomPath 로 지정하세요.");
+  if (opts.vex && format === "spdx") throw new Error(L("VEX 초안은 CycloneDX SBOM 에서만 만듭니다 — generate_egovframe_sbom 기본 형식(sbom/bom.cdx.json)을 sbomPath 로 지정하세요.", "A VEX draft is only produced from a CycloneDX SBOM — set sbomPath to the generate_egovframe_sbom default format (sbom/bom.cdx.json)."));
   const minimum = checkMinimumElements(bom);
   const parentKind = fs.existsSync(path.join(projectDir, "pom.xml")) ? parentKindOf(projectDir, "maven") : "none";
   const recheck = await recheckSbom(bom, { parentKind, offline: opts.offline ?? true, osvQuery: opts.osvQuery });
-  if (opts.offline !== false) notes.push("offline — OSV 재조회 안 함(offline=false 로 생성 이후 새로 알려진 취약점 확인)");
+  if (opts.offline !== false) notes.push(L("offline — OSV 재조회 안 함(offline=false 로 생성 이후 새로 알려진 취약점 확인)", "offline — OSV not re-queried (use offline=false to check vulnerabilities disclosed since generation)"));
   else if (!opts.osvQuery) { const n = osvProvenanceNote(); if (n) notes.push(n); }
-  if (recheck.unrecorded) notes.push(`egovframe:status 가 없는 component ${recheck.unrecorded}종 — 판정 변화 비교에서 제외(enrich=false 로 만든 SBOM 이거나 다른 생성기 출력)`);
+  if (recheck.unrecorded) notes.push(L(`egovframe:status 가 없는 component ${recheck.unrecorded}종 — 판정 변화 비교에서 제외(enrich=false 로 만든 SBOM 이거나 다른 생성기 출력)`, `${recheck.unrecorded} component(s) without egovframe:status — excluded from the status-change comparison (SBOM generated with enrich=false or by another generator)`));
 
   let diff: SbomDiff | undefined;
   if (opts.baselinePath) {
-    const base = readBom(projectDir, opts.baselinePath, "이전 SBOM");
-    if (base.format !== format) notes.push(`이전 SBOM 은 ${base.format === "spdx" ? "SPDX" : "CycloneDX"} 문서입니다 — 좌표(purl) 기준으로 비교합니다.`);
-    if (base.absolutePath === absolutePath) notes.push("baselinePath 가 sbomPath 와 같아 차이가 없습니다.");
+    const base = readBom(projectDir, opts.baselinePath, L("이전 SBOM", "Baseline SBOM"));
+    if (base.format !== format) notes.push(L(`이전 SBOM 은 ${base.format === "spdx" ? "SPDX" : "CycloneDX"} 문서입니다 — 좌표(purl) 기준으로 비교합니다.`, `The baseline SBOM is a ${base.format === "spdx" ? "SPDX" : "CycloneDX"} document — compared by coordinate (purl).`));
+    if (base.absolutePath === absolutePath) notes.push(L("baselinePath 가 sbomPath 와 같아 차이가 없습니다.", "baselinePath is the same as sbomPath, so there is no difference."));
     diff = diffSboms(bom, base.bom, base.relPath, recheck.osv);
   }
 
   let vex: CheckSbomResult["vex"];
   if (opts.vex) {
     const { relPath: vexRel, absolutePath: vexAbs } = resolveOutputPath(projectDir, opts.vexPath ?? DEFAULT_VEX_PATH);
-    if (vexAbs === absolutePath) throw new Error("vexPath 가 sbomPath 와 같습니다 — VEX 는 별도 파일로 둡니다.");
+    if (vexAbs === absolutePath) throw new Error(L("vexPath 가 sbomPath 와 같습니다 — VEX 는 별도 파일로 둡니다.", "vexPath is the same as sbomPath — the VEX must be a separate file."));
     let existing: VexDocument | null = null;
     if (fs.existsSync(vexAbs)) {
-      try { existing = JSON.parse(fs.readFileSync(vexAbs, "utf8")) as VexDocument; } catch (e) { throw new Error(`기존 VEX(${vexRel}) JSON 해석 실패 — 사람이 적은 판단을 잃지 않도록 중단합니다: ${e instanceof Error ? e.message : String(e)}`); }
-      if (existing.bomFormat !== "CycloneDX" || !Array.isArray(existing.vulnerabilities)) throw new Error(`기존 ${vexRel} 이 CycloneDX VEX 문서가 아닙니다 — 중단합니다.`);
+      try { existing = JSON.parse(fs.readFileSync(vexAbs, "utf8")) as VexDocument; } catch (e) { throw new Error(L(`기존 VEX(${vexRel}) JSON 해석 실패 — 사람이 적은 판단을 잃지 않도록 중단합니다: ${e instanceof Error ? e.message : String(e)}`, `Failed to parse the existing VEX (${vexRel}) as JSON — aborting so that human-written analysis is not lost: ${e instanceof Error ? e.message : String(e)}`)); }
+      if (existing.bomFormat !== "CycloneDX" || !Array.isArray(existing.vulnerabilities)) throw new Error(L(`기존 ${vexRel} 이 CycloneDX VEX 문서가 아닙니다 — 중단합니다.`, `Existing ${vexRel} is not a CycloneDX VEX document — aborting.`));
     }
     // 탐지 집합: SBOM 의 vulnerabilities[] + (조회했다면) OSV 재조회
     const detected = new Map<string, Set<string>>();
@@ -407,15 +408,15 @@ export async function checkSbom(opts: CheckSbomOptions): Promise<CheckSbomResult
     for (const v of bom.vulnerabilities ?? []) for (const a of v.affects ?? []) add(v.id, a.ref);
     for (const it of recheck.osv.items) for (const id of it.ids) add(id, it.ref);
     const merged = mergeVex(bom, detected, existing, opts.now);
-    if (!merged.usedBomLink) notes.push("SBOM 의 serialNumber 가 urn:uuid 형식이 아니어서 VEX affects 에 BOM-Link 대신 bom-ref 를 그대로 적었습니다.");
+    if (!merged.usedBomLink) notes.push(L("SBOM 의 serialNumber 가 urn:uuid 형식이 아니어서 VEX affects 에 BOM-Link 대신 bom-ref 를 그대로 적었습니다.", "The SBOM serialNumber is not in urn:uuid form, so VEX affects use the bare bom-ref instead of a BOM-Link."));
     const dryRun = opts.dryRun === true;
     const changed = merged.created || merged.added > 0 || merged.extended > 0;
     let written = false;
     if (!dryRun && changed) {
       const json = `${JSON.stringify(merged.doc, null, 2)}\n`;
-      await withFileTransaction(projectDir, "VEX 갱신", (tx) => { tx.writeFile(vexRel, json, { mustNotExist: !existing }); });
+      await withFileTransaction(projectDir, L("VEX 갱신", "VEX update"), (tx) => { tx.writeFile(vexRel, json, { mustNotExist: !existing }); });
       written = true;
-    } else if (!dryRun && !changed) notes.push(`VEX(${vexRel}) 에 추가할 취약점이 없어 파일을 바꾸지 않았습니다.`);
+    } else if (!dryRun && !changed) notes.push(L(`VEX(${vexRel}) 에 추가할 취약점이 없어 파일을 바꾸지 않았습니다.`, `No new vulnerabilities to add to the VEX (${vexRel}); file left unchanged.`));
     vex = { path: vexRel, dryRun, written, created: merged.created, added: merged.added, extended: merged.extended, preserved: merged.preserved, notDetected: merged.notDetected, states: merged.states, usedBomLink: merged.usedBomLink, vulnerabilities: merged.doc.vulnerabilities.length };
   }
 
@@ -426,50 +427,51 @@ export async function checkSbom(opts: CheckSbomOptions): Promise<CheckSbomResult
   };
 }
 
-const STATUS_KO: Record<string, string> = { ok: "기준 충족", outdated: "기준 미만", managed: "parent 관리", legacy: "전환 대상", replace: "교체 필요", vendor: "벤더", unknown: "기준 없음", unversioned: "버전 없음" };
+const STATUS_KO: Record<string, () => string> = { ok: () => L("기준 충족", "meets baseline"), outdated: () => L("기준 미만", "below baseline"), managed: () => L("parent 관리", "managed by parent"), legacy: () => L("전환 대상", "migration target"), replace: () => L("교체 필요", "needs replacement"), vendor: () => L("벤더", "vendor"), unknown: () => L("기준 없음", "no baseline"), unversioned: () => L("버전 없음", "unversioned") };
+const statusLabel = (k: string): string => STATUS_KO[k]?.() ?? k;
 
 /** 결과 Markdown. */
 export function renderSbomCheckMarkdown(r: CheckSbomResult): string {
-  const L: string[] = [];
+  const out: string[] = [];
   const d = r.document;
-  L.push(`# SBOM 점검 (${r.sbomPath})`, ``);
-  L.push(`- ${d.format === "spdx" ? d.specVersion : `CycloneDX ${d.specVersion}`} · component ${d.components}종 · 생성 ${d.timestamp ?? "(시각 없음)"} · 도구 ${d.tools.join(", ") || "(없음)"}`);
-  L.push(`- **최소 요소: ${r.minimum.verdict === "ready" ? "✅ 제출 가능" : "⚠️ 보완 필요"}** — 요소가 빠진 component ${r.minimum.componentsWithGaps}/${r.minimum.components}${r.minimum.supplierFromCatalog ? ` · 공급자 카탈로그 보완 ${r.minimum.supplierFromCatalog}종` : ""}`);
-  L.push(``, `## 1. 최소 요소 7종`, ``, `| 요소 | 대상 | 충족 | 빠진 항목(최대 20) |`, `|---|---|---|---|`);
-  for (const e of r.minimum.elements) L.push(`| ${e.ok ? "✅" : "⚠️"} ${e.label} | ${e.level === "document" ? "문서" : "component"} | ${e.satisfied}/${e.total} | ${e.missing.length ? e.missing.slice(0, 8).join(", ") + (e.missing.length > 8 ? ` 외 ${e.missing.length - 8}` : "") : "—"} |`);
+  out.push(L(`# SBOM 점검 (${r.sbomPath})`, `# SBOM check (${r.sbomPath})`), ``);
+  out.push(L(`- ${d.format === "spdx" ? d.specVersion : `CycloneDX ${d.specVersion}`} · component ${d.components}종 · 생성 ${d.timestamp ?? "(시각 없음)"} · 도구 ${d.tools.join(", ") || "(없음)"}`, `- ${d.format === "spdx" ? d.specVersion : `CycloneDX ${d.specVersion}`} · ${d.components} component(s) · generated ${d.timestamp ?? "(no timestamp)"} · tools ${d.tools.join(", ") || "(none)"}`));
+  out.push(L(`- **최소 요소: ${r.minimum.verdict === "ready" ? "✅ 제출 가능" : "⚠️ 보완 필요"}** — 요소가 빠진 component ${r.minimum.componentsWithGaps}/${r.minimum.components}${r.minimum.supplierFromCatalog ? ` · 공급자 카탈로그 보완 ${r.minimum.supplierFromCatalog}종` : ""}`, `- **Minimum elements: ${r.minimum.verdict === "ready" ? "✅ ready to submit" : "⚠️ needs work"}** — components with gaps ${r.minimum.componentsWithGaps}/${r.minimum.components}${r.minimum.supplierFromCatalog ? ` · suppliers filled from catalog ${r.minimum.supplierFromCatalog}` : ""}`));
+  out.push(``, L(`## 1. 최소 요소 7종`, `## 1. Seven minimum elements`), ``, L(`| 요소 | 대상 | 충족 | 빠진 항목(최대 20) |`, `| Element | Level | Satisfied | Missing (max 20) |`), `|---|---|---|---|`);
+  for (const e of r.minimum.elements) out.push(L(`| ${e.ok ? "✅" : "⚠️"} ${e.label} | ${e.level === "document" ? "문서" : "component"} | ${e.satisfied}/${e.total} | ${e.missing.length ? e.missing.slice(0, 8).join(", ") + (e.missing.length > 8 ? ` 외 ${e.missing.length - 8}` : "") : "—"} |`, `| ${e.ok ? "✅" : "⚠️"} ${e.label} | ${e.level === "document" ? "document" : "component"} | ${e.satisfied}/${e.total} | ${e.missing.length ? e.missing.slice(0, 8).join(", ") + (e.missing.length > 8 ? ` and ${e.missing.length - 8} more` : "") : "—"} |`));
   const gapsHint = r.minimum.elements.filter((e) => !e.ok);
-  if (gapsHint.length) { L.push(``); for (const e of gapsHint) L.push(`- ${e.label}: ${e.hint}`); }
+  if (gapsHint.length) { out.push(``); for (const e of gapsHint) out.push(`- ${e.label}: ${e.hint}`); }
 
   const rc = r.recheck;
-  L.push(``, `## 2. 재점검 (빌드 도구 없이 purl 로)`, ``);
-  L.push(`- 기준 판정 ${rc.components}종: ${Object.entries(rc.summary).filter(([, n]) => n).map(([k, n]) => `${STATUS_KO[k] ?? k} ${n}`).join(" · ") || "없음"}`);
-  if (rc.changed.length) { L.push(`- 생성 당시와 판정이 달라진 component ${rc.changed.length}종:`); for (const c of rc.changed.slice(0, 15)) L.push(`  - ${c.component}: ${STATUS_KO[c.from] ?? c.from} → ${STATUS_KO[c.to] ?? c.to}${c.baseline ? ` (기준 ${c.baseline})` : ""}`); }
-  else L.push(`- 생성 당시와 판정이 달라진 component 없음`);
-  if (rc.osv.error) L.push(`- OSV: ${rc.osv.error}`);
+  out.push(``, L(`## 2. 재점검 (빌드 도구 없이 purl 로)`, `## 2. Recheck (by purl, no build tool)`), ``);
+  out.push(L(`- 기준 판정 ${rc.components}종: ${Object.entries(rc.summary).filter(([, n]) => n).map(([k, n]) => `${statusLabel(k)} ${n}`).join(" · ") || "없음"}`, `- Baseline status for ${rc.components} component(s): ${Object.entries(rc.summary).filter(([, n]) => n).map(([k, n]) => `${statusLabel(k)} ${n}`).join(" · ") || "none"}`));
+  if (rc.changed.length) { out.push(L(`- 생성 당시와 판정이 달라진 component ${rc.changed.length}종:`, `- ${rc.changed.length} component(s) whose status changed since generation:`)); for (const c of rc.changed.slice(0, 15)) out.push(L(`  - ${c.component}: ${statusLabel(c.from)} → ${statusLabel(c.to)}${c.baseline ? ` (기준 ${c.baseline})` : ""}`, `  - ${c.component}: ${statusLabel(c.from)} → ${statusLabel(c.to)}${c.baseline ? ` (baseline ${c.baseline})` : ""}`)); }
+  else out.push(L(`- 생성 당시와 판정이 달라진 component 없음`, `- No component changed status since generation`));
+  if (rc.osv.error) out.push(`- OSV: ${rc.osv.error}`);
   else if (rc.osv.queried) {
-    L.push(`- OSV 재조회: 취약점 ${rc.osv.ids}건(영향 component ${rc.osv.items.length}종) · ${rc.osv.recorded ? `**생성 이후 새로 알려진 것 ${rc.osv.newIds.length}건**` : `SBOM 에 취약점 기록이 없어(offline 생성) 전부 미기록 ${rc.osv.newIds.length}건`}${rc.osv.goneIds.length ? ` · SBOM 에 있으나 지금 조회되지 않음 ${rc.osv.goneIds.length}건` : ""}`);
-    if (rc.osv.newIds.length) L.push(`  - 새 ID: ${rc.osv.newIds.slice(0, 20).join(", ")}${rc.osv.newIds.length > 20 ? " …" : ""}`);
-  } else L.push(`- OSV: 조회 안 함(offline)`);
+    out.push(L(`- OSV 재조회: 취약점 ${rc.osv.ids}건(영향 component ${rc.osv.items.length}종) · ${rc.osv.recorded ? `**생성 이후 새로 알려진 것 ${rc.osv.newIds.length}건**` : `SBOM 에 취약점 기록이 없어(offline 생성) 전부 미기록 ${rc.osv.newIds.length}건`}${rc.osv.goneIds.length ? ` · SBOM 에 있으나 지금 조회되지 않음 ${rc.osv.goneIds.length}건` : ""}`, `- OSV recheck: ${rc.osv.ids} vulnerability(ies) (${rc.osv.items.length} affected component(s)) · ${rc.osv.recorded ? `**${rc.osv.newIds.length} newly disclosed since generation**` : `SBOM has no vulnerability records (generated offline), so all ${rc.osv.newIds.length} are unrecorded`}${rc.osv.goneIds.length ? ` · ${rc.osv.goneIds.length} in the SBOM but no longer returned` : ""}`));
+    if (rc.osv.newIds.length) out.push(L(`  - 새 ID: ${rc.osv.newIds.slice(0, 20).join(", ")}${rc.osv.newIds.length > 20 ? " …" : ""}`, `  - New IDs: ${rc.osv.newIds.slice(0, 20).join(", ")}${rc.osv.newIds.length > 20 ? " …" : ""}`));
+  } else out.push(L(`- OSV: 조회 안 함(offline)`, `- OSV: not queried (offline)`));
 
   if (r.diff) {
     const df = r.diff;
-    L.push(``, `## 3. 이전 SBOM 과 비교 (${df.baselinePath}${df.baselineTimestamp ? `, ${df.baselineTimestamp}` : ""})`, ``);
-    L.push(`- 추가 ${df.added.length} · 제거 ${df.removed.length} · 버전 변경 ${df.versionChanged.length} · 판정 변화 ${df.statusChanged.length} · 같음 ${df.unchanged} · 새 취약점 ${df.newVulnerabilities.length} · 사라진 취약점 ${df.resolvedVulnerabilities.length}`);
-    if (df.added.length) L.push(`- 추가: ${df.added.slice(0, 20).map((x) => `${x.component}@${x.version}`).join(", ")}`);
-    if (df.removed.length) L.push(`- 제거: ${df.removed.slice(0, 20).map((x) => `${x.component}@${x.version}`).join(", ")}`);
-    for (const x of df.versionChanged.slice(0, 20)) L.push(`- 버전: ${x.component} ${x.from} → ${x.to}`);
-    for (const x of df.statusChanged.slice(0, 20)) L.push(`- 판정: ${x.component} ${STATUS_KO[x.from] ?? x.from} → ${STATUS_KO[x.to] ?? x.to}`);
-    for (const x of df.newVulnerabilities.slice(0, 20)) L.push(`- 새 취약점 ${x.id}: ${x.components.join(", ")}`);
-    if (df.resolvedVulnerabilities.length) L.push(`- 사라진 취약점: ${df.resolvedVulnerabilities.slice(0, 20).join(", ")}`);
+    out.push(``, L(`## 3. 이전 SBOM 과 비교 (${df.baselinePath}${df.baselineTimestamp ? `, ${df.baselineTimestamp}` : ""})`, `## 3. Comparison with baseline SBOM (${df.baselinePath}${df.baselineTimestamp ? `, ${df.baselineTimestamp}` : ""})`), ``);
+    out.push(L(`- 추가 ${df.added.length} · 제거 ${df.removed.length} · 버전 변경 ${df.versionChanged.length} · 판정 변화 ${df.statusChanged.length} · 같음 ${df.unchanged} · 새 취약점 ${df.newVulnerabilities.length} · 사라진 취약점 ${df.resolvedVulnerabilities.length}`, `- Added ${df.added.length} · removed ${df.removed.length} · version changed ${df.versionChanged.length} · status changed ${df.statusChanged.length} · unchanged ${df.unchanged} · new vulnerabilities ${df.newVulnerabilities.length} · resolved vulnerabilities ${df.resolvedVulnerabilities.length}`));
+    if (df.added.length) out.push(L(`- 추가: ${df.added.slice(0, 20).map((x) => `${x.component}@${x.version}`).join(", ")}`, `- Added: ${df.added.slice(0, 20).map((x) => `${x.component}@${x.version}`).join(", ")}`));
+    if (df.removed.length) out.push(L(`- 제거: ${df.removed.slice(0, 20).map((x) => `${x.component}@${x.version}`).join(", ")}`, `- Removed: ${df.removed.slice(0, 20).map((x) => `${x.component}@${x.version}`).join(", ")}`));
+    for (const x of df.versionChanged.slice(0, 20)) out.push(L(`- 버전: ${x.component} ${x.from} → ${x.to}`, `- Version: ${x.component} ${x.from} → ${x.to}`));
+    for (const x of df.statusChanged.slice(0, 20)) out.push(L(`- 판정: ${x.component} ${statusLabel(x.from)} → ${statusLabel(x.to)}`, `- Status: ${x.component} ${statusLabel(x.from)} → ${statusLabel(x.to)}`));
+    for (const x of df.newVulnerabilities.slice(0, 20)) out.push(L(`- 새 취약점 ${x.id}: ${x.components.join(", ")}`, `- New vulnerability ${x.id}: ${x.components.join(", ")}`));
+    if (df.resolvedVulnerabilities.length) out.push(L(`- 사라진 취약점: ${df.resolvedVulnerabilities.slice(0, 20).join(", ")}`, `- Resolved vulnerabilities: ${df.resolvedVulnerabilities.slice(0, 20).join(", ")}`));
   }
   if (r.vex) {
     const v = r.vex;
-    L.push(``, `## ${r.diff ? 4 : 3}. VEX (${v.path})`, ``);
-    L.push(`- ${v.dryRun ? "미리보기(dryRun — 쓰지 않음)" : v.written ? (v.created ? "새로 만듦" : "갱신") : "변경 없음"} · 항목 ${v.vulnerabilities}건 = 기존 ${v.preserved}(판단 보존) + 새 항목 ${v.added}${v.extended ? ` · 영향 component 추가 ${v.extended}` : ""}`);
-    L.push(`- 상태: ${Object.entries(v.states).map(([k, n]) => `${k} ${n}`).join(" · ") || "없음"}${v.notDetected.length ? ` · 지금 탐지되지 않는 ID ${v.notDetected.length}건(지우지 않음): ${v.notDetected.slice(0, 10).join(", ")}` : ""}`);
-    L.push(`- \`analysis.state\` 가 \`in_triage\` 인 항목은 담당자가 \`not_affected\`(+justification)·\`exploitable\`·\`resolved\` 등으로 판단을 적습니다. 다음 실행은 적힌 판단을 그대로 두고 새 취약점만 추가합니다.`);
+    out.push(``, `## ${r.diff ? 4 : 3}. VEX (${v.path})`, ``);
+    out.push(L(`- ${v.dryRun ? "미리보기(dryRun — 쓰지 않음)" : v.written ? (v.created ? "새로 만듦" : "갱신") : "변경 없음"} · 항목 ${v.vulnerabilities}건 = 기존 ${v.preserved}(판단 보존) + 새 항목 ${v.added}${v.extended ? ` · 영향 component 추가 ${v.extended}` : ""}`, `- ${v.dryRun ? "Preview (dryRun — not written)" : v.written ? (v.created ? "Created" : "Updated") : "No change"} · ${v.vulnerabilities} entry(ies) = ${v.preserved} existing (analysis preserved) + ${v.added} new${v.extended ? ` · ${v.extended} with affected components added` : ""}`));
+    out.push(L(`- 상태: ${Object.entries(v.states).map(([k, n]) => `${k} ${n}`).join(" · ") || "없음"}${v.notDetected.length ? ` · 지금 탐지되지 않는 ID ${v.notDetected.length}건(지우지 않음): ${v.notDetected.slice(0, 10).join(", ")}` : ""}`, `- States: ${Object.entries(v.states).map(([k, n]) => `${k} ${n}`).join(" · ") || "none"}${v.notDetected.length ? ` · ${v.notDetected.length} ID(s) no longer detected (kept): ${v.notDetected.slice(0, 10).join(", ")}` : ""}`));
+    out.push(L(`- \`analysis.state\` 가 \`in_triage\` 인 항목은 담당자가 \`not_affected\`(+justification)·\`exploitable\`·\`resolved\` 등으로 판단을 적습니다. 다음 실행은 적힌 판단을 그대로 두고 새 취약점만 추가합니다.`, `- For entries with \`analysis.state\` \`in_triage\`, the owner records a verdict such as \`not_affected\` (+justification), \`exploitable\` or \`resolved\`. The next run keeps recorded verdicts as they are and only adds new vulnerabilities.`));
   }
-  for (const n of r.notes) L.push(`- ${n}`);
-  L.push(``, `---`, `최소 요소는 NTIA 최소 요소 7종(국내 SW 공급망 보안 가이드라인 1.0 의 핵심 구성요소와 같음)을 catalog/sbom-rules.json 데이터로 점검합니다. SBOM 파일은 바꾸지 않습니다.`);
-  return L.join("\n");
+  for (const n of r.notes) out.push(`- ${n}`);
+  out.push(``, `---`, L(`최소 요소는 NTIA 최소 요소 7종(국내 SW 공급망 보안 가이드라인 1.0 의 핵심 구성요소와 같음)을 catalog/sbom-rules.json 데이터로 점검합니다. SBOM 파일은 바꾸지 않습니다.`, `Minimum elements are checked against the seven NTIA minimum elements (the same as the core elements of Korea's SW Supply Chain Security Guideline 1.0) using catalog/sbom-rules.json data. The SBOM file is not modified.`));
+  return out.join("\n");
 }

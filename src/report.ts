@@ -6,6 +6,7 @@ import { generateReport } from "./diagnose.js";
 import { assessProject, renderAssessmentMarkdown, type AssessmentOptions, type AssessmentResult } from "./assessment.js";
 import { resolveOutputPath } from "./sbom.js";
 import { withFileTransaction } from "./file-transaction.js";
+import { L } from "./lang.js";
 
 export type ReportSection = "components" | "assessment";
 export const REPORT_SECTIONS: ReportSection[] = ["components", "assessment"];
@@ -36,7 +37,7 @@ export interface ReportResult {
 /** 리포트를 조립하고(선택) 저장한다. */
 export async function generateProjectReport(opts: ReportOptions): Promise<ReportResult> {
   const sections = opts.sections && opts.sections.length ? [...new Set(opts.sections)] : (["components"] as ReportSection[]);
-  for (const s of sections) if (!REPORT_SECTIONS.includes(s)) throw new Error(`알 수 없는 section: ${s} (components | assessment)`);
+  for (const s of sections) if (!REPORT_SECTIONS.includes(s)) throw new Error(L(`알 수 없는 section: ${s} (components | assessment)`, `Unknown section: ${s} (components | assessment)`));
   const notes: string[] = [];
   const parts: string[] = [];
   let assessment: AssessmentResult | undefined;
@@ -51,10 +52,10 @@ export async function generateProjectReport(opts: ReportOptions): Promise<Report
   if (!opts.outputPath) return base;
 
   const { relPath, absolutePath } = resolveOutputPath(opts.projectDir, opts.outputPath);
-  if (!/\.(md|markdown|txt)$/i.test(relPath)) throw new Error(`outputPath 는 .md 파일이어야 합니다: ${opts.outputPath}`);
+  if (!/\.(md|markdown|txt)$/i.test(relPath)) throw new Error(L(`outputPath 는 .md 파일이어야 합니다: ${opts.outputPath}`, `outputPath must be a .md file: ${opts.outputPath}`));
   const exists = fs.existsSync(absolutePath);
-  if (exists) throw new Error(`${relPath} 이 이미 있습니다 — 리포트는 새 파일로만 저장합니다(다른 이름을 쓰거나 기존 파일을 옮기세요).`);
-  if (dryRun) { notes.push(`dryRun — ${relPath} 에 쓰지 않았습니다(${base.bytes} bytes).`); return { ...base, outputPath: relPath, absolutePath }; }
-  await withFileTransaction(opts.projectDir, "리포트 저장", (tx) => { tx.writeFile(relPath, markdown, { mustNotExist: true }); });
+  if (exists) throw new Error(L(`${relPath} 이 이미 있습니다 — 리포트는 새 파일로만 저장합니다(다른 이름을 쓰거나 기존 파일을 옮기세요).`, `${relPath} already exists — the report is only saved as a new file (use another name or move the existing file).`));
+  if (dryRun) { notes.push(L(`dryRun — ${relPath} 에 쓰지 않았습니다(${base.bytes} bytes).`, `dryRun — ${relPath} was not written (${base.bytes} bytes).`)); return { ...base, outputPath: relPath, absolutePath }; }
+  await withFileTransaction(opts.projectDir, L("리포트 저장", "save report"), (tx) => { tx.writeFile(relPath, markdown, { mustNotExist: true }); });
   return { ...base, outputPath: relPath, absolutePath, written: true };
 }

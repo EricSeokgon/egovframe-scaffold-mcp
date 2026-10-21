@@ -20,7 +20,8 @@
   ],
   "components": {
     "repository": "eGovFramework/egovframe-common-components",
-    "note": "공통컴포넌트는 RTE 와 별도 버전(v5.0.x)으로 나온다. 매니페스트가 있으면 upgrade_egovframe_project, 없으면 reassemble_egovframe_components 로 카탈로그 고정 버전까지 맞춘다."
+    "note": "공통컴포넌트는 RTE 와 별도 버전(v5.0.x)으로 나온다. 매니페스트가 있으면 upgrade_egovframe_project, 없으면 reassemble_egovframe_components 로 카탈로그 고정 버전까지 맞춘다.",
+    "note_en": "Common Components are released separately from the RTE (v5.0.x). With a manifest use upgrade_egovframe_project, otherwise reassemble_egovframe_components, to reach the catalog-pinned version."
   },
   "changes": [
     {
@@ -31,7 +32,9 @@
         "org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration"
       ],
       "summary": "EgovSecurityConfiguration 의 @Bean 메서드 시그니처 변경",
-      "reason": "authenticationManager(securityConfig, passwordEncoder)·usernamePasswordAuthenticationFilter(authenticationManager)·securityFilterChain(…, usernamePasswordAuthenticationFilter, securityConfig) 로 인자가 바뀌었다. 이 클래스를 상속하거나 메서드를 직접 호출하면 컴파일 오류가 난다. 또 roleHierarchy 가 null 대신 기본 계층(ROLE_ADMIN > ROLE_USER > ROLE_ANONYMOUS)을 돌려주고, 해시에 eccp·egov-sha256(아이디 솔트 SHA-256) 선택지가 생겼다."
+      "summary_en": "@Bean method signatures of EgovSecurityConfiguration changed",
+      "reason": "authenticationManager(securityConfig, passwordEncoder)·usernamePasswordAuthenticationFilter(authenticationManager)·securityFilterChain(…, usernamePasswordAuthenticationFilter, securityConfig) 로 인자가 바뀌었다. 이 클래스를 상속하거나 메서드를 직접 호출하면 컴파일 오류가 난다. 또 roleHierarchy 가 null 대신 기본 계층(ROLE_ADMIN > ROLE_USER > ROLE_ANONYMOUS)을 돌려주고, 해시에 eccp·egov-sha256(아이디 솔트 SHA-256) 선택지가 생겼다.",
+      "reason_en": "Arguments changed to authenticationManager(securityConfig, passwordEncoder), usernamePasswordAuthenticationFilter(authenticationManager) and securityFilterChain(…, usernamePasswordAuthenticationFilter, securityConfig). Code that extends this class or calls the methods directly no longer compiles. roleHierarchy now returns a default hierarchy (ROLE_ADMIN > ROLE_USER > ROLE_ANONYMOUS) instead of null, and the hash options gained eccp and egov-sha256 (ID-salted SHA-256)."
     },
     {
       "id": "excel-formula-injection",
@@ -42,7 +45,9 @@
         "org.egovframe.rte.fdl.excel.util.AbstractPOIExcelView"
       ],
       "summary": "엑셀 다운로드 셀 값의 수식 주입 방지",
-      "reason": "문자열 셀 값이 = + - @ 탭·CR 로 시작하면 앞에 작은따옴표(')를 붙여 수식으로 해석되지 않게 한다(CSV/수식 주입 방지). 음수·수식을 문자열로 넣어 엑셀에서 계산되게 하던 화면은 결과가 달라지므로 숫자 셀(setCellValue(double))로 바꿔야 한다."
+      "summary_en": "Formula injection prevention for Excel download cell values",
+      "reason": "문자열 셀 값이 = + - @ 탭·CR 로 시작하면 앞에 작은따옴표(')를 붙여 수식으로 해석되지 않게 한다(CSV/수식 주입 방지). 음수·수식을 문자열로 넣어 엑셀에서 계산되게 하던 화면은 결과가 달라지므로 숫자 셀(setCellValue(double))로 바꿔야 한다.",
+      "reason_en": "String cell values starting with = + - @ tab or CR get a leading apostrophe (') so they are not interpreted as formulas (CSV/formula injection prevention). Screens that put negative numbers or formulas in as strings for Excel to calculate will produce different results and must switch to numeric cells (setCellValue(double))."
     },
     {
       "id": "xml-validator-xxe",
@@ -53,7 +58,9 @@
         "org.egovframe.rte.fdl.xml.EgovSAXValidatorService"
       ],
       "summary": "XML 검증에서 외부 엔티티·DTD 차단(XXE 방지)",
-      "reason": "외부 일반·매개변수 엔티티와 외부 DTD 로딩을 막고 DOCTYPE 선언을 거부한다. DTD 를 참조하는 XML 을 검증하던 코드는 예외가 난다 — XSD 기반으로 바꾸거나 입력을 신뢰 경계 안에서만 다룬다."
+      "summary_en": "External entities and DTDs blocked in XML validation (XXE prevention)",
+      "reason": "외부 일반·매개변수 엔티티와 외부 DTD 로딩을 막고 DOCTYPE 선언을 거부한다. DTD 를 참조하는 XML 을 검증하던 코드는 예외가 난다 — XSD 기반으로 바꾸거나 입력을 신뢰 경계 안에서만 다룬다.",
+      "reason_en": "External general/parameter entities and external DTD loading are blocked and DOCTYPE declarations are rejected. Code that validated XML referencing a DTD now throws — switch to XSD or handle the input only inside the trust boundary."
     },
     {
       "id": "filehandling-path",
@@ -63,7 +70,9 @@
         "org.egovframe.rte.fdl.filehandling.EgovFileUtil"
       ],
       "summary": "EgovFileUtil.writeFile(String …) 의 경로 검증",
-      "reason": "파일 이름이 문자열인 writeFile 은 '..'·널 바이트·절대 경로를 IllegalArgumentException 으로 거부한다. 신뢰할 수 있는 절대 경로에 써야 하면 writeFile(File, …) 오버로드를 쓴다. VFS 초기화 실패도 이제 IllegalStateException 으로 드러난다."
+      "summary_en": "Path validation in EgovFileUtil.writeFile(String …)",
+      "reason": "파일 이름이 문자열인 writeFile 은 '..'·널 바이트·절대 경로를 IllegalArgumentException 으로 거부한다. 신뢰할 수 있는 절대 경로에 써야 하면 writeFile(File, …) 오버로드를 쓴다. VFS 초기화 실패도 이제 IllegalStateException 으로 드러난다.",
+      "reason_en": "The String-named writeFile rejects '..', null bytes and absolute paths with IllegalArgumentException. To write to a trusted absolute path use the writeFile(File, …) overload. VFS initialization failures now surface as IllegalStateException."
     },
     {
       "id": "crypto-weak-default",
@@ -73,7 +82,9 @@
         "org.egovframe.rte.fdl.crypto.impl.EgovGeneralCryptoServiceImpl"
       ],
       "summary": "기본 PBE 알고리즘(PBEWithSHA1AndDESede) 사용 경고",
-      "reason": "하위 호환을 위해 기본값은 그대로지만 처음 사용할 때 WARN 로그를 남긴다. 새 시스템은 setAlgorithm 으로 PBEWithHmacSHA256AndAES_256 같은 강한 알고리즘을 지정한다(기존 암호문은 같은 알고리즘으로만 복호화되므로 데이터 이관 계획이 필요)."
+      "summary_en": "Warning on use of the default PBE algorithm (PBEWithSHA1AndDESede)",
+      "reason": "하위 호환을 위해 기본값은 그대로지만 처음 사용할 때 WARN 로그를 남긴다. 새 시스템은 setAlgorithm 으로 PBEWithHmacSHA256AndAES_256 같은 강한 알고리즘을 지정한다(기존 암호문은 같은 알고리즘으로만 복호화되므로 데이터 이관 계획이 필요).",
+      "reason_en": "The default is kept for backward compatibility but a WARN log is written on first use. New systems should set a strong algorithm such as PBEWithHmacSHA256AndAES_256 via setAlgorithm (existing ciphertext decrypts only with the same algorithm, so plan a data migration)."
     },
     {
       "id": "idgnr-table-lock",
@@ -83,7 +94,9 @@
         "org.egovframe.rte.fdl.idgnr.impl.EgovTableIdGnrServiceImpl"
       ],
       "summary": "테이블 ID 생성의 행 잠금(SELECT … FOR UPDATE)",
-      "reason": "ID 블록을 읽을 때 SELECT … FOR UPDATE 로 잠그고, 초기 행을 동시에 만들면 한 번 다시 시도한다. FOR UPDATE 를 지원하지 않는 DB·드라이버(일부 내장 DB 모드)나 읽기 전용 트랜잭션에서 호출하면 오류가 날 수 있다."
+      "summary_en": "Row locking in table ID generation (SELECT … FOR UPDATE)",
+      "reason": "ID 블록을 읽을 때 SELECT … FOR UPDATE 로 잠그고, 초기 행을 동시에 만들면 한 번 다시 시도한다. FOR UPDATE 를 지원하지 않는 DB·드라이버(일부 내장 DB 모드)나 읽기 전용 트랜잭션에서 호출하면 오류가 날 수 있다.",
+      "reason_en": "Reading an ID block now locks with SELECT … FOR UPDATE and retries once when the initial row is created concurrently. Calls on DBs/drivers without FOR UPDATE (some embedded DB modes) or inside read-only transactions may fail."
     },
     {
       "id": "date-util-validation",
@@ -93,7 +106,9 @@
         "org.egovframe.rte.fdl.string.EgovDateUtil"
       ],
       "summary": "EgovDateUtil 입력 검증 강화",
-      "reason": "null·짧은 값·없는 날짜·형식 오류를 IllegalArgumentException(또는 ParseException)으로 거부한다. 예전에 잘못된 입력에서 null·기본값을 돌려받던 호출부는 예외 처리를 넣어야 한다."
+      "summary_en": "Stricter input validation in EgovDateUtil",
+      "reason": "null·짧은 값·없는 날짜·형식 오류를 IllegalArgumentException(또는 ParseException)으로 거부한다. 예전에 잘못된 입력에서 null·기본값을 돌려받던 호출부는 예외 처리를 넣어야 한다.",
+      "reason_en": "null, short values, nonexistent dates and format errors are rejected with IllegalArgumentException (or ParseException). Callers that used to get null or a default for bad input must add exception handling."
     },
     {
       "id": "reactive-exception-message",
@@ -104,7 +119,9 @@
         "org.egovframe.rte.ptl.reactive.exception.EgovServiceException"
       ],
       "summary": "리액티브 예외의 getMessage 재정의 제거",
-      "reason": "EgovException·EgovServiceException 이 getMessage 를 재정의하지 않아 생성자에 넘긴 메시지가 그대로 쓰인다. 메시지 형식에 기대던 응답·로그 파서는 확인이 필요하다."
+      "summary_en": "getMessage override removed from reactive exceptions",
+      "reason": "EgovException·EgovServiceException 이 getMessage 를 재정의하지 않아 생성자에 넘긴 메시지가 그대로 쓰인다. 메시지 형식에 기대던 응답·로그 파서는 확인이 필요하다.",
+      "reason_en": "EgovException and EgovServiceException no longer override getMessage, so the constructor message is used as is. Response or log parsers that relied on the message format need checking."
     },
     {
       "id": "excel-batch-insert",
@@ -116,7 +133,9 @@
         "org.egovframe.rte.fdl.excel.EgovExcelService"
       ],
       "summary": "엑셀 업로드 일괄 등록 방식 변경",
-      "reason": "트랜잭션 밖에서는 MyBatis BATCH 실행기로 한 번에 등록하고 반환값이 실제 반영 행 수가 된다(트랜잭션 안에서는 행 단위). 반환 건수로 성공을 판단하던 코드와 트리거·채번에 기대던 등록 순서를 확인한다. 인터페이스에 기본 메서드 uploadExcelAuto 가 추가됐다."
+      "summary_en": "Excel upload batch insert behavior changed",
+      "reason": "트랜잭션 밖에서는 MyBatis BATCH 실행기로 한 번에 등록하고 반환값이 실제 반영 행 수가 된다(트랜잭션 안에서는 행 단위). 반환 건수로 성공을 판단하던 코드와 트리거·채번에 기대던 등록 순서를 확인한다. 인터페이스에 기본 메서드 uploadExcelAuto 가 추가됐다.",
+      "reason_en": "Outside a transaction rows are inserted at once with the MyBatis BATCH executor and the return value is the actual affected row count (row by row inside a transaction). Check code that judged success by the returned count and insert order that relied on triggers or sequences. A default method uploadExcelAuto was added to the interface."
     },
     {
       "id": "html-tag-filter",
@@ -127,7 +146,9 @@
         "org.egovframe.rte.ptl.mvc.filter.HTMLTagFilterRequestWrapper"
       ],
       "summary": "HTMLTagFilter 허용 태그·리치텍스트 파라미터 설정",
-      "reason": "필터 초기화 매개변수로 그대로 통과시킬 태그(속성 없는 것만)와 인코딩을 건너뛸 리치텍스트 파라미터를 지정할 수 있고, 요청 파라미터 배열을 제자리에서 바꾸지 않고 사본을 돌려준다. 에디터 입력을 우회하려고 직접 만든 래퍼·예외 경로가 있으면 이 설정으로 옮긴다."
+      "summary_en": "Allowed tags and rich-text parameter settings for HTMLTagFilter",
+      "reason": "필터 초기화 매개변수로 그대로 통과시킬 태그(속성 없는 것만)와 인코딩을 건너뛸 리치텍스트 파라미터를 지정할 수 있고, 요청 파라미터 배열을 제자리에서 바꾸지 않고 사본을 돌려준다. 에디터 입력을 우회하려고 직접 만든 래퍼·예외 경로가 있으면 이 설정으로 옮긴다.",
+      "reason_en": "Filter init parameters can name tags to pass through (attribute-less only) and rich-text parameters to skip encoding, and request parameter arrays are returned as copies instead of modified in place. Move any home-made wrappers or bypass paths for editor input to these settings."
     },
     {
       "id": "string-util-tokens",
@@ -137,7 +158,9 @@
         "org.egovframe.rte.fdl.string.EgovStringUtil"
       ],
       "summary": "EgovStringUtil.getTokens 반환 타입 List<String>",
-      "reason": "getTokens(String) 의 반환 타입이 List<?> 에서 List<String> 으로 바뀌었다. 대부분 그대로 컴파일되지만 이 메서드를 재정의하거나 List<Object> 변수에 받던 코드는 고쳐야 한다."
+      "summary_en": "EgovStringUtil.getTokens now returns List<String>",
+      "reason": "getTokens(String) 의 반환 타입이 List<?> 에서 List<String> 으로 바뀌었다. 대부분 그대로 컴파일되지만 이 메서드를 재정의하거나 List<Object> 변수에 받던 코드는 고쳐야 한다.",
+      "reason_en": "The return type of getTokens(String) changed from List<?> to List<String>. Most code still compiles, but overrides of this method or assignments to List<Object> variables must be fixed."
     }
   ]
 }
