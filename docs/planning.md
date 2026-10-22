@@ -2,7 +2,7 @@
 
 버전별 기획 원문과 결과, 선행 조사를 그대로 남긴 기록입니다. 현재 사용법은 [README](../README.md), 변경 내용은 [CHANGELOG](../CHANGELOG.md)를 보세요.
 
-## 진행 현황 (버전별 요약) (2026-10-20)
+## 진행 현황 (버전별 요약) (2026-10-22)
 
 - **소스 기준**: v1.2.0(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
@@ -37,14 +37,14 @@
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v1.0–v1.2 기획이 모두 끝났습니다. 다음 기획은 아직 없습니다([보류·운영 항목](#보류운영-항목) 참조).
+- **다음 계획**: v1.3 표준프레임워크 5.1.0 대응 → v1.4 Initializr v5.0.7 정렬 + DDL 기반 CRUD → v1.5 보안약점 메서드 안 데이터 흐름. [다음 버전 기획](#다음-버전-기획-v13v15) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
 
 v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
 
-v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). v0.47 로 멀티 모듈·MSA 대응을 마쳤습니다([v0.47](#이전-기획-v047-완료)). v1.0.0 으로 0.x 를 끝내고 공개 API 를 고정했으며([버전 정책](versioning.md)), 다음 v1.1–v1.2 의 범위는 [다음 버전 기획](#다음-버전-기획-v10v12)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
+v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). v0.47 로 멀티 모듈·MSA 대응을 마쳤습니다([v0.47](#이전-기획-v047-완료)). v1.0.0 으로 0.x 를 끝내고 공개 API 를 고정했으며([버전 정책](versioning.md)), v1.1–v1.2 로 납품 패키지와 응답 영문화·진행 알림을 마쳤습니다([v1.0–v1.2](#이전-기획-v10v12-완료)). 다음 v1.3–v1.5 의 범위는 [다음 버전 기획](#다음-버전-기획-v13v15)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -79,10 +79,101 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.0 완료** | 안정화: 버전 정책 + 공개 API 고정 | `docs/versioning.md`(SemVer, 공개 API 범위·폐기 절차), `test:api-contract` 계약 스냅샷·분류기와 `test:release` 버전 증가 폭 검사, secure_coding `top` → `topN`(deprecated 별칭), Node 22 이상·CI Node 22·24 |
 | **v1.1 완료** | 납품 패키지 | 새 도구 `prepare_egovframe_delivery`(35종): 평가서·SBOM·VEX·보안약점·배포 검증을 한 묶음 + sha256 manifest·목차·이전 차수 비교, `deliver --verify` |
 | **v1.2 완료** | 응답 영문화 + 진행 알림 | `EGOVFRAME_LANG=en`·`--lang en` 으로 응답 본문·규칙 사유·CLI 문구 영문(ko 출력은 goldens 와 바이트 동일), 장시간 도구 8종의 `notifications/progress` 와 `notifications/cancelled` 시 프로세스 트리 종료·롤백 |
+| **v1.3 계획** | 표준프레임워크 5.1.0 대응 | 저장소에 배포된 5.1.0(BOM `egovframe-rte-root`)으로 의존성 기준·5.x 최신 유지·전환 목표·SBOM 판정, `-egov.N` 재빌드 좌표, jar·sources jar 근거(태그 생기면 교체) |
+| **v1.4 계획** | Initializr v5.0.7 정렬 + DDL 기반 CRUD | `generate_egovframe_crud(ddl, search)`: CREATE TABLE 해석(공식 결함 경계 고정), 방언 중립 LIKE `<bind>`, 검색 필드 이스케이프, 템플릿 카탈로그 v5.0.7 |
+| **v1.5 계획** | 보안약점 정밀화 | 메서드 안 데이터 흐름으로 등급 상·하향, SARIF `codeFlows`, 오탐 표본 정밀도 수치 |
 
-## 다음 버전 기획 (v1.0–v1.2)
+## 다음 버전 기획 (v1.3–v1.5)
 
-v0.47.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종)에서 다음 세 릴리스를 아래 순서로 진행합니다. 도구 34종의 이름·파라미터·구조화 출력이 사실상 굳어 있고 npm 으로 자동 배포되고 있어, **0.x 를 끝내고 v1.0.0 으로 공개 API 를 고정**합니다. 원래 v0.48(납품 패키지)·v0.49(응답 영문화·진행 알림)로 잡았던 기획은 호환을 깨지 않는 추가 기능이라 버전 정책에 따라 v1.1·v1.2 로 번호만 바꿨습니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 문서·저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-16)"에 있습니다.
+v1.2.0 까지 끝난 상태(2026-10-22, 도구 35종 + CLI 명령 12종)에서 다음 세 릴리스를 아래 순서로 진행합니다. 출발점은 선행 조사에서 확인한 **표준프레임워크 5.1.0 의 저장소 배포**입니다. 공식 Maven 저장소에 RTE 5.1.0 모듈·parent 2종·새 BOM `egovframe-rte-root` 가 2026-09-28~10-12 에 올라왔지만 GitHub 태그(`v5.1.0-Final`)와 공식 공지는 아직 없습니다. 지금 도구는 5.0.2 를 최신으로 보므로 5.1.0 프로젝트를 "기준 없음"·"버전 미검출"로 다루고, 5.0.x 프로젝트에 5.1.0 갱신을 안내하지 못합니다. 세 버전 모두 공개 API 를 깨지 않는 MINOR 입니다(도구 이름·기존 파라미터 그대로, 선택 파라미터·허용값 추가만).
+
+### v1.3.0 — 표준프레임워크 5.1.0 대응
+
+**목표**: 5.1.0 이 저장소에 배포됐으므로 의존성 점검·5.x 최신 유지·전환·SBOM 이 5.1.0 을 기준으로 판정하게 합니다. GitHub 태그가 없어 지금까지의 "소스 트리 태그 비교" 방식을 쓸 수 없으므로, **저장소의 jar·sources jar 로 근거를 만드는 경로**를 더하고 태그가 생기면 같은 결과로 바꿉니다.
+
+**범위 (포함)**
+- **의존성 기준 재생성**: `generate-dependency-baseline.mjs` 가 parent 5.1.0 의 새 구조를 읽게 합니다.
+  - 5.1.0 parent 는 RTE 모듈을 직접 나열하지 않고 `org.egovframe.rte:egovframe-rte-root:5.1.0` BOM 을 import 합니다(web parent 의 `dependencyManagement` 항목 106 → 222, boot parent 72 → 24). BOM import 를 한 단계 풀어 기준에 넣습니다.
+  - Spring Boot 3.5.6 → 3.5.16, Spring 6.2.11 → 6.2.19, Spring Cloud 2025.0.0 → 2025.0.3, Spring AI 1.0.1 → 1.1.8 등 기준 버전이 함께 오릅니다.
+  - 5.0.2 기준은 지우지 않고 **parent 버전별 기준**으로 둡니다. 프로젝트가 쓰는 parent(5.0.x 또는 5.1.0)에 맞는 기준으로 판정하고, 5.1.0 이 더 새 기준임을 안내합니다.
+- **`-egov.N` 재빌드 좌표**: 5.1.0 은 `spring-security 6.5.11-egov.1`·`spring-integration 6.5.10-egov.1`·`spring-ai-* 1.1.8-egov.1` 처럼 공식 저장소에만 있는 재빌드본을 씁니다.
+  - 버전 비교는 `6.5.11-egov.1` 을 `6.5.11` 이상으로 봅니다.
+  - OSV 조회는 원 버전(`6.5.11`)으로 하되 결과에 "egov 재빌드 — 패치 반영 여부는 공급자 확인"을 붙입니다.
+  - SBOM 공급자는 eGovFrame 으로 적습니다.
+- **5.x 최신 유지 5.0.x → 5.1.0**: `update-rules.json` 에 5.1.0 단계를 더합니다.
+  - 근거는 저장소의 5.0.2·5.1.0 jar 클래스 목록 비교입니다. 실측으로 기존 모듈 24종에서 제거 0·추가 64 클래스, 새 모듈 3종입니다(`ai-core` 43·`ai-langchain4j` 21·`ai-springai` 18 클래스).
+  - 바뀐 API·동작은 sources jar diff 로 큐레이션합니다(기존 `generate-update-rules.mjs` 와 같은 검증: 클래스가 그 단계에서 실제로 바뀌었는지).
+  - 근거 종류(`evidence.kind: "maven-sources"` / `"git-tag"`)를 결과와 평가서에 적습니다. 태그가 생기면 drift 감시가 알리고 `git-tag` 근거로 다시 생성합니다.
+- **전환(3.x/4.x → 5.x) 목표 버전**: `migrate_egovframe_project` 의 `target` 허용값에 `5.1.0` 을 더합니다(기본값은 공식 공지 전까지 5.0.2 유지 — 결과에 5.1.0 안내). 새 AI 모듈 3종을 좌표 카탈로그에 넣습니다.
+- **drift 감시**: `sync_egovframe_templates` 가 이미 parent 5.1.0 을 찾아 경고합니다. 여기에 `egovframe-rte-root` BOM 과 GitHub 태그 유무를 더해 "저장소 배포만 있음(태그 없음)" 상태를 구분해 보고합니다.
+
+**범위 (제외)**: 공통컴포넌트 5.1(아직 v5.0.7 이 최신), Initializr 템플릿의 5.1.0 parent 반영(upstream 템플릿이 바뀌면 v1.4 에서), 5.1.0 을 `create_egovframe_project` 기본값으로 바꾸기
+
+**검증 기준**
+- 5.1.0 parent 프로젝트의 의존성 점검에서 "기준 없음"이 5.0.2 parent 프로젝트 수준 이하
+- `-egov.N` 좌표 분류 단위 테스트
+- 5.0.2 프로젝트를 5.1.0 으로 갱신 후 CI 통합에서 compile 성공(공식 web 템플릿·boot 템플릿)
+- 규칙 데이터에 근거 종류·sha256 기록, drift 감시가 태그 없음을 구분
+
+**완료 정의**: 도구 35종 그대로, `docs/design-dependency-check.md`·`docs/tools.md` 갱신, CHANGELOG
+
+### v1.4.0 — Initializr v5.0.7 정렬 + DDL 기반 CRUD 생성
+
+**목표**: Initializr v5.0.7(2026-10-16)은 CRUD 코드 생성의 결함을 대거 고쳤습니다 — COMMENT 안 "primary key" 문구로 PK 오분류, COMMENT·DEFAULT 안 콤마·괄호로 컬럼 분리 실패, MyBatis LIKE 검색의 `||` 결합(MySQL 에서 조건 무시), JSP 검색 파라미터 반사형 XSS, Thymeleaf 화면 구조 오류. `generate_egovframe_crud` 는 필드 목록을 직접 받아 이 결함은 없지만, 공식 도구처럼 **DDL 을 그대로 받는 입력**과 **검색 조건**이 없어 실사용에서 손이 많이 갑니다.
+
+**범위 (포함)**
+- `generate_egovframe_crud` 에 선택 파라미터 `ddl`(CREATE TABLE 문)을 더합니다. 컬럼·타입·PK·NOT NULL·COMMENT 를 읽어 `fields` 를 만듭니다(둘 다 주면 거부). Initializr v5.0.7 이 고친 경계(COMMENT·DEFAULT 안 콤마·괄호, COMMENT 문구로 PK 오분류)를 단위 테스트로 고정합니다. DB 방언은 MySQL·MariaDB·PostgreSQL·Oracle·Tibero·Altibase·CUBRID·HSQL 입니다.
+- 선택 파라미터 `search`(검색 대상 컬럼): Mapper 의 LIKE 를 방언 중립 `<bind>` 로 생성하고, JSP·Thymeleaf 검색 필드를 `c:out`·`th:value` 로 이스케이프합니다(생성 결과에 `check_egovframe_secure_coding` 을 돌려 0건임을 테스트에서 단언).
+- 템플릿 카탈로그를 Initializr v5.0.7 기준으로 갱신합니다(msa-common-components zip 지문 — 모바일 신분증 소스 제거, 동봉 설정 템플릿 49개 재대조).
+
+**범위 (제외)**: 화면 디자인 테마, 다중 테이블 조인 CRUD
+
+**검증 기준**: 공식 Initializr v5.0.7 의 DDL 파서 테스트 케이스와 같은 입력에서 같은 컬럼·PK 결과, 생성 CRUD 의 compile(CI 통합, Classic·Boot), LIKE 검색이 MySQL·PostgreSQL 에서 같은 결과(HSQL 모드 단위 테스트), 생성물 보안약점 0건
+
+**완료 정의**: 도구 35종 그대로, `docs/design-crud-generation.md` 갱신
+
+### v1.5.0 — 보안약점 점검 정밀화: 메서드 안 데이터 흐름
+
+**목표**: `check_egovframe_secure_coding` 은 패턴 기반이라 SQL 삽입·XSS·경로 조작·OS 명령에서 오탐(상수만 결합)과 미탐(변수를 거쳐 들어오는 요청 값)이 함께 있습니다. 감리 대응에서 오탐은 소명 비용이 큽니다.
+
+**범위 (포함)**
+- 메서드 안 지역 변수 흐름(요청 파라미터·헤더·쿠키·`@RequestParam`/`@PathVariable` → 대입·문자열 결합 → 위험 호출)을 따라가는 경량 분석기를 더합니다(Java 소스 토큰 기반, 외부 파서 의존 없음).
+- 규칙에 `flow: "required" | "escalate"` 를 두어, 흐름이 확인되면 등급을 올리고 상수만 결합된 경우는 내립니다(사유를 결과에 적음).
+- 결과 JSON·SARIF 에 흐름 경로(`codeFlows`)를 넣습니다.
+- 이전 결과와 비교할 때 같은 지문을 유지합니다(등급 변화만 표시).
+
+**범위 (제외)**: 메서드 간·클래스 간 흐름, 설계단계 20개 항목, 자동 수정
+
+**검증 기준**: 공식 공통컴포넌트 v5.0.7·MSA 템플릿 3종의 결과에서 오탐으로 분류한 표본(사람이 판정한 고정물)의 정밀도 향상을 수치로, 기존 고정물 결과 회귀 없음(지문 동일), 분석 시간 증가 2배 이내
+
+**완료 정의**: 도구 35종 그대로, `docs/design-secure-coding.md` 갱신
+
+### 보류·운영 항목
+
+- **MCP `tasks`**: SDK 1.32.1(2026-10-05, 최신)에서도 `experimental/tasks` 입니다. 안정 API 가 되면 장시간 도구에 적용합니다(v1.2 진행 알림·취소로 당장의 필요는 해소).
+- **5.1.0 공식화**: GitHub `v5.1.0-Final` 태그·공지가 나오면 v1.3 의 근거를 `git-tag` 로 다시 만들고 전환 기본 목표를 5.1.0 으로 올립니다(MINOR).
+- **Initializr upstream**: 템플릿 parent 5.0.0·5.0.1 문제 등 기존 4건은 upstream 이슈로 제출할 가치가 있습니다.
+- **기준 없음 잔여**: `xerces:xercesImpl` 은 공개 기준이 없어 그대로 둡니다.
+
+### 선행 조사 결과 (2026-10-22)
+
+- **upstream 태그**
+  - `egovframe-runtime`: `v5.0.2-Final` 그대로(브랜치 `5.0.x` 최신, 5.1 브랜치·태그 없음)
+  - `egovframe-common-components`: `v5.0.7`
+  - `egovframe-vscode-initializr`: **`v5.0.7`(2026-10-16) 새 태그** — CRUD 생성 결함 9건 수정, msa-common-components 에서 모바일 신분증 소스 제거, adm-zip 0.6.0(CVE-2026-39244)
+  - `egovframe-development`: `v5.0.2`
+  - `egovframe-ai-rag`: `v5.0.0`
+- **표준프레임워크 5.1.0 저장소 배포**(`maven.egovframe.go.kr`)
+  - `egovframe-rte-*` 5.1.0(2026-09-28~), `egovframe-web-config-parent` 5.1.0(10-11), `egovframe-boot-starter-parent` 5.1.0(10-12), BOM `egovframe-rte-root` 5.1.0(10-11). jar·sources jar 모두 있습니다.
+  - parent 구조: RTE 모듈 대신 `egovframe-rte-root` BOM import. web parent 의 관리 항목 106 → 222(LangChain4j 모듈 대거 추가), boot parent 72 → 24(`spring-boot-starter-parent` 3.5.16 상속).
+  - 버전: Spring Boot 3.5.16, Spring 6.2.19, Spring Security `6.5.11-egov.1`, Spring Integration `6.5.10-egov.1`, Spring Cloud 2025.0.3, Spring AI 1.1.8(`-egov.1` 재빌드 포함), Hibernate 6.6.58, JUnit Jupiter 6.1.3, Java 17.
+  - 클래스 비교(jar): 기존 24 모듈 제거 0·추가 64(ptl-mvc 14, fdl-cmmn 10, fdl-filehandling 10, bat-core 8, fdl-string 7 등), 새 모듈 `ai-core`·`ai-langchain4j`·`ai-springai`. `psl-reactive-r2dbc` 는 5.1.0 jar 가 있지만 `egovframe-rte-root` BOM 에서 빠졌습니다.
+- **지금 도구의 반응**: `sync_egovframe_templates` 의 drift 감시가 parent 5.1.0 을 이미 찾아 경고합니다("기준 재생성 필요"). 의존성 기준·5.x 갱신 규칙은 5.0.2 가 최신입니다.
+- **MCP SDK**: 1.32.1 이 최신(`tasks` 는 experimental).
+
+## 이전 기획 (v1.0–v1.2, 완료)
+
+v0.47.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종)에서 세 릴리스를 기획했고, 2026-10-22 까지 모두 완료했습니다(1.0.0·1.1.0·1.2.0). 도구 34종의 이름·파라미터·구조화 출력이 사실상 굳어 있고 npm 으로 자동 배포되고 있어, **0.x 를 끝내고 v1.0.0 으로 공개 API 를 고정**합니다. 원래 v0.48(납품 패키지)·v0.49(응답 영문화·진행 알림)로 잡았던 기획은 호환을 깨지 않는 추가 기능이라 버전 정책에 따라 v1.1·v1.2 로 번호만 바꿨습니다. 공통 원칙은 이전과 같습니다 — 규칙은 데이터로, 근거는 공식 문서·저장소에서, 쓰기 도구는 dryRun·transaction, 각 버전은 "완료 정의"를 만족해야 릴리스합니다. 선행 조사 근거는 맨 아래 "선행 조사 결과 (2026-10-16)"에 있습니다.
 
 ### v1.0.0 — 안정화: 버전 정책 + 공개 API 고정
 
@@ -171,7 +262,7 @@ v0.47.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종)에서 
 
 **결과 (2026-10-20 완료)**: 도구 35종 그대로, 계약 변화 없음(`api-contract` change `none`, 1.1.0 → 1.2.0 MINOR). 기획과 달라진 점: 렌더러별 사전 파일(`src/i18n/*.ts`) 대신 문자열 자리에서 `L(ko, en)` 을 쓰고 모듈 상단 라벨 상수는 getter·함수로 바꿨습니다(사전 키 관리·보간 문제, [설계 2.2](design-i18n.md#22-구현--사전-파일-대신-lko-en)). CLI 요약·오류·usage 도 같이 영문화했습니다. 규칙 데이터는 `migration-mapping`·`migration-rules`·`update-mapping`·`update-rules`·`secure-coding-rules`·`sbom-rules`·`deploy-rules` 7파일에 `_en` 을 넣었고(`test:i18n` 이 누락 0 단언, 생성기 `requireEn`), goldens 17개는 영문화 전 코드로 만들어 바이트 일치를 단언합니다. 진행 알림은 `src/progress.ts`(`Progress`·`stepper`·`subProgress`·`AbortError`)로 모듈이 SDK 를 모르게 했고, 취소는 `Runner` 의 `signal` 이 기존 타임아웃 종료 경로(프로세스 그룹·`taskkill /T`)를 재사용합니다. `withFileTransaction` 은 `AbortError` 를 롤백 뒤 그대로 다시 던집니다. `tasks` 는 SDK 1.32.1 에서도 experimental 이라 보류 유지. 테스트 `test:i18n`(44)·`test:progress`(38+41+10).
 
-### 보류·운영 항목
+### 보류·운영 항목 (당시)
 
 - **MCP `tasks`**: SDK 1.32.1(최신, 2026-10-05)에서도 `experimental/tasks` 아래에 있습니다. v1.2 에서 다시 확인합니다.
 - **Initializr upstream**: 템플릿 parent 5.0.0·5.0.1 문제(v0.46 의 `alignParent` 가 우회)를 포함한 기존 4건은 upstream 이슈로 제출할 가치가 있습니다.
@@ -198,7 +289,7 @@ v0.47.0 까지 끝난 상태(2026-10-16, 도구 34종 + CLI 명령 11종)에서 
 
 ## 이전 기획 (v0.47, 완료)
 
-v0.46.0 까지 끝난 상태(2026-10-16)에서 v0.47–v0.49 세 버전을 기획했고, v0.47 을 2026-10-16 에 완료했습니다. 이후 버전 정책을 정하면서 v0.48·v0.49 는 v1.1·v1.2 로 번호를 바꿔 [다음 버전 기획](#다음-버전-기획-v10v12)으로 옮겼습니다. 기획 원문과 결과는 아래와 같습니다.
+v0.46.0 까지 끝난 상태(2026-10-16)에서 v0.47–v0.49 세 버전을 기획했고, v0.47 을 2026-10-16 에 완료했습니다. 이후 버전 정책을 정하면서 v0.48·v0.49 는 v1.1·v1.2 로 번호를 바꿔 [다음 버전 기획](#이전-기획-v10v12-완료)으로 옮겼습니다. 기획 원문과 결과는 아래와 같습니다.
 
 ### v0.47.0 — 멀티 모듈·MSA 프로젝트 대응
 
