@@ -4,6 +4,7 @@
 //   (2) 의존성 점검(resolve=true) 기준 미만 수와 평가서 공급망 등급을 갱신 전후로 기록(실측 고정)
 //   (3) dryRun 무기록 → fault-injection 롤백 → 적용 → JDK 17 mvn compile(verify) 통과
 //   (4) create_egovframe_project(alignParent=true) 로 만든 프로젝트는 바로 최신이고 compile 통과
+//   (5) v1.3: 저장소 배포 5.1.0(GitHub 태그 없음)으로 한 단계 더 갱신 → compile 통과, 5.1 기준으로 판정
 import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -13,10 +14,10 @@ function assert(cond, msg) { n++; if (!cond) { console.error("FAIL:", msg); proc
 const m = await import("../dist/index.js");
 const root = mkdtempSync(path.join(tmpdir(), "egovupdate-live-"));
 
-// 실측 고정값(2026-10-15, Initializr 고정 commit · 의존성 기준 동봉본) — 바뀌면 원인(템플릿·기준·parent)을 확인하고 갱신한다
+// 실측 고정값(2026-10-15, 5.1.0 은 2026-10-22, Initializr 고정 commit · 의존성 기준 동봉본) — 바뀌면 원인(템플릿·기준·parent)을 확인하고 갱신한다
 const EXPECT = {
-  web: { parent: "egovframe-web-config-parent", changes: ["html-tag-filter", "idgnr-table-lock"], outdated: [6, 4], grade: ["C", "B"] },
-  "boot-web": { parent: "egovframe-boot-starter-parent", changes: ["idgnr-table-lock"], outdated: [3, 1], grade: ["C", "B"] },
+  web: { parent: "egovframe-web-config-parent", changes: ["html-tag-filter", "idgnr-table-lock"], outdated: [6, 4], grade: ["C", "B"], outdated51: 4 },
+  "boot-web": { parent: "egovframe-boot-starter-parent", changes: ["idgnr-table-lock"], outdated: [3, 1], grade: ["C", "B"], outdated51: 3 },
 };
 
 try {
@@ -49,6 +50,15 @@ try {
     const a1 = await m.assessProject({ projectDir: dir, resolve: true });
     assert(dep1.resolution?.success && dep1.summary.outdated === exp.outdated[1] && dep1.parent.status === "ok", `${template}: 갱신 후 기준 미만 ${dep0.summary.outdated} → ${dep1.summary.outdated} · parent ok`);
     assert(a1.grades.supplyChain.grade === exp.grade[1] && a1.grades.supplyChain.score < a0.grades.supplyChain.score, `${template}: 공급망 등급 ${a0.grades.supplyChain.grade}(${a0.grades.supplyChain.score}) → ${a1.grades.supplyChain.grade}(${a1.grades.supplyChain.score})`);
+    // v1.3: 저장소에 배포된 5.1.0(GitHub 태그 없음)으로 한 단계 더 — parent 5.1.0, 5.1 기준 판정, JDK 17 compile
+    const r51 = m.updateProject({ projectDir: dir, target: "5.1.0" });
+    assert(r51.summary.auto === 1 && r51.items.find((i) => i.action === "auto")?.to?.endsWith(":5.1.0") && r51.notes.some((x) => x.includes("sources jar")), `${template}: target 5.1.0 → parent 5.1.0 자동 1건 + 근거(sources jar) 안내 · 참조 변경 ${r51.update.changes.map((x) => x.id).join(", ") || "없음"}`);
+    const ap51 = await m.applyUpdate({ projectDir: dir, target: "5.1.0", dryRun: false });
+    assert(ap51.applied.edits === 1 && /<version>5\.1\.0<\/version>/.test(readFileSync(path.join(dir, "pom.xml"), "utf8")), `${template}: 적용 → parent 5.1.0`);
+    const v51 = await m.verifyUpdate({ projectDir: dir, target: "5.1.0", timeoutMs: 600_000 });
+    assert(v51.build.ran && v51.build.success === true, `${template}: 5.1.0 에서 JDK 17 mvn compile 통과(${Math.round((v51.build.durationMs ?? 0) / 1000)}초)${v51.build.success ? "" : ` 오류 ${v51.build.errors}`}`);
+    const dep51 = await m.checkDependencies({ projectDir: dir, resolve: true });
+    assert(dep51.resolution?.success && dep51.baseline.rte === "5.1.0" && dep51.summary.unknown <= dep1.summary.unknown && dep51.summary.outdated === exp.outdated51, `${template}: 5.1 기준 판정 — 기준 미만 ${dep51.summary.outdated} · 기준 없음 ${dep1.summary.unknown} → ${dep51.summary.unknown}`);
   }
 
   // create alignParent

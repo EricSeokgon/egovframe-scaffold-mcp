@@ -16,9 +16,15 @@
  *                     RTE 가 끌어오는 버전을 기록. 같은 좌표를 더 낮은 버전으로 명시한 프로젝트는 전이 버전과 충돌할 수 있다.
  *   모든 원본 pom 은 url·sha256 을 적어 재현할 수 있게 한다.
  *
+ *   v1.3 (5.1.0): parent 5.1.0 은 RTE 모듈을 직접 나열하지 않고 BOM org.egovframe.rte:egovframe-rte-root 를 import 한다.
+ *     그 BOM 의 dependencyManagement(직접 항목 + 하위 BOM import)를 parent 관리 목록으로 한 단계 풀고, RTE 전이 모듈 목록도 BOM 에서 읽는다.
+ *     Boot parent 의 버전 속성(spring-framework.version 등)은 상속한 spring-boot-dependencies 의 같은 이름 속성을 재정의하므로 함께 반영한다.
+ *     parent 버전별 기준 파일: --out catalog/dependency-baseline-5.1.json (기본 파일 catalog/dependency-baseline.json 은 전환 목표 5.0.2 기준)
+ *
  * 사용법:
  *   node scripts/generate-dependency-baseline.mjs                       # 고정 버전 내려받아 생성
  *   node scripts/generate-dependency-baseline.mjs --web 5.0.2 --boot 5.0.2
+ *   node scripts/generate-dependency-baseline.mjs --web 5.1.0 --boot 5.1.0 --out catalog/dependency-baseline-5.1.json
  *   node scripts/generate-dependency-baseline.mjs --offline <dir>      # <dir>/web-parent.pom, boot-parent.pom, spring-boot-dependencies.pom,
  *                                                                      #   <dir>/bom/<artifactId>-<version>.pom, <dir>/rte/<artifactId>.pom 사용
  *   node scripts/generate-dependency-baseline.mjs --cache <dir>        # 내려받은 pom 을 <dir> 에 저장(다음 실행은 --offline 으로 재현 가능)
@@ -56,7 +62,7 @@ async function fetchText(url, timeoutMs = 30_000) {
 }
 
 /** pom 의 <properties> 를 읽는다(상위 pom 의 속성을 extraProps 로 합칠 수 있다). */
-export function parsePomProps(xml, extraProps = new Map()) {
+export function parsePomProps(xml, extraProps = new Map(), overrideProps = new Map()) {
   const props = new Map(extraProps);
   const propsBlock = xml.match(/<properties>([\s\S]*?)<\/properties>/);
   if (propsBlock) for (const m of propsBlock[1].matchAll(/<([\w.\-]+)>\s*([^<]*?)\s*<\/\1>/g)) props.set(m[1], m[2]);
@@ -65,6 +71,7 @@ export function parsePomProps(xml, extraProps = new Map()) {
   if (ownVersion) { props.set("project.version", ownVersion); props.set("pom.version", ownVersion); }
   const ownGroup = self.match(/<groupId>\s*([^<\s]+)\s*<\/groupId>/)?.[1] ?? xml.match(/<parent>[\s\S]*?<groupId>\s*([^<\s]+)[\s\S]*?<\/parent>/)?.[1];
   if (ownGroup) props.set("project.groupId", ownGroup);
+  for (const [k, v] of overrideProps) props.set(k, v); // 자식 pom(예: Boot parent)이 재정의한 속성
   return props;
 }
 const makeResolver = (props) => (v) => { let out = v; for (let i = 0; i < 5 && /\$\{[\w.\-]+\}/.test(out); i++) out = out.replace(/\$\{([\w.\-]+)\}/g, (_, k) => props.get(k) ?? `\${${k}}`); return out; };
@@ -77,8 +84,8 @@ const parseCoord = (block) => {
  * parent/BOM pom 을 읽는다: 상위 좌표, java.version, 버전 속성, dependencyManagement 목록.
  * strict=true(기본) 면 풀리지 않은 버전 속성은 오류, false 면 건너뛰고 unresolved 에 센다(외부 BOM 용).
  */
-export function parseParentPom(xml, { strict = true, extraProps = new Map() } = {}) {
-  const props = parsePomProps(xml, extraProps);
+export function parseParentPom(xml, { strict = true, extraProps = new Map(), overrideProps = new Map() } = {}) {
+  const props = parsePomProps(xml, extraProps, overrideProps);
   const resolve = makeResolver(props);
   const parent = xml.match(/<parent>([\s\S]*?)<\/parent>/)?.[1];
   const parentCoord = parent
@@ -106,7 +113,7 @@ export function parseParentPom(xml, { strict = true, extraProps = new Map() } = 
 }
 
 /** 모듈 pom 의 <dependencies>(dependencyManagement 밖) 를 읽는다. 상위 pom 의 속성은 extraProps 로 넘긴다. */
-export function parseModuleDependencies(xml, extraProps = new Map()) {
+export function parseModuleDependencies(xml, extraProps = new Map(), managedVersions = new Map()) {
   const props = parsePomProps(xml, extraProps);
   const resolve = makeResolver(props);
   const body = xml.replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "");
@@ -117,6 +124,8 @@ export function parseModuleDependencies(xml, extraProps = new Map()) {
     const { g, a, v, scope, optional } = parseCoord(m[1]);
     if (!g || !a) continue;
     const entry = { groupId: resolve(g), artifactId: resolve(a), version: v ? resolve(v) : null, scope: scope ?? "compile", optional };
+    // v1.3: 5.1.0 모듈 pom 은 버전을 상위(egovframe-rte-root)의 dependencyManagement 에 맡긴다
+    if (entry.version === null) entry.version = managedVersions.get(`${entry.groupId}:${entry.artifactId}`) ?? null;
     if (entry.version === null || /\$\{/.test(entry.version)) { unresolved.push(`${g}:${a}:${v ?? "(없음)"}`); continue; }
     deps.push(entry);
   }
@@ -128,6 +137,7 @@ async function main() {
   const arg = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
   const offlineDir = arg("--offline");
   const cacheDir = arg("--cache");
+  const outJson = arg("--out") ? path.resolve(arg("--out")) : OUT_JSON;
   const web = { ...PARENTS.web, version: arg("--web") ?? PARENTS.web.version };
   const boot = { ...PARENTS.boot, version: arg("--boot") ?? PARENTS.boot.version };
   for (const p of [web, boot]) if (!/^\d+\.\d+\.\d+$/.test(p.version)) throw new Error(`버전 형식: ${p.version}`);
@@ -148,7 +158,23 @@ async function main() {
   if (w.java !== "17" || b.java !== "17") throw new Error(`java.version 이 17 이 아닙니다: web ${w.java}, boot ${b.java}`);
 
   const rules = JSON.parse(fs.readFileSync(RULES_JSON, "utf8"));
-  const rteVersion = rules.target.runtimeVersion;
+  // RTE 기준 버전: --rte > parent 가 관리하는 RTE 버전(전환 목표보다 새로우면) > 전환 규칙 목표
+  const parentRte = w.properties["egovframe.rte.version"] ?? b.properties["egovframe.rte.version"] ?? null;
+  const rteVersion = arg("--rte") ?? (parentRte && compareVersions(parentRte, rules.target.runtimeVersion) > 0 ? parentRte : rules.target.runtimeVersion);
+
+  // v1.3: parent 5.1.0 은 egovframe-rte-root BOM 을 import 한다 — 그 관리 목록을 parent 관리 목록으로 한 단계 푼다
+  const rootImport = [...w.managed, ...b.managed].find((e) => e.groupId === "org.egovframe.rte" && e.artifactId === RTE_ROOT_ARTIFACT && e.type === "pom" && e.scope === "import");
+  let rteRootBom = null;
+  if (rootImport) {
+    const xml = await read(pomUrl({ groupId: "org.egovframe.rte", artifactId: RTE_ROOT_ARTIFACT, version: rootImport.version }), `rte/${RTE_ROOT_ARTIFACT}-${rootImport.version}.bom.pom`);
+    const parsed = parseParentPom(xml, { strict: false });
+    if (parsed.unresolved.length) throw new Error(`${RTE_ROOT_ARTIFACT} ${rootImport.version} 에 풀리지 않은 항목: ${parsed.unresolved.slice(0, 5).join(", ")}`);
+    rteRootBom = { version: rootImport.version, xml, parsed };
+    const via = (list) => list.some((e) => e === rootImport || (e.artifactId === RTE_ROOT_ARTIFACT && e.scope === "import"));
+    if (via(w.managed)) w.managed.push(...parsed.managed.map((e) => ({ ...e, via: RTE_ROOT_ARTIFACT })));
+    if (via(b.managed)) b.managed.push(...parsed.managed.map((e) => ({ ...e, via: RTE_ROOT_ARTIFACT })));
+    for (const [k, v] of Object.entries(parsed.properties)) if (!(k in w.properties)) w.properties[k] = v;
+  }
 
   // 두 parent 의 관리 목록을 합친다. 같은 좌표가 양쪽에 있으면 높은 버전을 기준으로 삼고 출처를 모두 적는다.
   const byKey = new Map();
@@ -192,7 +218,8 @@ async function main() {
   // Boot parent 의 상위 spring-boot-starter-parent 는 같은 버전의 spring-boot-dependencies 를 상속한다.
   const bootBom = { ...BOOT_BOM, version: b.parentCoord.version };
   const bootBomXml = await read(pomUrl(bootBom, CENTRAL), "spring-boot-dependencies.pom");
-  const bb = parseParentPom(bootBomXml, { strict: false });
+  // Boot parent 가 재정의한 속성(spring-framework.version 등)은 spring-boot-dependencies 의 같은 이름 속성보다 우선한다
+  const bb = parseParentPom(bootBomXml, { strict: false, overrideProps: new Map(Object.entries(b.properties)) });
   if (bb.unresolved.length) throw new Error(`spring-boot-dependencies 에 풀리지 않은 항목: ${bb.unresolved.slice(0, 5).join(", ")}`);
   const bootManaged = new Map(); // "g:a" → version (직접 항목 우선, import 는 선언 순서대로 첫 번째가 이김)
   const bootImports = [];
@@ -207,34 +234,57 @@ async function main() {
   for (const e of bb.managed) {
     if (!(e.type === "pom" && e.scope === "import")) continue;
     const file = `bom/${e.artifactId}-${e.version}.pom`;
-    const xml = await read(pomUrl(e, CENTRAL), file);
+    // v1.3: -egov.N 재빌드(예: spring-integration-bom 6.5.10-egov.1)는 표준프레임워크 저장소에만 있다
+    const bomRepo = /-egov\.\d+$/.test(e.version) ? REPO : CENTRAL;
+    const xml = await read(pomUrl(e, bomRepo), file);
     let parsed = parseParentPom(xml, { strict: false });
     // 풀리지 않은 속성이 있고 상위 pom 이 있으면 상위 속성을 한 번 합쳐 다시 읽는다
     if (parsed.unresolved.length && parsed.parentCoord?.groupId && parsed.parentCoord.version) {
       const pc = { groupId: parsed.parentCoord.groupId, artifactId: parsed.parentCoord.artifactId, version: parsed.parentCoord.version };
       try {
-        const parentXml = await read(pomUrl(pc, CENTRAL), `bom/${pc.artifactId}-${pc.version}.parent.pom`);
+        const parentXml = await read(pomUrl(pc, /-egov\.\d+$/.test(pc.version) ? REPO : CENTRAL), `bom/${pc.artifactId}-${pc.version}.parent.pom`);
         parsed = parseParentPom(xml, { strict: false, extraProps: parsePomProps(parentXml) });
       } catch (err) { console.warn(`  상위 pom 조회 실패(${pc.artifactId}): ${err.message}`); }
     }
     let members = 0;
     for (const m of parsed.managed) { if (m.type === "pom" && m.scope === "import") continue; putBoot(m, e.artifactId); members++; }
-    bootImports.push({ groupId: e.groupId, artifactId: e.artifactId, version: e.version, url: pomUrl(e, CENTRAL), sha256: sha256(xml), members, ...(parsed.unresolved.length ? { unresolved: parsed.unresolved.length } : {}) });
+    bootImports.push({ groupId: e.groupId, artifactId: e.artifactId, version: e.version, url: pomUrl(e, bomRepo), sha256: sha256(xml), members, ...(parsed.unresolved.length ? { unresolved: parsed.unresolved.length } : {}) });
   }
   const bootDirect = bb.managed.filter((e) => !(e.type === "pom" && e.scope === "import")).length;
 
   // ── v0.34: RTE 모듈 전이 의존성 (표준프레임워크 Maven 저장소) ───────────────────────────────
   const rteRoot = { groupId: "org.egovframe.rte", artifactId: RTE_ROOT_ARTIFACT, version: rteVersion };
-  const rteRootXml = await read(pomUrl(rteRoot), `rte/${RTE_ROOT_ARTIFACT}.pom`);
+  const rteRootXml = rteRootBom && rteRootBom.version === rteVersion ? rteRootBom.xml : await read(pomUrl(rteRoot), `rte/${RTE_ROOT_ARTIFACT}.pom`);
   const rootProps = parsePomProps(rteRootXml);
+  // 상위 BOM 이 관리하는 버전(모듈 pom 의 버전 없는 의존성용): 직접 항목 + 하위 BOM import 한 단계(Central 또는 표준프레임워크 저장소)
+  const rootManagedVersions = new Map();
+  if (rteRootBom) {
+    for (const e of rteRootBom.parsed.managed) if (!(e.type === "pom" && e.scope === "import")) rootManagedVersions.set(`${e.groupId}:${e.artifactId}`, e.version);
+    for (const e of rteRootBom.parsed.managed) {
+      if (!(e.type === "pom" && e.scope === "import")) continue;
+      const bomRepo = /-egov\.\d+$/.test(e.version) ? REPO : CENTRAL;
+      const xml = await read(pomUrl(e, bomRepo), `bom/${e.artifactId}-${e.version}.pom`);
+      let parsed = parseParentPom(xml, { strict: false });
+      if (parsed.unresolved.length && parsed.parentCoord?.groupId && parsed.parentCoord.version) {
+        const pc = { groupId: parsed.parentCoord.groupId, artifactId: parsed.parentCoord.artifactId, version: parsed.parentCoord.version };
+        try { parsed = parseParentPom(xml, { strict: false, extraProps: parsePomProps(await read(pomUrl(pc, /-egov\.\d+$/.test(pc.version) ? REPO : CENTRAL), `bom/${pc.artifactId}-${pc.version}.parent.pom`)) }); } catch { /* 상위 없음 */ }
+      }
+      for (const m of parsed.managed) if (!(m.type === "pom" && m.scope === "import") && !rootManagedVersions.has(`${m.groupId}:${m.artifactId}`)) rootManagedVersions.set(`${m.groupId}:${m.artifactId}`, m.version);
+    }
+    for (const c of rteRootBom.parsed.managed) if (c.groupId === "org.egovframe.rte") rootManagedVersions.set(`${c.groupId}:${c.artifactId}`, rteVersion);
+  }
   const rteModules = [];
   const rteManaged = new Map(); // "g:a" → { version, scope, via: [module…] }
   const rteUnresolved = [];
   const SCOPE_RANK = { compile: 0, runtime: 1, provided: 2, system: 3 };
-  for (const c of rules.coordinates) {
-    const mod = { groupId: c.to.groupId, artifactId: c.to.artifactId, version: rteVersion };
+  // 모듈 목록: BOM 이 있으면 BOM 의 RTE 모듈 전체(5.1.0 의 AI 모듈 포함), 없으면 전환 규칙의 5.x 좌표
+  const rteModuleCoords = rteRootBom
+    ? rteRootBom.parsed.managed.filter((e) => e.groupId === "org.egovframe.rte" && e.artifactId !== RTE_ROOT_ARTIFACT && !e.type).map((e) => ({ groupId: e.groupId, artifactId: e.artifactId }))
+    : rules.coordinates.map((c) => c.to);
+  for (const c of rteModuleCoords) {
+    const mod = { groupId: c.groupId, artifactId: c.artifactId, version: rteVersion };
     const xml = await read(pomUrl(mod), `rte/${mod.artifactId}.pom`);
-    const { deps, unresolved } = parseModuleDependencies(xml, rootProps);
+    const { deps, unresolved } = parseModuleDependencies(xml, rootProps, rootManagedVersions);
     for (const u of unresolved) rteUnresolved.push(`${mod.artifactId}: ${u}`);
     let counted = 0;
     for (const d of deps) {
@@ -265,8 +315,8 @@ async function main() {
       { kind: "boot", ...boot, url: pomUrl(boot), sha256: sha256(bootXml), managed: b.managed.length, parent: b.parentCoord },
     ],
     java: 17,
-    rte: { version: rteVersion, parentManaged: { web: w.properties["egovframe.rte.version"] ?? null, boot: b.properties["egovframe.rte.version"] ?? null } },
-    spring: { framework: w.properties["spring.framework.version"] ?? null, boot: b.parentCoord.version, security: b.properties["spring.security.version"] ?? null },
+    rte: { version: rteVersion, parentManaged: { web: w.properties["egovframe.rte.version"] ?? null, boot: b.properties["egovframe.rte.version"] ?? null }, ...(rteRootBom ? { bom: { artifactId: RTE_ROOT_ARTIFACT, version: rteRootBom.version, url: pomUrl({ groupId: "org.egovframe.rte", artifactId: RTE_ROOT_ARTIFACT, version: rteRootBom.version }), sha256: sha256(rteRootBom.xml), managed: rteRootBom.parsed.managed.length } } : {}) },
+    spring: { framework: w.properties["spring.framework.version"] ?? b.properties["spring-framework.version"] ?? null, boot: b.parentCoord.version, security: b.properties["spring.security.version"] ?? b.properties["spring-security.version"] ?? w.properties["spring.security.version"] ?? null },
     properties: { web: w.properties, boot: b.properties },
     managed,
     families: [...families.values()].sort((x, y) => x.groupIdPrefix.localeCompare(y.groupIdPrefix)),
@@ -285,7 +335,7 @@ async function main() {
     },
   };
   const json = `${JSON.stringify(baseline, null, 2)}\n`;
-  fs.writeFileSync(OUT_JSON, json, "utf8");
+  fs.writeFileSync(outJson, json, "utf8");
   console.log(`dependency-baseline.json 생성(${Buffer.byteLength(json)} bytes): 관리 좌표 ${managed.length}종 (web ${w.managed.length}, boot ${b.managed.length}) + 계열 ${baseline.families.length}종, RTE ${rteVersion}, Spring ${baseline.spring.framework}, Boot ${baseline.spring.boot}`);
   console.log(`  Boot BOM ${bootBom.version}: 직접 ${bootDirect} + import ${bootImports.length}종 → 좌표 ${bootManaged.size}종 (충돌 ${bootConflicts.length}건${bootConflicts.length ? `: ${bootConflicts.slice(0, 3).join("; ")}` : ""})`);
   console.log(`  RTE 전이: 모듈 ${rteModules.length}종 → 좌표 ${rteManaged.size}종`);

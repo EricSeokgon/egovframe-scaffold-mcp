@@ -1,4 +1,4 @@
-# 도구 레퍼런스 (v1.2)
+# 도구 레퍼런스 (v1.3)
 
 도구 35종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
@@ -110,7 +110,7 @@ generate_egovframe_config(
 ## migrate_egovframe_project 파라미터
 
 - `projectDir` — 진단할 프로젝트(허용 root 적용). `pom.xml`(다중 모듈 포함)·`build.gradle(.kts)`·`*.java`·`*.xml`·`*.jsp`·`web.xml`·`*.properties/yml` 을 읽으며 `target/`·`build/`·`.git/`·`node_modules/` 는 건너뜁니다
-- `target` — `5.x`(기본) = 3.x/4.x → 5.x 전환, `5.0.2` 같은 `5.0.x` = 이미 5.x 인 프로젝트의 갱신(v0.46, 아래 "5.x 최신 유지")
+- `target` — `5.x`(기본) = 3.x/4.x → 5.x 전환, `5.0.2`·`5.1.0` 같은 `5.y.z` = 이미 5.x 인 프로젝트의 갱신(v0.46, 아래 "5.x 최신 유지"). `5.1.0` 은 v1.3 부터 — GitHub 태그 없이 저장소에 배포된 버전이라 명시할 때만 쓰고, 생략 시 기본 목표는 5.0.2 입니다
 - `format` — `markdown`(기본, 수동 항목 → 자동 항목 순 요약) | `json`(항목 배열 `{file, line, kind, from, to, action, reason, edits?}` 과 `summary.byKind`, `sourceEra`)
 - `apply` — `true` 면 2단계(적용). `dryRun`(기본 `true`)이면 파일별 변경 미리보기만, `false` 면 실제 치환
 - `verify` — `true` 면 3단계(검증): 진단 뒤 `compile` 을 실행해 컴파일 오류를 수동 항목과 연결한 작업 목록을 반환(빌드 도구 필요, 파일 무기록)
@@ -123,9 +123,12 @@ migrate_egovframe_project(projectDir="/work/legacy-3.10-app", apply=true, dryRun
 migrate_egovframe_project(projectDir="/work/legacy-3.10-app", verify=true)   # 컴파일 → 오류 ↔ 수동 항목 작업 목록
 migrate_egovframe_project(projectDir="/work/my-5x-app", target="5.0.2")             # 5.x 최신 유지 진단
 migrate_egovframe_project(projectDir="/work/my-5x-app", target="5.0.2", apply=true, dryRun=false)  # parent·RTE 버전 갱신
+migrate_egovframe_project(projectDir="/work/my-5x-app", target="5.1.0")             # 저장소 배포 5.1.0 까지(v1.3)
 ```
 
 **5.x 최신 유지(v0.46)**: `target` 이 `5.0.x` 면 parent 버전·RTE 버전 속성·`org.egovframe.rte` 의존성의 리터럴 버전과 예전 parent 기본값을 그대로 덮어쓴 속성이 auto, 프로젝트의 실효 RTE 버전 이후 바뀐 API·동작을 소스(Java·XML·JSP)가 참조하는 곳(`rte-change`)과 공통컴포넌트 최신 유지 안내(`component-update`)가 manual 입니다. 3.x/4.x 프로젝트면 먼저 `target="5.x"` 로 전환하라고 안내합니다. 백업 디렉터리에는 `update-plan.json` 이 남습니다. 규칙의 근거와 공식 템플릿 실측은 [전환 설계 6단계](design-migration.md#6단계v0460-5x-최신-유지-migrate_egovframe_projecttarget502)에 있습니다.
+
+**5.1.0(v1.3)**: 표준프레임워크 5.1.0 은 공식 Maven 저장소에 배포됐지만(2026-09-28~10-12) GitHub `v5.1.0-Final` 태그·공지가 아직 없습니다. 그래서 `target="5.1.0"` 의 변경 근거는 git 태그 비교가 아니라 저장소의 5.0.2·5.1.0 **sources jar 비교**(모듈 27종, jar 별 sha256 고정)이고, 결과 notes 에 그 사실을 적습니다. 5.1.0 단계에서 큐레이션한 변경은 배치 Writer 리소스 경로(`file:`), `EgovAbstractServiceImpl` 업무 예외 도우미, 엑셀 Content-Disposition, 리액티브 예외 응답, `psl-reactive-r2dbc` 의 BOM 제외 5건입니다. 공식 web·boot-web 템플릿은 5.0.2 → 5.1.0 갱신 뒤 JDK 17 compile 을 통과합니다(CI 통합). 기본 목표·`create_egovframe_project(alignParent=true)` 는 태그가 나올 때까지 5.0.2 그대로이며, 5.0.x 프로젝트를 진단하면 5.1.0 이 있다고 안내합니다.
 
 `action` 이 `auto` 인 항목(좌표·RTE 버전 속성·패키지 접두어·패키지 이름 변경·`javax→jakarta` 패키지와 의존성 좌표·저장소 URL·Java 버전·web.xml 스키마)은 적용 단계가 원문 오프셋 기준으로 치환하고, `manual`(제거된 클래스·네임스페이스·교체 필요 라이브러리·Spring 버전·5.x parent 권고)은 사유와 대체 API 를 함께 남깁니다. 적용은 하나의 transaction 이며 원본을 `migration-backup/<시각>-<id>/` 에 보관하고 `migration-plan.json` 을 남깁니다. 중간에 실패하면 작업 전 상태로 되돌립니다. 규칙의 출처와 제거 클래스 38종의 대체 근거는 [전환 진단 설계](design-migration.md)를, 규칙 자체는 리소스 `egovframe://catalog/migration-rules` 를 참고하세요. 이 도구는 파일을 쓰지 않습니다.
 
@@ -145,7 +148,7 @@ check_egovframe_dependencies(projectDir="/work/my-egov-app", resolve=true, offli
 
 `resolve=true` 결과는 항목마다 `origin`(`declared`·`transitive`)과 전이 경로 `via`(예 `egovframe-rte-ptl-mvc → spring-webmvc`), 선언과 다르게 해석된 버전(`treeVersion`·`resolution.differs`)을 담고, parent 가 관리하는 좌표가 기준 미만 버전으로 해석되면 비고에 알립니다. 해석에 실패하면 선언 기준 결과에 이유를 붙여 돌려줍니다.
 
-기준은 공식 5.x parent(`org.egovframe.web:egovframe-web-config-parent`·`org.egovframe.boot:egovframe-boot-starter-parent` 5.0.2)의 `properties`·`dependencyManagement`, Boot parent 가 상속하는 Spring Boot BOM 전체(`spring-boot-dependencies` 3.5.6 + import 한 단계), RTE 모듈 18종의 전이 의존성에서 추출한 `catalog/dependency-baseline.json`(schemaVersion 2) 이며 리소스 `egovframe://catalog/dependency-baseline` 로 조회할 수 있습니다. 대조 순서는 parent 직접 → 계열 → (Boot parent 프로젝트) Boot BOM → RTE 전이, 그 밖은 RTE 전이 → Boot BOM 이고 항목마다 `basis` 로 출처를 적습니다. RTE 전이 버전보다 낮게 명시한 좌표는 "충돌 가능" 사유와 함께 기준 미만으로 봅니다. 국내 벤더·기관 배포 좌표(Altibase·Tibero·CUBRID·GPKI·mGov)는 `vendor`, 기준에 없는 좌표는 `unknown`(판단 보류)으로 두고 둘 다 조치 목록에 넣지 않습니다. 보안 점검은 설정의 존재 여부와 근거만 보고합니다(설계: [의존성 점검 설계](design-dependency-check.md)).
+기준은 공식 5.x parent(`org.egovframe.web:egovframe-web-config-parent`·`org.egovframe.boot:egovframe-boot-starter-parent` 5.0.2)의 `properties`·`dependencyManagement`, Boot parent 가 상속하는 Spring Boot BOM 전체(`spring-boot-dependencies` 3.5.6 + import 한 단계), RTE 모듈 18종의 전이 의존성에서 추출한 `catalog/dependency-baseline.json`(schemaVersion 2) 이며, v1.3 부터 parent 5.1.0 을 쓰는 프로젝트는 `catalog/dependency-baseline-5.1.json`(parent 5.1.0 이 import 하는 BOM `egovframe-rte-root` 를 한 단계 풀고, Boot BOM 3.5.16 에 Boot parent 의 재정의 속성을 반영, RTE 모듈 27종 — AI 모듈 3종 포함)으로 판정합니다. `-egov.N` 재빌드 좌표(예: `spring-security 6.5.11-egov.1`)는 원 버전 이상으로 비교하고 OSV 는 원 버전으로 조회하며 note 에 재빌드라고 적습니다(SBOM 공급자는 eGovFramework). 기준은 리소스 `egovframe://catalog/dependency-baseline` 로 조회할 수 있습니다. 대조 순서는 parent 직접 → 계열 → (Boot parent 프로젝트) Boot BOM → RTE 전이, 그 밖은 RTE 전이 → Boot BOM 이고 항목마다 `basis` 로 출처를 적습니다. RTE 전이 버전보다 낮게 명시한 좌표는 "충돌 가능" 사유와 함께 기준 미만으로 봅니다. 국내 벤더·기관 배포 좌표(Altibase·Tibero·CUBRID·GPKI·mGov)는 `vendor`, 기준에 없는 좌표는 `unknown`(판단 보류)으로 두고 둘 다 조치 목록에 넣지 않습니다. 보안 점검은 설정의 존재 여부와 근거만 보고합니다(설계: [의존성 점검 설계](design-dependency-check.md)).
 
 ## generate_egovframe_sbom 파라미터
 

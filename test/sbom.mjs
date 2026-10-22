@@ -118,5 +118,20 @@ assert(g.bom.components.every((c) => c.properties?.some((p) => p.name === "egovf
 threw = false; try { await generateSbom({ projectDir: mkdtempSync(path.join(tmpdir(), "egovsbomempty-")), dryRun: false }); } catch (e) { threw = /빌드 파일/.test(e.message); }
 assert(threw, "빌드 파일 없으면 예외");
 
+// v1.3: -egov.N 재빌드 component — 공급자는 eGovFramework(근거 egov-rebuild), 5.1.0 RTE 가 있으면 5.1 기준으로 판정
+{
+  const mm = await import("../dist/index.js");
+  const bom = { bomFormat: "CycloneDX", specVersion: "1.6", components: [
+    { type: "library", group: "org.egovframe.rte", name: "egovframe-rte-ptl-mvc", version: "5.1.0" },
+    { type: "library", group: "org.springframework.security", name: "spring-security-web", version: "6.5.11-egov.1" },
+    { type: "library", group: "org.springframework", name: "spring-webmvc", version: "6.2.11" },
+  ] };
+  assert(mm.fillComponentSuppliers(bom) >= 2 && bom.components[1].supplier?.name === "eGovFramework" && bom.components[1].properties.some((p) => p.name === "egovframe:supplierBasis" && p.value === "egov-rebuild"), "-egov.N 재빌드: 공급자 eGovFramework(egov-rebuild)");
+  mm.enrichBom(bom, "web");
+  const st = (c) => c.properties.find((p) => p.name === "egovframe:status")?.value;
+  const bl = (c) => c.properties.find((p) => p.name === "egovframe:baseline")?.value;
+  assert(st(bom.components[2]) === "outdated" && bl(bom.components[2]) === "6.2.19" && st(bom.components[1]) === "ok", "RTE 5.1.0 SBOM → 5.1 기준(spring-webmvc 6.2.11 < 6.2.19, egov 재빌드 ok)");
+}
+
 for (const dd of [proj, gproj]) rmSync(dd, { recursive: true, force: true });
 if (process.exitCode) console.error(`sbom FAIL (${n} assertions)`); else console.log(`sbom OK (${n} assertions)`);

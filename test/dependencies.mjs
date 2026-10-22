@@ -1,5 +1,6 @@
 // node test/dependencies.mjs — 의존성 점검 (오프라인 픽스처 + 기준 카탈로그 정합)
 import { OUTPUT_SCHEMAS, checkDependencies, classifyDependency, renderDependencyMarkdown, loadDependencyBaseline, loadMigrationRules, versionBelow, parseMavenCoord, parseMavenTree, parseGradleTree, dedupeArtifacts, treeCommand, resolveDependencyTree } from "../dist/index.js";
+const m = await import("../dist/index.js");
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, statSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -250,6 +251,35 @@ rmSync(treeProj, { recursive: true, force: true }); rmSync(gradleTreeProj, { rec
 const empty = mkdtempSync(path.join(tmpdir(), "egovdepempty-"));
 const re = await checkDependencies({ projectDir: empty });
 assert(re.buildSystem === "unknown" && re.findings.length === 0 && re.notes.length > 0, "빌드 파일 없음 → 결과 비어 있음 + 안내");
+
+// ── v1.3: 표준프레임워크 5.1.0 기준(저장소 배포, egovframe-rte-root BOM) ──────────────────
+const b51 = m.loadDependencyBaseline("5.1.0");
+assert(b51 !== b && b51.rte.version === "5.1.0" && b51.rte.bom?.artifactId === "egovframe-rte-root" && /^[0-9a-f]{64}$/.test(b51.rte.bom.sha256) && b51.sources.every((s) => s.version === "5.1.0"), `5.1 기준: RTE ${b51.rte.version} · BOM ${b51.rte.bom?.artifactId} · parent 5.1.0`);
+assert(b51.spring.framework === "6.2.19" && b51.spring.boot === "3.5.16" && b51.spring.security === "6.5.11-egov.1", `5.1 기준 Spring ${b51.spring.framework} · Boot ${b51.spring.boot} · Security ${b51.spring.security}`);
+assert(b51.rteTransitive.modules.some((x) => x.artifactId === "egovframe-rte-ai-core") && b51.managed.some((x) => x.artifactId === "egovframe-rte-ai-springai"), "5.1 기준: BOM 의 AI 모듈(ai-core·ai-springai) 포함");
+assert(m.loadDependencyBaseline("5.0.2") === b && m.loadDependencyBaseline(null) === b && m.loadDependencyBaseline("3.10.0") === b, "5.0.x·미지정·3.x 는 기본 기준(전환 목표 5.0.2)");
+assert(m.isEgovRebuild("6.5.11-egov.1") && !m.isEgovRebuild("6.5.11") && m.osvVersion("6.5.11-egov.1") === "6.5.11" && versionBelow("6.5.11-egov.1", "6.5.11") === false, "-egov.N: 재빌드 판정·OSV 원 버전·원 버전 이상으로 비교");
+const p51 = mkdtempSync(path.join(tmpdir(), "egovdep51-"));
+write(p51, "pom.xml", `<project><modelVersion>4.0.0</modelVersion>
+<parent><groupId>org.egovframe.web</groupId><artifactId>egovframe-web-config-parent</artifactId><version>5.1.0</version></parent>
+<groupId>x</groupId><artifactId>p51</artifactId><version>1</version><packaging>war</packaging>
+<dependencies>
+  <dependency><groupId>org.egovframe.rte</groupId><artifactId>egovframe-rte-ptl-mvc</artifactId></dependency>
+  <dependency><groupId>org.egovframe.rte</groupId><artifactId>egovframe-rte-ai-core</artifactId></dependency>
+  <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-web</artifactId><version>6.5.11-egov.1</version></dependency>
+  <dependency><groupId>org.springframework</groupId><artifactId>spring-webmvc</artifactId><version>6.2.11</version></dependency>
+</dependencies></project>`);
+const osvSeen = [];
+const r51 = await checkDependencies({ projectDir: p51, offline: false, osvQuery: async (qs) => { osvSeen.push(...qs.map((q) => `${q.package.name}@${q.version}`)); return { results: qs.map(() => ({})) }; } });
+const f51 = (a) => r51.findings.find((x) => x.artifactId === a);
+assert(r51.baseline.rte === "5.1.0" && r51.baseline.springFramework === "6.2.19" && r51.notes.some((x) => x.includes("5.1.0") && x.includes("기준")), `parent 5.1.0 → 5.1 기준으로 판정(RTE ${r51.baseline.rte})`);
+assert(f51("egovframe-rte-ai-core")?.status === "managed" && f51("egovframe-rte-ptl-mvc")?.status === "managed", "5.1 parent 가 관리하는 RTE·AI 모듈 → managed");
+assert(f51("spring-webmvc")?.status === "outdated" && f51("spring-webmvc")?.baseline === "6.2.19", "spring-webmvc 6.2.11 → 5.1 기준 6.2.19 미만");
+assert(f51("spring-security-web")?.status === "ok" && /재빌드/.test(f51("spring-security-web")?.note ?? ""), "6.5.11-egov.1 → 기준 충족 + 재빌드 안내");
+assert(osvSeen.includes("org.springframework.security:spring-security-web@6.5.11") && !osvSeen.some((x) => x.includes("-egov")), "OSV 는 원 버전(6.5.11)으로 조회");
+const r50 = await checkDependencies({ projectDir: modern });
+assert(r50.baseline.rte === "5.0.2" && r50.notes.some((x) => x.includes("5.1.0") && x.includes("GitHub 태그 없음")), "5.0.x parent 는 기본 기준 + 저장소의 5.1.0 안내");
+rmSync(p51, { recursive: true, force: true });
 
 for (const d of [legacy, modern, bootProj, gradle, empty]) rmSync(d, { recursive: true, force: true });
 if (process.exitCode) console.error(`dependencies FAIL (${n} assertions)`); else console.log(`dependencies OK (${n} assertions)`);

@@ -20,7 +20,11 @@ import {
 } from "./migrate.js";
 
 // ── 규칙 ──────────────────────────────────────────────
-export interface UpdateChange { id: string; since: string; kind: "api" | "behavior"; classes: string[]; summary: string; reason: string; action: "manual"; evidence: { fromTag: string; toTag: string } }
+/** 변경 근거 — git 태그 비교, 또는 v1.3 태그 없는 버전의 저장소 sources jar 비교 */
+export type UpdateEvidence = { fromTag: string; toTag: string } | { kind: "maven-sources"; from: string; to: string };
+export interface UpdateChange { id: string; since: string; kind: "api" | "behavior"; classes: string[]; summary: string; reason: string; action: "manual"; evidence: UpdateEvidence }
+/** v1.3: GitHub 태그·공식 공지 없이 저장소에만 배포된 버전 */
+export interface ProvisionalVersion { version: string; kind: "maven-sources"; reason: string; reason_en?: string }
 export interface UpdateParent { kind: "web" | "boot"; groupId: string; artifactId: string; versions: Record<string, { bootParent?: string; properties: Record<string, string> }> }
 export interface UpdateRules {
   schemaVersion: number;
@@ -28,6 +32,10 @@ export interface UpdateRules {
   source: { repository: string; mavenRepository: string; tags: { tag: string; version: string; commit: string }[] };
   versions: string[];
   latest: string;
+  /** v1.3: 기본 목표(target 생략·생성 alignParent). 없으면 latest */
+  recommended?: string;
+  /** v1.3: 태그 없는 버전(명시 target 으로만) */
+  provisional?: ProvisionalVersion[];
   rteVersionProperties: string[];
   parents: UpdateParent[];
   changes: UpdateChange[];
@@ -39,8 +47,12 @@ export function loadUpdateRules(): UpdateRules {
   if (!cached) cached = JSON.parse(fs.readFileSync(RULES_URL, "utf8")) as UpdateRules;
   return cached;
 }
-/** migrate_egovframe_project 의 target 값이 5.x 안의 갱신인지 */
-export const isUpdateTarget = (target: string | undefined): boolean => !!target && /^5\.0\.\d+$/.test(target);
+/** migrate_egovframe_project 의 target 값이 5.x 안의 갱신인지(v1.3: 5.0.x 뿐 아니라 5.1.0 같은 5.y.z) */
+export const isUpdateTarget = (target: string | undefined): boolean => !!target && /^5\.\d+\.\d+$/.test(target);
+/** v1.3: 기본 목표 버전(태그 없는 버전은 기본값이 되지 않음) */
+export const recommendedVersion = (rules: UpdateRules = loadUpdateRules()): string => rules.recommended ?? rules.latest;
+/** v1.3: 태그 없이 저장소에만 배포된 버전 정보(아니면 null) */
+export const provisionalOf = (version: string, rules: UpdateRules = loadUpdateRules()): ProvisionalVersion | null => rules.provisional?.find((p) => p.version === version) ?? null;
 
 // ── 결과 타입 ─────────────────────────────────────────
 export type UpdateKind = "parent-version" | "rte-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency";
@@ -92,7 +104,7 @@ export function planPomUpdate(rel: string, text: string, target: string, rules: 
       parent = { kind: p.kind, groupId: p.groupId, artifactId: p.artifactId, version: vm[2], to: target };
       if (versionBelow(vm[2], target) === true) {
         const start = base + (vm.index ?? 0) + "<version>".length + vm[1].length;
-        items.push({ file: rel, line: lineAt(text, start), kind: "parent-version", from: `${g}:${a}:${vm[2]}`, to: `${g}:${a}:${target}`, action: "auto", reason: L(`공식 parent 최신 ${rules.latest} — parent 가 RTE·Spring·Jakarta 의존성 버전을 함께 관리한다`, `Latest official parent ${rules.latest} — the parent also manages RTE, Spring and Jakarta dependency versions`), edits: [{ start, end: start + vm[2].length, replacement: target }] });
+        items.push({ file: rel, line: lineAt(text, start), kind: "parent-version", from: `${g}:${a}:${vm[2]}`, to: `${g}:${a}:${target}`, action: "auto", reason: provisionalOf(target, rules) ? L(`공식 parent ${target}(저장소 배포, GitHub 태그 없음) — parent 가 RTE·Spring·Jakarta 의존성 버전을 함께 관리한다`, `Official parent ${target} (published to the repository, no GitHub tag) — the parent also manages RTE, Spring and Jakarta dependency versions`) : L(`공식 parent 최신 ${recommendedVersion(rules)} — parent 가 RTE·Spring·Jakarta 의존성 버전을 함께 관리한다`, `Latest official parent ${recommendedVersion(rules)} — the parent also manages RTE, Spring and Jakarta dependency versions`), edits: [{ start, end: start + vm[2].length, replacement: target }] });
       }
       // parent 가 관리하는 속성을 예전 parent 의 기본값 그대로 덮어쓴 것 → 목표 parent 값으로
       const oldProps = p.versions[vm[2]]?.properties;
@@ -234,7 +246,7 @@ const MAX_FILE_BYTES = 2 * 1024 * 1024;
 /** 이미 5.x 인 프로젝트를 읽기 전용으로 스캔해 target(기본 최신 5.0.x)까지의 갱신 항목을 보고한다. */
 export function updateProject(opts: UpdateOptions): UpdateResult {
   const rules = opts.rules ?? loadUpdateRules();
-  const target = opts.target ?? rules.latest;
+  const target = opts.target ?? recommendedVersion(rules);
   if (!rules.versions.includes(target)) throw new Error(L(`지원하지 않는 target: ${target} (5.x 갱신은 ${rules.versions.join("·")} 중 하나, 3.x/4.x 전환은 target="5.x")`, `Unsupported target: ${target} (a 5.x update takes one of ${rules.versions.join("·")}; a 3.x/4.x migration takes target="5.x")`));
   const dir = path.resolve(opts.projectDir);
   const diag = diagnoseProject({ projectDir: dir });
@@ -323,6 +335,10 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
       });
     }
   }
+  // v1.3: 태그 없는 버전 — 목표로 골랐으면 근거를, 더 새 버전이 있으면 안내를 남긴다
+  const prov = provisionalOf(target, rules);
+  if (prov) notes.push(L(`목표 ${target} 은 표준프레임워크 Maven 저장소에 배포됐지만 GitHub 태그·공식 공지가 없습니다 — 변경 근거는 저장소 sources jar 비교입니다(${tr(prov, "reason")}). 태그가 나오면 규칙을 다시 만듭니다.`, `Target ${target} is published to the eGovFrame Maven repository but has no GitHub tag or official announcement — the change evidence is a comparison of the repository sources jars (${tr(prov, "reason")}). The rules will be regenerated once the tag appears.`));
+  else for (const p of rules.provisional ?? []) if (versionBelow(target, p.version) === true) notes.push(L(`${p.version} 이 저장소에 배포돼 있습니다(GitHub 태그 없음) — target="${p.version}" 으로 그 버전까지의 갱신 항목도 볼 수 있습니다.`, `${p.version} is published to the repository (no GitHub tag) — target="${p.version}" also shows the update items up to that version.`));
   return result(items, { from, to: target, parent, changes, unreferencedChanges: inRange.length - changes.length, components }, sourceEra);
 
   function result(list: MigrationItem[], update: UpdateInfo, era: SourceEra): UpdateResult {

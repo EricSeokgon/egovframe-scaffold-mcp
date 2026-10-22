@@ -55,7 +55,15 @@ const cases = [
   ["Node 최소 버전 하향", (b) => { b.node = ">=20"; }, "minor"],
   ["deprecated 표시", (b) => { b.tools[T].deprecated = { offline: "osv" }; }, "minor"],
 ];
+cases.push(["입력 pattern 변경", (b) => { b.tools[T].input.properties.format.pattern = "^x$"; }, "major"]);
+cases.push(["검토된 pattern 확장(PATTERN_WIDENINGS)", (b) => { const w = m.PATTERN_WIDENINGS[0]; const [tool, param] = w.at.split("."); b.tools[tool].input.properties[param].pattern = w.to; }, now.tools.migrate_egovframe_project.input.properties.target.pattern === m.PATTERN_WIDENINGS[0].to ? "none" : "minor"]);
 for (const [name, mut, want] of cases) { const got = level(mut); assert(got === want, `분류: ${name} → ${want}${got === want ? "" : ` (got ${got})`}`); }
+// 검토된 pattern 확장: 옛 pattern 에 맞는 표본이 새 pattern 에도 모두 맞아야 한다(넓히기만 함)
+for (const w of m.PATTERN_WIDENINGS) {
+  const from = new RegExp(w.from), to = new RegExp(w.to);
+  assert(w.samples.length >= 3 && w.samples.every((x) => from.test(x)) && w.samples.every((x) => to.test(x)), `pattern 확장 ${w.at}(${w.since}): 옛 값 ${w.samples.length}개가 새 pattern 에도 맞음`);
+  assert(now.tools[w.at.split(".")[0]].input.properties[w.at.split(".")[1]].pattern === w.to, `pattern 확장 ${w.at}: 지금 계약의 pattern 이 확장 결과와 같음`);
+}
 const norm = m.normalizeSchema({ type: "object", description: "x", title: "y", properties: { b: { type: "string", description: "z" }, a: { type: "number", default: 1 } }, required: ["b"], additionalProperties: false, $schema: "s" });
 assert(JSON.stringify(norm) === JSON.stringify({ type: "object", required: ["b"], properties: { a: { type: "number", default: 1 }, b: { type: "string" } } }), "normalizeSchema: 설명·제목·$schema 제거, 키 정렬");
 

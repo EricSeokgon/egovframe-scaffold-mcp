@@ -74,7 +74,7 @@ export { CONFIG_FORMATS, CONFIG_EXTENSIONS, loadConfigCatalog, getConfigTemplate
 export type { ConfigFormat, ConfigTemplateEntry, ConfigCatalog, GenerateConfigOptions, GenerateConfigResult, ConfigFieldValidation } from "./config-generator.js";
 export { RTE_VERSION_PROPERTY, loadMigrationRules, migrateProject, renderMigrationMarkdown, classifyRteToken, classifyComponentToken, classifyJavaxPackage, versionBelow, applyTextEdits, applyMigration, renderMigrationApplyMarkdown, linkBuildError, verifyMigration, renderMigrationVerifyMarkdown } from "./migrate.js";
 export type { MigrationRules, MigrationItem, MigrationKind, MigrationAction, MigrateResult, MigrateOptions, SourceEra, TextEdit, ApplyOptions, ApplyFilePlan, MigrateApplyResult, VerifyOptions, VerifyLink, VerifyWorkItem, MigrateVerifyResult } from "./migrate.js";
-export { loadDependencyBaseline, classifyDependency, checkDependencies, renderDependencyMarkdown, defaultOsvQuery } from "./dependencies.js";
+export { loadDependencyBaseline, newerBaselines, BASELINE_FILES, isEgovRebuild, osvVersion, classifyDependency, checkDependencies, renderDependencyMarkdown, defaultOsvQuery } from "./dependencies.js";
 export type { DependencyBaseline, BaselineManaged, DependencyStatus, DependencyFinding, SecurityCheck, Vulnerability, ParentInfo, CheckDependenciesResult, CheckDependenciesOptions, OsvQuery } from "./dependencies.js";
 export { NETWORK_HOSTS, classifyNetworkError, diagnoseNetwork, networkHint, renderNetworkMarkdown } from "./network.js";
 export type { NetworkHost, NetworkErrorKind, HostProbe, ProxyEnv, NetworkDiagnosis, NetworkOptions } from "./network.js";
@@ -159,7 +159,7 @@ export { mergeModuleBoms } from "./sbom.js";
 export type { Workspace, WorkspaceModule, WorkspaceKind } from "./workspace.js";
 export { loadUpdateRules, isUpdateTarget, planPomUpdate, planGradleUpdate, duplicateDependencyItems, findClassReference, updateProject, applyUpdate, verifyUpdate, renderUpdateMarkdown, updateKindLabel } from "./update.js";
 export type { UpdateRules, UpdateChange, UpdateParent, UpdateInfo, UpdateResult, UpdateOptions, UpdateApplyResult, UpdateApplyOptions, UpdateVerifyResult, UpdateVerifyOptions, PomUpdatePlan } from "./update.js";
-export { buildApiContract, compareContracts, checkVersionBump, normalizeSchema, maxLevel, PUBLIC_ENV } from "./api-contract.js";
+export { buildApiContract, compareContracts, checkVersionBump, normalizeSchema, maxLevel, PUBLIC_ENV, PATTERN_WIDENINGS } from "./api-contract.js";
 export type { ApiContract, ContractChange, ChangeLevel } from "./api-contract.js";
 export { DEPRECATED_PARAMS, applyDeprecatedParams } from "./deprecations.js";
 export type { DeprecatedParam } from "./deprecations.js";

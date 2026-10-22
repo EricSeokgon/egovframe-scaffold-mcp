@@ -19,13 +19,18 @@ const root = mkdtempSync(path.join(tmpdir(), "egovupdate-"));
 try {
   // ── 규칙 데이터 ─────────────────────────────────────
   const rules = loadUpdateRules();
-  assert(rules.versions.join(",") === "5.0.0,5.0.1,5.0.2" && rules.latest === "5.0.2", `버전 목록 ${rules.versions.join("·")} · 최신 ${rules.latest}`);
-  assert(rules.source.tags.every((t) => /^v5\.0\.\d+-Final$/.test(t.tag) && /^[0-9a-f]{40}$/.test(t.commit)), "근거 태그·commit 고정");
-  assert(rules.parents.length === 2 && rules.parents.every((p) => rules.versions.every((v) => p.versions[v]?.properties["egovframe.rte.version"] === v)), "공식 parent 2종 × 3버전: egovframe.rte.version 이 parent 버전과 같음");
+  // v1.3: 5.1.0 은 GitHub 태그 없이 저장소에 배포된 버전 — latest 지만 기본 목표(recommended)는 5.0.2
+  assert(rules.versions.join(",") === "5.0.0,5.0.1,5.0.2,5.1.0" && rules.latest === "5.1.0" && rules.recommended === "5.0.2", `버전 목록 ${rules.versions.join("·")} · 최신 ${rules.latest} · 기본 ${rules.recommended}`);
+  const ms = rules.source.mavenSteps?.[0];
+  assert(rules.provisional?.length === 1 && rules.provisional[0].version === "5.1.0" && rules.provisional[0].kind === "maven-sources" && ms?.from === "5.0.2" && /^[0-9a-f]{64}$/.test(ms.bom.sha256) && ms.modules.length >= 25 && ms.modules.every((x) => /^[0-9a-f]{64}$/.test(x.to.sha256) && (x.from === null || /^[0-9a-f]{64}$/.test(x.from.sha256))), `5.1.0 근거: 저장소 sources jar ${ms?.modules.length}종(sha256 고정, 새 모듈 ${ms?.modules.filter((x) => x.from === null).length})`);
+  assert(rules.stepClassCounts["5.1.0"] > 100 && ms.modules.filter((x) => x.from === null).map((x) => x.artifactId).sort().join(",") === "egovframe-rte-ai-core,egovframe-rte-ai-langchain4j,egovframe-rte-ai-springai", "5.1.0 단계: 새 AI 모듈 3종 포함");
+  assert(rules.source.tags.length === 3 && rules.source.tags.every((t) => /^v5\.0\.\d+-Final$/.test(t.tag) && /^[0-9a-f]{40}$/.test(t.commit)), "근거 태그·commit 고정");
+  assert(rules.parents.length === 2 && rules.parents.every((p) => rules.versions.every((v) => p.versions[v]?.properties["egovframe.rte.version"] === v)), "공식 parent 2종 × 4버전: egovframe.rte.version 이 parent 버전과 같음");
+  assert(rules.parents.find((p) => p.kind === "boot").versions["5.1.0"].bootParent === "3.5.16", "boot parent 5.1.0 → Spring Boot 3.5.16");
   assert(rules.parents.find((p) => p.kind === "boot").versions["5.0.2"].bootParent === "3.5.6", "boot parent 5.0.2 → Spring Boot 3.5.6");
-  assert(rules.changes.length >= 10 && rules.changes.every((c) => c.action === "manual" && rules.versions.slice(1).includes(c.since) && c.classes.length && c.reason.length > 30 && c.evidence.toTag === `v${c.since}-Final`), `변경 ${rules.changes.length}건: since·클래스·사유·근거 태그`);
+  assert(rules.changes.length >= 10 && rules.changes.every((c) => c.action === "manual" && rules.versions.slice(1).includes(c.since) && c.classes.length && c.reason.length > 30 && (c.since === "5.1.0" ? c.evidence.kind === "maven-sources" && c.evidence.to === "5.1.0" : c.evidence.toTag === `v${c.since}-Final`)), `변경 ${rules.changes.length}건: since·클래스·사유·근거(태그 또는 sources jar)`);
   assert(new Set(rules.changes.map((c) => c.id)).size === rules.changes.length, "변경 id 중복 없음");
-  assert(isUpdateTarget("5.0.2") && isUpdateTarget("5.0.1") && !isUpdateTarget("5.x") && !isUpdateTarget(undefined) && !isUpdateTarget("4.3.0"), "isUpdateTarget: 5.0.x 만");
+  assert(isUpdateTarget("5.0.2") && isUpdateTarget("5.0.1") && isUpdateTarget("5.1.0") && !isUpdateTarget("5.x") && !isUpdateTarget(undefined) && !isUpdateTarget("4.3.0"), "isUpdateTarget: 5.y.z(5.x·4.x 제외)");
 
   // ── pom 계획(순수) ──────────────────────────────────
   const webPom = `<project>\n  <parent>\n    <groupId>org.egovframe.web</groupId>\n    <artifactId>egovframe-web-config-parent</artifactId>\n    <version>5.0.0</version>\n  </parent>\n  <properties>\n    <egovframe.rte.version>5.0.0</egovframe.rte.version>\n  </properties>\n  <dependencies>\n    <dependency>\n      <groupId>org.egovframe.rte</groupId>\n      <artifactId>egovframe-rte-fdl-cmmn</artifactId>\n      <version>5.0.1</version>\n    </dependency>\n    <dependency>\n      <groupId>org.egovframe.rte</groupId>\n      <artifactId>egovframe-rte-ptl-mvc</artifactId>\n      <version>\${egovframe.rte.version}</version>\n    </dependency>\n    <dependency>\n      <groupId>org.example</groupId>\n      <artifactId>lib</artifactId>\n      <version>5.0.0</version>\n    </dependency>\n  </dependencies>\n</project>\n`;
@@ -81,7 +86,19 @@ try {
   assert(ids === "excel-formula-injection,html-tag-filter,idgnr-table-lock,string-util-tokens", `참조하는 변경 4건(got ${ids})`);
   assert(r.items.filter((i) => i.kind === "rte-change").length === 4 && r.items.filter((i) => i.kind === "rte-change").every((i) => i.action === "manual" && i.to === null && /^\[5\.0\.[12] (API|동작) 변경\]/.test(i.reason)), "rte-change: manual · 사유에 버전·종류");
   assert(r.items.find((i) => i.kind === "rte-change" && i.file === "src/main/java/egovframework/example/A.java")?.line === 2, "A.java 는 파일당 1건, 첫 참조 줄(2)");
-  assert(r.update.unreferencedChanges === rules.changes.length - 4, `참조하지 않는 변경 ${r.update.unreferencedChanges}건 별도 집계`);
+  assert(r.update.unreferencedChanges === rules.changes.filter((c) => c.since !== "5.1.0").length - 4, `참조하지 않는 변경 ${r.update.unreferencedChanges}건 별도 집계(5.1.0 변경은 구간 밖)`);
+  assert(r.notes.some((n) => n.includes("5.1.0") && n.includes("GitHub 태그 없음")), "기본 목표 5.0.2 — 저장소의 5.1.0 을 안내");
+  // v1.3: target 5.1.0 — parent·RTE 를 5.1.0 으로, 5.1.0 변경도 구간에 들어가고 근거를 안내
+  write(web, "src/main/java/egovframework/example/S.java", `package egovframework.example;
+import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
+class S extends EgovAbstractServiceImpl {}
+`);
+  const r51 = updateProject({ projectDir: web, target: "5.1.0" });
+  const ids51 = r51.update.changes.map((c) => c.id).sort().join(",");
+  assert(r51.update.to === "5.1.0" && r51.items.some((i) => i.kind === "parent-version" && i.to.endsWith(":5.1.0") && i.reason.includes("GitHub 태그 없음")), "target 5.1.0: parent 5.1.0 (저장소 배포 안내)");
+  assert(ids51.includes("excel-content-disposition") && ids51.includes("service-biz-exception-helpers") && ids51.includes("excel-formula-injection"), `target 5.1.0: 5.0.x + 5.1.0 변경 참조(${ids51})`);
+  assert(r51.notes.some((n) => n.includes("sources jar")), "target 5.1.0: 근거가 저장소 sources jar 임을 알림");
+  rmSync(path.join(web, "src/main/java/egovframework/example/S.java"));
   assert(r.summary.auto === 3 && r.summary.manual === 4, `요약 자동 ${r.summary.auto} · 수동 ${r.summary.manual}`);
   const r501 = updateProject({ projectDir: web, target: "5.0.1" });
   assert(r501.update.changes.every((c) => c.since === "5.0.1") && r501.update.changes.length === 2, "target 5.0.1: 5.0.1 변경만(엑셀 수식·ID 생성)");
@@ -93,7 +110,7 @@ try {
   assert(rm.update.from === "5.0.1" && rm.update.changes.map((c) => c.id).join(",") === "excel-batch-insert", "from 5.0.1: 5.0.1 변경(수식 주입)은 구간 밖, 5.0.2 변경(일괄 등록)만");
   let threw = null;
   try { updateProject({ projectDir: web, target: "5.0.9" }); } catch (e) { threw = e.message; }
-  assert(threw && threw.includes("5.0.0·5.0.1·5.0.2"), "지원하지 않는 target 은 거부하고 지원 목록을 알림");
+  assert(threw && threw.includes("5.0.0·5.0.1·5.0.2·5.1.0"), "지원하지 않는 target 은 거부하고 지원 목록을 알림");
   // 3.x 프로젝트는 갱신이 아니라 전환
   const legacy = path.join(root, "legacy");
   write(legacy, "pom.xml", `<project><properties><egovframework.rte.version>3.10.0</egovframework.rte.version></properties><dependencies><dependency><groupId>egovframework.rte</groupId><artifactId>egovframework.rte.ptl.mvc</artifactId><version>\${egovframework.rte.version}</version></dependency></dependencies></project>`);
