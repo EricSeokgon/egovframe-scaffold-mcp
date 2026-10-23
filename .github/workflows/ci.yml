@@ -89,6 +89,8 @@ jobs:
 
       - name: CRUD compile test (official simple-backend)
         run: npm run test:crud-integration
+      - name: CRUD search SQL on HSQLDB (MySQL, PostgreSQL, Oracle syntax modes)
+        run: npm run test:crud-search-live
 
       - name: Extended templates test (downloads official templates)
         run: npm run test:templates

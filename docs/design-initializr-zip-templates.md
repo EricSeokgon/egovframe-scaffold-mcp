@@ -39,6 +39,8 @@ v0.26.0의 통합 카탈로그(`catalog/templates.json`)는 공식 프로젝트 
 4. `npm run build && npm run generate:template-catalog` 로 `catalog/templates.json` 을 다시 만듭니다.
 5. `npm run test:pom && npm run test:template-catalog && npm run test:templates` 로 확인합니다.
 
+v1.4 에서 고정 commit 을 Initializr v5.0.7 태그(`2fad921`)로 옮겼습니다. 조달하는 zip 12종의 LFS 포인터(sha256·크기)는 이전 고정(`f8f5725`)과 같고, v5.0.7 에서 바뀐 zip 은 이 도구가 저장소에서 직접 받는 `egovframe-msa-common-components` 뿐입니다. 동봉 설정 템플릿도 같은 commit 으로 다시 생성했습니다(`transaction/datasource-java`·`jpa-java`·`jta-java` 의 `txAdvisor` bean 이 트랜잭션 매니저를 받도록 바뀜).
+
 ## 필요한 네트워크
 
 기존 `codeload.github.com`·`raw.githubusercontent.com` 에 더해 zip 본문을 받는 `media.githubusercontent.com` 이 필요합니다.

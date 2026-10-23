@@ -1,4 +1,4 @@
-# 도구 레퍼런스 (v1.3)
+# 도구 레퍼런스 (v1.4)
 
 도구 35종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
@@ -61,9 +61,11 @@
 ## generate_egovframe_crud 핵심 파라미터
 
 - `projectDir` — 대상 Maven/Gradle 프로젝트
-- `tableName`, `entityName` — DB 테이블과 생성할 클래스명 (`entityName` 생략 시 테이블명에서 변환)
+- `tableName`, `entityName` — DB 테이블과 생성할 클래스명 (`entityName` 생략 시 테이블명에서 변환). `ddl` 을 주면 `tableName` 은 생략 가능(주면 DDL 의 테이블명과 같아야 함)
 - `basePackage` — 기본 패키지. mapper·VO·service·impl·controller 패키지를 개별 재정의할 수도 있습니다.
 - `fields` — `columnName`, `javaType`, `jdbcType`, `primaryKey`, `generated`, `nullable`, `label` 컬럼 스펙. 안전한 update/delete 생성을 위해 기본키가 최소 1개 필요합니다.
+- `ddl`(v1.4) — `fields` 대신 `CREATE TABLE` 문. 컬럼·타입·`PRIMARY KEY`(인라인·테이블 제약)·`NOT NULL`·자동 증가(`AUTO_INCREMENT`·`IDENTITY`·`SERIAL`)·`COMMENT`(또는 `COMMENT ON COLUMN … IS`)를 읽어 필드를 만듭니다. COMMENT·DEFAULT 안의 콤마·괄호, COMMENT 의 "primary key" 문구, `'C:\'` 같은 끝 백슬래시와 `\'` 이스케이프에 속지 않습니다(공식 Initializr v5.0.7 DDL 파서 테스트와 같은 결과). `dialect` 가 `oracle`·`tibero` 면 `DATE` 를 `LocalDateTime` 으로 봅니다. 알 수 없는 타입은 String 으로 만들고 경고합니다.
+- `search`(v1.4) — 목록 검색 대상 문자열 컬럼(최대 10). Mapper 목록·건수에 `<bind>` 로 만든 LIKE 패턴(방언 중립 — `||`·`CONCAT` 을 쓰지 않음)과 `searchCondition` 분기(없으면 전체 OR), classic 화면에 검색 조건 select 와 등록 화면의 `form:hidden` 검색 필드(이스케이프)를 넣습니다. 생략하면 v1.3 까지와 같은 출력입니다.
 - `profile` — `classic`(Spring MVC+JSP) 또는 `boot`(REST Controller)
 - `checkDataAccess`, `checkService`, `checkWeb` — 공식 `wizard.xml`의 생성 그룹과 대응
 - `includeJsp`, `withTest`, `dryRun` — JSP·JUnit 5 테스트 선택 생성 및 무기록 미리보기
@@ -81,6 +83,15 @@ generate_egovframe_crud(
   ],
   withTest=true,
   dryRun=true
+)
+```
+
+```text
+generate_egovframe_crud(
+  projectDir="/work/my-egov-app",
+  basePackage="egovframework.example.notice",
+  ddl="CREATE TABLE SAMPLE_NOTICE (NOTICE_ID BIGINT NOT NULL AUTO_INCREMENT COMMENT '공지 ID', SUBJECT VARCHAR(200) NOT NULL COMMENT '제목', WRITER VARCHAR(50), PRIMARY KEY (NOTICE_ID))",
+  search=["SUBJECT", "WRITER"]
 )
 ```
 

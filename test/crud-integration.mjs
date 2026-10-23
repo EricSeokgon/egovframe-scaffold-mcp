@@ -33,6 +33,16 @@ async function compileTemplate({ projectName, template, profile, expectedFiles }
     profile,
     fields,
   });
+  // v1.4: 같은 프로젝트에 DDL + 검색 조건으로 하나 더(COMMENT 안 콤마·괄호·'primary key' 문구, <bind> LIKE) — 함께 컴파일
+  const fromDdl = generateCrud({
+    projectDir: created.projectPath,
+    entityName: "Notice",
+    basePackage: "egovframework.example.notice",
+    profile,
+    ddl: `CREATE TABLE SAMPLE_NOTICE (\n  NOTICE_ID BIGINT NOT NULL AUTO_INCREMENT COMMENT '공지 ID, 기본키',\n  SUBJECT VARCHAR(200) NOT NULL COMMENT '제목 (필수)',\n  WRITER VARCHAR(50) DEFAULT 'anon, (guest)' COMMENT 'not the primary key',\n  AMOUNT DECIMAL(12,2),\n  CREATED_AT DATETIME,\n  PRIMARY KEY (NOTICE_ID)\n);`,
+    search: ["SUBJECT", "WRITER"],
+  });
+  if (fromDdl.files.length !== expectedFiles || fromDdl.fieldsFromDdl !== 5) throw new Error(`${template}/${profile} ddl CRUD: files ${fromDdl.files.length}, fields ${fromDdl.fieldsFromDdl}`);
 
   const compiled = spawnSync(executable, commandArgs, {
     cwd: created.projectPath,
@@ -46,7 +56,7 @@ async function compileTemplate({ projectName, template, profile, expectedFiles }
   }
   if (generated.files.length !== expectedFiles)
     throw new Error(`${template}/${profile} generated ${generated.files.length} files, expected ${expectedFiles}`);
-  console.log(`crud compile OK: ${generated.files.length} files on ${template}/${profile} (${created.filesExtracted} template files)`);
+  console.log(`crud compile OK: ${generated.files.length} files + DDL·search ${expectedFiles} files on ${template}/${profile} (${created.filesExtracted} template files)`);
 }
 
 try {

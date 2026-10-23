@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseCreateTable } from "./ddl.js";
 
 export const CRUD_PROFILES = ["classic", "boot"] as const;
 export const CRUD_JAVA_TYPES = [
@@ -31,10 +32,18 @@ export interface CrudFieldInput {
 
 export interface GenerateCrudOptions {
   projectDir: string;
-  tableName: string;
+  /** v1.4: ddl 을 주면 생략 가능(주면 DDL 의 테이블명과 같아야 함) */
+  tableName?: string;
   entityName?: string;
   basePackage: string;
-  fields: CrudFieldInput[];
+  /** v1.4: ddl 을 주면 생략(둘 다 주면 거부) */
+  fields?: CrudFieldInput[];
+  /** v1.4: CREATE TABLE 문 — 컬럼·타입·PK·NOT NULL·자동 증가·COMMENT 를 읽어 fields 를 만든다 */
+  ddl?: string;
+  /** v1.4: ddl 의 방언(oracle·tibero 면 DATE 를 날짜+시각으로) */
+  dialect?: string;
+  /** v1.4: 목록 검색 대상 컬럼(문자열 타입) — Mapper 에 방언 중립 LIKE(<bind>), 화면에 검색 조건 */
+  search?: string[];
   profile?: CrudProfile;
   author?: string;
   createDate?: string;
@@ -67,6 +76,10 @@ export interface GenerateCrudResult {
   files: CrudGeneratedFile[];
   dryRun: boolean;
   warnings: string[];
+  /** v1.4: ddl 로 만든 컬럼 수 */
+  fieldsFromDdl?: number;
+  /** v1.4: 검색 대상 컬럼 */
+  search?: string[];
 }
 
 interface NormalizedField {
@@ -103,6 +116,10 @@ interface CrudModel {
   withTest: boolean;
   fields: NormalizedField[];
   primaryKeys: NormalizedField[];
+  /** v1.4: 검색 대상 필드(선언 순서) */
+  searchFields: NormalizedField[];
+  /** v1.4: DDL 해석 경고 */
+  ddlWarnings: string[];
 }
 
 interface PlannedFile {
@@ -186,10 +203,24 @@ function normalizeModel(opts: GenerateCrudOptions): CrudModel {
     throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
   if (!["pom.xml", "build.gradle", "build.gradle.kts"].some((file) => fs.existsSync(path.join(projectDir, file))))
     throw new Error(`빌드 파일(pom.xml·build.gradle)을 찾지 못했습니다: ${projectDir}`);
-  if (!SQL_IDENTIFIER_RE.test(opts.tableName))
-    throw new Error(`tableName은 단일 SQL 식별자여야 합니다: ${opts.tableName}`);
+  // v1.4: DDL 입력 — fields 와 함께 줄 수 없고, tableName 을 주면 DDL 의 테이블명과 같아야 한다
+  let ddlWarnings: string[] = [];
+  let inputFields = opts.fields;
+  let tableName = opts.tableName;
+  if (opts.ddl !== undefined) {
+    if (opts.fields !== undefined) throw new Error("ddl 과 fields 는 함께 줄 수 없습니다(둘 중 하나)");
+    const parsed = parseCreateTable(opts.ddl, { dialect: opts.dialect });
+    if (tableName !== undefined && tableName.toLowerCase() !== parsed.tableName.toLowerCase())
+      throw new Error(`tableName(${tableName})이 DDL 의 테이블명(${parsed.tableName})과 다릅니다`);
+    tableName = tableName ?? parsed.tableName;
+    inputFields = parsed.fields;
+    ddlWarnings = parsed.warnings.map((w) => `DDL: ${w}`);
+  }
+  if (tableName === undefined) throw new Error("tableName 이 필요합니다(또는 ddl)");
+  if (!SQL_IDENTIFIER_RE.test(tableName))
+    throw new Error(`tableName은 단일 SQL 식별자여야 합니다: ${tableName}`);
 
-  const entityName = opts.entityName?.trim() || toClassName(opts.tableName);
+  const entityName = opts.entityName?.trim() || toClassName(tableName);
   if (!JAVA_CLASS_RE.test(entityName))
     throw new Error(`entityName은 대문자로 시작하는 자바 클래스명이어야 합니다: ${entityName}`);
   const entityVariable = entityName.charAt(0).toLowerCase() + entityName.slice(1);
@@ -211,12 +242,12 @@ function normalizeModel(opts: GenerateCrudOptions): CrudModel {
     throw new Error("withTest=true는 checkService=true가 필요합니다");
   if (!checkDataAccess && !checkService && !checkWeb)
     throw new Error("DataAccess·Service·Web 중 하나 이상을 생성해야 합니다");
-  if (!Array.isArray(opts.fields) || opts.fields.length === 0 || opts.fields.length > 100)
-    throw new Error("fields는 1~100개여야 합니다");
+  if (!Array.isArray(inputFields) || inputFields.length === 0 || inputFields.length > 100)
+    throw new Error("fields는 1~100개여야 합니다(또는 ddl)");
 
   const columnNames = new Set<string>();
   const propertyNames = new Set<string>();
-  const fields = opts.fields.map((field, index): NormalizedField => {
+  const fields = inputFields.map((field, index): NormalizedField => {
     if (!SQL_IDENTIFIER_RE.test(field.columnName))
       throw new Error(`fields[${index}].columnName은 단일 SQL 식별자여야 합니다: ${field.columnName}`);
     const columnKey = field.columnName.toLowerCase();
@@ -256,6 +287,16 @@ function normalizeModel(opts: GenerateCrudOptions): CrudModel {
   if (fields.filter((field) => !field.generated).length === 0)
     throw new Error("insert 문을 생성할 필드가 하나 이상 필요합니다");
 
+  // v1.4: 검색 대상 — 문자열 컬럼만(LIKE), 최대 10개
+  const search = opts.search ?? [];
+  if (!Array.isArray(search) || search.length > 10) throw new Error("search 는 최대 10개 컬럼입니다");
+  const searchFields = search.map((col) => {
+    const f = fields.find((x) => x.columnName.toLowerCase() === String(col).toLowerCase() || x.propertyName === col);
+    if (!f) throw new Error(`search 컬럼이 fields 에 없습니다: ${col}`);
+    if (f.javaType !== "String") throw new Error(`search 는 문자열 컬럼만 지원합니다(LIKE): ${col}(${f.javaType})`);
+    return f;
+  }).filter((f, i, all) => all.indexOf(f) === i);
+
   const mapperPackage = validatePackage(opts.mapperPackage?.trim() || `${basePackage}.service.impl`, "mapperPackage");
   const voPackage = validatePackage(opts.voPackage?.trim() || `${basePackage}.service`, "voPackage");
   const servicePackage = validatePackage(opts.servicePackage?.trim() || `${basePackage}.service`, "servicePackage");
@@ -272,7 +313,7 @@ function normalizeModel(opts: GenerateCrudOptions): CrudModel {
 
   return {
     projectDir,
-    tableName: opts.tableName,
+    tableName,
     entityName,
     entityVariable,
     profile,
@@ -292,6 +333,8 @@ function normalizeModel(opts: GenerateCrudOptions): CrudModel {
     withTest,
     fields,
     primaryKeys,
+    searchFields,
+    ddlWarnings,
   };
 }
 
@@ -395,6 +438,30 @@ function xmlValue(field: NormalizedField): string {
   return `#{${field.propertyName},jdbcType=${field.jdbcType}}`;
 }
 
+/**
+ * v1.4: 목록·건수 공통 검색 조건. LIKE 패턴은 <bind> 로 만들어 방언에 따른 문자열 결합(|| · CONCAT)을 쓰지 않는다
+ * (공식 Initializr v5.0.7 이 고친 문제: MySQL 기본 설정에서 || 는 논리 OR 라 검색어와 무관하게 전체 행이 나옴).
+ */
+function renderSearchWhere(model: CrudModel): string {
+  if (!model.searchFields.length) return "";
+  const like = (f: NormalizedField) => `${f.columnName} LIKE #{searchKeywordLike}`;
+  const cond = model.searchFields.length === 1
+    ? `                ${like(model.searchFields[0])}`
+    : [
+      "                <choose>",
+      ...model.searchFields.map((f) => `                    <when test="searchCondition == '${f.columnName}'">${like(f)}</when>`),
+      `                    <otherwise>(${model.searchFields.map(like).join(" OR ")})</otherwise>`,
+      "                </choose>",
+    ].join("\n");
+  return `
+        <where>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                <bind name="searchKeywordLike" value="'%' + searchKeyword + '%'" />
+${cond}
+            </if>
+        </where>`;
+}
+
 function renderMapperXml(model: CrudModel): string {
   const namespace = `${model.mapperPackage}.${model.entityName}Mapper`;
   const voType = `${model.voPackage}.${model.entityName}VO`;
@@ -446,13 +513,13 @@ ${keyWhere}
 
     <select id="select${model.entityName}List" parameterType="${voType}" resultMap="${model.entityVariable}ResultMap">
         SELECT ${model.fields.map((field) => field.columnName).join(", ")}
-        FROM ${model.tableName}
+        FROM ${model.tableName}${renderSearchWhere(model)}
         ORDER BY ${model.primaryKeys.map((field) => field.columnName).join(", ")}
     </select>
 
     <select id="select${model.entityName}ListTotCnt" parameterType="${voType}" resultType="int">
         SELECT COUNT(*)
-        FROM ${model.tableName}
+        FROM ${model.tableName}${renderSearchWhere(model)}
     </select>
 
 </mapper>
@@ -672,7 +739,11 @@ function renderListJsp(model: CrudModel): string {
 <body>
 <main>
     <h1>${model.entityName} 목록</h1>
-    <form:form modelAttribute="${model.entityVariable}VO" method="get" action="${model.entityVariable}List.do">
+    <form:form modelAttribute="${model.entityVariable}VO" method="get" action="${model.entityVariable}List.do">${model.searchFields.length > 1 ? `
+        <form:select path="searchCondition">
+            <form:option value="">전체</form:option>
+${model.searchFields.map((f) => `            <form:option value="${f.columnName}">${f.label}</form:option>`).join("\n")}
+        </form:select>` : ""}
         <form:input path="searchKeyword" />
         <button type="submit">검색</button>
     </form:form>
@@ -717,7 +788,10 @@ function renderRegisterJsp(model: CrudModel): string {
 <main>
     <h1>${model.entityName} 등록·수정</h1>
     <form:form id="detailForm" modelAttribute="${model.entityVariable}VO" method="post">
-${controls}
+${controls}${model.searchFields.length ? `
+        <%-- 목록 검색 조건 유지: form:hidden 은 값을 HTML 이스케이프한다 --%>
+        <form:hidden path="searchCondition" />
+        <form:hidden path="searchKeyword" />` : ""}
         <button type="submit" formaction="add${model.entityName}.do">등록</button>
         <button type="submit" formaction="update${model.entityName}.do">수정</button>
         <button type="submit" formaction="delete${model.entityName}.do">삭제</button>
@@ -817,7 +891,7 @@ export function generateCrud(opts: GenerateCrudOptions): GenerateCrudResult {
     component: file.component,
     bytes: Buffer.byteLength(file.content, "utf-8"),
   }));
-  const warnings: string[] = [];
+  const warnings: string[] = [...model.ddlWarnings];
   if (model.fields.some((field) => field.generated))
     warnings.push("generated=true 기본키는 MyBatis useGeneratedKeys를 사용합니다. 대상 DB·드라이버 지원을 확인하세요.");
   if (model.profile === "classic")
@@ -862,5 +936,7 @@ export function generateCrud(opts: GenerateCrudOptions): GenerateCrudResult {
     files,
     dryRun,
     warnings,
+    ...(opts.ddl !== undefined ? { fieldsFromDdl: model.fields.length } : {}),
+    ...(model.searchFields.length ? { search: model.searchFields.map((f) => f.columnName) } : {}),
   };
 }

@@ -80,7 +80,7 @@ Structured output (`structuredContent`, `--json`) keeps the same keys in both la
 | `validate_egovframe_project` | Integrity checks (files, DbType vs scripts, AI prerequisites) |
 | `add_ai_components` | AI RAG chatbot layer from the official egovframe-ai-rag sample (Spring AI / LangChain4j) |
 | `list_egovframe_recipes` / `apply_egovframe_recipe` | Curated bundles: project → components → AI layer with one atomic commit |
-| `generate_egovframe_crud` | VO, Mapper XML, Service, Controller, optional JSP and JUnit 5 following the official CRUD wizard |
+| `generate_egovframe_crud` | VO, Mapper XML, Service, Controller, optional JSP and JUnit 5 following the official CRUD wizard; v1.4: from a `CREATE TABLE` statement (`ddl`) with dialect-neutral LIKE search (`search`) |
 | `generate_egovframe_config` | Spring configuration from the 21 official Initializr templates (xml/javaConfig/yaml/properties), offline |
 | `generate_egovframe_ci` | CI configuration for `platform` github (default), gitlab (`.gitlab-ci.yml`) or jenkins (Declarative `Jenkinsfile`), Maven/Gradle auto-detected; `supplyChain=true` adds the SBOM → minimum-elements → assessment gate |
 | `build_egovframe_project` / `test_egovframe_project` | Run builds and tests; compiler errors and JUnit XML structured by file/line |
