@@ -1076,9 +1076,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   );
   server.registerTool(
     "generate_egovframe_crud",
-    { title: t("generate_egovframe_crud"), description: d("generate_egovframe_crud", "eGovFrame Development의 공식 CRUD wizard 입력 체계에 맞춰 VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5 테스트(선택) 골격을 생성합니다. Classic XML과 Boot REST 프로필을 지원하며, 전체 파일 충돌을 먼저 검사해 하나라도 존재하면 아무것도 쓰지 않습니다."), inputSchema: {
+    { title: t("generate_egovframe_crud"), description: d("generate_egovframe_crud", "eGovFrame Development의 공식 CRUD wizard 입력 체계에 맞춰 VO·Mapper(XML)·Service·Controller·JSP(선택)·JUnit 5 테스트(선택) 골격을 생성합니다. Classic XML과 Boot REST 프로필을 지원하며, 전체 파일 충돌을 먼저 검사해 하나라도 존재하면 아무것도 쓰지 않습니다. v1.4: ddl 에 CREATE TABLE 문을 주면 컬럼·타입·기본키·NOT NULL·자동 증가·COMMENT 를 읽어 필드를 만들고(COMMENT·DEFAULT 안의 콤마·괄호·'primary key' 문구에 속지 않음), search 로 방언 중립 LIKE(<bind>) 검색과 이스케이프된 검색 필드를 더합니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장, pom.xml 또는 build.gradle 필요)"),
-      tableName: z.string().describe("CRUD 대상 테이블명. 단일 SQL 식별자, 예: SAMPLE_BOARD"),
+      tableName: z.string().optional().describe("CRUD 대상 테이블명. 단일 SQL 식별자, 예: SAMPLE_BOARD. ddl 을 주면 생략 가능(주면 DDL 의 테이블명과 같아야 함)"),
       entityName: z.string().optional().describe("생성 클래스명. 미지정 시 tableName에서 PascalCase로 생성"),
       basePackage: z.string().describe("기본 자바 패키지. 예: egovframework.example.board"),
       fields: z.array(z.object({
@@ -1090,7 +1090,10 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         generated: z.boolean().default(false).describe("DB 생성키 여부. 단일 기본키에서만 지원"),
         nullable: z.boolean().default(true).describe("NULL 허용 여부(메타데이터·후속 검증용)"),
         label: z.string().optional().describe("Javadoc/JSP 표시명"),
-      })).min(1).max(100).describe("테이블 컬럼 정의"),
+      })).min(1).max(100).optional().describe("테이블 컬럼 정의(ddl 과 둘 중 하나)"),
+      ddl: z.string().max(200_000).optional().describe("v1.4: CREATE TABLE 문. 컬럼·타입·PRIMARY KEY·NOT NULL·자동 증가(AUTO_INCREMENT·IDENTITY·SERIAL)·COMMENT(또는 COMMENT ON COLUMN)를 읽어 fields 를 만듭니다. COMMENT·DEFAULT 안의 콤마·괄호와 'primary key' 문구에 속지 않습니다. fields 와 함께 줄 수 없음"),
+      dialect: z.enum(["mysql", "mariadb", "postgresql", "oracle", "tibero", "altibase", "cubrid", "hsql"]).optional().describe("v1.4: ddl 의 DB 방언(oracle·tibero 면 DATE 를 날짜+시각 LocalDateTime 으로)"),
+      search: z.array(z.string()).max(10).optional().describe("v1.4: 목록 검색 대상 컬럼(문자열 타입). Mapper 에 방언 중립 LIKE(<bind>)와 searchCondition 분기, classic 화면에 검색 조건·이스케이프된 hidden 필드"),
       profile: z.enum(CRUD_PROFILES).default("classic").describe("classic=Spring MVC+JSP, boot=REST Controller"),
       author: z.string().default("egovframe-scaffold-mcp").describe("공식 wizard의 author"),
       createDate: z.string().optional().describe("공식 wizard의 createDate. 미지정 시 오늘 날짜"),
@@ -1119,7 +1122,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const lines = [
         head,
         `- 프로젝트: ${r.projectDir}`,
-        `- 프로필: ${r.profile}`,
+        `- 프로필: ${r.profile}${r.fieldsFromDdl ? ` · DDL 에서 컬럼 ${r.fieldsFromDdl}개` : ""}${r.search?.length ? ` · 검색 ${r.search.join(", ")}` : ""}`,
         `- 파일: ${r.files.length}개 (${[...componentCounts].map(([name, count]) => `${name} ${count}`).join(" · ")})`,
         ...r.files.map((file) => `  · ${file.path} (${file.bytes} bytes)`),
       ];

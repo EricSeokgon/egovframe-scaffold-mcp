@@ -46,8 +46,8 @@ export interface TemplateDefinition {
 }
 
 export const INITIALIZR_REPO = "eGovFramework/egovframe-vscode-initializr";
-/** zip 지문을 조사한 Initializr commit (2026-09-18). 갱신 절차: docs/design-initializr-zip-templates.md */
-export const INITIALIZR_COMMIT = "f8f572596e0c19d7992b132298992d5ce56ea819";
+/** zip 지문을 조사한 Initializr commit (v5.0.7 태그, 2026-10-23 재고정 — zip 12종의 LFS 지문은 2026-09-18 f8f5725 와 같음). 갱신 절차: docs/design-initializr-zip-templates.md */
+export const INITIALIZR_COMMIT = "2fad9212214e83bf23801bce7da37010f54abc8e";
 
 /** Git LFS 객체를 commit 기준으로 내려받는 URL. */
 export function archiveDownloadUrl(repo: string, ref: string, filePath: string): string {

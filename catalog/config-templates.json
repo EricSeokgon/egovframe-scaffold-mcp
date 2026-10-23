@@ -7,8 +7,8 @@
     "catalogPath": "templates/templates-context-xml.json",
     "templateDir": "templates/config",
     "license": "Apache-2.0",
-    "commit": "bc1864133ef3143118d33afb7ce43f5b8f433d5a",
-    "surveyedAt": "2026-09-25",
+    "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
+    "surveyedAt": "2026-10-23",
     "catalogSha256": "017f8629af3849c393d45b4563194ecde6f3be674a9a9a725a308008136befc6"
   },
   "outputDirs": {
@@ -826,7 +826,7 @@
         },
         "javaConfig": {
           "file": "transaction/datasource-java.hbs",
-          "sha256": "f9fc480c52939d2d6ceb9d652f7789179507b301b4bc1d0094a9a833051bbe8b"
+          "sha256": "4412d2d13ffc0e65625e4759d827d362fe6103d131119c49eea2758b6534bc8e"
         }
       },
       "defaultFileName": {
@@ -884,7 +884,7 @@
         },
         "javaConfig": {
           "file": "transaction/jpa-java.hbs",
-          "sha256": "47527d76c027820154b65130832ccda346dbf008a873060f6007d189db3be7b3"
+          "sha256": "0b5d30595c8e88194d2cc6961cbb7d9568e66ae054d20eaae63e3f6ba1f3983a"
         }
       },
       "defaultFileName": {
@@ -948,7 +948,7 @@
         },
         "javaConfig": {
           "file": "transaction/jta-java.hbs",
-          "sha256": "a237977d1f37639eef425142830cc6307dbabd75c47c0f3a88bddd87a78c560a"
+          "sha256": "ec363ca74968485823b1d1c2ed223f101aa11254e901df8de880b5ad94994cd0"
         }
       },
       "defaultFileName": {

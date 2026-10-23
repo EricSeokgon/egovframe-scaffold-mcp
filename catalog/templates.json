@@ -48,7 +48,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-web.zip",
           "sha256": "13674f6f76e74e6d70478b7e9ad0689b0f84b5ffc9828a49f8b511dc2b3d6b69",
           "bytes": 15547491
@@ -133,7 +133,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-boot-web.zip",
           "sha256": "1284019f991f0676683dc1b19e9133318e50f18092505e0c1635ef1336bd1f6c",
           "bytes": 15551650
@@ -205,7 +205,7 @@
         "multiProject": true,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-msa-portal-backend.zip",
           "sha256": "dd8e7563c6eb981c4ad6641f68bf9473badccac10164f51c8357b217c64fdd1d",
           "bytes": 1101491
@@ -229,7 +229,7 @@
         "multiProject": true,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-msa-portal-frontend.zip",
           "sha256": "022b3615d7140f05361f09ce54024284b3be072a0f6f355ecd6738c71bb9e8e0",
           "bytes": 6562922
@@ -253,7 +253,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-mobile-web.zip",
           "sha256": "b1ebcf172a775fada2418509a61b51914709eeb803ca6d03ef1bba766c9bc57b",
           "bytes": 359099
@@ -277,7 +277,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-mobile-common-components.zip",
           "sha256": "0c0abe6922042e940221ea05f94868dac293ba4d2315d17fdc16d26ef23b42c0",
           "bytes": 10696748
@@ -317,7 +317,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-boot-batch-file-scheduler.zip",
           "sha256": "407b09f3c678f8bd96c5da7aa38fe574622a1b507a676d3937c1a8cafafb95d1",
           "bytes": 714016
@@ -341,7 +341,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-boot-batch-file-commandline.zip",
           "sha256": "c51352a2b4ce41ed64f0a0f543c5319164dcc16ac32f853bac44f1ee166535cc",
           "bytes": 713252
@@ -365,7 +365,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-boot-batch-file-web.zip",
           "sha256": "15b75e445cfd9dd0162dbf23034937acb6cac4cd25af45cc162b55ef91a7a1c8",
           "bytes": 1465409
@@ -389,7 +389,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-boot-batch-db-scheduler.zip",
           "sha256": "b0cb160b252325eb6c29c93d978a5026913d377339e15c5551f615ca0cd2b7e7",
           "bytes": 712628
@@ -413,7 +413,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-boot-batch-db-commandline.zip",
           "sha256": "0de452a317f939f37867f66d293d8e6879fd868aa89c3ad1cc7a07c2b1c0ffd9",
           "bytes": 1440218
@@ -437,7 +437,7 @@
         "multiProject": false,
         "archive": {
           "kind": "initializr-zip",
-          "commit": "f8f572596e0c19d7992b132298992d5ce56ea819",
+          "commit": "2fad9212214e83bf23801bce7da37010f54abc8e",
           "path": "templates/projects/examples/egovframe-boot-batch-db-web.zip",
           "sha256": "e229849102dee90fe7605107d9a4122425b67ddf2aa1bbc41b01af42bbc9e0c9",
           "bytes": 1470738

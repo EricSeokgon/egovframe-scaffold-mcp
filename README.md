@@ -67,7 +67,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 
 > "`simple-backend` 템플릿으로 `~/work/portal` 을 만들고, 게시판·로그인·보안 컴포넌트를 넣어 줘. DB 는 postgres."
 
-`create_egovframe_project` → `add_egovframe_components`(DDL·DML 포함) → `build_egovframe_project`. 자주 쓰는 조합은 레시피 하나로도 됩니다: `apply_egovframe_recipe(recipeId="board-login", …)`. AI 챗봇이 필요하면 `add_ai_components`(Spring AI 또는 LangChain4j), 화면·서비스가 필요하면 `generate_egovframe_crud`, 데이터소스·캐시·로깅 설정은 `generate_egovframe_config` 입니다.
+`create_egovframe_project` → `add_egovframe_components`(DDL·DML 포함) → `build_egovframe_project`. 자주 쓰는 조합은 레시피 하나로도 됩니다: `apply_egovframe_recipe(recipeId="board-login", …)`. AI 챗봇이 필요하면 `add_ai_components`(Spring AI 또는 LangChain4j), 화면·서비스가 필요하면 `generate_egovframe_crud`(v1.4 부터 `CREATE TABLE` 문을 그대로 `ddl` 로 주고 `search` 로 목록 검색 조건까지), 데이터소스·캐시·로깅 설정은 `generate_egovframe_config` 입니다.
 
 **3.x/4.x 프로젝트를 5.x 로 옮기기**
 

@@ -67,6 +67,16 @@ MyBatis XML은 기본키 조건으로 select/update/delete를 만들고, `genera
 5. 실제 쓰기 중 오류가 발생하면 이번 호출에서 생성한 파일을 역순으로 제거한다.
 6. `dryRun=true`는 동일한 검증과 파일 계획을 수행하되 디스크를 변경하지 않는다.
 
+## DDL 입력과 검색 조건 (v1.4)
+
+공식 Initializr v5.0.7(2026-10-16)은 CRUD 코드 생성의 결함 9건을 고쳤습니다. 이 도구는 필드 목록을 직접 받아 대부분과 무관했지만, 공식 도구처럼 DDL 을 그대로 받는 입력과 검색 조건이 없었습니다.
+
+- `src/ddl.ts` `parseCreateTable(ddl, { dialect })` — 주석을 지우고(문자열 안은 보존), 따옴표·괄호 깊이를 보며 최상위 콤마로 정의를 나누고, 키워드 판정은 문자열 리터럴을 지운 뒤에 합니다. 그래서 COMMENT·DEFAULT 안의 콤마·괄호와 "primary key" 문구에 속지 않습니다.
+- 백슬래시: 표준 해석(백슬래시는 보통 문자)으로 따옴표 짝이 맞으면 그쪽을, 아니면 MySQL 식(`\'` 이스케이프)으로 해석합니다(`chooseBackslashMode`). `'C:\'` 와 `'user\'s'` 를 모두 받습니다. 공식 `ddlParser.spec.ts` 의 입력 12개와 분리 함수 경계 7개를 `test/crud-ddl.mjs` 가 같은 결과로 단언합니다.
+- 타입: 문자열(VARCHAR·VARCHAR2·TEXT·CLOB…), 정수(INT·BIGINT·SERIAL…), `NUMBER(p,0)`(p≤9 Integer, ≤18 Long, 그 이상 BigDecimal), 소수(DECIMAL·NUMBER(p,s)), 실수, 불리언(BOOLEAN·BIT(1)), 날짜(DATE — Oracle·Tibero 는 LocalDateTime), 일시(DATETIME·TIMESTAMP), 시간대(TIMESTAMP WITH TIME ZONE·TIMESTAMPTZ → Instant), 이진(BLOB·BYTEA·RAW…). 모르는 타입은 String + 경고.
+- 검색: `search` 컬럼(문자열)마다 `LIKE #{searchKeywordLike}` 를 쓰고 패턴은 `<bind name="searchKeywordLike" value="'%' + searchKeyword + '%'"/>` 로 만듭니다. 공식이 고친 `||` 결합은 MySQL 기본 설정(PIPES_AS_CONCAT 미적용)에서 논리 OR 라 검색어와 무관하게 전체 행을 돌려줍니다. 검색 조건은 목록과 건수에 같이 들어가며, 화면은 Spring form 태그(`form:select`·`form:hidden`)로만 출력해 이스케이프됩니다(공식이 고친 반사형 XSS 경계).
+- `test:crud-search-live`(CI 통합)는 생성 Mapper 를 MyBatis 3.5.19 로 읽어 HSQLDB 의 MySQL·PostgreSQL·Oracle 문법 모드에서 같은 검색을 실행해 결과가 같음을 확인합니다. `test:crud-integration` 은 DDL·검색으로 만든 CRUD 를 공식 simple-backend(boot)·web-sample(classic)에서 함께 컴파일합니다.
+
 ## 검증
 
 `npm run test:crud`는 네트워크 없이 다음을 확인한다.
