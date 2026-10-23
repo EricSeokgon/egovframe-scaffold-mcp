@@ -107,9 +107,20 @@ generate_egovframe_sbom(projectDir, outputPath="sbom/bom.cdx.json", bomFormat="c
 - `test:dependencies-live`(CI): log4j 1.2.17 픽스처를 `offline=false` 로 점검해 OSV 결과가 붙는지 확인; v0.34 — 공식 `egovframe-boot-web`·`egovframe-web` 템플릿 pom(Initializr 고정 commit)에서 기준 없음 0건, 공식 공통컴포넌트 v3.10.0 pom 에서 기준 없음 5건 이하
 - 실제 자산(v0.34): 공식 5.x `egovframe-boot-web` 템플릿 → parent 관리 15건(Boot BOM 기준 버전 표시)·기준 없음 0, `egovframe-web` → parent 관리 19·기준 없음 0, 공식 공통컴포넌트 v3.10.0 pom 66건 → 기준 없음 **17 → 1**(`xerces:xercesImpl`), 벤더 6(Altibase·Tibero·CUBRID·mGov·GPKI 2), 교체 3 → 12(옛 MySQL/Oracle 좌표·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social·DBCP1·Log4j1·fileupload), RTE 전이로 mybatis 3.1.1 → 3.5.19 기준 미만 판정
 
+## parent 버전별 기준 (v1.3, 표준프레임워크 5.1.0)
+
+표준프레임워크 5.1.0 이 공식 저장소에 배포되면서(2026-09-28~10-12, GitHub 태그·공지 없음) 기준을 parent 계열마다 따로 둡니다.
+
+- `catalog/dependency-baseline.json` — 기본. 전환 목표(5.0.2) 기준이며 parent 가 없거나 5.0.x 인 프로젝트, 3.x/4.x 프로젝트에 씁니다.
+- `catalog/dependency-baseline-5.1.json` — parent(또는 RTE 버전)가 5.1.x 인 프로젝트. `loadDependencyBaseline(version)` 이 major.minor 로 고르고(`BASELINE_FILES`), SBOM 은 component 의 RTE 버전으로 고릅니다.
+- 5.1.0 parent 는 RTE 모듈을 직접 나열하지 않고 BOM `org.egovframe.rte:egovframe-rte-root` 를 import 합니다. 생성기는 그 `dependencyManagement`(직접 117 + 하위 BOM import 11)를 parent 관리 목록으로 풀고, RTE 전이 모듈 목록도 BOM 에서 읽습니다(27종, `ai-core`·`ai-langchain4j`·`ai-springai` 포함). 5.1.0 모듈 pom 은 의존성 버전을 BOM 에 맡기므로 BOM(과 그 import 한 단계)의 관리 버전으로 채웁니다.
+- Boot parent 의 버전 속성(`spring-framework.version` 등)은 상속한 `spring-boot-dependencies` 의 같은 이름 속성을 재정의합니다(Maven 속성 상속). v1.3 에서 생성기가 이를 반영하도록 고쳤고, 그래서 5.0.2 기준도 다시 생성했습니다(Boot BOM 좌표 1473 → 1474, 72개 좌표 버전이 parent 재정의 값으로 바뀜).
+- `-egov.N`: 5.1.0 은 `spring-security 6.5.11-egov.1`·`spring-integration 6.5.10-egov.1`·`spring-ai-* 1.1.8-egov.1` 같은 재빌드본을 씁니다. 버전 비교는 숫자 부분만 보므로 원 버전과 같게 취급하고, OSV 는 원 버전으로 조회하며(`osvVersion`) 판정 note 에 재빌드라고 적습니다. 재빌드 BOM 은 표준프레임워크 저장소에서 받습니다.
+- 5.0.x parent 프로젝트에는 "5.1.0 parent 가 저장소에 배포돼 있다(GitHub 태그 없음)"는 안내를 notes 에 남깁니다.
+
 ## 기준 갱신 절차
 
 1. `sync_egovframe_templates` 의 "규칙·의존성 기준 카탈로그 drift" 절(또는 CI 통합의 `test:catalog-drift-live` 경고)이 새 parent 버전·새 RTE 태그를 알려 준다.
-2. 새 parent 릴리스가 나오면 `node scripts/generate-dependency-baseline.mjs --web <ver> --boot <ver>` (또는 `PARENTS` 기본값 갱신). Boot BOM·RTE 모듈 pom 도 함께 다시 내려받는다(`--cache <dir>` 로 보관하면 `--offline <dir>` 로 재현 가능; 생성은 결정적이라 같은 입력에서 같은 파일이 나온다).
+2. 새 parent 릴리스가 나오면 `node scripts/generate-dependency-baseline.mjs --web <ver> --boot <ver>` — 기본 기준보다 새 계열이면 `--out catalog/dependency-baseline-<major.minor>.json` 으로 따로 만들고 `BASELINE_FILES` 에 등록한다 (또는 `PARENTS` 기본값 갱신). Boot BOM·RTE 모듈 pom 도 함께 다시 내려받는다(`--cache <dir>` 로 보관하면 `--offline <dir>` 로 재현 가능; 생성은 결정적이라 같은 입력에서 같은 파일이 나온다).
 3. RTE 목표 버전은 `catalog/migration-mapping.json` 의 `runtime.toTag` 가 정한다 — 먼저 전환 규칙을 재생성한다(RTE 전이 의존성은 이 버전의 모듈 pom 에서 읽는다).
 4. `npm run test:dependencies`, 필요하면 `test:migration-rules`(Jakarta 목적지 버전이 기준 이상인지 검사).

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "surveyedAt": "2026-10-15",
+  "surveyedAt": "2026-10-22",
   "generatedBy": "scripts/generate-update-rules.mjs",
   "note": "5.x 안의 갱신(migrate_egovframe_project target=5.0.x) 규칙. parent·RTE 버전은 auto, 바뀐 API·동작은 프로젝트가 그 클래스를 참조할 때만 manual 로 보고한다.",
   "source": {
@@ -22,14 +22,354 @@
         "version": "5.0.2",
         "commit": "8f47a567ec4a8d3969f423c195115648cf562ae0"
       }
+    ],
+    "mavenSteps": [
+      {
+        "version": "5.1.0",
+        "kind": "maven-sources",
+        "from": "5.0.2",
+        "reason": "GitHub egovframe-runtime 에 v5.1.0-Final 태그가 없어(2026-10-22) 표준프레임워크 Maven 저장소의 5.0.2·5.1.0 sources jar 를 비교한다",
+        "reason_en": "egovframe-runtime has no v5.1.0-Final tag on GitHub (2026-10-22), so the 5.0.2 and 5.1.0 sources jars from the eGovFrame Maven repository are compared",
+        "bom": {
+          "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-root/5.1.0/egovframe-rte-root-5.1.0.pom",
+          "sha256": "8a6b085f849b4c32a6ef4cf372a61b76f2d7d2b3f96389191bf6bf19a7b76292"
+        },
+        "modules": [
+          {
+            "artifactId": "egovframe-rte-ai-core",
+            "from": null,
+            "to": {
+              "version": "5.1.0",
+              "sha256": "a6a695655d4d6ab5ee892755571b08863c9af3c2c0a26471570a4ef17d3df82a"
+            },
+            "changed": 43
+          },
+          {
+            "artifactId": "egovframe-rte-ai-langchain4j",
+            "from": null,
+            "to": {
+              "version": "5.1.0",
+              "sha256": "753f3b88a6e562cecc0b36f7ebd4b8f4b1e31ee13cf579ebefb2d02ea4a4f8a1"
+            },
+            "changed": 21
+          },
+          {
+            "artifactId": "egovframe-rte-ai-springai",
+            "from": null,
+            "to": {
+              "version": "5.1.0",
+              "sha256": "d36efca2321b02d6844b33ca63f6cf0f9ad3cd03660133345ebc654aa2ec03be"
+            },
+            "changed": 18
+          },
+          {
+            "artifactId": "egovframe-rte-bat-core",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "9a01b3aa713fe0c37aba734b87963a51ce7de58f874946d28da7040e49b70bda"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "eb6a373e3b8665bb9f4985a0094378155cc62fcc930c8be02e125bde964506c0"
+            },
+            "changed": 9
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-access",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "9f85d2428c2811c6035387b959de1ebb532a3d648c801e3f1752f8603db8b9a9"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "9186f16a67aa8733fc68c7f14ade51ddd274506ba92b92986cdfd43e1e8714c0"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-cmmn",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "620e5e76251fb014a7ccefe7ed9f411abb8a11c679f38c21f55b4fbcf701bde5"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "ec57a525dce8bf040332d3538b7a4e8f91e8f01988b2cfc17dde8b7dd0123d84"
+            },
+            "changed": 12
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-crypto",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "b1e702a92b91652094f4b8c5f1485997107982783a823d76e5d1dadc9c6808db"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "d66dabb2d3f6ccbd386faebd7e5619a0e609236f51a9448fc2090c42d09c2550"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-excel",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "bb4ef8d16900da21a5d71f4a5d0e010d689d44d6eaeb4c58bd809bf72794e079"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "eb2cf8f9324eb1a45b0d9eb0e1bbfa16b14222c4e96340a7b130cae874942afc"
+            },
+            "changed": 3
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-filehandling",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "c2d2c5358a8625271fab59f403dea3d21cfb5663e994e5899ce0b068d0409655"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "255b31579771fb358ad96e6e9d1c384d2775d3a560ab2d49ef4db058ff24d610"
+            },
+            "changed": 11
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-idgnr",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "16ad2694bcdfaf53368207ee6a15c1f17fc259c9d5c868b0372199268024e085"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "3ccbd7e895880864521941258ad58ed7fcac3d3920ca20c56df8a429337cd609"
+            },
+            "changed": 1
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-logging",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "99968d1a582eaed2062c3581bf3fc1bd0b3526977449357cefa0bb324309d92a"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "814ca316c85608757ee4e3ca718a2e8ef9df8379ee29a6a30897e25b197cda1a"
+            },
+            "changed": 1
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-property",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "f18b40411bfb0911c9b990a58f9b78994f15e3303903c1c2821bab232f35d778"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "e695df2d144a9f214d7f816f28205b885605ec822b2fb320a4ec32f643c48346"
+            },
+            "changed": 1
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-reactive",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "8923ec11b01cbb5dc1637e9753c87b3739679ffd571aa4bc9f3cccf70be037b9"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "2a6b9b18d743715c9d9765b662557fda8f1af61e2ff91d1e29766e8097ce62c9"
+            },
+            "changed": 2
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-security",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "444d54c9d519d764b0b6c4b35cc109d948f7b892026cdd8b85cbe96e5a1948dd"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "a72484c07633e4e75c2d0627b8dd82c0de0040a62f7deab7e92b5121f08824fb"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-string",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "e2d2c8d59f8df155eb9deaf835b7bd487188e802ce1b40618b4ec83d9d15ff6b"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "306eb0d6aeeb4d2b330af122b6242e208263413a34427c72d4493565bc20bb80"
+            },
+            "changed": 7
+          },
+          {
+            "artifactId": "egovframe-rte-fdl-xml",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "65a64754b206522984deadf6d51cd8b4d8d12215e5f2e3fb82c480dc899dbf66"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "b5ef321e55f3cfee018911dacc9a20ac1684204b62a2a9f75b29324f28f2412c"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-itl-integration",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "c011589932e7c8a33075820016c8ae8ce07c76ffffb4dd461ba4e5690cdec81a"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "5102700405464695d2aa20b5305670f52999f47d3e0ca0b776c268d0411d12c5"
+            },
+            "changed": 2
+          },
+          {
+            "artifactId": "egovframe-rte-itl-webservice",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "805c5219b5ac30aa8e7e599b80591172f5fd1db63e7fe2c3d8f5465bdabcc54d"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "f416b8094999230cd7487b8da2db5eecca28a500a8b1ac817a318a54fdd5f920"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-psl-data-jpa",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "120c59c1b5c01313ae94e5d8061a31c3b35039bf05d6626c04b44d8383090f0a"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "5b2acf96fe306e89732013bf9da5b814735f30d9ea2f78bae618a2218dad71e0"
+            },
+            "changed": 5
+          },
+          {
+            "artifactId": "egovframe-rte-psl-data-mongodb",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "c3709429c9244c0a152a2ed184512a31e4fe21d38e2a0fba47467325d5043ff8"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "2b2faf5075d362eae1986f52d659036e43220f4e06514a76370c8c95ade5b6f6"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-psl-dataaccess",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "bbd614baf1a7f954dca8f09688628f7162aa63752a06926c31cc213bb2528a01"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "976d047af292b24fd3a87db23f12d1ef04283e329e620fa5c43384d6774f224e"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-psl-reactive-cassandra",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "807f7937dd7dee9406bb42a3db368ac2fe9a47d5eb307e52c2b17d6c6311c720"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "e7d0f2144a5d960dfb6f91b165f6eced8b80bc02ae36ad6eee878c529d176b11"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-psl-reactive-mongodb",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "94c1715f1083b2444b9350ca5add09bddaadef720d626c0c117c57c9d2d8caa1"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "20e7dc1537f333e976f7ac799d075cbe0863bcc9d34a63bfdaf661e2b39db313"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-psl-reactive-r2dbc",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "96dd255f7042963ea0d124fa9d9e89f1a41d0dfa3c669d7c7388177d2cf5a0d2"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "c3649c4482489426aa6bbb6670b3f4725837baf790ce6b2a58aa25a81f85812a"
+            },
+            "changed": 3
+          },
+          {
+            "artifactId": "egovframe-rte-psl-reactive-redis",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "f022aae015e95b2a078e546e65e7bf3d08eafc8f4041dd5a355ed4ba02b0f589"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "3d61f13967b9a86194d580c6219744cfcde04dc284e52d7df03a223143261db8"
+            },
+            "changed": 0
+          },
+          {
+            "artifactId": "egovframe-rte-ptl-mvc",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "e88c4dee8a90cb67300dd5f9c13e052d1da92b437cf1a30b68fcdd37a35b014b"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "b810d928be1e1a3821c3f8a704d2a8239d142d9216a9620acffee390377be30a"
+            },
+            "changed": 19
+          },
+          {
+            "artifactId": "egovframe-rte-ptl-reactive",
+            "from": {
+              "version": "5.0.2",
+              "sha256": "ab6ac48f03ca2e71c0c408694bc3bab3ba167e8b8116d48fbcaf358aa47c8da6"
+            },
+            "to": {
+              "version": "5.1.0",
+              "sha256": "3fb5c02d92d9e571a8d87ffb5eb14136edb7f16c93ef85d47a83deea0f80fd70"
+            },
+            "changed": 3
+          }
+        ]
+      }
     ]
   },
   "versions": [
     "5.0.0",
     "5.0.1",
-    "5.0.2"
+    "5.0.2",
+    "5.1.0"
   ],
-  "latest": "5.0.2",
+  "latest": "5.1.0",
+  "recommended": "5.0.2",
+  "provisional": [
+    {
+      "version": "5.1.0",
+      "kind": "maven-sources",
+      "reason": "GitHub egovframe-runtime 에 v5.1.0-Final 태그가 없어(2026-10-22) 표준프레임워크 Maven 저장소의 5.0.2·5.1.0 sources jar 를 비교한다",
+      "reason_en": "egovframe-runtime has no v5.1.0-Final tag on GitHub (2026-10-22), so the 5.0.2 and 5.1.0 sources jars from the eGovFrame Maven repository are compared"
+    }
+  ],
   "rteVersionProperties": [
     "egovframe.rte.version",
     "org.egovframe.rte.version",
@@ -286,6 +626,76 @@
             "maven-surefire-plugin.version": "3.5.2",
             "maven-javadoc-plugin.version": "3.11.2"
           }
+        },
+        "5.1.0": {
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.1.0",
+            "jakarta.servlet-api.version": "6.0.0",
+            "jakarta.servlet.jsp-api.version": "4.0.0",
+            "jakarta.servlet.jsp.jstl.version": "3.0.1",
+            "jakarta.faces-api.version": "4.1.2",
+            "jakarta.inject-api.version": "2.0.1",
+            "jakarta.json-api.version": "2.1.3",
+            "jakarta.json.version": "2.0.1",
+            "jakarta.servlet.jsp.jstl-api.version": "3.0.2",
+            "jakarta.mail.version": "2.0.2",
+            "yasson.version": "3.0.4",
+            "jakarta.websocket-api.version": "2.1.1",
+            "angus.mail.version": "2.0.5",
+            "commons-compress.version": "1.28.0",
+            "commons-email.version": "1.6.0",
+            "commons-email2-jakarta.version": "2.0.0-M1",
+            "commons-fileupload2-jakarta-servlet6.version": "2.0.0-M5",
+            "commons-net.version": "3.13.0",
+            "commons-pool2.version": "2.13.1",
+            "mariadb-java-client.version": "3.5.8",
+            "postgresql.version": "42.7.11",
+            "hsqldb.version": "2.7.4",
+            "parsson.version": "1.1.7",
+            "json-simple.version": "1.1.1",
+            "xmlbeans.version": "5.3.0",
+            "cglib.version": "3.3.0",
+            "icu4j.version": "78.3",
+            "quartz.version": "2.5.2",
+            "oro.version": "2.0.8",
+            "selenium.version": "4.44.0",
+            "httpclient5.version": "5.6.1",
+            "jaxws-rt.version": "4.0.3",
+            "jaxrpc-impl.version": "1.1.6",
+            "jaxrpc-api-osgi.version": "1.1-b01",
+            "jms-api.version": "1.1-rev-1",
+            "servicemix.jaxws-api.version": "2.9.0",
+            "ckeditor-java-core.version": "3.5.3",
+            "batik-ext.version": "1.19",
+            "ajaxtags-resources.version": "1.5.7",
+            "jodconverter.version": "2.2.1",
+            "json-lib.version": "2.4",
+            "scribejava.version": "8.3.3",
+            "twitter4j-core.version": "4.0.7",
+            "jp.takke.twitter4j-v2.version": "1.4.2",
+            "spring-ldap-core.version": "3.3.8",
+            "ldapsdk.version": "4.1",
+            "junit.version": "4.13.2",
+            "junit-jupiter.version": "6.1.3",
+            "javaparser-core.version": "3.27.0",
+            "sndng-mail.version": "1.0",
+            "soap.version": "2.3.1",
+            "xalan.version": "2.7.3",
+            "spring.ai.version": "1.1.8",
+            "spring.ai.egov.version": "1.1.8-egov.1",
+            "langchain4j.version": "1.18.1",
+            "langchain4j-beta.version": "1.18.1-beta28",
+            "onnx.runtime.version": "1.20.0",
+            "huggingface.tokenizer.version": "0.32.0",
+            "maven-compiler-plugin.version": "3.16.0",
+            "maven-war-plugin.version": "3.5.1",
+            "maven-pmd-plugin.version": "3.28.0",
+            "maven-surefire-plugin.version": "3.6.0",
+            "maven-javadoc-plugin.version": "3.12.0"
+          }
         }
       }
     },
@@ -394,6 +804,60 @@
             "hsqldb.version": "2.7.4",
             "lombok.version": "1.18.42",
             "selenium.version": "4.38.0"
+          }
+        },
+        "5.1.0": {
+          "bootParent": "3.5.16",
+          "properties": {
+            "java.version": "17",
+            "project.build.sourceEncoding": "UTF-8",
+            "project.reporting.outputEncoding": "UTF-8",
+            "egovframe.rte.version": "5.1.0",
+            "egovframe.boot.starter.version": "5.1.0",
+            "spring.cloud.version": "2025.0.3",
+            "spring.ai.version": "1.1.8",
+            "spring.ai.egov.version": "1.1.8-egov.1",
+            "huggingface.tokenizer.version": "0.32.0",
+            "onnx.runtime.version": "1.20.0",
+            "langchain4j.version": "1.18.1",
+            "langchain4j-beta.version": "1.18.1-beta28",
+            "postgresql.version": "42.7.11",
+            "commons-net.version": "3.13.0",
+            "commons-pool2.version": "2.13.1",
+            "commons-lang3.version": "3.20.0",
+            "querydsl.version": "5.1.0",
+            "hsqldb.version": "2.7.4",
+            "selenium.version": "4.44.0",
+            "spring-framework.version": "6.2.19",
+            "spring-security.version": "6.5.11-egov.1",
+            "spring-batch.version": "5.2.6",
+            "spring-data-bom.version": "2025.0.13",
+            "spring-integration.version": "6.5.10-egov.1",
+            "micrometer.version": "1.15.12",
+            "reactor-bom.version": "2024.0.18",
+            "netty.version": "4.1.138.Final",
+            "jackson-bom.version": "2.22.3",
+            "hibernate.version": "6.6.58.Final",
+            "log4j2.version": "2.26.1",
+            "slf4j.version": "2.0.20",
+            "lombok.version": "1.18.48",
+            "aspectj.version": "1.9.25.1",
+            "junit-jupiter.version": "6.1.3",
+            "mockito.version": "5.24.0",
+            "commons-codec.version": "1.22.1",
+            "commons-dbcp2.version": "2.14.0",
+            "quartz.version": "2.5.2",
+            "httpclient5.version": "5.6.1",
+            "ehcache3.version": "3.12.0",
+            "hibernate-validator.version": "8.0.5.Final",
+            "lettuce.version": "6.8.2.RELEASE",
+            "r2dbc-h2.version": "1.1.0.RELEASE",
+            "mysql.version": "26.7.0",
+            "maven-compiler-plugin.version": "3.16.0",
+            "maven-surefire-plugin.version": "3.6.0",
+            "maven-javadoc-plugin.version": "3.12.0",
+            "maven-source-plugin.version": "3.4.0",
+            "maven-install-plugin.version": "3.2.0"
           }
         }
       }
@@ -592,11 +1056,106 @@
         "fromTag": "v5.0.1-Final",
         "toTag": "v5.0.2-Final"
       }
+    },
+    {
+      "id": "batch-writer-file-resource",
+      "since": "5.1.0",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.bat.item.DefaultItemWriter"
+      ],
+      "summary": "배치 기본 Writer 의 출력 리소스 경로에 file: 접두",
+      "summary_en": "file: prefix on the output resource path of the default batch writer",
+      "reason": "DefaultItemWriter 가 안내·기본값으로 쓰는 출력 리소스가 ./inputs/csvData.csv 에서 file:./inputs/csvData.csv 로 바뀌었다. 접두 없는 상대 경로를 job 파라미터로 넘기던 배치는 리소스 해석(클래스패스·파일)이 달라질 수 있으니 file:·classpath: 를 명시한다.",
+      "reason_en": "The output resource used by DefaultItemWriter's guidance and default changed from ./inputs/csvData.csv to file:./inputs/csvData.csv. Batches that pass a prefix-less relative path as a job parameter may resolve the resource differently (classpath vs file), so state file: or classpath: explicitly.",
+      "action": "manual",
+      "evidence": {
+        "kind": "maven-sources",
+        "from": "5.0.2",
+        "to": "5.1.0"
+      }
+    },
+    {
+      "id": "service-biz-exception-helpers",
+      "since": "5.1.0",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl",
+        "org.egovframe.rte.fdl.cmmn.exception.EgovBizException"
+      ],
+      "summary": "EgovAbstractServiceImpl 에 업무 예외 도우미 메서드 추가",
+      "summary_en": "Business exception helper methods added to EgovAbstractServiceImpl",
+      "reason": "throwBizException(messageKey, …)·newBizRuntimeException(messageKey, …) protected 메서드와 EgovBizException(EgovErrorMessage, Throwable) 생성자·getErrorMessage() 가 추가됐다. 서비스 구현 클래스에 같은 이름·시그니처의 메서드를 직접 정의했다면 재정의로 바뀌어 동작이 달라지거나 반환 타입 충돌로 컴파일 오류가 난다 — 이름을 바꾸거나 새 메서드로 옮긴다.",
+      "reason_en": "Protected methods throwBizException(messageKey, …) and newBizRuntimeException(messageKey, …), the EgovBizException(EgovErrorMessage, Throwable) constructor and getErrorMessage() were added. If a service implementation already defines a method with the same name and signature it now becomes an override (behavior changes) or fails to compile on a return-type clash — rename it or move to the new methods.",
+      "action": "manual",
+      "evidence": {
+        "kind": "maven-sources",
+        "from": "5.0.2",
+        "to": "5.1.0"
+      }
+    },
+    {
+      "id": "excel-content-disposition",
+      "since": "5.1.0",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.excel.util.AbstractExcelView",
+        "org.egovframe.rte.fdl.excel.util.AbstractPOIExcelView"
+      ],
+      "summary": "엑셀 다운로드 Content-Disposition 헤더 형식 변경",
+      "summary_en": "Content-Disposition header format of Excel downloads changed",
+      "reason": "다운로드 파일명 헤더를 attachment; filename=\"…\" 직접 결합 대신 EgovContentDispositions.attachment 로 만든다(비 ASCII 파일명 인코딩 포함). 응답 헤더를 직접 파싱하거나 파일명을 미리 URL 인코딩해 넘기던 화면은 이중 인코딩·표시 차이를 확인한다.",
+      "reason_en": "The download file-name header is now built with EgovContentDispositions.attachment instead of concatenating attachment; filename=\"…\" (including non-ASCII file-name encoding). Screens that parse the header themselves or pass a pre-URL-encoded file name should check for double encoding and display differences.",
+      "action": "manual",
+      "evidence": {
+        "kind": "maven-sources",
+        "from": "5.0.2",
+        "to": "5.1.0"
+      }
+    },
+    {
+      "id": "reactive-exception-response",
+      "since": "5.1.0",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.ptl.reactive.exception.EgovExceptionHandler",
+        "org.egovframe.rte.ptl.reactive.exception.EgovExceptionResponse",
+        "org.egovframe.rte.ptl.reactive.exception.EgovErrorCode"
+      ],
+      "summary": "리액티브 예외 응답 본문·상태 코드 변경",
+      "summary_en": "Reactive exception response body and status codes changed",
+      "reason": "EgovExceptionHandler 가 검증 실패(WebExchangeBindException·HandlerMethodValidationException)를 오류 목록과 title 을 담은 응답으로, 형 변환 실패와 Spring 표준 ErrorResponse 를 각자의 상태 코드로 내고, 이미 커밋된 응답은 그대로 전파한다. EgovErrorCode 에 415(E012)·413(E013)이 추가됐다. 응답 JSON 구조나 상태 코드(예전 500 처리)에 기대던 클라이언트·테스트는 확인이 필요하다.",
+      "reason_en": "EgovExceptionHandler now returns validation failures (WebExchangeBindException, HandlerMethodValidationException) as a response with an error list and title, returns type-mismatch failures and Spring standard ErrorResponse with their own status codes, and propagates already-committed responses. EgovErrorCode gained 415 (E012) and 413 (E013). Clients and tests that rely on the response JSON shape or status codes (previously handled as 500) need checking.",
+      "action": "manual",
+      "evidence": {
+        "kind": "maven-sources",
+        "from": "5.0.2",
+        "to": "5.1.0"
+      }
+    },
+    {
+      "id": "r2dbc-not-in-bom",
+      "since": "5.1.0",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.psl.reactive.r2dbc.repository.EgovR2dbcRepository"
+      ],
+      "summary": "psl-reactive-r2dbc 가 5.1.0 BOM 관리에서 빠짐",
+      "summary_en": "psl-reactive-r2dbc dropped from the 5.1.0 BOM",
+      "reason": "egovframe-rte-psl-reactive-r2dbc 5.1.0 jar 는 저장소에 있지만 parent 가 import 하는 egovframe-rte-root 5.1.0 의 dependencyManagement 에는 없다. 5.1.0 parent 아래에서 버전 없이 선언하면 빌드가 실패하므로 <version>${egovframe.rte.version}</version> 을 명시한다. EgovR2dbcRepository 에 (DatabaseClient, R2dbcDialect, R2dbcConverter) 생성자가 추가됐다.",
+      "reason_en": "The egovframe-rte-psl-reactive-r2dbc 5.1.0 jar is in the repository but is not in the dependencyManagement of egovframe-rte-root 5.1.0, which the parent imports. Declaring it without a version under the 5.1.0 parent fails the build, so set <version>${egovframe.rte.version}</version> explicitly. EgovR2dbcRepository gained a (DatabaseClient, R2dbcDialect, R2dbcConverter) constructor.",
+      "action": "manual",
+      "evidence": {
+        "kind": "maven-sources",
+        "from": "5.0.2",
+        "to": "5.1.0"
+      }
     }
   ],
   "stepClassCounts": {
     "5.0.1": 109,
-    "5.0.2": 66
+    "5.0.2": 66,
+    "5.1.0": 161
   },
   "components": {
     "repository": "eGovFramework/egovframe-common-components",

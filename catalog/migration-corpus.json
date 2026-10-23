@@ -214,11 +214,11 @@
       }
     }
   ],
-  "generatedAt": "2026-10-03",
+  "generatedAt": "2026-10-22",
   "generatedWith": {
-    "version": "0.37.0",
+    "version": "1.3.0",
     "rulesTag": "v5.0.2-Final",
-    "baselineSurveyedAt": "2026-10-02"
+    "baselineSurveyedAt": "2026-10-22"
   },
   "rehearsal": {
     "description": "전환 리허설(v0.41) 기대값 — 공식 공통컴포넌트 v4.3.2 전체 트리(단일 war 모듈)를 rehearse_egovframe_migration 으로 돌린 결과. test/rehearse-live.mjs 가 단언한다(CI 통합, JDK 17·Maven).",

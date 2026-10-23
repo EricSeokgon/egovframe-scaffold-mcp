@@ -7,10 +7,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { randomUUID } from "node:crypto";
-import { classifyDependency, defaultOsvQuery, loadDependencyBaseline, type DependencyStatus, type OsvQuery, type ParentInfo } from "./dependencies.js";
+import { classifyDependency, defaultOsvQuery, osvVersion, type DependencyStatus, type OsvQuery, type ParentInfo } from "./dependencies.js";
 import { loadMigrationRules } from "./migrate.js";
 import { withFileTransaction } from "./file-transaction.js";
-import { CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, parentKindOf, resolveOutputPath, type SbomComponent, type SbomDocument } from "./sbom.js";
+import { CYCLONEDX_SPEC_VERSION, DEFAULT_SBOM_PATH, baselineForBom, parentKindOf, resolveOutputPath, type SbomComponent, type SbomDocument } from "./sbom.js";
 import { SERVER_VERSION } from "./version.js";
 import { osvProvenanceNote } from "./offline-bundle.js";
 import { isSpdxDocument, spdxToCdx } from "./spdx.js";
@@ -162,7 +162,7 @@ const propOf = (c: SbomComponent, name: string) => (c.properties ?? []).find((p)
 
 /** purl 만으로 기준 판정·OSV 를 다시 한다(빌드 도구 불필요). */
 export async function recheckSbom(bom: SbomDocument, opts: { parentKind?: ParentInfo["kind"]; offline?: boolean; osvQuery?: OsvQuery } = {}): Promise<RecheckResult> {
-  const baseline = loadDependencyBaseline();
+  const baseline = baselineForBom(bom);
   const rules = loadMigrationRules();
   const summary = emptyStatuses();
   const changed: RecheckResult["changed"] = [];
@@ -186,7 +186,7 @@ export async function recheckSbom(bom: SbomDocument, opts: { parentKind?: Parent
       const found = new Set<string>();
       for (let i = 0; i < targets.length; i += 100) {
         const chunk = targets.slice(i, i + 100);
-        const res = await query(chunk.map(({ k }) => ({ package: { name: keyOf(k), ecosystem: "Maven" as const }, version: k.version! })));
+        const res = await query(chunk.map(({ k }) => ({ package: { name: keyOf(k), ecosystem: "Maven" as const }, version: osvVersion(k.version!) })));
         res.results.forEach((r, j) => {
           const ids = [...new Set((r.vulns ?? []).map((v) => v.id))].sort();
           if (!ids.length) return;

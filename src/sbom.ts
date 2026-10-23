@@ -9,7 +9,7 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { capOutput, defaultRunner, detectBuildToolAt, resolveCommand, type BuildTool, type ResolvedCommand, type Runner } from "./build-runner.js";
 import { detectWorkspace } from "./workspace.js";
-import { classifyDependency, defaultOsvQuery, loadDependencyBaseline, type DependencyStatus, type OsvQuery, type ParentInfo } from "./dependencies.js";
+import { classifyDependency, defaultOsvQuery, isEgovRebuild, loadDependencyBaseline, osvVersion, type DependencyStatus, type OsvQuery, type ParentInfo } from "./dependencies.js";
 import { resolveDependencyTree, type ResolveScope, type ResolvedArtifact } from "./dependency-tree.js";
 import { loadMigrationRules, parsePomProperties } from "./migrate.js";
 import { withFileTransaction } from "./file-transaction.js";
@@ -176,8 +176,13 @@ export function buildBomFromTree(root: { name: string; group?: string; version?:
 
 const ENRICH_KEYS = new Set(["egovframe:status", "egovframe:basis", "egovframe:baseline"]);
 /** component 마다 기준 판정을 properties 로 붙인다(기존 properties 는 유지, egovframe:* 는 갱신). */
+/** v1.3: SBOM 의 RTE 좌표 버전으로 의존성 기준 계열을 고른다(5.1.0 프로젝트는 5.1 기준) */
+export function baselineForBom(bom: SbomDocument) {
+  const rte = (bom.components ?? []).find((c) => c.group === "org.egovframe.rte" && c.version)?.version ?? null;
+  return loadDependencyBaseline(rte);
+}
 export function enrichBom(bom: SbomDocument, parentKind: ParentInfo["kind"]): Record<DependencyStatus, number> {
-  const baseline = loadDependencyBaseline();
+  const baseline = baselineForBom(bom);
   const rules = loadMigrationRules();
   const statuses: Record<DependencyStatus, number> = { ok: 0, outdated: 0, managed: 0, legacy: 0, replace: 0, vendor: 0, unknown: 0, unversioned: 0 };
   for (const c of bom.components ?? []) {
@@ -199,7 +204,7 @@ export async function attachVulnerabilities(bom: SbomDocument, query: OsvQuery):
   const byId = new Map<string, Set<string>>();
   for (let i = 0; i < comps.length; i += 100) {
     const chunk = comps.slice(i, i + 100);
-    const res = await query(chunk.map((c) => ({ package: { name: `${c.group}:${c.name}`, ecosystem: "Maven" as const }, version: c.version! })));
+    const res = await query(chunk.map((c) => ({ package: { name: `${c.group}:${c.name}`, ecosystem: "Maven" as const }, version: osvVersion(c.version!) })));
     res.results.forEach((r, j) => { for (const v of r.vulns ?? []) { if (!byId.has(v.id)) byId.set(v.id, new Set()); byId.get(v.id)!.add(chunk[j]["bom-ref"]!); } });
   }
   bom.vulnerabilities = [...byId.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([id, refs]) => ({ id, "bom-ref": `vuln:${id}`, source: { name: "OSV", url: `https://osv.dev/vulnerability/${id}` }, affects: [...refs].sort().map((ref) => ({ ref })) }));
@@ -239,10 +244,11 @@ export function fillComponentSuppliers(bom: SbomDocument): number {
   for (const c of bom.components ?? []) {
     const has = (c.supplier as { name?: string } | undefined)?.name || c.publisher || (c.manufacturer as { name?: string } | undefined)?.name;
     if (has || !c.group) continue;
-    const s = supplierFor(c.group, rules);
+    // v1.3: -egov.N 재빌드는 표준프레임워크가 다시 빌드해 배포한 것 — 공급자는 eGovFramework
+    const s = isEgovRebuild(c.version) ? supplierFor("org.egovframe", rules) : supplierFor(c.group, rules);
     if (!s) continue;
     c.supplier = { name: s.name, ...(s.url ? { url: [s.url] } : {}) };
-    c.properties = [...(c.properties ?? []).filter((p) => p.name !== "egovframe:supplierBasis"), { name: "egovframe:supplierBasis", value: "catalog" }];
+    c.properties = [...(c.properties ?? []).filter((p) => p.name !== "egovframe:supplierBasis"), { name: "egovframe:supplierBasis", value: isEgovRebuild(c.version) ? "egov-rebuild" : "catalog" }];
     filled++;
   }
   return filled;

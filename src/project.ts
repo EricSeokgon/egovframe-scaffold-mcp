@@ -6,12 +6,12 @@ import { withDirectoryTransaction } from "./file-transaction.js";
 import { createHash } from "node:crypto";
 import { COMPONENTS_DOWNLOAD_TIMEOUT_MS, DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
 import { applyTextEdits } from "./migrate.js";
-import { loadUpdateRules, planPomUpdate } from "./update.js";
+import { loadUpdateRules, planPomUpdate, recommendedVersion } from "./update.js";
 
 /** v0.46 alignParent: pom 텍스트의 5.x parent·RTE 버전을 최신 5.0.x 로 맞춘다(순수 함수). */
 export function alignPom(pom: string): { text: string; aligned: { from: string; to: string }[] } {
   const rules = loadUpdateRules();
-  const plan = planPomUpdate("pom.xml", pom, rules.latest, rules);
+  const plan = planPomUpdate("pom.xml", pom, recommendedVersion(rules), rules);
   if (!plan.items.length) return { text: pom, aligned: [] };
   const { text } = applyTextEdits(pom, plan.items.flatMap((i) => i.edits ?? []));
   return { text, aligned: plan.items.map((i) => ({ from: i.from, to: i.to ?? "" })) };

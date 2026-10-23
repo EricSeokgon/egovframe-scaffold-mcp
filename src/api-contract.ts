@@ -66,6 +66,15 @@ export async function buildApiContract(): Promise<ApiContract> {
   }
 }
 
+/**
+ * 입력 pattern 을 넓히기만 한 변경(옛 값이 모두 계속 허용됨). 사람이 검토해 적고, test/api-contract.mjs 가 samples 로
+ * "옛 pattern 에 맞는 값은 새 pattern 에도 맞음"을 단언한다.
+ */
+export const PATTERN_WIDENINGS: { at: string; from: string; to: string; since: string; samples: string[] }[] = [
+  // v1.3.0: migrate_egovframe_project target 에 5.1.0(5.y.z) 허용
+  { at: "migrate_egovframe_project.target", from: "^(5\\.x|5\\.0\\.\\d+)$", to: "^(5\\.x|5\\.\\d+\\.\\d+)$", since: "1.3.0", samples: ["5.x", "5.0.0", "5.0.1", "5.0.2", "5.0.10"] },
+];
+
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const nodeMin = (range: string) => { const m = /(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(range); return m ? [Number(m[1]), Number(m[2] ?? 0), Number(m[3] ?? 0)] : [0, 0, 0]; };
 const cmp3 = (a: number[], b: number[]) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]);
@@ -74,7 +83,12 @@ const cmp3 = (a: number[], b: number[]) => (a[0] - b[0]) || (a[1] - b[1]) || (a[
 function compareSchema(a: Schema, b: Schema, mode: "input" | "output", at: string, out: ContractChange[]): void {
   const add = (level: ContractChange["level"], what: string) => out.push({ level, path: at, what });
   if (!same(a.type, b.type)) add("major", `타입 ${JSON.stringify(a.type)} → ${JSON.stringify(b.type)}`);
-  for (const k of ["anyOf", "oneOf", "const", "pattern"] as const) if (!same(a[k], b[k])) add(mode === "input" ? "major" : "minor", `${k} 변경`);
+  for (const k of ["anyOf", "oneOf", "const"] as const) if (!same(a[k], b[k])) add(mode === "input" ? "major" : "minor", `${k} 변경`);
+  if (!same(a.pattern, b.pattern)) {
+    // 입력 pattern 은 기본 major. 검토해 넓히기만 한 것(PATTERN_WIDENINGS)은 minor — 옛 pattern 의 값이 모두 새 pattern 에도 맞음
+    const widened = mode === "input" && PATTERN_WIDENINGS.some((w) => w.from === a.pattern && w.to === b.pattern);
+    add(mode === "input" && !widened ? "major" : "minor", widened ? "pattern 확장(검토됨)" : "pattern 변경");
+  }
   if (a.enum || b.enum) {
     const ea = (a.enum as string[] | undefined) ?? [], eb = (b.enum as string[] | undefined) ?? [];
     const removed = ea.filter((x) => !eb.includes(x)), added = eb.filter((x) => !ea.includes(x));

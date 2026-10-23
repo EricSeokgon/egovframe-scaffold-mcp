@@ -57,6 +57,18 @@ const pomsSame = Object.fromEntries(pomBody);
   const lines = renderCatalogDriftLines(r);
   assert(lines.some((l) => l.includes("카탈로그 drift: 없음")) && lines.some((l) => l.includes(`고정 ${rules.source.toTag}`)) && !lines.some((l) => l.includes("갱신 절차")), "렌더링: drift 없음");
 }
+// 1-b) v1.3: 태그 없는 버전(provisional) — 태그가 생기면 경고·절차, RTE BOM 재배포(sha 변경)도 경고
+{
+  const prov = { provisional: [{ version: "5.1.0", kind: "maven-sources", reason: "x" }] };
+  const bl = structuredClone(fakeBaseline);
+  bl.rte.bom = { artifactId: "egovframe-rte-root", version: "5.1.0", url: "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-root/5.1.0/egovframe-rte-root-5.1.0.pom", sha256: sha256("<!-- root -->"), managed: 1 };
+  const f1 = makeFetch({ tagsApi: { [RT]: apiTags([rules.source.toTag]), [CC]: apiTags([rules.source.components.toTag]) }, poms: { ...pomsSame, [bl.rte.bom.url]: "<!-- root -->" } });
+  const r1 = await checkCatalogDrift({ fetchText: f1.fetchText, fetchStatus: f1.fetchStatus, rules, baseline: bl, updateRules: prov, githubToken: null });
+  assert(r1.upToDate && r1.provisional?.[0].tagged === false && r1.provisional[0].rteBom.sha256Changed === false && renderCatalogDriftLines(r1).some((l) => l.includes("5.1.0: 저장소 배포 기준(GitHub 태그 v5.1.0-Final 없음)")), "provisional 5.1.0: 태그 없음·BOM 동일 → drift 없음");
+  const f2 = makeFetch({ tagsApi: { [RT]: apiTags(["v5.1.0-Final", rules.source.toTag]), [CC]: apiTags([rules.source.components.toTag]) }, poms: { ...pomsSame, [bl.rte.bom.url]: "<!-- root re-published -->" } });
+  const r2 = await checkCatalogDrift({ fetchText: f2.fetchText, fetchStatus: f2.fetchStatus, rules, baseline: bl, updateRules: prov, githubToken: null });
+  assert(!r2.upToDate && r2.provisional[0].tagged && r2.provisional[0].rteBom.sha256Changed && r2.warnings.some((w) => w.includes("v5.1.0-Final") && w.includes("provisional")) && r2.warnings.some((w) => w.includes("egovframe-rte-root")) && r2.procedure.some((p) => p.includes("mavenSteps")), "provisional 5.1.0: 태그 생김 + BOM 재배포 → 경고·재생성 절차");
+}
 // 2) 새 태그(API 실패 → HTML 대체) + 새 parent 버전 + Boot BOM sha 변경
 {
   const htmlRt = `<a href="/${RT}/releases/tag/v5.1.0-Final">a</a><a href="/${RT}/releases/tag/${rules.source.toTag}">b</a>`;

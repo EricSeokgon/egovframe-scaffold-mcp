@@ -4,7 +4,8 @@
 //     막아 두어 다음 patch·minor·major 후보를 HEAD 로 탐침한다), (3) 고정한 parent pom·Spring Boot BOM pom 의 sha256 이 바뀌었는지를 보고한다.
 // 파일은 고치지 않는다. 변화가 있으면 README 의 갱신 절차를 결과에 붙인다.
 import { createHash } from "node:crypto";
-import { loadDependencyBaseline, type DependencyBaseline } from "./dependencies.js";
+import { loadDependencyBaseline, newerBaselines, type DependencyBaseline } from "./dependencies.js";
+import { loadUpdateRules, type UpdateRules } from "./update.js";
 import { loadMigrationRules, versionBelow, type MigrationRules } from "./migrate.js";
 
 export const DRIFT_TIMEOUT_MS = 20_000;
@@ -39,9 +40,13 @@ export interface ParentDrift {
   error?: string;
 }
 export interface BomDrift { groupId: string; artifactId: string; version: string; sha256Changed: boolean | null; error?: string }
+/** v1.3: GitHub 태그 없이 저장소 배포 기준으로 넣은 버전의 상태 */
+export interface ProvisionalDrift { version: string; tag: string; tagged: boolean; rteBom: { version: string; sha256Changed: boolean | null; error?: string } | null }
 export interface CatalogDriftResult {
   migrationRules: { surveyedAt: string; runtime: TagDrift; components: TagDrift | null };
-  dependencyBaseline: { surveyedAt: string; parents: ParentDrift[]; bootBom: BomDrift | null };
+  dependencyBaseline: { surveyedAt: string; rte?: string; parents: ParentDrift[]; bootBom: BomDrift | null };
+  /** v1.3: 태그 없는 버전(update-rules provisional) — 태그가 생겼으면 규칙을 git 태그 근거로 다시 만들어야 한다 */
+  provisional?: ProvisionalDrift[];
   /** 새 태그·새 parent 버전·sha256 변화가 하나도 없음(조회 실패는 drift 로 치지 않는다) */
   upToDate: boolean;
   /** 조회 실패 항목 수 */
@@ -56,6 +61,7 @@ export interface CatalogDriftDeps {
   fetchStatus?: FetchStatusFn;
   rules?: MigrationRules;
   baseline?: DependencyBaseline;
+  updateRules?: UpdateRules;
   /** GitHub API 토큰(선택, 비인증 한도 60회/시간 회피) — 기본은 process.env.GITHUB_TOKEN */
   githubToken?: string | null;
 }
@@ -200,7 +206,9 @@ async function checkParent(src: DependencyBaseline["sources"][number], repo: str
 /** 규칙·기준 카탈로그의 drift 를 조사한다(네트워크, 읽기 전용). 조회 실패는 항목별 error 로 남기고 예외를 던지지 않는다. */
 export async function checkCatalogDrift(deps: CatalogDriftDeps = {}): Promise<CatalogDriftResult> {
   const rules = deps.rules ?? loadMigrationRules();
-  const baseline = deps.baseline ?? loadDependencyBaseline();
+  // v1.3: 가장 새 기준(5.1 이 있으면 5.1)의 parent 보다 새 버전을 찾는다
+  const baseline = deps.baseline ?? (newerBaselines().at(-1) ?? loadDependencyBaseline());
+  const updateRules = deps.updateRules ?? (deps.baseline ? null : loadUpdateRules());
   const fetchText = deps.fetchText ?? defaultFetchText;
   const fetchStatus = deps.fetchStatus ?? defaultFetchStatus;
   const token = deps.githubToken === undefined ? (process.env.GITHUB_TOKEN ?? null) : deps.githubToken;
@@ -220,6 +228,23 @@ export async function checkCatalogDrift(deps: CatalogDriftDeps = {}): Promise<Ca
 
   const warnings: string[] = [];
   const procedure: string[] = [];
+  // v1.3: 태그 없는 버전 — 태그가 생겼는지, 고정한 RTE BOM 이 다시 배포됐는지
+  const provisional: ProvisionalDrift[] = [];
+  for (const p of updateRules?.provisional ?? []) {
+    const tag = `v${p.version}-Final`;
+    const tagged = runtime.newerTags.includes(tag);
+    let rteBom: ProvisionalDrift["rteBom"] = null;
+    if (baseline.rte.bom && baseline.rte.bom.version === p.version) {
+      rteBom = { version: p.version, sha256Changed: null };
+      try { rteBom.sha256Changed = sha256(await fetchText(baseline.rte.bom.url, DRIFT_TIMEOUT_MS)) !== baseline.rte.bom.sha256; } catch (error) { rteBom.error = (error as Error).message; }
+    }
+    provisional.push({ version: p.version, tag, tagged, rteBom });
+    if (tagged) {
+      warnings.push(`${p.version} 의 GitHub 태그(${tag})가 생겼습니다 — 지금 규칙은 저장소 sources jar 근거(provisional)입니다`);
+      procedure.push(`catalog/update-mapping.json 의 mavenSteps 에서 ${p.version} 을 빼고 recommended 를 ${p.version} 으로 올린 뒤 \`node scripts/generate-update-rules.mjs\` 로 git 태그 근거로 다시 생성`);
+    }
+    if (rteBom?.sha256Changed) warnings.push(`egovframe-rte-root ${p.version} pom 의 sha256 이 고정값과 다릅니다 — 정식 배포 전 재배포로 보입니다. 기준(dependency-baseline-${p.version.split(".").slice(0, 2).join(".")}.json)을 다시 생성하세요`);
+  }
   if (runtime.newerTags.length) {
     warnings.push(`egovframe-runtime 에 규칙 근거(${runtime.pinnedTag})보다 새 태그가 있습니다: ${runtime.newerTags.join(", ")} — 전환 규칙·목표 RTE 버전이 뒤처질 수 있습니다`);
     procedure.push(`catalog/migration-mapping.json 의 runtime.toTag 를 ${runtime.newerTags[0]} 로 올리고 \`node scripts/generate-migration-rules.mjs --runtime-dir <clone> --components-dir <clone>\` 로 규칙을 다시 생성(제거 클래스에 새 사유가 필요하면 생성기가 멈춥니다) → \`npm run test:migration-rules\``);
@@ -241,10 +266,11 @@ export async function checkCatalogDrift(deps: CatalogDriftDeps = {}): Promise<Ca
   if (bootBom?.sha256Changed) warnings.push(`spring-boot-dependencies ${bootBom.version} pom 의 sha256 이 고정값과 다릅니다(Maven Central 재배포) — 기준을 다시 생성해 확인하세요`);
   if (warnings.length) procedure.push("CHANGELOG.md 에 갱신 내용을 적고 버전을 올려 릴리스");
   const errors = [runtime, components, ...parents, bootBom].filter((x) => x && x.error).length;
-  const upToDate = !runtime.newerTags.length && !(components?.newerTags.length) && parents.every((p) => !p.newerVersions.length && !p.sha256Changed) && !bootBom?.sha256Changed;
+  const upToDate = !provisional.some((p) => p.tagged || p.rteBom?.sha256Changed) && !runtime.newerTags.length && !(components?.newerTags.length) && parents.every((p) => !p.newerVersions.length && !p.sha256Changed) && !bootBom?.sha256Changed;
   return {
     migrationRules: { surveyedAt: rules.surveyedAt, runtime, components },
-    dependencyBaseline: { surveyedAt: baseline.surveyedAt, parents, bootBom },
+    dependencyBaseline: { surveyedAt: baseline.surveyedAt, rte: baseline.rte.version, parents, bootBom },
+    ...(provisional.length ? { provisional } : {}),
     upToDate,
     errors,
     warnings,
@@ -263,7 +289,7 @@ export function renderCatalogDriftLines(r: CatalogDriftResult): string[] {
   L.push(`- 규칙 카탈로그(migration-rules, 조사일 ${r.migrationRules.surveyedAt})`);
   tagLine("egovframe-runtime", r.migrationRules.runtime);
   tagLine("egovframe-common-components", r.migrationRules.components);
-  L.push(`- 의존성 기준(dependency-baseline, 조사일 ${r.dependencyBaseline.surveyedAt})`);
+  L.push(`- 의존성 기준(dependency-baseline${r.dependencyBaseline.rte ? ` RTE ${r.dependencyBaseline.rte}` : ""}, 조사일 ${r.dependencyBaseline.surveyedAt})`);
   for (const p of r.dependencyBaseline.parents) {
     L.push(`  - ${p.artifactId} ${p.pinnedVersion}: 새 버전 ${p.newerVersions.length ? p.newerVersions.join(", ") : "없음"}(탐침 ${p.probed.join("·")}) · pom sha256 ${p.sha256Changed === null ? "확인 실패" : p.sha256Changed ? "변경됨" : "동일"}${p.error ? ` · 오류: ${p.error}` : ""}`);
   }
@@ -271,6 +297,7 @@ export function renderCatalogDriftLines(r: CatalogDriftResult): string[] {
     const b = r.dependencyBaseline.bootBom;
     L.push(`  - ${b.artifactId} ${b.version}: pom sha256 ${b.sha256Changed === null ? "확인 실패" : b.sha256Changed ? "변경됨" : "동일"}${b.error ? ` · 오류: ${b.error}` : ""}`);
   }
+  for (const p of r.provisional ?? []) L.push(`- ${p.version}: ${p.tagged ? `GitHub 태그 ${p.tag} 생김 — 규칙 재생성 필요` : `저장소 배포 기준(GitHub 태그 ${p.tag} 없음)`}${p.rteBom ? ` · egovframe-rte-root pom sha256 ${p.rteBom.sha256Changed === null ? `확인 실패${p.rteBom.error ? `(${p.rteBom.error})` : ""}` : p.rteBom.sha256Changed ? "변경됨" : "동일"}` : ""}`);
   L.push(`- 카탈로그 drift: ${r.upToDate ? "없음" : "있음"}${r.errors ? ` (확인 실패 ${r.errors}건)` : ""}`);
   for (const w of r.warnings) L.push(`- 경고: ${w}`);
   if (r.procedure.length) { L.push(`- 갱신 절차:`); r.procedure.forEach((p, i) => L.push(`  ${i + 1}. ${p}`)); }

@@ -119,9 +119,12 @@ migrate_egovframe_project(projectDir="/work/legacy-app", apply=true)        # pr
 migrate_egovframe_project(projectDir="/work/legacy-app", apply=true, dryRun=false)  # apply
 migrate_egovframe_project(projectDir="/work/legacy-app", verify=true)              # compile and link errors to the remaining manual items
 migrate_egovframe_project(projectDir="/work/my-5x-app", target="5.0.2")           # keep a 5.x project current (diagnose)
+migrate_egovframe_project(projectDir="/work/my-5x-app", target="5.1.0")           # up to 5.1.0 (repository-published, v1.3)
 ```
 
 **Keeping 5.x current (v0.46)**: official Initializr templates still ship parent 5.0.0 or 5.0.1 while the latest official parent is 5.0.2. With `target="5.0.2"` the parent version, RTE version properties and literal RTE dependency versions are auto items; references to RTE APIs or behaviour changed after the project's effective RTE version (security configuration bean signatures, Excel formula-injection guard, XML XXE blocking, row locking in table ID generation and 7 more, generated from the `egovframe-runtime` 5.0.0/5.0.1/5.0.2 tags into `catalog/update-rules.json`) are manual items, together with a pointer to `upgrade`/`reassemble` for common components. `create_egovframe_project(alignParent=true)` applies the same update right after creation. On the official web and boot-web templates the update compiles with JDK 17, drops the dependencies below the baseline from 6 to 4 and from 3 to 1, and moves the supply-chain grade from C to B.
+
+**eGovFrame 5.1.0 (v1.3)**: 5.1.0 is published to the official Maven repository but has no GitHub tag or announcement yet. `target="5.1.0"` updates a 5.x project to it with change evidence taken from the repository sources jars (noted in the result), and projects on the 5.1.0 parent are assessed against a separate 5.1 dependency baseline (BOM `egovframe-rte-root`, Spring Boot 3.5.16, `-egov.N` rebuilds compared by their upstream version). The default target stays 5.0.2 until the tag appears.
 
 Auto items (coordinates, package prefixes and renames, javax→jakarta packages and artifacts, repository URLs, Java 17, web.xml schema) are rewritten from the exact text offsets the diagnosis recorded; manual items (removed classes with their replacements, removed `egov-*` XML namespaces, libraries such as DBCP 1.x or Log4j 1.x, Spring < 6) stay in the report with reasons. Details: [docs/design-migration.md](docs/design-migration.md) (Korean).
 

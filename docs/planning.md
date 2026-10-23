@@ -4,7 +4,7 @@
 
 ## 진행 현황 (버전별 요약) (2026-10-22)
 
-- **소스 기준**: v1.2.0(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
+- **소스 기준**: v1.3.0(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
@@ -19,6 +19,7 @@
 - **v0.30.0 추가**: `migrate_egovframe_project` 2단계(`apply=true`) — 진단의 auto 항목을 하나의 transaction 으로 실제 치환합니다(dryRun 기본, 원본 `migration-backup/` 보관, `migration-plan.json`, 실패 시 복구). 3.10 좌표·javax 픽스처를 적용한 뒤 JDK 17 `mvn compile` 통과를 CI 에서 확인합니다. `check_egovframe_dependencies` — 공식 5.x parent 2종에서 추출한 기준(관리 좌표 139종 + BOM 계열 7종, `catalog/dependency-baseline.json`)과 의존성을 대조해 기준 충족/미만/parent 관리/전환 대상/교체 필요/기준 없음으로 분류하고, 보안 설정(sec.security·CSRF·XSS 필터·보안 헤더·HTTPS 저장소) 존재 여부를 근거와 함께 보고합니다. 기본 오프라인, `offline=false` 면 OSV 취약점 조회(설계: [docs/design-dependency-check.md](design-dependency-check.md)).
 - **v0.31.0 추가**: 운영 편의 — `diagnose_egovframe_network`(도구가 쓰는 호스트 7종에 DNS·HEAD 프로브, 실패 종류 분류, HTTPS_PROXY+NODE_USE_ENV_PROXY·IPv4 우선·사내 CA 처방을 bash/cmd/PowerShell 명령으로), 모든 다운로드 실패 메시지에 같은 처방 한 줄 부착, `generate_agents_md`(진단 결과로 AI 코딩 도구용 AGENTS.md, ko/en), 영문 README(`README.en.md`)와 `EGOVFRAME_LANG=en` 영문 도구 설명, MCP Registry 메타데이터(`server.json`·`mcpName`). 기획 3개 버전(v0.29–v0.31)이 모두 완료됐습니다.
 - **v0.32.0 추가**: MCP 프로토콜 현대화 — 도구 27종을 `registerTool` 로 전환해 `title`(ko/en)과 annotations(`readOnlyHint` 14종·`destructiveHint` 4종·`idempotentHint`·`openWorldHint`)를 `tools/list` 에 노출하고, `format=json` 을 제공하던 5종(`diagnose_egovframe_project`·`validate_egovframe_project`·`migrate_egovframe_project`·`check_egovframe_dependencies`·`diagnose_egovframe_network`)은 `outputSchema` 와 `structuredContent` 를 함께 돌려줍니다(기존 `text` 유지). 테스트 이식성 가드(`scripts/check-test-portability.mjs`, 게이트 포함)와 플랫폼 주입 단언으로 Windows 전용 실패 재발을 막습니다.
+- **v1.3.0 추가**: 표준프레임워크 5.1.0 대응 — 저장소에 배포된 5.1.0(GitHub 태그 없음)을 parent 계열별 의존성 기준(`dependency-baseline-5.1.json`, BOM `egovframe-rte-root` 전개)과 `target="5.1.0"` 갱신 규칙(저장소 sources jar 비교, 근거 `maven-sources`)으로 지원하고, `-egov.N` 재빌드 좌표를 원 버전으로 비교·OSV 조회합니다. 기본 목표는 태그가 나올 때까지 5.0.2.
 - **v1.2.0 추가**: 응답 영문화 + 진행 알림(도구 35종 유지) — `EGOVFRAME_LANG=en`·CLI `--lang en` 이 평가서·전환·의존성·SBOM 생성/점검·보안약점(SARIF 포함)·배포·납품·리허설 응답과 CLI 요약·오류·usage 를 영문으로 냅니다(`src/lang.ts` 의 `L(ko, en)`·`tr()`, 규칙 데이터 7파일의 `<필드>_en`, 생성기가 누락을 실패시킴). 한국어 출력은 goldens(`test/fixtures/i18n-golden-ko.json`)와 바이트 단위로 같습니다. 장시간 도구 8종(빌드·테스트·`resolve=true` 점검·SBOM·재조립·리허설·오프라인 번들·납품)은 클라이언트가 `progressToken` 을 주면 `notifications/progress` 를 단계별로 보내고, `notifications/cancelled` 는 자식 프로세스 트리를 끝내고 트랜잭션을 되돌립니다(`src/progress.ts`). 설계: [docs/design-i18n.md](design-i18n.md).
 - **v1.1.0 추가**: 납품 패키지 — 새 도구 `prepare_egovframe_delivery`(35번째)가 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차를 씁니다. 이전 차수와 비교(`previousDelivery` → `diff.md`), 받은 패키지 재검증(`verify=true`, CLI `deliver --verify`), `generate_egovframe_ci(delivery=true)`. 공식 web 템플릿 실측 21초·SBOM 67 component. 설계: [design-delivery.md](design-delivery.md).
 - **v1.0.0 (안정화)**: 0.x 를 끝내고 공개 API 를 고정했습니다 — [버전 정책](versioning.md)(SemVer 2.0)이 도구 이름·입력 파라미터·구조화 출력 13종·CLI 명령과 종료 코드·환경 변수·지원 Node 를 공개 API 로 정하고, MAJOR·MINOR·PATCH 기준과 폐기 절차를 둡니다. 새 게이트 `test:api-contract` 가 계약 스냅샷(`test/fixtures/api-contract.json`)과 비교해 변경을 minor·major 로 분류하고, `test:release` 가 버전 증가 폭이 모자라면 배포를 막습니다. 1.0 전 이름 정리로 `check_egovframe_secure_coding` 의 `top` 을 다른 도구와 같은 `topN` 으로 바꿨습니다(`top` 은 2.0.0 까지 경고와 함께 계속 받음). 지원 Node 는 22 이상(18·20 지원 종료)이고, CI 는 ubuntu·windows × Node 22·24 입니다. 새 기능은 없으며 도구는 34종 그대로입니다.
@@ -37,7 +38,7 @@
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v1.3 표준프레임워크 5.1.0 대응 → v1.4 Initializr v5.0.7 정렬 + DDL 기반 CRUD → v1.5 보안약점 메서드 안 데이터 흐름. [다음 버전 기획](#다음-버전-기획-v13v15) 참조.
+- **다음 계획**: v1.4 Initializr v5.0.7 정렬 + DDL 기반 CRUD → v1.5 보안약점 메서드 안 데이터 흐름(v1.3 완료). [다음 버전 기획](#다음-버전-기획-v13v15) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -79,7 +80,7 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.0 완료** | 안정화: 버전 정책 + 공개 API 고정 | `docs/versioning.md`(SemVer, 공개 API 범위·폐기 절차), `test:api-contract` 계약 스냅샷·분류기와 `test:release` 버전 증가 폭 검사, secure_coding `top` → `topN`(deprecated 별칭), Node 22 이상·CI Node 22·24 |
 | **v1.1 완료** | 납품 패키지 | 새 도구 `prepare_egovframe_delivery`(35종): 평가서·SBOM·VEX·보안약점·배포 검증을 한 묶음 + sha256 manifest·목차·이전 차수 비교, `deliver --verify` |
 | **v1.2 완료** | 응답 영문화 + 진행 알림 | `EGOVFRAME_LANG=en`·`--lang en` 으로 응답 본문·규칙 사유·CLI 문구 영문(ko 출력은 goldens 와 바이트 동일), 장시간 도구 8종의 `notifications/progress` 와 `notifications/cancelled` 시 프로세스 트리 종료·롤백 |
-| **v1.3 계획** | 표준프레임워크 5.1.0 대응 | 저장소에 배포된 5.1.0(BOM `egovframe-rte-root`)으로 의존성 기준·5.x 최신 유지·전환 목표·SBOM 판정, `-egov.N` 재빌드 좌표, jar·sources jar 근거(태그 생기면 교체) |
+| **v1.3 완료** | 표준프레임워크 5.1.0 대응 | 저장소에 배포된 5.1.0(BOM `egovframe-rte-root`)으로 의존성 기준·5.x 최신 유지·전환 목표·SBOM 판정, `-egov.N` 재빌드 좌표, jar·sources jar 근거(태그 생기면 교체) |
 | **v1.4 계획** | Initializr v5.0.7 정렬 + DDL 기반 CRUD | `generate_egovframe_crud(ddl, search)`: CREATE TABLE 해석(공식 결함 경계 고정), 방언 중립 LIKE `<bind>`, 검색 필드 이스케이프, 템플릿 카탈로그 v5.0.7 |
 | **v1.5 계획** | 보안약점 정밀화 | 메서드 안 데이터 흐름으로 등급 상·하향, SARIF `codeFlows`, 오탐 표본 정밀도 수치 |
 
@@ -116,6 +117,8 @@ v1.2.0 까지 끝난 상태(2026-10-22, 도구 35종 + CLI 명령 12종)에서 �
 - 규칙 데이터에 근거 종류·sha256 기록, drift 감시가 태그 없음을 구분
 
 **완료 정의**: 도구 35종 그대로, `docs/design-dependency-check.md`·`docs/tools.md` 갱신, CHANGELOG
+
+**결과 (2026-10-22 완료)**: 도구 35종 그대로, 계약 변화는 `migrate_egovframe_project.target` 의 pattern 확장 하나(minor — 검토한 확장을 `PATTERN_WIDENINGS` 에 적고 옛 값 표본이 새 pattern 에도 맞음을 단언). 5.1 기준은 관리 좌표 334종(web 339·boot 141, BOM 전개 포함)·계열 13종·Boot BOM 1471종·RTE 전이 76종입니다. 5.1.0 단계 규칙은 sources jar 27종(새 AI 모듈 3종)에서 바뀐 클래스 161개 중 5건을 큐레이션했습니다. 공식 web·boot-web 템플릿은 5.0.2 → 5.1.0 갱신 뒤 JDK 17 compile 을 통과하고(로컬 18·6초), 5.1 기준에서 기준 미만은 web 4·boot-web 3입니다. 기획과 달라진 점: 3.x/4.x → 5.x 전환의 목표는 5.0.2 그대로 두고(전환 규칙의 근거가 git 태그라 5.1.0 은 태그 이후), `target="5.1.0"` 은 이미 5.x 인 프로젝트의 갱신에만 받습니다. 새 AI 모듈은 전환 좌표가 아니라 의존성 기준(BOM)에 들어갔습니다. Boot parent 의 속성 재정의를 반영하는 생성기 수정으로 5.0.2 기준도 재생성했습니다. 패키지 크기 상한을 올렸습니다(압축 593KB).
 
 ### v1.4.0 — Initializr v5.0.7 정렬 + DDL 기반 CRUD 생성
 

@@ -171,7 +171,7 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 
 ## 지원 범위와 제약
 
-- 공식 자산에 고정됩니다: 공통컴포넌트 v5.0.7, Initializr 템플릿 22종(commit·sha256 고정), RTE 5.0.2 규칙. 최신 main 의 변화는 `sync_egovframe_catalog`·`sync_egovframe_templates` 로 확인한 뒤 릴리스에서 반영합니다.
+- 공식 자산에 고정됩니다: 공통컴포넌트 v5.0.7, Initializr 템플릿 22종(commit·sha256 고정), RTE 5.0.2 규칙. 표준프레임워크 5.1.0 은 GitHub 태그 없이 저장소에만 배포된 상태라(2026-10) parent 5.1.0 프로젝트의 의존성 판정과 `target="5.1.0"` 갱신만 지원하고, 그 근거는 저장소 sources jar 비교입니다(기본 목표는 5.0.2). 최신 main 의 변화는 `sync_egovframe_catalog`·`sync_egovframe_templates` 로 확인한 뒤 릴리스에서 반영합니다.
 - 기존 `pom.xml`·`web.xml` 의 구조적 병합은 하지 않습니다(프로젝트별 설정 보호). 좌표 탐지와 마커 구간 삽입까지만 합니다.
 - 빌드·테스트·리허설·SBOM(Maven 플러그인)은 로컬의 JDK 와 Maven/Gradle(또는 래퍼)을 씁니다.
 - 5.x 전환 적용은 정적 텍스트 치환입니다. 리플렉션·문자열로 만든 클래스명, 프로젝트 밖 라이브러리 안의 `javax` 는 수동 항목으로 남습니다. 자바 패키지 디렉터리 이동은 하지 않습니다.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "note": "5.x 안의 갱신(migrate_egovframe_project target=5.0.x, v0.46) 큐레이션. scripts/generate-update-rules.mjs 가 egovframe-runtime 태그 비교로 각 항목의 클래스가 해당 단계(since 의 직전 태그 → since 태그)에서 실제로 바뀌었는지 확인한 뒤 catalog/update-rules.json 에 옮긴다. 근거 없는 항목(그 단계에서 바뀌지 않은 클래스)은 생성이 실패한다.",
+  "note": "5.x 안의 갱신(migrate_egovframe_project target=5.0.x, v0.46) 큐레이션. scripts/generate-update-rules.mjs 가 egovframe-runtime 태그 비교로 각 항목의 클래스가 해당 단계(since 의 직전 태그 → since 태그)에서 실제로 바뀌었는지 확인한 뒤 catalog/update-rules.json 에 옮긴다. 근거 없는 항목(그 단계에서 바뀌지 않은 클래스)은 생성이 실패한다. v1.3: GitHub 태그가 없는 버전은 mavenSteps 로 저장소 sources jar 를 비교한다(근거 evidence.kind=maven-sources).",
   "rteVersionProperties": [
     "egovframe.rte.version",
     "org.egovframe.rte.version",
@@ -161,6 +161,80 @@
       "summary_en": "EgovStringUtil.getTokens now returns List<String>",
       "reason": "getTokens(String) 의 반환 타입이 List<?> 에서 List<String> 으로 바뀌었다. 대부분 그대로 컴파일되지만 이 메서드를 재정의하거나 List<Object> 변수에 받던 코드는 고쳐야 한다.",
       "reason_en": "The return type of getTokens(String) changed from List<?> to List<String>. Most code still compiles, but overrides of this method or assignments to List<Object> variables must be fixed."
+    },
+    {
+      "id": "batch-writer-file-resource",
+      "since": "5.1.0",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.bat.item.DefaultItemWriter"
+      ],
+      "summary": "배치 기본 Writer 의 출력 리소스 경로에 file: 접두",
+      "summary_en": "file: prefix on the output resource path of the default batch writer",
+      "reason": "DefaultItemWriter 가 안내·기본값으로 쓰는 출력 리소스가 ./inputs/csvData.csv 에서 file:./inputs/csvData.csv 로 바뀌었다. 접두 없는 상대 경로를 job 파라미터로 넘기던 배치는 리소스 해석(클래스패스·파일)이 달라질 수 있으니 file:·classpath: 를 명시한다.",
+      "reason_en": "The output resource used by DefaultItemWriter's guidance and default changed from ./inputs/csvData.csv to file:./inputs/csvData.csv. Batches that pass a prefix-less relative path as a job parameter may resolve the resource differently (classpath vs file), so state file: or classpath: explicitly."
+    },
+    {
+      "id": "service-biz-exception-helpers",
+      "since": "5.1.0",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl",
+        "org.egovframe.rte.fdl.cmmn.exception.EgovBizException"
+      ],
+      "summary": "EgovAbstractServiceImpl 에 업무 예외 도우미 메서드 추가",
+      "summary_en": "Business exception helper methods added to EgovAbstractServiceImpl",
+      "reason": "throwBizException(messageKey, …)·newBizRuntimeException(messageKey, …) protected 메서드와 EgovBizException(EgovErrorMessage, Throwable) 생성자·getErrorMessage() 가 추가됐다. 서비스 구현 클래스에 같은 이름·시그니처의 메서드를 직접 정의했다면 재정의로 바뀌어 동작이 달라지거나 반환 타입 충돌로 컴파일 오류가 난다 — 이름을 바꾸거나 새 메서드로 옮긴다.",
+      "reason_en": "Protected methods throwBizException(messageKey, …) and newBizRuntimeException(messageKey, …), the EgovBizException(EgovErrorMessage, Throwable) constructor and getErrorMessage() were added. If a service implementation already defines a method with the same name and signature it now becomes an override (behavior changes) or fails to compile on a return-type clash — rename it or move to the new methods."
+    },
+    {
+      "id": "excel-content-disposition",
+      "since": "5.1.0",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.fdl.excel.util.AbstractExcelView",
+        "org.egovframe.rte.fdl.excel.util.AbstractPOIExcelView"
+      ],
+      "summary": "엑셀 다운로드 Content-Disposition 헤더 형식 변경",
+      "summary_en": "Content-Disposition header format of Excel downloads changed",
+      "reason": "다운로드 파일명 헤더를 attachment; filename=\"…\" 직접 결합 대신 EgovContentDispositions.attachment 로 만든다(비 ASCII 파일명 인코딩 포함). 응답 헤더를 직접 파싱하거나 파일명을 미리 URL 인코딩해 넘기던 화면은 이중 인코딩·표시 차이를 확인한다.",
+      "reason_en": "The download file-name header is now built with EgovContentDispositions.attachment instead of concatenating attachment; filename=\"…\" (including non-ASCII file-name encoding). Screens that parse the header themselves or pass a pre-URL-encoded file name should check for double encoding and display differences."
+    },
+    {
+      "id": "reactive-exception-response",
+      "since": "5.1.0",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.rte.ptl.reactive.exception.EgovExceptionHandler",
+        "org.egovframe.rte.ptl.reactive.exception.EgovExceptionResponse",
+        "org.egovframe.rte.ptl.reactive.exception.EgovErrorCode"
+      ],
+      "summary": "리액티브 예외 응답 본문·상태 코드 변경",
+      "summary_en": "Reactive exception response body and status codes changed",
+      "reason": "EgovExceptionHandler 가 검증 실패(WebExchangeBindException·HandlerMethodValidationException)를 오류 목록과 title 을 담은 응답으로, 형 변환 실패와 Spring 표준 ErrorResponse 를 각자의 상태 코드로 내고, 이미 커밋된 응답은 그대로 전파한다. EgovErrorCode 에 415(E012)·413(E013)이 추가됐다. 응답 JSON 구조나 상태 코드(예전 500 처리)에 기대던 클라이언트·테스트는 확인이 필요하다.",
+      "reason_en": "EgovExceptionHandler now returns validation failures (WebExchangeBindException, HandlerMethodValidationException) as a response with an error list and title, returns type-mismatch failures and Spring standard ErrorResponse with their own status codes, and propagates already-committed responses. EgovErrorCode gained 415 (E012) and 413 (E013). Clients and tests that rely on the response JSON shape or status codes (previously handled as 500) need checking."
+    },
+    {
+      "id": "r2dbc-not-in-bom",
+      "since": "5.1.0",
+      "kind": "api",
+      "classes": [
+        "org.egovframe.rte.psl.reactive.r2dbc.repository.EgovR2dbcRepository"
+      ],
+      "summary": "psl-reactive-r2dbc 가 5.1.0 BOM 관리에서 빠짐",
+      "summary_en": "psl-reactive-r2dbc dropped from the 5.1.0 BOM",
+      "reason": "egovframe-rte-psl-reactive-r2dbc 5.1.0 jar 는 저장소에 있지만 parent 가 import 하는 egovframe-rte-root 5.1.0 의 dependencyManagement 에는 없다. 5.1.0 parent 아래에서 버전 없이 선언하면 빌드가 실패하므로 <version>${egovframe.rte.version}</version> 을 명시한다. EgovR2dbcRepository 에 (DatabaseClient, R2dbcDialect, R2dbcConverter) 생성자가 추가됐다.",
+      "reason_en": "The egovframe-rte-psl-reactive-r2dbc 5.1.0 jar is in the repository but is not in the dependencyManagement of egovframe-rte-root 5.1.0, which the parent imports. Declaring it without a version under the 5.1.0 parent fails the build, so set <version>${egovframe.rte.version}</version> explicitly. EgovR2dbcRepository gained a (DatabaseClient, R2dbcDialect, R2dbcConverter) constructor."
+    }
+  ],
+  "recommended": "5.0.2",
+  "recommended_note": "전환·생성 기본 목표. 5.1.0 은 저장소 배포만 있고 GitHub 태그·공식 공지가 없어(2026-10-22) 명시적으로 target=\"5.1.0\" 을 줄 때만 쓴다. 태그가 생기면 mavenSteps 에서 빼고 recommended 를 올린다.",
+  "mavenSteps": [
+    {
+      "version": "5.1.0",
+      "modulesFrom": "egovframe-rte-root",
+      "reason": "GitHub egovframe-runtime 에 v5.1.0-Final 태그가 없어(2026-10-22) 표준프레임워크 Maven 저장소의 5.0.2·5.1.0 sources jar 를 비교한다",
+      "reason_en": "egovframe-runtime has no v5.1.0-Final tag on GitHub (2026-10-22), so the 5.0.2 and 5.1.0 sources jars from the eGovFrame Maven repository are compared"
     }
   ]
 }

@@ -22,7 +22,7 @@ export interface DependencyBaseline {
   repository: string;
   sources: { kind: "web" | "boot"; groupId: string; artifactId: string; version: string; url: string; sha256: string; managed: number; parent?: { groupId: string; artifactId: string; version: string } }[];
   java: number;
-  rte: { version: string; parentManaged: Record<string, string | null> };
+  rte: { version: string; parentManaged: Record<string, string | null>; /** v1.3: parent 가 import 하는 RTE BOM(egovframe-rte-root) */ bom?: { artifactId: string; version: string; url: string; sha256: string; managed: number } };
   spring: { framework: string | null; boot: string | null; security: string | null };
   properties: { web: Record<string, string>; boot: Record<string, string> };
   managed: BaselineManaged[];
@@ -48,11 +48,25 @@ export interface DependencyBaseline {
   };
 }
 
+// v1.3: parent 버전별 기준 — 기본(catalog/dependency-baseline.json)은 전환 목표(5.0.2) 기준이고,
+// 5.1.0 처럼 새 parent 를 쓰는 프로젝트는 그 버전의 기준(catalog/dependency-baseline-5.1.json)으로 판정한다.
 const BASELINE_URL = new URL("../catalog/dependency-baseline.json", import.meta.url);
-let cached: DependencyBaseline | null = null;
-export function loadDependencyBaseline(): DependencyBaseline {
-  if (!cached) cached = JSON.parse(fs.readFileSync(BASELINE_URL, "utf8")) as DependencyBaseline;
-  return cached;
+/** 기본 기준보다 새 parent 계열의 기준 파일(major.minor → 파일) */
+export const BASELINE_FILES: Record<string, string> = { "5.1": "dependency-baseline-5.1.json" };
+const cache = new Map<string, DependencyBaseline>();
+const minorOf = (v: string | null | undefined): string | null => v?.match(/^(\d+)\.(\d+)\./)?.slice(1, 3).join(".") ?? null;
+/** version(parent 또는 RTE 버전)을 주면 그 계열의 기준을, 없거나 기본 계열 이하면 기본 기준을 돌려준다. */
+export function loadDependencyBaseline(version?: string | null): DependencyBaseline {
+  const minor = minorOf(version);
+  const file = minor ? BASELINE_FILES[minor] : undefined;
+  const key = file ?? "default";
+  let b = cache.get(key);
+  if (!b) { b = JSON.parse(fs.readFileSync(file ? new URL(`../catalog/${file}`, import.meta.url) : BASELINE_URL, "utf8")) as DependencyBaseline; cache.set(key, b); }
+  return b;
+}
+/** v1.3: 기본 기준보다 새 기준(parent 계열) 목록 — 안내용 */
+export function newerBaselines(than: DependencyBaseline = loadDependencyBaseline()): DependencyBaseline[] {
+  return Object.keys(BASELINE_FILES).map((m) => loadDependencyBaseline(`${m}.0`)).filter((b) => versionBelow(than.rte.version, b.rte.version) === true);
 }
 
 export type DependencyStatus = "ok" | "outdated" | "managed" | "legacy" | "replace" | "vendor" | "unknown" | "unversioned";
@@ -129,6 +143,12 @@ export interface CheckDependenciesOptions {
   progress?: Progress;
 }
 
+// v1.3: 표준프레임워크가 다시 빌드해 자체 저장소에만 올린 좌표(예: spring-security 6.5.11-egov.1)
+export const EGOV_REBUILD_RE = /-egov\.\d+$/;
+export const isEgovRebuild = (version: string | null | undefined): boolean => !!version && EGOV_REBUILD_RE.test(version);
+/** OSV 는 원 버전으로 조회한다(6.5.11-egov.1 → 6.5.11) — 재빌드의 패치 반영 여부는 공급자 확인 대상 */
+export const osvVersion = (version: string): string => version.replace(EGOV_REBUILD_RE, "");
+
 const OSV_URL = "https://api.osv.dev/v1/querybatch";
 export const defaultOsvQuery: OsvQuery = async (queries) => {
   // v0.42: 오프라인 번들에 OSV 덤프가 있으면 로컬로 판정(querybatch 와 같은 모양)
@@ -195,7 +215,8 @@ export function classifyDependency(
   const below = versionBelow(dep.resolvedVersion, m.version);
   if (below === null) return withNote({ status: "unknown", baseline: m.version, basis: m.basis }, L(`버전을 비교할 수 없음: ${dep.resolvedVersion}`, `Cannot compare version: ${dep.resolvedVersion}`));
   if (below && m.basis === "rte-transitive") return { status: "outdated", baseline: m.version, basis: m.basis, note: L(`${m.note} — 명시 버전이 더 낮아 전이 버전과 충돌할 수 있음(Maven 은 가까운 선언을 택함)`, `${m.note} — the explicit version is lower and may conflict with the transitive one (Maven picks the nearest declaration)`) };
-  return withNote({ status: below ? "outdated" : "ok", baseline: m.version, basis: m.basis }, m.note);
+  const rebuild = isEgovRebuild(dep.resolvedVersion) ? L(`표준프레임워크 재빌드(${dep.resolvedVersion}) — 원 버전 ${osvVersion(dep.resolvedVersion)} 기준으로 비교·OSV 조회`, `eGovFrame rebuild (${dep.resolvedVersion}) — compared and queried in OSV as ${osvVersion(dep.resolvedVersion)}`) : undefined;
+  return withNote({ status: below ? "outdated" : "ok", baseline: m.version, basis: m.basis }, [m.note, rebuild].filter(Boolean).join(" · ") || undefined);
 }
 
 interface RawDep { file: string; line: number; groupId: string; artifactId: string; version: string | null; resolvedVersion: string | null; scope: string | null; /** v0.47: 이 빌드 파일의 parent 종류(모듈마다 다를 수 있음) */ parentKind?: ParentInfo["kind"] }
@@ -312,7 +333,7 @@ function grepEvidence(dir: string, files: string[], re: RegExp, filter?: (rel: s
 
 /** 프로젝트 의존성을 기준 버전과 대조하고 보안 설정 존재 여부를 점검한다. (읽기 전용) */
 export async function checkDependencies(opts: CheckDependenciesOptions): Promise<CheckDependenciesResult> {
-  const baseline = loadDependencyBaseline();
+  let baseline = loadDependencyBaseline();
   const rules = loadMigrationRules();
   const offline = opts.offline ?? true;
   const dir = path.resolve(opts.projectDir);
@@ -332,6 +353,13 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   if (buildSystem === "maven") ({ deps: raw, parent, java: javaValue, repoIssues } = collectMaven(dir, files, baseline));
   else if (buildSystem === "gradle") ({ deps: raw, java: javaValue, repoIssues, parent } = collectGradle(dir, files, baseline));
   else notes.push(L("빌드 파일(pom.xml·build.gradle)을 찾지 못해 의존성 대조를 건너뜁니다.", "No build file (pom.xml/build.gradle) found — dependency comparison skipped."));
+  // v1.3: 5.1.0 처럼 기본보다 새 parent(또는 RTE)를 쓰면 그 계열의 기준으로 판정한다
+  {
+    const used = (parent.kind === "web" || parent.kind === "boot") ? parent.version : diag.egovVersion;
+    const picked = loadDependencyBaseline(used);
+    if (picked !== baseline) { baseline = picked; notes.push(L(`${used} 프로젝트 — 의존성 기준을 표준프레임워크 ${picked.rte.version} 기준(조사일 ${picked.surveyedAt}${picked.rte.bom ? `, BOM ${picked.rte.bom.artifactId}` : ""})으로 바꿔 판정합니다.`, `${used} project — dependencies are assessed against the eGovFrame ${picked.rte.version} baseline (surveyed ${picked.surveyedAt}${picked.rte.bom ? `, BOM ${picked.rte.bom.artifactId}` : ""}).`)); }
+    else if (parent.kind === "web" || parent.kind === "boot") for (const n of newerBaselines(baseline)) notes.push(L(`표준프레임워크 ${n.rte.version} parent 가 저장소에 배포돼 있습니다(GitHub 태그 없음) — migrate_egovframe_project(target="${n.rte.version}") 로 갱신 항목을 볼 수 있습니다.`, `The eGovFrame ${n.rte.version} parent is published to the repository (no GitHub tag) — migrate_egovframe_project(target="${n.rte.version}") shows the update items.`));
+  }
   if (parent.kind !== "none" && multi && !fs.existsSync(path.join(dir, "pom.xml")) === false && !/<parent>/.test(read(path.join(dir, "pom.xml")))) notes.push(L(`루트 pom 에 parent 가 없어 모듈 parent(${parent.artifactId}:${parent.version})를 대표로 봅니다.`, `The root pom has no parent; the module parent (${parent.artifactId}:${parent.version}) is used as representative.`));
 
   const findings: DependencyFinding[] = [];
@@ -438,7 +466,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
     try {
       for (let i = 0; i < targets.length; i += 100) {
         const chunk = targets.slice(i, i + 100);
-        const res = await query(chunk.map((f) => ({ package: { name: `${f.groupId}:${f.artifactId}`, ecosystem: "Maven" as const }, version: f.resolvedVersion! })));
+        const res = await query(chunk.map((f) => ({ package: { name: `${f.groupId}:${f.artifactId}`, ecosystem: "Maven" as const }, version: osvVersion(f.resolvedVersion!) })));
         res.results.forEach((r, j) => {
           const ids = (r.vulns ?? []).map((v) => v.id);
           if (ids.length) vulns.push({ dependency: `${chunk[j].groupId}:${chunk[j].artifactId}`, version: chunk[j].resolvedVersion!, ids });

@@ -8,6 +8,11 @@
  *   큐레이션(바뀐 API·동작의 요약과 사유)은 catalog/update-mapping.json 에서 읽는다.
  *   큐레이션 항목의 클래스가 latest 태그에 없거나 그 단계에서 바뀌지 않았으면 실패한다 — 근거 없는 "manual" 을 막기 위해서다.
  *
+ *   v1.3: GitHub 태그가 아직 없는 버전(update-mapping.json 의 mavenSteps, 예: 5.1.0)은 표준프레임워크 Maven 저장소의
+ *   sources jar 로 단계를 만든다 — 새 버전의 BOM(egovframe-rte-root)에 있는 RTE 모듈마다 직전 버전·새 버전 sources jar 를 받아
+ *   공백만 다른 것을 빼고 내용이 바뀐 클래스와 새 클래스를 그 단계의 변경으로 본다(근거 evidence.kind = "maven-sources", jar 별 sha256 기록).
+ *   태그가 생기면 mavenSteps 에서 그 버전을 빼고 다시 생성한다(git 태그 비교로 바뀜).
+ *
  * 사용법:
  *   node scripts/generate-update-rules.mjs --runtime-dir <egovframe-runtime clone> [--m2 ~/.m2/repository]
  *   node scripts/generate-update-rules.mjs            # 임시 디렉터리에 부분 클론, parent pom 은 mvn dependency:get 으로 받음
@@ -17,6 +22,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import AdmZip from "adm-zip";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MAPPING_PATH = path.join(ROOT, "catalog", "update-mapping.json");
@@ -58,6 +65,41 @@ try {
     .filter((f) => f.includes("/src/main/java/") && f.endsWith(".java"))
     .map((f) => f.replace(/^.*\/src\/main\/java\//, "").replace(/\.java$/, "").split("/").join(".")));
 
+  // 2-b) v1.3: 태그 없는 버전 — 저장소 sources jar 비교
+  const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
+  const fetchBuf = async (url) => { const r = await fetch(url, { headers: { "User-Agent": "egovframe-scaffold-mcp" } }); if (r.status === 404) return null; if (!r.ok) throw new Error(`${r.status} ${url}`); return Buffer.from(await r.arrayBuffer()); };
+  const rteUrl = (a, v, cls = "") => `${MAVEN_REPO_URL}org/egovframe/rte/${a}/${v}/${a}-${v}${cls}`;
+  const javaSources = (buf) => { const out = new Map(); for (const e of new AdmZip(buf).getEntries()) if (e.entryName.endsWith(".java") && !e.isDirectory) out.set(e.entryName.replace(/\.java$/, "").split("/").join("."), e.getData().toString("utf8").replace(/\s+/g, " ").trim()); return out; };
+  const mavenSteps = [];
+  let mavenLatestClasses = null;
+  for (const ms of mapping.mavenSteps ?? []) {
+    if (versions.includes(ms.version)) throw new Error(`mavenSteps ${ms.version} 는 이미 태그가 있습니다 — update-mapping.json 의 mavenSteps 에서 빼세요`);
+    const prev = versions[versions.length - 1];
+    const bom = await fetchBuf(rteUrl("egovframe-rte-root", ms.version, ".pom"));
+    if (!bom) throw new Error(`egovframe-rte-root ${ms.version} 가 저장소에 없습니다`);
+    const dm = bom.toString("utf8").match(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/)?.[0] ?? "";
+    const modules = [...new Set([...dm.matchAll(/<groupId>org\.egovframe\.rte<\/groupId>\s*<artifactId>(egovframe-rte-[\w-]+)<\/artifactId>/g)].map((m) => m[1]).filter((a) => a !== "egovframe-rte-root"))].sort();
+    const changed = new Set();
+    const all = new Set();
+    const evidence = [];
+    for (const a of modules) {
+      const next = await fetchBuf(rteUrl(a, ms.version, "-sources.jar"));
+      if (!next) throw new Error(`${a}-${ms.version}-sources.jar 가 저장소에 없습니다`);
+      const before = await fetchBuf(rteUrl(a, prev, "-sources.jar"));
+      const nb = javaSources(next), ob = before ? javaSources(before) : new Map();
+      let n = 0;
+      for (const [cls, text] of nb) { all.add(cls); if (ob.get(cls) !== text) { changed.add(cls); n++; } }
+      evidence.push({ artifactId: a, from: before ? { version: prev, sha256: sha256(before) } : null, to: { version: ms.version, sha256: sha256(next) }, changed: n });
+    }
+    steps[ms.version] = changed;
+    mavenLatestClasses = all;
+    mavenSteps.push({ version: ms.version, kind: "maven-sources", from: prev, reason: ms.reason, reason_en: ms.reason_en, bom: { url: rteUrl("egovframe-rte-root", ms.version, ".pom"), sha256: sha256(bom) }, modules: evidence });
+    versions.push(ms.version);
+    console.log(`mavenStep ${prev} → ${ms.version}: 모듈 ${modules.length}종, 변경·추가 클래스 ${changed.size}`);
+  }
+  const effectiveLatest = versions[versions.length - 1];
+  const latestClassSet = mavenLatestClasses ?? latestClasses;
+
   // 3) parent pom
   const readPom = (g, a, v) => {
     const p = path.join(m2, ...g.split("."), a, v, `${a}-${v}.pom`);
@@ -87,10 +129,11 @@ try {
     if (!versions.includes(c.since) || c.since === versions[0]) throw new Error(`${c.id}: since ${c.since} 는 ${versions.slice(1).join("·")} 중 하나여야 합니다`);
     const stepFrom = versions[versions.indexOf(c.since) - 1];
     for (const cls of c.classes) {
-      if (!latestClasses.has(cls)) throw new Error(`${c.id}: ${cls} 가 ${tags[tags.length - 1].tag} 에 없습니다`);
+      if (!latestClassSet.has(cls)) throw new Error(`${c.id}: ${cls} 가 ${effectiveLatest} 에 없습니다`);
       if (!steps[c.since].has(cls)) throw new Error(`${c.id}: ${cls} 는 ${stepFrom} → ${c.since} 에서 바뀌지 않았습니다`);
     }
-    return { ...c, action: "manual", evidence: { fromTag: `v${stepFrom}-Final`, toTag: `v${c.since}-Final` } };
+    const viaMaven = mavenSteps.some((m) => m.version === c.since);
+    return { ...c, action: "manual", evidence: viaMaven ? { kind: "maven-sources", from: stepFrom, to: c.since } : { fromTag: `v${stepFrom}-Final`, toTag: `v${c.since}-Final` } };
   });
 
   const out = {
@@ -98,8 +141,11 @@ try {
     surveyedAt: new Date().toISOString().slice(0, 10),
     generatedBy: "scripts/generate-update-rules.mjs",
     note: "5.x 안의 갱신(migrate_egovframe_project target=5.0.x) 규칙. parent·RTE 버전은 auto, 바뀐 API·동작은 프로젝트가 그 클래스를 참조할 때만 manual 로 보고한다.",
-    source: { repository: REPO, mavenRepository: MAVEN_REPO_URL, tags: tags.map(({ tag, version, commit }) => ({ tag, version, commit })) },
-    versions, latest,
+    source: { repository: REPO, mavenRepository: MAVEN_REPO_URL, tags: tags.map(({ tag, version, commit }) => ({ tag, version, commit })), ...(mavenSteps.length ? { mavenSteps } : {}) },
+    versions, latest: effectiveLatest,
+    // v1.3: 기본 목표(생성 alignParent·target 생략 시). 태그 없는 버전은 명시 target 으로만 쓴다
+    recommended: mapping.recommended ?? latest,
+    ...(mavenSteps.length ? { provisional: mavenSteps.map((m) => ({ version: m.version, kind: m.kind, reason: m.reason, reason_en: m.reason_en })) } : {}),
     rteVersionProperties: mapping.rteVersionProperties,
     parents,
     changes,
