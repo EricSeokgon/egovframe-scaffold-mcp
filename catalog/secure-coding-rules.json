@@ -115,6 +115,7 @@
         "java"
       ],
       "pattern": "\\b(executeQuery|executeUpdate|execute|prepareStatement|prepareCall|addBatch)\\s*\\(\\s*\"[^\"]*\"\\s*\\+",
+      "flow": {"sink": "sql", "tainted": "high", "constant": "low", "detect": true},
       "message": "JDBC 호출에 문자열 연결로 만든 SQL 을 넘깁니다",
       "message_en": "SQL built by string concatenation is passed to a JDBC call",
       "fix": "PreparedStatement 의 ? 자리표시자와 setXxx 로 값을 바인딩",
@@ -182,6 +183,7 @@
         "java"
       ],
       "pattern": "(new\\s+([\\w.]+\\.)?(File|FileInputStream|FileOutputStream|FileReader|FileWriter|RandomAccessFile)\\s*\\(|Paths\\.get\\s*\\(|Path\\.of\\s*\\()[^;]*request\\.getParameter\\s*\\(",
+      "flow": {"sink": "path", "tainted": "high", "detect": true},
       "message": "요청 파라미터로 파일 경로를 만듭니다",
       "message_en": "A file path is built from a request parameter",
       "fix": "경로 구분자·'..' 를 제거하고(EgovWebUtil.filePathBlackList 등) 기준 디렉터리 밖으로 나가지 않는지 정규화 후 확인",
@@ -198,6 +200,7 @@
         "java"
       ],
       "pattern": "(sendRedirect\\s*\\(|\"redirect:\"\\s*\\+)[^;]*request\\.getParameter\\s*\\(",
+      "flow": {"sink": "redirect", "tainted": "medium", "detect": true},
       "message": "요청 파라미터의 URL 로 리다이렉트합니다",
       "message_en": "Redirects to a URL taken from a request parameter",
       "fix": "이동할 수 있는 URL 을 허용 목록으로 제한하거나 내부 경로(/로 시작, //·스킴 불가)만 허용",
@@ -221,6 +224,7 @@
         "note": "같은 줄에서 요청 파라미터를 씁니다",
         "note_en": "A request parameter is used on the same line"
       },
+      "flow": {"sink": "command", "tainted": "high", "constant": "low"},
       "message": "운영체제 명령을 실행합니다 — 외부 입력이 명령·인자에 들어가는지 확인이 필요합니다",
       "message_en": "Executes an OS command — check whether external input reaches the command or its arguments",
       "fix": "명령은 고정하고 인자는 허용 목록으로 검증, 셸(sh -c·cmd /c)을 거치지 않기",

@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "base": "1.3.0",
+  "version": "1.5.0",
+  "base": "1.4.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -1194,6 +1194,10 @@
             "baselinePath": {
               "type": "string"
             },
+            "dataFlow": {
+              "type": "boolean",
+              "default": true
+            },
             "format": {
               "type": "string",
               "enum": [
@@ -1350,6 +1354,33 @@
             "byTarget": {
               "type": "object"
             },
+            "dataFlow": {
+              "type": "object",
+              "required": [
+                "constant",
+                "detected",
+                "enabled",
+                "tainted",
+                "unknown"
+              ],
+              "properties": {
+                "constant": {
+                  "type": "integer"
+                },
+                "detected": {
+                  "type": "integer"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "tainted": {
+                  "type": "integer"
+                },
+                "unknown": {
+                  "type": "integer"
+                }
+              }
+            },
             "disclaimer": {
               "type": "string"
             },
@@ -1399,6 +1430,52 @@
                   },
                   "fix": {
                     "type": "string"
+                  },
+                  "flow": {
+                    "type": "object",
+                    "required": [
+                      "method",
+                      "path",
+                      "status"
+                    ],
+                    "properties": {
+                      "detected": {
+                        "type": "boolean"
+                      },
+                      "method": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "code",
+                            "line",
+                            "step"
+                          ],
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "line": {
+                              "type": "integer"
+                            },
+                            "step": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "constant",
+                          "tainted",
+                          "unknown"
+                        ]
+                      }
+                    }
                   },
                   "guideItem": {
                     "type": "string"

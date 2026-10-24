@@ -1,4 +1,4 @@
-# 도구 레퍼런스 (v1.4)
+# 도구 레퍼런스 (v1.5)
 
 도구 35종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
@@ -246,6 +246,7 @@ check_egovframe_secure_coding(projectDir, format="json")                        
 check_egovframe_secure_coding(projectDir, baselinePath="reports/secure-prev.json")   # 새로 생긴 것만 🆕
 check_egovframe_secure_coding(projectDir, sarifPath="egovframe-secure.sarif", overwrite=true)   # SARIF 2.1.0
 check_egovframe_secure_coding(projectDir, topN=100)                                  # Markdown 상세 항목 수(기본 40)
+check_egovframe_secure_coding(projectDir, dataFlow=false)                            # 데이터 흐름 없이(v1.4 까지와 같은 패턴 판정)
 ```
 
 `topN` 의 옛 이름 `top` 은 1.0.0 부터 deprecated 입니다. 2.0.0 까지는 받고 응답에 경고 한 줄을 붙입니다([버전 정책](versioning.md#3-폐기deprecation-절차)).
@@ -258,6 +259,7 @@ check_egovframe_secure_coding(projectDir, topN=100)                             
 | 취약한 암호·부적절한 난수·하드코드된 중요정보·쿠키 | MD5·SHA-1·DES·ECB(`"AES"` 단독), 보안 문맥의 `Random`, 코드·설정·docker-compose 의 평문 비밀번호, HttpOnly·Secure 없는 쿠키 | `ENC(…)`·`${…}`·숫자·가림·자리표시자, 파라미터 이름·경로 상수, 메시지 번들 |
 | 오류 정보노출·오류상황 대응 부재·역직렬화·디버그 코드 | `printStackTrace()`, 빈 `catch`(주석만 있어도), `ObjectInputStream.readObject`, `System.out` | 로그 처리한 catch |
 
+- **데이터 흐름(v1.5)**: 메서드 안에서 요청 값(파라미터·헤더·쿠키·Spring 바인딩 값·업로드 파일명)이 대입·결합·append 를 거쳐 JDBC·파일 경로·OS 명령·리다이렉트 인자로 들어가면 등급을 올리고 경로를 note·`flow`·SARIF `codeFlows` 에 적습니다. 상수만 결합하면 낮음으로 내리고, 패턴이 놓친 흐름(변수를 거친 요청 값)도 "데이터 흐름으로 찾음"으로 보고합니다. 검증(`startsWith`·`isSafe…`)·정화(`EgovWebUtil.filePathBlackList`·`Integer.parseInt`)·덮어쓰기를 거친 값은 판단 불가로 둡니다. 메서드 간 흐름은 보지 않습니다([설계 4-1](design-secure-coding.md#4-1-메서드-안-데이터-흐름-v15)).
 - **출처**: 공통컴포넌트 매니페스트의 해시로 "원본(업그레이드·예외·upstream 보고)"과 "수정본(직접 수정)"을 나누고, 매니페스트 없이 복사된 공통컴포넌트는 재조립을 안내합니다. 같은 규칙으로 공식 공통컴포넌트 v4.3.2 는 516건(중간 314), **v5.0.7 은 38건**(중간 16)입니다.
 - **예외**: `.egovframe-secure-ignore.json` 에 `{"ignores":[{"rule":"debug-code","path":"src/main/java/egovframework/com/**","reason":"upstream 원본, 업그레이드 대기","reviewer":"홍길동"}]}` — 사유·검토자가 없는 항목은 적용하지 않고 목록으로 돌려줍니다.
 - **CI**: `npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.sarif --overwrite --fail-on high`, 또는 `generate_egovframe_ci(supplyChain=true, secureCoding=true)` 게이트 단계(GitHub 는 code scanning 에 SARIF 업로드). 평가서 4절에 요약이 나오며 등급 산식에는 넣지 않습니다. 설계: [docs/design-secure-coding.md](design-secure-coding.md).

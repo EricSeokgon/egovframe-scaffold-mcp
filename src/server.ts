@@ -794,7 +794,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 보안약점 점검 (v0.44) ─────────────────────────────
   server.registerTool(
     "check_egovframe_secure_coding",
-    { title: t("check_egovframe_secure_coding"), description: d("check_egovframe_secure_coding", "행정안전부·KISA 「소프트웨어 개발보안 가이드」(2021) 구현단계 보안약점 중 정적 패턴으로 오탐을 통제할 수 있는 항목을 소스에서 찾습니다 — SQL 삽입(MyBatis ${…}·iBATIS $…$·JDBC 문자열 연결), 크로스사이트 스크립트(요청 값·EL param/header/cookie 무이스케이프 출력, <c:out escapeXml=\"false\">), 경로 조작, 신뢰되지 않는 URL 자동접속, 운영체제 명령어, XML 외부개체, 취약한 해시·암호, 보안 문맥의 부적절한 난수, 코드·설정의 하드코드된 중요정보, HttpOnly·Secure 없는 쿠키, printStackTrace, 빈 catch, 역직렬화, 남은 디버그 출력. 규칙은 catalog/secure-coding-rules.json 데이터이고 주석은 무시합니다. 항목마다 파일·라인·CWE·등급·조치와 출처(공통컴포넌트 원본·수정본·매니페스트 없음·프로젝트 코드·테스트)를 냅니다. 예외는 .egovframe-secure-ignore.json(사유·검토자 필수), baselinePath(이전 JSON 결과·SARIF)와 비교해 새 항목 표시, format=sarif 또는 sarifPath 로 SARIF 2.1.0(GitHub code scanning 등). 패턴 기반 진단 보조이며 공인 진단을 대체하지 않습니다."), inputSchema: {
+    { title: t("check_egovframe_secure_coding"), description: d("check_egovframe_secure_coding", "행정안전부·KISA 「소프트웨어 개발보안 가이드」(2021) 구현단계 보안약점 중 정적 패턴으로 오탐을 통제할 수 있는 항목을 소스에서 찾습니다 — SQL 삽입(MyBatis ${…}·iBATIS $…$·JDBC 문자열 연결), 크로스사이트 스크립트(요청 값·EL param/header/cookie 무이스케이프 출력, <c:out escapeXml=\"false\">), 경로 조작, 신뢰되지 않는 URL 자동접속, 운영체제 명령어, XML 외부개체, 취약한 해시·암호, 보안 문맥의 부적절한 난수, 코드·설정의 하드코드된 중요정보, HttpOnly·Secure 없는 쿠키, printStackTrace, 빈 catch, 역직렬화, 남은 디버그 출력. 규칙은 catalog/secure-coding-rules.json 데이터이고 주석은 무시합니다. 항목마다 파일·라인·CWE·등급·조치와 출처(공통컴포넌트 원본·수정본·매니페스트 없음·프로젝트 코드·테스트)를 냅니다. 예외는 .egovframe-secure-ignore.json(사유·검토자 필수), baselinePath(이전 JSON 결과·SARIF)와 비교해 새 항목 표시, format=sarif 또는 sarifPath 로 SARIF 2.1.0(GitHub code scanning 등). v1.5: 메서드 안 데이터 흐름(요청 파라미터·헤더·쿠키·Spring 바인딩 값 → 대입·결합·append → JDBC·파일 경로·OS 명령·리다이렉트)으로 등급을 올리거나 내리고 변수를 거친 미탐을 찾습니다(메서드 간 흐름은 보지 않음). 패턴 기반 진단 보조이며 공인 진단을 대체하지 않습니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장) — 읽기만 함"),
       rules: z.array(z.string()).optional().describe("점검할 규칙 id(기본 전체)"),
       paths: z.array(z.string()).optional().describe("프로젝트 상대 경로 접두어로 좁히기(예: src/main/java/egovframework/example)"),
@@ -802,6 +802,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       baselinePath: z.string().optional().describe("이전 결과(format=json 출력 또는 SARIF, 프로젝트 상대 경로) — 새로 생긴 항목만 표시"),
       sarifPath: z.string().optional().describe("SARIF 2.1.0 을 쓸 프로젝트 상대 경로(예: egovframe-secure.sarif)"),
       overwrite: z.boolean().default(false).describe("sarifPath 가 있으면 덮어쓰기"),
+      dataFlow: z.boolean().default(true).describe("v1.5: 메서드 안 데이터 흐름 분석 — 요청 값이 SQL·파일 경로·OS 명령·리다이렉트 인자로 들어가면 등급을 올리고(경로를 note·flow·SARIF codeFlows 에), 상수만이면 내리며, 변수를 거친 흐름도 찾음. false 면 v1.4 까지의 패턴 판정만"),
       maxFindings: z.number().int().min(1).max(20_000).default(2000).describe("응답에 담을 최대 항목 수(SARIF 파일에는 전부)"),
       topN: z.number().int().min(1).max(500).optional().describe("Markdown 상세 항목 수(기본 40)"),
       top: z.number().int().min(1).max(500).optional().describe("[deprecated 1.0.0 — topN 을 쓰세요, 2.0.0 에서 제거] Markdown 상세 항목 수"),
@@ -810,7 +811,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     async (raw) => {
       enforceAllowedRoots(raw);
       const { args, warnings } = applyDeprecatedParams("check_egovframe_secure_coding", raw);
-      const r = await checkSecureCoding({ projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeTests: args.includeTests, baselinePath: args.baselinePath, sarifPath: args.sarifPath, overwrite: args.overwrite, maxFindings: args.maxFindings });
+      const r = await checkSecureCoding({ projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeTests: args.includeTests, baselinePath: args.baselinePath, sarifPath: args.sarifPath, overwrite: args.overwrite, dataFlow: args.dataFlow, maxFindings: args.maxFindings });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "sarif" ? JSON.stringify(toSarif(r), null, 2) : renderSecureCodingMarkdown(r, args.topN ?? 40);
       // 경고는 본문과 섞지 않는다(format=json·sarif 본문이 그대로 파싱되도록 별도 content 항목)
       return { content: [{ type: "text" as const, text }, ...warnings.map((w) => ({ type: "text" as const, text: `⚠ ${w}` }))], structuredContent: r as unknown as Record<string, unknown> };

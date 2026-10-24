@@ -44,6 +44,22 @@ v0.43 까지 이 서버는 의존성(기준·OSV)과 보안 설정(`sec.security
   - 설정: `ENC(…)`, 숫자 값(`ExpirePwdDay = 180`), 가림(`*****`), 자리표시자(`YOUR_CLIENT_SECRET`), 주석, 메시지 번들은 제외합니다.
 - **테스트 코드**(`src/test`): 찾되 등급을 low 로 낮추고 출처를 `test` 로 표시합니다.
 
+## 4-1. 메서드 안 데이터 흐름 (v1.5)
+
+패턴만으로는 SQL 삽입·경로 조작·OS 명령·리다이렉트에서 두 가지가 함께 생겼습니다. 상수만 결합한 문장도 높음으로 잡히고(오탐), 요청 값이 변수를 거쳐 들어오면 같은 줄에 `request.getParameter` 가 없어 놓쳤습니다(미탐). 감리에서 오탐은 소명 비용이 큽니다.
+
+- `src/java-flow.ts` `analyzeJavaFlows` — 외부 파서 없이 주석·문자열을 지운 구조 텍스트에서 메서드 본문을 찾고, 문장을 순서대로 따라갑니다.
+  - **소스**: `request.getParameter/getHeader/getCookies/getQueryString…`, 업로드 파일명(`getOriginalFilename`), `@RequestParam·@PathVariable·@RequestHeader·@CookieValue·@RequestBody·@ModelAttribute` 파라미터, `@Controller`·`@RestController` 의 매핑 메서드에 바인딩되는 파라미터(VO 의 getter 포함).
+  - **전파**: 선언·대입·`+=`, `StringBuilder.append`·컬렉션 `add/put`, for-each.
+  - **끊김**: 덮어쓰기(`x = 서비스.조회(x)` 처럼 소스가 아닌 값), 정화 호출(`Integer.parseInt`·`EgovWebUtil.filePathBlackList` 등·`*Service/*Mapper/*Dao` 조회 결과).
+  - **검증**: 경로 조작은 `startsWith`·`is…/check…/validate…(x)` 조건을 거친 값이면 판단 불가로 둡니다(공식 MSA 템플릿의 `normalize().startsWith(base)`·`isSafeFilename` 같은 방어).
+  - **위험 호출**: JDBC(`executeQuery`·`prepareStatement`·`addBatch`·JdbcTemplate), 파일(`new File`·`Paths.get`·`Files.*`), OS 명령(`Runtime.exec`·`ProcessBuilder`), 리다이렉트(`sendRedirect`·`RedirectView`).
+- 판정은 위험 호출 인자마다 `tainted`(요청 값이 들어감 — 경로를 기록), `constant`(상수만), `unknown`(메서드 밖에서 온 값 등)입니다.
+- 규칙 데이터의 `flow`(`sql-jdbc-concat`·`path-traversal`·`open-redirect`·`os-command`)가 등급을 정합니다. tainted 면 `tainted` 등급(SQL·경로·명령 높음, 리다이렉트 중간), constant 면 `constant` 등급(SQL·명령 낮음). `detect` 인 규칙은 패턴이 놓친 tainted 흐름도 "데이터 흐름으로 찾음"으로 보고합니다.
+- 지문은 그대로이고(등급·note 만 바뀜) 결과 JSON 의 `findings[].flow`, 요약 `dataFlow`, SARIF `codeFlows`(GitHub code scanning 이 경로로 표시)에 담습니다. `dataFlow=false` 면 v1.4 까지와 같습니다.
+- **범위 밖**: 메서드 간·클래스 간 흐름, 필드·별칭, 문자열 포맷 내부 해석. 판단 불가는 등급을 바꾸지 않습니다.
+- **수치**(`test:secure-flow`): 사람이 판정한 표본(TP 5·FP 6, 고정물)에서 흐름 전 → 후가 높음 정밀도 33% → 100%, 재현율(중간 이상) 40% → 100%, 중간 이상 오탐 5 → 0건입니다. 공식 공통컴포넌트 v5.0.7·MSA 템플릿 2종 실측에서 항목 수·지문은 그대로이고(새 탐지 0 — 처음 구현에서 나온 3건은 모두 방어된 코드라 검증·덮어쓰기 처리를 더했습니다) 시간은 1.1–1.9배입니다. CI 통합 `test:secure-live` 가 공식 템플릿 7종에서 지문 유지와 시간(2배 이내)을 단언합니다.
+
 ## 5. 출처
 
 공통컴포넌트 매니페스트(`.egovframe-components.json`)의 파일별 해시로 출처를 나눕니다.
