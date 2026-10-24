@@ -232,6 +232,22 @@ const rmd = renderDependencyMarkdown(rr);
 assert(rmd.includes("- 해석된 트리(runtime") && rmd.includes("선언과 다르게 해석된 좌표 1건") && rmd.includes("| (전이) hibernate-validator |"), "Markdown: 해석 요약·차이·전이 경로 열");
 const rrOsv = await checkDependencies({ projectDir: treeProj, resolve: true, runner: fakeMaven, platform: "linux", offline: false, osvQuery: async (q) => ({ results: q.map((x) => (x.package.name === "com.fasterxml:classmate" ? { vulns: [{ id: "GHSA-fake-1" }] } : {})) }) });
 assert(rrOsv.vulnerabilities.length === 1 && rrOsv.vulnerabilities[0].dependency === "com.fasterxml:classmate", "OSV 조회가 전이 의존성까지 포함");
+{
+  const seen = [];
+  const rq = await checkDependencies({ projectDir: treeProj, resolve: true, runner: fakeMaven, platform: "linux", offline: false, osvQuery: async (q) => { seen.push(...q); return { results: q.map((x) => (["org.egovframe.rte:egovframe-rte-ptl-mvc", "org.springframework:spring-webmvc"].includes(x.package.name) ? { vulns: [{ id: `GHSA-${x.package.name.split(":")[1]}` }] } : {})) }; } });
+  const ver = (n) => seen.filter((q) => q.package.name === n).map((q) => q.version);
+  assert(ver("org.egovframe.rte:egovframe-rte-ptl-mvc").join() === "5.0.0", "OSV: 버전 없는 managed 직접 의존성은 트리 버전으로 조회");
+  assert(ver("org.springframework:spring-webmvc").join() === "6.2.11", "OSV: 선언 6.2.10 ↔ 트리 6.2.11 이면 트리의 실제 버전으로 조회");
+  assert(ver("com.fasterxml:classmate").length === 1, "OSV: 기존 전이 의존성 조회 유지");
+  const vv = (n) => rq.vulnerabilities.find((v) => v.dependency === n);
+  assert(vv("org.egovframe.rte:egovframe-rte-ptl-mvc")?.version === "5.0.0" && vv("org.springframework:spring-webmvc")?.version === "6.2.11", "OSV 결과 좌표·버전이 조회한 버전과 일치");
+  const dWeb = rq.findings.find((f) => f.origin === "declared" && f.artifactId === "spring-webmvc");
+  assert(dWeb.resolvedVersion === "6.2.10" && dWeb.treeVersion === "6.2.11", "OSV 와 무관하게 resolvedVersion·treeVersion 의미 유지");
+  const seen2 = [];
+  const rn = await checkDependencies({ projectDir: treeProj, offline: false, osvQuery: async (q) => { seen2.push(...q); return { results: q.map(() => ({})) }; } });
+  const noVer = rn.findings.filter((f) => !f.resolvedVersion && !f.treeVersion);
+  assert(noVer.length > 0 && seen2.length === rn.findings.length - noVer.length && seen2.every((q) => q.version && !/\$\{/.test(q.version)), "OSV: 버전을 모르면 만들어내지 않고 조회에서 제외");
+}
 const failRunner = async (_cmd, o) => { o.onData("[ERROR] boom\n"); return { exitCode: 1, timedOut: false }; };
 const rf = await checkDependencies({ projectDir: treeProj, resolve: true, runner: failRunner, platform: "linux" });
 assert(rf.resolution && rf.resolution.ran && !rf.resolution.success && /종료 코드 1/.test(rf.resolution.error) && rf.findings.length === 3 && rf.notes.some((n) => /해석 실패/.test(n)), "해석 실패 → 선언만 판정 + 안내");

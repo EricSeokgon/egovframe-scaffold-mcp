@@ -155,6 +155,8 @@ check_egovframe_dependencies(projectDir="/work/my-egov-app", offline=false)
 check_egovframe_dependencies(projectDir="/work/my-egov-app", resolve=true, offline=false)   # 실제로 실리는 artifact 전부
 ```
 
+OSV 조회는 트리에서 해석한 버전(`treeVersion`)을 우선 사용하고, 없으면 선언 속성을 푼 버전(`resolvedVersion`)을 사용합니다. parent/BOM이 관리하는 무버전 의존성도 `resolve=true`로 버전이 확인되면 조회합니다. 끝내 버전을 확정하지 못한 항목은 조회에서 제외하고 건수를 `notes`에 남깁니다. 제외된 항목은 취약점이 없다는 뜻이 아닙니다.
+
 **멀티 모듈·MSA(v0.47)**: Maven `<modules>`·Gradle `include`·루트 빌드 파일 없는 독립 프로젝트 묶음(공식 `msa-edu` 의 `backend/*`)을 탐지해 항목마다 `module` 을 붙이고 `workspace.modules` 에 모듈별 요약을 냅니다. 모듈 pom 은 자기 parent 로 판정하고, Gradle 은 `set('x', 'v')`·`ext` 버전 변수와 공식 parent `mavenBom`(BOM 관리)을 읽습니다. `resolve=true` 는 독립 프로젝트마다 트리를 해석해 합칩니다. 5.x 최신 유지·SBOM·보안약점·평가서도 모듈별 표를 냅니다([설계](design-workspace.md)).
 
 `resolve=true` 결과는 항목마다 `origin`(`declared`·`transitive`)과 전이 경로 `via`(예 `egovframe-rte-ptl-mvc → spring-webmvc`), 선언과 다르게 해석된 버전(`treeVersion`·`resolution.differs`)을 담고, parent 가 관리하는 좌표가 기준 미만 버전으로 해석되면 비고에 알립니다. 해석에 실패하면 선언 기준 결과에 이유를 붙여 돌려줍니다.
