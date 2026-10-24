@@ -6,6 +6,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { diagnoseProject } from "./diagnose.js";
+import { stripJavaComments, stripMarkupComments } from "./secure-coding.js";
 import { DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
 import { bundleOsvQuery, osvProvenanceNote } from "./offline-bundle.js";
 import { detectWorkspace, isMultiModule, moduleOf, type Workspace } from "./workspace.js";
@@ -331,6 +332,47 @@ function grepEvidence(dir: string, files: string[], re: RegExp, filter?: (rel: s
   return out;
 }
 
+/** CSRF 비활성화 표현(주석 제거 후 텍스트에 적용): 메서드 참조·람다·레거시 체인·XML 속성 */
+const CSRF_DISABLED = [
+  /\bcsrf\s*\(\s*[\w.]+\s*::\s*disable\s*\)/g,
+  /\bcsrf\s*\(\s*\(?\s*\w+\s*\)?\s*->\s*(?:\{\s*)?[\w.]+\s*\.\s*disable\s*\(\s*\)\s*;?\s*\}?\s*\)/g,
+  /\bcsrf\s*\(\s*\)\s*\.\s*disable\s*\(\s*\)/g,
+  /<(?:[\w-]+:)?csrf\b[^>]*\bdisabled\s*=\s*["']true["']/gi,
+  /egov-security:config[^>]*\bcsrf\s*=\s*["']false["']/gi,
+];
+const CSRF_ENABLED = /<(?:[\w-]+:)?csrf\b|\.csrf\s*\(|CsrfFilter|CsrfTokenRepository|csrfAccessDeniedUrl|_csrf|egov-security:config[^>]*csrf/i;
+const blankKeepNewlines = (s: string) => s.replace(/[^\n]/g, " ");
+
+/** 주석·import 를 뺀 실제 설정만 보고 CSRF 활성/비활성 근거를 줄 번호와 함께 모은다. 비활성 표현은 활성 후보에서 제외한다. */
+function scanCsrf(dir: string, files: string[]): { enabled: SecurityCheck["evidence"]; disabled: SecurityCheck["evidence"] } {
+  const enabled: SecurityCheck["evidence"] = [];
+  const disabled: SecurityCheck["evidence"] = [];
+  for (const abs of files) {
+    const ext = path.extname(abs);
+    if (!CHECK_EXT.has(ext)) continue;
+    const rel = path.relative(dir, abs).split(path.sep).join("/");
+    if (rel.includes("/test/")) continue;
+    let text: string;
+    try { text = fs.readFileSync(abs, "utf8"); } catch { continue; }
+    if (ext === ".java") text = stripJavaComments(text).replace(/^[ \t]*import\b[^\n]*/gm, blankKeepNewlines);
+    else if (ext === ".xml") text = stripMarkupComments(text);
+    else text = text.replace(/^[ \t]*#[^\n]*/gm, blankKeepNewlines);
+    const lines = text.split("\n");
+    let rest = text;
+    for (const re of CSRF_DISABLED) {
+      for (const m of text.matchAll(re)) {
+        const at = m.index ?? 0;
+        const ln = text.slice(0, at).split("\n").length;
+        if (disabled.length < 5) disabled.push({ file: rel, line: ln, text: lines[ln - 1].trim().slice(0, 160) });
+        rest = rest.slice(0, at) + blankKeepNewlines(m[0]) + rest.slice(at + m[0].length);
+      }
+    }
+    const restLines = rest.split("\n");
+    for (let i = 0; i < restLines.length && enabled.length < 5; i++) if (CSRF_ENABLED.test(restLines[i])) enabled.push({ file: rel, line: i + 1, text: lines[i].trim().slice(0, 160) });
+  }
+  return { enabled, disabled };
+}
+
 /** 프로젝트 의존성을 기준 버전과 대조하고 보안 설정 존재 여부를 점검한다. (읽기 전용) */
 export async function checkDependencies(opts: CheckDependenciesOptions): Promise<CheckDependenciesResult> {
   let baseline = loadDependencyBaseline();
@@ -439,8 +481,15 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
     evidence: secComponents.map((c) => ({ file: c.matchedPrefix, line: 0, text: c.id })),
     hint: secComponents.length ? "" : L("add_egovframe_components(componentIds=[\"sec.security\"]) 로 설치하거나, 자체 Spring Security 설정을 쓰는 경우 아래 CSRF·헤더 항목으로 확인", "Install with add_egovframe_components(componentIds=[\"sec.security\"]), or if you use your own Spring Security configuration, verify via the CSRF and header checks below"),
   });
-  const csrf = grepEvidence(dir, files, /<csrf\b|\.csrf\(|CsrfFilter|CsrfTokenRepository|csrfAccessDeniedUrl|_csrf|egov-security:config[^>]*csrf/i, (rel) => !rel.includes("/test/"));
-  checks.push({ id: "csrf", title: L("CSRF 보호 설정", "CSRF protection configured"), status: csrf.length ? "ok" : "missing", evidence: csrf, hint: csrf.length ? "" : L("Spring Security 의 csrf() 또는 <csrf/> 설정(EgovSecurityConfig 의 csrf 속성)을 켜세요", "Enable Spring Security csrf() or the <csrf/> setting (csrf attribute of EgovSecurityConfig)") });
+  const csrfScan = scanCsrf(dir, files);
+  const csrfOff = csrfScan.disabled.length > 0;
+  checks.push({
+    id: "csrf", title: L("CSRF 보호 설정", "CSRF protection configured"),
+    status: !csrfOff && csrfScan.enabled.length ? "ok" : "missing",
+    evidence: csrfOff ? [...csrfScan.disabled, ...csrfScan.enabled].slice(0, 5) : csrfScan.enabled,
+    hint: csrfOff ? L("CSRF 비활성화 설정이 보입니다(활성 설정과 함께 있어도 마찬가지). 세션·쿠키 인증을 쓴다면 의도한 것인지 검토하세요(토큰 기반 무상태 API 라면 정당할 수 있음)", "A CSRF-disabling configuration is present (even if an enabling one also exists). Review whether this is intended when using session/cookie authentication (it can be legitimate for stateless token-based APIs)")
+      : csrfScan.enabled.length ? "" : L("Spring Security 의 csrf() 또는 <csrf/> 설정(EgovSecurityConfig 의 csrf 속성)을 켜세요", "Enable Spring Security csrf() or the <csrf/> setting (csrf attribute of EgovSecurityConfig)"),
+  });
   const xss = grepEvidence(dir, files, /HTMLTagFilter|XssFilter|XSSFilter|xss-?filter|EgovXssFilter|Lucy|XssEscapeServletFilter/i, (rel) => /web\.xml$|\.java$|\.xml$/.test(rel) && !rel.includes("/test/"));
   checks.push({ id: "xss-filter", title: L("XSS 방어 필터(HTMLTagFilter 등)", "XSS defense filter (HTMLTagFilter etc.)"), status: xss.length ? "ok" : "missing", evidence: xss, hint: xss.length ? "" : L("web.xml 에 org.egovframe.rte.ptl.mvc.filter.HTMLTagFilter 를 등록하거나 Lucy-XSS 등 필터를 적용하세요", "Register org.egovframe.rte.ptl.mvc.filter.HTMLTagFilter in web.xml or apply a filter such as Lucy-XSS") });
   const headers = grepEvidence(dir, files, /HeaderWriterFilter|X-Frame-Options|Content-Security-Policy|X-Content-Type-Options|Strict-Transport-Security|\.headers\(|<headers\b|frameOptions|contentSecurityPolicy/i, (rel) => !rel.includes("/test/"));
