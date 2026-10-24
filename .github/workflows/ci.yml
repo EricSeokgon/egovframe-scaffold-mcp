@@ -39,7 +39,7 @@ jobs:
         run: npm run prepublishOnly
 
       - name: Dependency audit (runtime)
-        if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22'
         run: npm audit --omit=dev --audit-level=high
 
   # 공식 저장소를 실제로 내려받는 통합 테스트는 한 환경에서만 실행한다(네트워크·시간 비용).
