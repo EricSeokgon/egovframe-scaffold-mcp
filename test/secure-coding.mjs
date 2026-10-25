@@ -144,7 +144,14 @@ assert(one("view.jsp", 2, "xss-jsp-request", "high") && one("view.jsp", 3, "xss-
 assert(none("view.jsp", 4) && none("view.jsp", 5) && none("view.jsp", 7) && none("view.jsp", 9) && none("view.jsp", 10), "XSS 음성: <c:out>·커스텀 태그 속성(c:if test·spring:message code)·fn:escapeXml·상수 c:out·JSP 주석");
 assert(one("view.jsp", 8, "xss-cout-unescaped", "medium"), "<c:out escapeXml=\"false\">(값 안의 '<br/>' 포함) medium");
 assert(one("Web.java", 3, "path-traversal", "high") && one("Web.java", 4, "open-redirect", "medium") && none("Web.java", 5), "경로 조작 high·리다이렉트 medium·고정 경로 음성");
-assert(one("Web.java", 6, "os-command", "high") && at("Web.java", 6)[0].note.includes("요청 파라미터") && one("Web.java", 7, "os-command", "medium"), "명령 실행: 요청 파라미터와 같은 줄이면 high, 아니면 medium(확인 필요)");
+{
+  const r0 = await checkSecureCoding({ projectDir: proj, dataFlow: false });
+  const w = (ln) => r0.findings.filter((f) => f.file.endsWith("Web.java") && f.line === ln);
+  assert(w(6)[0]?.severity === "high" && w(6)[0].note.includes("요청 파라미터") && w(7)[0]?.severity === "medium" && r0.findings.every((f) => !f.flow), "dataFlow=false: v1.4 까지와 같은 패턴 판정(흐름 필드 없음)");
+  assert(r0.findings.length === r.findings.length && r0.findings.map((f) => f.fingerprint).sort().join() === r.findings.map((f) => f.fingerprint).sort().join(), "흐름 분석은 지문을 바꾸지 않음(등급·note 만)");
+}
+// v1.5: 데이터 흐름 — 요청 값이 인자로 들어가면 high(경로를 note·flow 에), 상수만이면 low
+assert(one("Web.java", 6, "os-command", "high") && at("Web.java", 6)[0].flow?.status === "tainted" && at("Web.java", 6)[0].note.includes("request.getParameter") && one("Web.java", 7, "os-command", "low") && at("Web.java", 7)[0].flow?.status === "constant", "명령 실행: 요청 값이 들어가면 high(흐름 확인), 상수만이면 low");
 assert(one("Web.java", 8, "debug-code", "low") && one("Web.java", 9, "print-stack-trace", "low") && one("Web.java", 10, "empty-catch", "low") && one("Web.java", 11, "empty-catch", "low") && none("Web.java", 14), "디버그 출력·printStackTrace·빈 catch(한 줄·주석만 있는 여러 줄)·로그 처리 음성");
 assert(one("Crypto.java", 2, "weak-hash") && none("Crypto.java", 3) && one("Crypto.java", 4, "weak-cipher") && one("Crypto.java", 5, "weak-cipher") && none("Crypto.java", 6), "약한 해시(MD5)·암호(DES·AES 단독=ECB) 양성, SHA-256·AES/GCM 음성");
 assert(one("Crypto.java", 7, "insecure-random") && none("Crypto.java", 12), "난수: 보안 문맥(token)만 양성");

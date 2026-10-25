@@ -84,7 +84,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 
 > "감리 전에 `~/work/portal` 의 보안약점·SBOM·평가서를 뽑아 줘."
 
-- `check_egovframe_secure_coding(projectDir, sarifPath="egovframe-secure.sarif")` — 개발보안 가이드 보안약점. 공통컴포넌트 원본·수정본·프로젝트 코드로 출처를 나누고, `.egovframe-secure-ignore.json` 으로 검토한 예외를 관리합니다.
+- `check_egovframe_secure_coding(projectDir, sarifPath="egovframe-secure.sarif")` — 개발보안 가이드 보안약점. v1.5 부터 메서드 안 데이터 흐름으로 요청 값이 SQL·파일 경로·명령에 들어가는지 확인해 등급을 올리고, 상수만 쓰는 곳은 내려 오탐 소명 부담을 줄입니다. 공통컴포넌트 원본·수정본·프로젝트 코드로 출처를 나누고, `.egovframe-secure-ignore.json` 으로 검토한 예외를 관리합니다.
 - `generate_egovframe_sbom(projectDir, dryRun=false, supplier="○○기관")` → `check_egovframe_sbom(projectDir, offline=false)` — CycloneDX SBOM 을 만들고 제출 최소 요소 7종과 생성 이후 새 취약점을 점검합니다.
 - `generate_egovframe_report(projectDir, sections=["assessment"], outputPath="assessment.md")` — 전환 난이도·공급망 상태 등급(A–D)과 산식이 들어간 평가서.
 - `prepare_egovframe_delivery(projectDir, outputDir="~/delivery/1차", dryRun=false, offline=false, supplier="○○기관")` — 위 산출물을 전부 한 디렉터리에 모읍니다(SBOM CycloneDX·SPDX, VEX 초안, SARIF, 배포 산출물 포함). 파일별 sha256 과 전체 지문(rootHash)이 든 `delivery-manifest.json` 과 목차가 생기고, 다음 차수에 `previousDelivery` 를 주면 달라진 점(등급·SBOM·새 취약점·새 보안약점)을 `diff.md` 로 냅니다. 받은 쪽은 `verify=true` 로 변조·누락을 확인합니다.

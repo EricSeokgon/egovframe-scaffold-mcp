@@ -14,6 +14,7 @@ import { resolveOutputPath } from "./sbom.js";
 import { SERVER_VERSION } from "./version.js";
 import { detectWorkspace, isMultiModule, moduleOf } from "./workspace.js";
 import { L, tr } from "./lang.js";
+import { analyzeJavaFlows, type FlowSink, type SinkFlow } from "./java-flow.js";
 
 export type SecureSeverity = "high" | "medium" | "low";
 export type SecureTarget = "java" | "jsp" | "mapper" | "sqlmap" | "config";
@@ -26,6 +27,8 @@ export type SecureRule = {
   /** JSP: 접두어가 있는 태그(<c:if test=…>·<spring:message code=…> 등)를 지운 뒤 찾는다 — 속성 안의 EL 은 출력되지 않음 */
   stripCustomTags?: boolean;
   downgrade?: NearRule; escalate?: NearRule; requireNear?: NearRule;
+  /** v1.5: 메서드 안 데이터 흐름 — 위험 호출 인자가 요청 값에서 왔으면 tainted 등급, 상수만이면 constant 등급, detect 면 패턴이 놓친 흐름도 보고 */
+  flow?: { sink: FlowSink; tainted?: SecureSeverity; constant?: SecureSeverity; detect?: boolean };
   message: string; fix: string;
 };
 export type SecureRules = {
@@ -104,6 +107,8 @@ export interface SecureFinding {
   origin: SecureOrigin; component?: string;
   /** 줄 이동에 강한 지문(규칙·파일·정규화한 코드 줄·같은 줄 순번) */
   fingerprint: string;
+  /** v1.5: 메서드 안 데이터 흐름 판정(흐름 규칙만). tainted 면 소스 → 위험 호출 경로 */
+  flow?: { status: SinkFlow["status"]; method: string; path: { line: number; code: string; step: string }[]; detected?: boolean };
   isNew?: boolean;
 }
 export interface SecureIgnore { rule: string; path: string; line?: number; reason: string; reviewer: string }
@@ -120,6 +125,8 @@ export interface SecureCodingOptions {
   includeTests?: boolean;
   maxFiles?: number;
   maxFindings?: number;
+  /** v1.5: 메서드 안 데이터 흐름 분석(기본 true) — false 면 v1.4 까지의 패턴 판정만 */
+  dataFlow?: boolean;
 }
 export interface SecureCodingResult {
   projectDir: string;
@@ -136,6 +143,8 @@ export interface SecureCodingResult {
   suppressions: { applied: number; invalid: string[]; file: string | null };
   baseline?: { path: string; findings: number; resolved: number };
   sarif?: { path: string; written: boolean; overwritten: boolean; results: number };
+  /** v1.5: 데이터 흐름 판정 집계(흐름 규칙의 항목) */
+  dataFlow?: { enabled: boolean; tainted: number; constant: number; unknown: number; detected: number };
   notes: string[];
   disclaimer: string;
 }
@@ -235,6 +244,9 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
     const lines = clean.split("\n");
     const origLines = text.split("\n");
     const { origin, component } = originOf(rel, buf);
+    // v1.5: 흐름 규칙이 있는 Java 파일만 한 번 분석
+    let flows: SinkFlow[] | null = null;
+    const flowsOf = () => (flows ??= analyzeJavaFlows(clean));
     const near = (i: number, re: RegExp, w: number) => { for (let k = Math.max(0, i - w); k <= Math.min(lines.length - 1, i + w); k++) if (re.test(lines[k])) return true; return false; };
     for (const c of mine) {
       if (c.fileHas && !c.fileHas.test(clean)) continue;
@@ -248,18 +260,38 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
         lines.forEach((raw, i) => { const l = c.r.stripCustomTags ? raw.replace(CUSTOM_TAG, (t) => " ".repeat(t.length)) : raw; const m = c.re.exec(l); if (m && !(c.unless && c.unless.test(l))) hits.push({ line: i, col: m.index + 1 }); });
       }
       const seen = new Map<string, number>();
+      const flowRule = target === "java" && opts.dataFlow !== false ? c.r.flow : undefined;
+      const flowAt = (line1: number): SinkFlow | undefined => flowsOf().find((f) => f.sink === flowRule!.sink && f.line === line1) ?? flowsOf().find((f) => f.sink === flowRule!.sink && f.line > line1 && f.line <= line1 + 2);
+      const usedFlows = new Set<SinkFlow>();
+      const push = (h: { line: number; col: number }, severity: SecureSeverity, note: string | undefined, flow?: SecureFinding["flow"]) => {
+        if (isTest) { severity = "low"; note = [note, L("테스트 코드 — 등급을 낮춤", "test code — severity lowered")].filter(Boolean).join(" · "); }
+        const code = (origLines[h.line] ?? "").trim().slice(0, 240);
+        const key = `${c.r.id}|${rel}|${code.replace(/\s+/g, " ")}`;
+        const nth = (seen.get(key) ?? 0) + 1; seen.set(key, nth);
+        const fingerprint = createHash("sha256").update(`${key}|${nth}`).digest("hex").slice(0, 32);
+        raw.push({ rule: c.r.id, guideItem: tr(c.r, "guideItem"), category: tr(c.r, "category"), cwe: c.r.cwe, severity, file: rel, line: h.line + 1, column: h.col, code, message: tr(c.r, "message"), fix: tr(c.r, "fix"), ...(note ? { note } : {}), origin, ...(component ? { component } : {}), fingerprint, ...(flow ? { flow } : {}) });
+      };
+      const pathText = (f: SinkFlow) => f.path.map((p) => `L${p.line} ${p.step}`).join(" → ");
       for (const h of hits) {
         if (c.req && !near(h.line, c.req.re, c.req.window)) continue;
         let severity = c.r.severity;
         let note: string | undefined;
         if (c.up && near(h.line, c.up.re, c.up.window)) { severity = c.up.severity ?? severity; note = c.up.note ? tr(c.up, "note") : undefined; }
         else if (c.down && near(h.line, c.down.re, c.down.window)) { severity = c.down.severity ?? severity; note = c.down.note ? tr(c.down, "note") : undefined; }
-        if (isTest) { severity = "low"; note = [note, L("테스트 코드 — 등급을 낮춤", "test code — severity lowered")].filter(Boolean).join(" · "); }
-        const code = (origLines[h.line] ?? "").trim().slice(0, 240);
-        const key = `${c.r.id}|${rel}|${code.replace(/\s+/g, " ")}`;
-        const nth = (seen.get(key) ?? 0) + 1; seen.set(key, nth);
-        const fingerprint = createHash("sha256").update(`${key}|${nth}`).digest("hex").slice(0, 32);
-        raw.push({ rule: c.r.id, guideItem: tr(c.r, "guideItem"), category: tr(c.r, "category"), cwe: c.r.cwe, severity, file: rel, line: h.line + 1, column: h.col, code, message: tr(c.r, "message"), fix: tr(c.r, "fix"), ...(note ? { note } : {}), origin, ...(component ? { component } : {}), fingerprint });
+        let flow: SecureFinding["flow"];
+        const f = flowRule ? flowAt(h.line + 1) : undefined;
+        if (f) {
+          usedFlows.add(f);
+          flow = { status: f.status, method: f.method, path: f.path };
+          if (f.status === "tainted" && flowRule!.tainted) { severity = flowRule!.tainted; note = L(`데이터 흐름 확인(${f.method}): ${pathText(f)}`, `data flow confirmed (${f.method}): ${pathText(f)}`); }
+          else if (f.status === "constant" && flowRule!.constant) { severity = flowRule!.constant; note = L(`상수만 결합 — 메서드 안에서 외부 입력이 들어가지 않음(${f.method})`, `constants only — no external input reaches it inside the method (${f.method})`); }
+        }
+        push(h, severity, note, flow);
+      }
+      // v1.5: 패턴이 놓친 흐름(변수를 거쳐 들어온 요청 값)
+      if (flowRule?.detect) for (const f of flowsOf()) {
+        if (f.sink !== flowRule.sink || f.status !== "tainted" || usedFlows.has(f) || hits.some((h) => h.line + 1 === f.line)) continue;
+        push({ line: f.line - 1, col: f.column }, flowRule.tainted ?? c.r.severity, L(`데이터 흐름으로 찾음(${f.method}) — 변수를 거쳐 들어온 요청 값: ${pathText(f)}`, `found by data flow (${f.method}) — request value passed through variables: ${pathText(f)}`), { status: f.status, method: f.method, path: f.path, detected: true });
       }
     }
   }
@@ -310,6 +342,7 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
     truncated: kept.length > maxFindings,
     suppressions: { applied: suppressed, invalid: ign.invalid, file: ign.file },
     ...(baseline ? { baseline } : {}),
+    dataFlow: { enabled: opts.dataFlow !== false, tainted: kept.filter((f) => f.flow?.status === "tainted").length, constant: kept.filter((f) => f.flow?.status === "constant").length, unknown: kept.filter((f) => f.flow?.status === "unknown").length, detected: kept.filter((f) => f.flow?.detected).length },
     notes, disclaimer: tr(all, "disclaimer"),
   };
 
@@ -356,7 +389,9 @@ export function toSarif(r: Pick<SecureCodingResult, "findings">, rules: SecureRu
         message: { text: `${f.guideItem}: ${f.message}${f.note ? ` (${f.note})` : ""}` },
         locations: [{ physicalLocation: { artifactLocation: { uri: f.file, uriBaseId: "%SRCROOT%" }, region: { startLine: f.line, startColumn: Math.max(1, f.column), snippet: { text: f.code } } } }],
         partialFingerprints: { "egovframe/v1": f.fingerprint },
-        properties: { origin: f.origin, ...(f.component ? { component: f.component } : {}), severity: f.severity, ...(f.isNew !== undefined ? { isNew: f.isNew } : {}) },
+        // v1.5: 메서드 안 데이터 흐름(소스 → 위험 호출) — GitHub code scanning 이 경로로 보여 준다
+        ...(f.flow?.status === "tainted" && f.flow.path.length ? { codeFlows: [{ message: { text: f.flow.method }, threadFlows: [{ locations: f.flow.path.map((p) => ({ location: { physicalLocation: { artifactLocation: { uri: f.file, uriBaseId: "%SRCROOT%" }, region: { startLine: p.line, snippet: { text: p.code } } }, message: { text: p.step } } })) }] }] } : {}),
+        properties: { origin: f.origin, ...(f.component ? { component: f.component } : {}), severity: f.severity, ...(f.isNew !== undefined ? { isNew: f.isNew } : {}), ...(f.flow ? { dataFlow: f.flow.status, ...(f.flow.detected ? { detectedByFlow: true } : {}) } : {}) },
       })),
       originalUriBaseIds: { "%SRCROOT%": { description: { text: L("프로젝트 루트", "project root") } } },
     }],
@@ -380,6 +415,8 @@ export function renderSecureCodingMarkdown(r: SecureCodingResult, top = 40): str
   out.push(L(`- **높음 ${s.high} · 중간 ${s.medium} · 낮음 ${s.low}** (합계 ${s.total}${s.new !== null ? ` · 새로 생김 ${s.new}` : ""}${s.suppressed ? ` · 예외 처리 ${s.suppressed}` : ""})`, `- **high ${s.high} · medium ${s.medium} · low ${s.low}** (total ${s.total}${s.new !== null ? ` · new ${s.new}` : ""}${s.suppressed ? ` · suppressed ${s.suppressed}` : ""})`));
   const o = Object.entries(r.byOrigin).filter(([, n]) => n);
   if (o.length) out.push(L(`- 출처: ${o.map(([k, n]) => `${originLabel(k as SecureOrigin)} ${n}`).join(" · ")}`, `- Origin: ${o.map(([k, n]) => `${originLabel(k as SecureOrigin)} ${n}`).join(" · ")}`));
+  const df = r.dataFlow;
+  if (df?.enabled && df.tainted + df.constant + df.detected > 0) out.push(L(`- 데이터 흐름(메서드 안): 요청 값 확인 ${df.tainted}건${df.detected ? `(그중 패턴 밖에서 찾음 ${df.detected})` : ""} · 상수만 ${df.constant}건 · 판단 불가 ${df.unknown}건`, `- Data flow (intra-method): request value confirmed ${df.tainted}${df.detected ? ` (${df.detected} found beyond the patterns)` : ""} · constants only ${df.constant} · undetermined ${df.unknown}`));
   if (r.baseline) out.push(L(`- 비교: ${r.baseline.path}(이전 ${r.baseline.findings}건) — 해결 ${r.baseline.resolved}건`, `- Baseline: ${r.baseline.path} (${r.baseline.findings} previous findings) — ${r.baseline.resolved} resolved`));
   if (r.sarif) out.push(L(`- SARIF: ${r.sarif.path}(결과 ${r.sarif.results}건${r.sarif.overwritten ? ", 덮어씀" : ""})`, `- SARIF: ${r.sarif.path} (${r.sarif.results} results${r.sarif.overwritten ? ", overwritten" : ""})`));
   if (r.byModule?.length) {

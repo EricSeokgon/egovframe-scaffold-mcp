@@ -289,11 +289,12 @@ export const SecureCodingOutput = loose({
   byRule: z.array(loose({ rule: z.string(), guideItem: z.string(), severity: SecureSeverity, count: z.number().int() })),
   byOrigin: z.record(z.number().int()),
   byModule: z.array(loose({ module: z.string(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), total: z.number().int() })).optional(),
-  findings: z.array(loose({ rule: z.string(), guideItem: z.string(), category: z.string(), cwe: z.number().int(), severity: SecureSeverity, file: z.string(), line: z.number().int(), column: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), note: z.string().optional(), origin: z.enum(["component", "component-modified", "component-unmanaged", "project", "test"]), component: z.string().optional(), fingerprint: z.string(), isNew: z.boolean().optional() })),
+  findings: z.array(loose({ rule: z.string(), guideItem: z.string(), category: z.string(), cwe: z.number().int(), severity: SecureSeverity, file: z.string(), line: z.number().int(), column: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), note: z.string().optional(), origin: z.enum(["component", "component-modified", "component-unmanaged", "project", "test"]), component: z.string().optional(), fingerprint: z.string(), isNew: z.boolean().optional(), flow: loose({ status: z.enum(["tainted", "constant", "unknown"]), method: z.string(), path: z.array(loose({ line: z.number().int(), code: z.string(), step: z.string() })), detected: z.boolean().optional() }).optional() })),
   truncated: z.boolean(),
   suppressions: loose({ applied: z.number().int(), invalid: z.array(z.string()), file: z.string().nullable() }),
   baseline: loose({ path: z.string(), findings: z.number().int(), resolved: z.number().int() }).optional(),
   sarif: loose({ path: z.string(), written: z.boolean(), overwritten: z.boolean(), results: z.number().int() }).optional(),
+  dataFlow: loose({ enabled: z.boolean(), tainted: z.number().int(), constant: z.number().int(), unknown: z.number().int(), detected: z.number().int() }).optional(),
   notes: z.array(z.string()),
   disclaimer: z.string(),
 });
