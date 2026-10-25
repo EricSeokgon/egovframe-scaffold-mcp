@@ -119,7 +119,7 @@ function computeDocsMap() {
       if (st.isDirectory()) { if (!p.includes("/intro")) walk(p); continue; }
       if (!name.endsWith(".md") || name === "_index.md") continue;
       const txt = fs.readFileSync(p, "utf8");
-      const tm = txt.match(/^title:\s*"?([^"\n]+)"?/m);
+      const tm = txt.match(/^[ \t]*title:\s*"?([^"\n]+)"?/m);
       const title = tm ? tm[1].trim() : name;
       if (title.includes("배포")) continue;
       const cnt = new Map();

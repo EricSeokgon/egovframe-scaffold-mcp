@@ -740,11 +740,11 @@
         },
         {
           "path": "common-component/elementary-technology/showmodaldialog.md",
-          "title": "showmodaldialog.md"
+          "title": "showModalDialog 대체 기능"
         },
         {
           "path": "common-component/security/login_session_management.md",
-          "title": "login_session_management.md"
+          "title": "로그인 시간관리"
         }
       ]
     },
@@ -2013,7 +2013,7 @@
       "docs": [
         {
           "path": "common-component/elementary-technology/websocket_messenger.md",
-          "title": "websocket_messenger.md"
+          "title": "웹소켓메신저(v3.2 신규)"
         }
       ],
       "children": [
@@ -2047,7 +2047,7 @@
       "docs": [
         {
           "path": "common-component/elementary-technology/websocket_messenger.md",
-          "title": "websocket_messenger.md"
+          "title": "웹소켓메신저(v3.2 신규)"
         }
       ]
     },
@@ -2077,7 +2077,7 @@
       "docs": [
         {
           "path": "common-component/elementary-technology/websocket_messenger.md",
-          "title": "websocket_messenger.md"
+          "title": "웹소켓메신저(v3.2 신규)"
         }
       ]
     },
@@ -2107,7 +2107,7 @@
       "docs": [
         {
           "path": "common-component/elementary-technology/websocket_messenger.md",
-          "title": "websocket_messenger.md"
+          "title": "웹소켓메신저(v3.2 신규)"
         }
       ]
     },
@@ -2135,7 +2135,7 @@
       "docs": [
         {
           "path": "common-component/elementary-technology/websocket_messenger.md",
-          "title": "websocket_messenger.md"
+          "title": "웹소켓메신저(v3.2 신규)"
         }
       ]
     },
@@ -2210,11 +2210,11 @@
         },
         {
           "path": "common-component/elementary-technology/social_login_naver_google_kakao.md",
-          "title": "social_login_naver_google_kakao.md"
+          "title": "Social Login(Naver, Google, KAKAO)"
         },
         {
           "path": "common-component/security/pw_expiration_management.md",
-          "title": "pw_expiration_management.md"
+          "title": "비밀번호 만료기간 관리"
         }
       ]
     },
@@ -2252,7 +2252,7 @@
       "docs": [
         {
           "path": "common-component/security/department-role-management.md",
-          "title": "department-role-management.md"
+          "title": "부서권한관리"
         }
       ]
     },
@@ -2291,7 +2291,7 @@
       "docs": [
         {
           "path": "common-component/security/group-management.md",
-          "title": "group-management.md"
+          "title": "그룹관리"
         }
       ]
     },
@@ -2324,7 +2324,7 @@
       "docs": [
         {
           "path": "common-component/security/encrypt_decrypt.md",
-          "title": "encrypt_decrypt.md"
+          "title": "암호화 복호화"
         }
       ]
     },
@@ -2410,7 +2410,7 @@
       "docs": [
         {
           "path": "common-component/security/authority-group-management.md",
-          "title": "authority-group-management.md"
+          "title": "권한그룹관리"
         }
       ]
     },
@@ -2450,7 +2450,7 @@
       "docs": [
         {
           "path": "common-component/security/role-management.md",
-          "title": "role-management.md"
+          "title": "롤관리"
         }
       ]
     },
@@ -2753,7 +2753,7 @@
       "docs": [
         {
           "path": "common-component/statistics-reporting/post-statistics.md",
-          "title": "post-statistics.md"
+          "title": "게시물 통계"
         }
       ]
     },
@@ -2810,7 +2810,7 @@
       "docs": [
         {
           "path": "common-component/statistics-reporting/connection-statistics.md",
-          "title": "connection-statistics.md"
+          "title": "접속 통계"
         }
       ]
     },
@@ -2852,7 +2852,7 @@
       "docs": [
         {
           "path": "common-component/statistics-reporting/data-use-statistics.md",
-          "title": "data-use-statistics.md"
+          "title": "자료이용현황 통계"
         }
       ]
     },
@@ -2891,7 +2891,7 @@
       "docs": [
         {
           "path": "common-component/statistics-reporting/report-statistics.md",
-          "title": "report-statistics.md"
+          "title": "보고서 통계"
         }
       ]
     },
@@ -2929,7 +2929,7 @@
       "docs": [
         {
           "path": "common-component/statistics-reporting/screen-statistics.md",
-          "title": "screen-statistics.md"
+          "title": "화면 통계"
         }
       ]
     },
@@ -2967,7 +2967,7 @@
       "docs": [
         {
           "path": "common-component/statistics-reporting/user-statistics.md",
-          "title": "user-statistics.md"
+          "title": "사용자 통계"
         }
       ]
     },
@@ -4396,11 +4396,11 @@
         },
         {
           "path": "common-component/elementary-technology/social_login_naver_google_kakao.md",
-          "title": "social_login_naver_google_kakao.md"
+          "title": "Social Login(Naver, Google, KAKAO)"
         },
         {
           "path": "common-component/security/pw_expiration_management.md",
-          "title": "pw_expiration_management.md"
+          "title": "비밀번호 만료기간 관리"
         }
       ]
     },
@@ -4438,7 +4438,7 @@
       "docs": [
         {
           "path": "common-component/elementary-technology/cmtmanage.md",
-          "title": "cmtmanage.md"
+          "title": "출퇴근 관리"
         }
       ]
     },
@@ -7196,7 +7196,7 @@
       "docs": [
         {
           "path": "common-component/elementary-technology/print_digital_seal.md",
-          "title": "print_digital_seal.md"
+          "title": "전자관인출력"
         },
         {
           "path": "common-component/elementary-technology/print.md",
