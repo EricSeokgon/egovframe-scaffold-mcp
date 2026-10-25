@@ -1,5 +1,5 @@
 // node test/docs-search.mjs — 오프라인 문서 인덱스 검색 검증
-import { loadCatalog, searchDocs } from "../dist/index.js";
+import { searchDocs } from "../dist/index.js";
 function assert(c, m) { if (!c) { console.error("FAIL:", m); process.exitCode = 1; } else console.log("ok:", m); }
 
 const board = searchDocs({ query: "게시판" });
@@ -20,9 +20,6 @@ assert(none.length === 0, "미존재어 → 0건");
 const empty = searchDocs({ query: "   " });
 assert(empty.length === 0, "빈 질의 → 0건");
 
-
-const guides = loadCatalog().components.flatMap((c) => c.docs ?? []);
-assert(guides.every((d) => !d.title.endsWith(".md")), "가이드 제목은 파일 이름 대신 문서 제목");
 const group = searchDocs({ query: "그룹관리" });
 assert(group.some((h) => h.path === "common-component/security/group-management.md" && h.title === "그룹관리"), "그룹관리 → 실제 가이드 제목과 경로");
 const statistics = searchDocs({ query: "게시물 통계" });

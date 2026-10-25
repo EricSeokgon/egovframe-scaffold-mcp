@@ -12,6 +12,10 @@ npm run prepublishOnly   # 빌드 + 게이트 테스트 전부(릴리스 전 필
 
 빌드 없이 소스로 MCP 서버를 띄우려면 클라이언트 설정에 `npx -y tsx /절대경로/src/index.ts` 를, 빌드한 것을 쓰려면 `node /절대경로/dist/index.js` 를 적습니다.
 
+## 가이드 제목 카탈로그 갱신
+
+`node scripts/generate-catalog.mjs --docs <egovframe-docs 경로>`는 가이드의 `title:` 앞 공백·탭 들여쓰기를 허용하며, 제목이 없으면 파일 이름을 사용합니다. 문서 검색은 동봉된 정적 카탈로그의 제목을 사용하므로 문서 원본만 수정해도 검색 제목이 즉시 바뀌지는 않습니다. 재생성 시 고정 소스 아카이브를 사용하고(`--zip`, 필요 시 `--archive-sha256`·`--archive-bytes`; 스크립트 머리말 참고), 제목 갱신과 무관한 문서 매핑·출처 지문 변경은 따로 검토하세요.
+
 ## 검증 체계
 
 - 함수 레벨: 실제 템플릿(약 296파일) 생성, pom 좌표·DbType 적용, 중복 생성 거부, `dryRun` 미리보기(무기록) 확인 (`npm run smoke`)
