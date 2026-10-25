@@ -460,19 +460,22 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   };
 
   if (!offline) {
-    const targets = findings.filter((f) => f.resolvedVersion);
+    const effectiveVersion = (f: DependencyFinding): string | null => f.treeVersion ?? f.resolvedVersion;
+    const targets = findings.filter((f) => effectiveVersion(f));
+    const skipped = findings.length - targets.length;
     const query = opts.osvQuery ?? defaultOsvQuery;
     const vulns: Vulnerability[] = [];
     try {
       for (let i = 0; i < targets.length; i += 100) {
         const chunk = targets.slice(i, i + 100);
-        const res = await query(chunk.map((f) => ({ package: { name: `${f.groupId}:${f.artifactId}`, ecosystem: "Maven" as const }, version: osvVersion(f.resolvedVersion!) })));
+        const res = await query(chunk.map((f) => ({ package: { name: `${f.groupId}:${f.artifactId}`, ecosystem: "Maven" as const }, version: osvVersion(effectiveVersion(f)!) })));
         res.results.forEach((r, j) => {
           const ids = (r.vulns ?? []).map((v) => v.id);
-          if (ids.length) vulns.push({ dependency: `${chunk[j].groupId}:${chunk[j].artifactId}`, version: chunk[j].resolvedVersion!, ids });
+          if (ids.length) vulns.push({ dependency: `${chunk[j].groupId}:${chunk[j].artifactId}`, version: effectiveVersion(chunk[j])!, ids });
         });
       }
       result.vulnerabilities = vulns;
+      if (skipped > 0) result.notes.push(L(`버전을 확정하지 못한 의존성 ${skipped}건은 OSV 조회에서 제외했습니다 — 이 항목들의 취약점 유무는 확인되지 않았습니다(resolve=true 로 트리를 해석하면 관리되는 버전을 조회할 수 있음).`, `${skipped} dependenc${skipped === 1 ? "y" : "ies"} with no determined version were excluded from the OSV query — their vulnerability status is unverified (resolving the tree with resolve=true can supply managed versions).`));
       if (!opts.osvQuery) { const note = osvProvenanceNote(); if (note) result.notes.push(note); }
     } catch (e) {
       result.osvError = L(`OSV 조회 실패: ${e instanceof Error ? e.message : String(e)}`, `OSV query failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -526,7 +529,9 @@ export function renderDependencyMarkdown(r: CheckDependenciesResult): string {
   }
   if (r.vulnerabilities) {
     out.push(``, L(`## 알려진 취약점 (OSV, ${r.vulnerabilities.length}건)`, `## Known vulnerabilities (OSV, ${r.vulnerabilities.length})`), ``);
-    if (r.vulnerabilities.length === 0) out.push(L(`조회한 의존성에 등록된 취약점이 없습니다.`, `No vulnerabilities are registered for the queried dependencies.`));
+    if (r.vulnerabilities.length === 0) out.push(r.findings.some((f) => f.treeVersion ?? f.resolvedVersion)
+      ? L(`조회한 의존성에 등록된 취약점이 없습니다.`, `No vulnerabilities are registered for the queried dependencies.`)
+      : L(`버전을 확정한 의존성이 없어 OSV 조회를 수행하지 않았습니다.`, `No OSV query was performed because no dependency version could be determined.`));
     for (const v of r.vulnerabilities) out.push(`- ${v.dependency}:${v.version} — ${v.ids.slice(0, 6).join(", ")}${v.ids.length > 6 ? L(` 외 ${v.ids.length - 6}건`, ` and ${v.ids.length - 6} more`) : ""} (https://osv.dev/vulnerability/${v.ids[0]})`);
   }
   if (r.osvError) out.push(``, `⚠️ ${r.osvError}`);
