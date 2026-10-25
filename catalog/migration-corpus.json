@@ -87,6 +87,7 @@
             "kr.go.mgov:smeapi"
           ],
           "checksMissing": [
+            "csrf",
             "https-repositories"
           ]
         },
@@ -188,13 +189,15 @@
             "project:smeapi",
             "project:tibero5"
           ],
-          "checksMissing": []
+          "checksMissing": [
+            "csrf"
+          ]
         },
         "grades": {
           "migration": "D",
           "migrationScore": 10,
           "supplyChain": "D",
-          "supplyChainScore": 8
+          "supplyChainScore": 9
         },
         "secure": {
           "total": 516,
@@ -214,9 +217,9 @@
       }
     }
   ],
-  "generatedAt": "2026-10-22",
+  "generatedAt": "2026-10-25",
   "generatedWith": {
-    "version": "1.3.0",
+    "version": "1.5.1",
     "rulesTag": "v5.0.2-Final",
     "baselineSurveyedAt": "2026-10-22"
   },

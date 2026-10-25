@@ -340,7 +340,7 @@ const CSRF_DISABLED = [
   /<(?:[\w-]+:)?csrf\b[^>]*\bdisabled\s*=\s*["']true["']/gi,
   /egov-security:config[^>]*\bcsrf\s*=\s*["']false["']/gi,
 ];
-const CSRF_ENABLED = /<(?:[\w-]+:)?csrf\b|\.csrf\s*\(|CsrfFilter|CsrfTokenRepository|csrfAccessDeniedUrl|_csrf|egov-security:config[^>]*csrf/i;
+const CSRF_ENABLED = /<(?:[\w-]+:)?csrf\b|\.csrf\s*\(|CsrfFilter|CsrfTokenRepository|csrfAccessDeniedUrl|_csrf|egov-security:config[^>]*csrf|\bcsrf\s*=\s*["']true["']/i;
 const blankKeepNewlines = (s: string) => s.replace(/[^\n]/g, " ");
 
 /** 주석·import 를 뺀 실제 설정만 보고 CSRF 활성/비활성 근거를 줄 번호와 함께 모은다. 비활성 표현은 활성 후보에서 제외한다. */
@@ -362,7 +362,9 @@ function scanCsrf(dir: string, files: string[]): { enabled: SecurityCheck["evide
     for (const re of CSRF_DISABLED) {
       for (const m of text.matchAll(re)) {
         const at = m.index ?? 0;
-        const ln = text.slice(0, at).split("\n").length;
+        // 여러 줄에 걸친 태그(egov-security:config 등)는 태그 시작이 아니라 csrf 속성이 있는 줄을 가리킨다.
+        const attr = [...m[0].matchAll(/\bcsrf\b/gi)].pop()?.index ?? 0;
+        const ln = text.slice(0, at + attr).split("\n").length;
         if (disabled.length < 5) disabled.push({ file: rel, line: ln, text: lines[ln - 1].trim().slice(0, 160) });
         rest = rest.slice(0, at) + blankKeepNewlines(m[0]) + rest.slice(at + m[0].length);
       }

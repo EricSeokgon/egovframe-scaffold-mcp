@@ -192,6 +192,11 @@ for (const [name, src] of Object.entries({
 }
 const cXmlOff = await csrfCheck({ "src/main/resources/sec.xml": "<http>\n<csrf disabled=\"true\"/>\n</http>" });
 assert(cXmlOff.status === "missing" && cXmlOff.evidence[0].line === 2, "CSRF XML disabled=true → missing");
+// 공식 공통컴포넌트(3.10·4.3.2)와 같은 꼴: 여러 줄 egov-security:config 의 csrf="false" — 근거는 속성 줄
+const cEgovOff = await csrfCheck({ "src/main/resources/context-security.xml": "<beans>\n<egov-security:config id=\"securityConfig\"\n  loginUrl=\"/login.do\"\n  csrf=\"false\"\n  csrfAccessDeniedUrl=\"/denied.do\"\n/>\n</beans>" });
+assert(cEgovOff.status === "missing" && cEgovOff.evidence[0].line === 4, `egov-security:config csrf="false"(여러 줄) → missing, 근거는 속성 줄 (got ${JSON.stringify(cEgovOff.evidence)})`);
+const cEgovOn = await csrfCheck({ "src/main/resources/context-security.xml": "<beans>\n<egov-security:config id=\"securityConfig\"\n  csrf=\"true\"\n/>\n</beans>" });
+assert(cEgovOn.status === "ok", 'egov-security:config csrf="true" → ok');
 const cConflict = await csrfCheck({ [J]: "class S { void c(Object http) {\n  http.csrf(Customizer.withDefaults());\n  http.csrf(AbstractHttpConfigurer::disable);\n} }" });
 assert(cConflict.status === "missing" && cConflict.evidence[0].line === 3, "CSRF 활성·비활성 충돌 → ok 아님");
 
