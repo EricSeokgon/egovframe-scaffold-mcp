@@ -150,6 +150,8 @@ migrate_egovframe_project(projectDir="/work/my-5x-app", target="5.1.0")         
 - `resolve` — `true` 면 빌드 도구로 의존성 트리를 해석해 전이 의존성까지 판정(Maven `maven-dependency-plugin:3.8.1:tree`, Gradle `dependencies --configuration runtimeClasspath`; 빌드 도구·저장소 접근 필요). `resolveScope` `runtime`(기본) | `all`(test·provided 포함), `resolveTimeoutMs`
 - `format` — `markdown` | `json`
 
+CSRF 보호 점검은 정적 패턴 기반입니다. Java/XML 주석과 Java import만으로는 보호 설정이 있다고 판정하지 않으며, 메서드 참조·람다·레거시 체인·XML의 명확한 비활성화 설정이 보이면 활성 후보가 함께 있어도 `missing`과 검토 안내를 반환합니다. 이는 취약점 확정이 아니며, 여러 보안 체인이나 무상태 토큰 API의 정책상 예외는 사람이 확인해야 합니다.
+
 ```text
 check_egovframe_dependencies(projectDir="/work/my-egov-app", offline=false)
 check_egovframe_dependencies(projectDir="/work/my-egov-app", resolve=true, offline=false)   # 실제로 실리는 artifact 전부

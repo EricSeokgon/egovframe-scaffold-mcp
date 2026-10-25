@@ -140,7 +140,13 @@ write(modern, "pom.xml", `<project>
 </project>
 `);
 write(modern, "src/main/java/egovframework/example/config/EgovSecurityConfig.java", `package egovframework.example.config;
-public class EgovSecurityConfig { void configure(Object http) { /* http.csrf(Customizer.withDefaults()); http.headers(h -> h.frameOptions(f -> f.sameOrigin())); */ } }
+import org.springframework.security.web.csrf.CsrfFilter;
+public class EgovSecurityConfig { void configure(Object http) {
+  // http.csrf(AbstractHttpConfigurer::disable);
+  http
+    .csrf(Customizer.withDefaults())
+    .headers(h -> h.frameOptions(f -> f.sameOrigin()));
+} }
 `);
 write(modern, "src/main/java/egovframework/com/sec/security/Placeholder.java", "class Placeholder {}");
 const r5 = await checkDependencies({ projectDir: modern });
@@ -148,6 +154,46 @@ assert(r5.parent.kind === "web" && r5.parent.status === "ok" && r5.java.value ==
 assert(r5.summary.managed === 2 && r5.summary.outdated === 1 && r5.findings.find((f) => f.artifactId === "egovframe-rte-fdl-cmmn").baseline === rules.target.runtimeVersion, "parent 관리 2 · 명시 5.0.1 → outdated(기준 5.0.2)");
 const chk5 = Object.fromEntries(r5.checks.map((c) => [c.id, c]));
 assert(chk5["sec-security-component"].status === "ok" && chk5["csrf"].status === "ok" && chk5["security-headers"].status === "ok" && chk5["https-repositories"].status === "ok" && chk5["xss-filter"].status === "missing", "5.x 픽스처 보안 점검(sec.security·csrf·headers·https ok, xss missing)");
+
+// ── CSRF: 활성 설정만 ok — 주석·import·비활성(메서드 참조·람다·레거시·XML)·충돌은 ok 가 아님
+const csrfCheck = async (files) => {
+  const d = mkdtempSync(path.join(tmpdir(), "egovcsrf-"));
+  write(d, "pom.xml", "<project><dependencies></dependencies></project>");
+  try {
+    for (const [f, body] of Object.entries(files)) write(d, f, body);
+    return (await checkDependencies({ projectDir: d })).checks.find((x) => x.id === "csrf");
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
+};
+const J = "src/main/java/app/SecurityConfig.java";
+const cOk = await csrfCheck({ [J]: "class S { void c(Object http) {\n  http.csrf(Customizer.withDefaults());\n} }" });
+assert(cOk.status === "ok" && cOk.evidence[0].line === 2, "CSRF Java 활성 → ok + 줄 근거");
+const cXml = await csrfCheck({ "src/main/resources/sec.xml": "<beans>\n<http>\n<csrf/>\n</http></beans>" });
+assert(cXml.status === "ok" && cXml.evidence[0].line === 3, "CSRF XML <csrf/> 활성 → ok");
+const cXmlOn = await csrfCheck({ "src/main/resources/sec.xml": "<http><csrf disabled=\"false\"/></http>" });
+assert(cXmlOn.status === "ok", "CSRF XML disabled=false → ok");
+const cXmlNamespaced = await csrfCheck({ "src/main/resources/sec.xml": "<security:http><security:csrf/></security:http>" });
+assert(cXmlNamespaced.status === "ok", "CSRF XML namespace 설정 → ok");
+const cSpaced = await csrfCheck({ [J]: "class S { void c(Object http) { http.csrf (Customizer.withDefaults()); } }" });
+assert(cSpaced.status === "ok", "CSRF 호출의 괄호 앞 공백 허용");
+const cCommentOnly = await csrfCheck({ [J]: "import org.springframework.security.web.csrf.CsrfFilter;\nclass S { /* http.csrf(Customizer.withDefaults()); */ // http.csrf()\n}", "src/main/resources/c.xml": "<!-- <csrf/> -->" });
+assert(cCommentOnly.status === "missing" && cCommentOnly.evidence.length === 0, "CSRF 주석·import 만 → missing");
+for (const [name, src] of Object.entries({
+  "메서드 참조": "http.csrf(AbstractHttpConfigurer::disable);",
+  "람다": "http.csrf(csrf -> csrf.disable());",
+  "람다 블록": "http.csrf(c -> { c.disable(); });",
+  "레거시": "http.csrf().disable();",
+  "여러 줄": "http\n  .csrf(\n    AbstractHttpConfigurer::disable\n  );",
+  "여러 줄 레거시": "http\n  .csrf()\n  .disable();",
+})) {
+  const r = await csrfCheck({ [J]: `class S { void c(Object http) {\n  ${src}\n} }` });
+  assert(r.status === "missing" && r.evidence.length >= 1 && r.evidence[0].line >= 2 && r.evidence[0].line <= 3 && r.hint.length > 0, `CSRF 비활성(${name}) → ok 아님, 근거 줄 보존 (got ${JSON.stringify(r)})`);
+}
+const cXmlOff = await csrfCheck({ "src/main/resources/sec.xml": "<http>\n<csrf disabled=\"true\"/>\n</http>" });
+assert(cXmlOff.status === "missing" && cXmlOff.evidence[0].line === 2, "CSRF XML disabled=true → missing");
+const cConflict = await csrfCheck({ [J]: "class S { void c(Object http) {\n  http.csrf(Customizer.withDefaults());\n  http.csrf(AbstractHttpConfigurer::disable);\n} }" });
+assert(cConflict.status === "missing" && cConflict.evidence[0].line === 3, "CSRF 활성·비활성 충돌 → ok 아님");
 
 // ── 픽스처: 5.x Boot parent — 공식 egovframe-boot-web 템플릿 pom 과 같은 꼴(버전 없는 starter + 명시 버전 몇 개) → unknown 0 (v0.34 검증 기준)
 const bootProj = mkdtempSync(path.join(tmpdir(), "egovdepboot-"));
