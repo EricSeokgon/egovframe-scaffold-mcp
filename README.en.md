@@ -226,6 +226,10 @@ The server is described for the [MCP Registry](https://registry.modelcontextprot
 | [docs/development.md](docs/development.md) | Local development, test suites, release procedure (contributors) |
 | [docs/planning.md](docs/planning.md) | Planning records per version with outcomes (repository only, not in the npm package) |
 
+## Security
+
+Please report vulnerabilities privately through GitHub (Security → Report a vulnerability), not in public issues. See [SECURITY.md](SECURITY.md) (Korean).
+
 ## License
 
 Apache License 2.0
