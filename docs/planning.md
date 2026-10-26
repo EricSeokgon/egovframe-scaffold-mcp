@@ -2,9 +2,9 @@
 
 버전별 기획 원문과 결과, 선행 조사를 그대로 남긴 기록입니다. 현재 사용법은 [README](../README.md), 변경 내용은 [CHANGELOG](../CHANGELOG.md)를 보세요.
 
-## 진행 현황 (버전별 요약) (2026-10-22)
+## 진행 현황 (버전별 요약) (2026-10-26)
 
-- **소스 기준**: v1.5.0(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
+- **소스 기준**: v1.5.1(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
@@ -40,14 +40,14 @@
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v1.3–v1.5 기획이 모두 끝났습니다. 다음 기획은 아직 없습니다([보류·운영 항목](#보류운영-항목) 참조). [다음 버전 기획](#다음-버전-기획-v13v15) 참조.
+- **다음 계획**: v1.6 외부 저장소 장애 내성 → v1.7 보안약점 자동 조치 → v1.8 CRUD 목록 페이징. [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
 
 v0.31.0까지 프로젝트·CRUD 생성, 검증된 공통컴포넌트 실행 자산 조립, 안전성 기반(테스트 판정 강제·사용자 파일 보호·전 도구 트랜잭션·허용 root·구조화 rollback 보고), 생성→검증 루프(실제 빌드·오류 구조화·테스트 리포트 구조화), 공식 템플릿 카탈로그 단일화와 커버리지 확대(22종 중 21종), 설정 파일 생성, 5.x 전환(진단·적용), 의존성 점검, 운영 편의(네트워크 진단·AGENTS.md·영문 설명·레지스트리 메타데이터)를 완료했습니다.
 
-v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). v0.47 로 멀티 모듈·MSA 대응을 마쳤습니다([v0.47](#이전-기획-v047-완료)). v1.0.0 으로 0.x 를 끝내고 공개 API 를 고정했으며([버전 정책](versioning.md)), v1.1–v1.2 로 납품 패키지와 응답 영문화·진행 알림을 마쳤습니다([v1.0–v1.2](#이전-기획-v10v12-완료)). 다음 v1.3–v1.5 의 범위는 [다음 버전 기획](#다음-버전-기획-v13v15)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
+v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공통컴포넌트 대응표, 의존성 기준 완성과 규칙·기준 drift 감시를, v0.35–v0.37 로 릴리스 자동화, 해석된 의존성 트리와 SBOM, 전환 준비도 평가서와 회귀 코퍼스를, v0.38–v0.40 으로 공통컴포넌트 재조립 실행, CLI 모드와 CI 공급망 게이트, SBOM 운영(최소 요소·비교·VEX)을, v0.41–v0.43 으로 전환 리허설, 폐쇄망 오프라인 번들, GitLab·Jenkins CI 와 SPDX 를 마쳤습니다(기획 원문과 결과: [v0.41–v0.43](#이전-기획-v041v043-완료) · [v0.38–v0.40](#이전-기획-v038v040-완료) · [v0.35–v0.37](#이전-기획-v035v037-완료)). v0.44–v0.46 으로 보안약점 점검, 컨테이너·배포 산출물, 5.x 최신 유지와 생성 CI 실행 검증을 마쳤습니다([v0.44–v0.46](#이전-기획-v044v046-완료)). v0.47 로 멀티 모듈·MSA 대응을 마쳤습니다([v0.47](#이전-기획-v047-완료)). v1.0.0 으로 0.x 를 끝내고 공개 API 를 고정했으며([버전 정책](versioning.md)), v1.1–v1.2 로 납품 패키지와 응답 영문화·진행 알림을 마쳤습니다([v1.0–v1.2](#이전-기획-v10v12-완료)). v1.3–v1.5 로 표준프레임워크 5.1.0 대응, DDL 기반 CRUD, 보안약점 데이터 흐름을 마쳤습니다([v1.3–v1.5](#이전-기획-v13v15-완료)). 다음 v1.6–v1.8 의 범위는 [다음 버전 기획](#다음-버전-기획-v16v18)에 있습니다. Homebrew 탭은 후순위에서 내렸습니다(npx 로 충분).
 
 | 버전 | 핵심 기능 | 목표 |
 |---|---|---|
@@ -84,9 +84,101 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.2 완료** | 응답 영문화 + 진행 알림 | `EGOVFRAME_LANG=en`·`--lang en` 으로 응답 본문·규칙 사유·CLI 문구 영문(ko 출력은 goldens 와 바이트 동일), 장시간 도구 8종의 `notifications/progress` 와 `notifications/cancelled` 시 프로세스 트리 종료·롤백 |
 | **v1.3 완료** | 표준프레임워크 5.1.0 대응 | 저장소에 배포된 5.1.0(BOM `egovframe-rte-root`)으로 의존성 기준·5.x 최신 유지·전환 목표·SBOM 판정, `-egov.N` 재빌드 좌표, jar·sources jar 근거(태그 생기면 교체) |
 | **v1.4 완료** | Initializr v5.0.7 정렬 + DDL 기반 CRUD | `generate_egovframe_crud(ddl, search)`: CREATE TABLE 해석(공식 결함 경계 고정), 방언 중립 LIKE `<bind>`, 검색 필드 이스케이프, 템플릿 카탈로그 v5.0.7 |
-| **v1.5 완료** | 보안약점 정밀화 | 메서드 안 데이터 흐름으로 등급 상·하향, SARIF `codeFlows`, 오탐 표본 정밀도 수치 |
+| **v1.5 완료** | 보안약점 정밀화 | 메서드 안 데이터 흐름으로 등급 상·하향, SARIF `codeFlows`, 오탐 표본 정밀도 수치 (배포는 1.5.1 — 기여 수정 #72·#73 포함) |
+| **v1.6 계획** | 외부 저장소 장애 내성 | 생성 CI·빌드 도구의 Maven 재시도·미러, 일시 장애 분류(`failureKind`), 장애 주입 테스트, SDK 1.32.2 |
+| **v1.7 계획** | 보안약점 자동 조치 | 새 도구 `fix_egovframe_secure_coding`(36종): 결과가 같음을 보장할 수 있는 항목만 dryRun·transaction 으로 고치고 재점검·compile 로 확인 |
+| **v1.8 계획** | CRUD 목록 페이징 | `generate_egovframe_crud(paging)`: 방언별 페이징 SQL·`PaginationInfo`·`ui:pagination`, 실제 MyBatis·HSQLDB 실행 검증 |
 
-## 다음 버전 기획 (v1.3–v1.5)
+## 다음 버전 기획 (v1.6–v1.8)
+
+v1.5.1 까지 끝난 상태(2026-10-26, 도구 35종 + CLI 명령 12종)에서 다음 세 릴리스를 아래 순서로 진행합니다. 출발점은 두 가지 실측입니다. 첫째, 표준프레임워크 Maven 저장소(`maven.egovframe.go.kr`)의 일시 장애(503·연결 끊김)가 이 저장소 CI 를 반복해서 깨뜨렸고, 이 도구가 만든 CI·빌드도 사용자 환경에서 같은 장애를 그대로 맞습니다. 둘째, 공식 공통컴포넌트 v4.3.2 의 보안약점 점검 결과 516건 중 488건이 기계적으로 고칠 수 있는 세 규칙(`xss-cout-unescaped` 304·`debug-code` 155·`print-stack-trace` 29)이라, 감리 대응에서 "찾기"보다 "고치기"가 비용입니다. 세 버전 모두 공개 API 를 깨지 않는 MINOR 입니다(v1.7 은 도구 추가).
+
+### v1.6.0 — 외부 저장소 장애 내성
+
+**목표**: 원격 저장소의 일시 장애를 생성물과 도구가 스스로 견디고, 견디지 못하면 "코드 문제가 아님"을 구분해 알립니다. 지금은 생성 CI(`generate_egovframe_ci` 의 GitHub·GitLab·Jenkins)가 `mvn -B verify` 를 재시도 없이 실행하고, `build_`·`test_egovframe_project`·`rehearse_egovframe_migration` 은 503 을 컴파일 실패와 같은 "실패"로 보고합니다. 생성 Dockerfile 만 v0.45 부터 Maven HTTP 재시도를 씁니다.
+
+**범위 (포함)**
+- **생성 CI 의 Maven 재시도**: 세 플랫폼 생성물에 `MAVEN_ARGS`(HTTP 재시도 5회·5xx 포함, Maven 3.9 `aether.connector.http.retryHandler.*`)를 넣고, 명령 단위 재시도(일시 장애 문구일 때만 두 번째부터 `-U`)를 둡니다. 저장소 CI 의 `scripts/mvn-retry.sh` 와 같은 판정 문구를 씁니다.
+- **미러**: 선택 파라미터 `mavenMirror`(URL)와 환경 변수 `EGOVFRAME_MAVEN_MIRROR` — 생성 CI·Dockerfile·빌드 도구가 `settings.xml` 의 `<mirror>`(대상 `egovframe`·`central`)로 사내 Nexus·Artifactory 프록시를 씁니다. 기존 폐쇄망 레지스트리 변수와 같은 자리에 둡니다.
+- **일시 장애 분류**: `build_`·`test_egovframe_project`·`rehearse_egovframe_migration`·`migrate(verify)` 결과에 `failureKind`(`"compile" | "test" | "repository-unavailable" | "timeout" | "other"`)와 실패한 저장소 URL·상태 코드를 더합니다. `repository-unavailable` 이면 `diagnose_egovframe_network` 처방을 붙이고, 선택 파라미터 `retryTransient`(기본 1회)로 다시 실행합니다.
+- **CI 쪽 정리**: `test:ci-run-live` 의 Jenkins 컨테이너 안 Maven 에도 같은 재시도를 적용합니다. 외부 기여 #71(audit 이 Node 22 에서 실제 실행)을 반영합니다. 릴리스가 main CI 일시 실패로 건너뛰어진 경우(1.5.0) 다시 배포하는 절차를 `docs/development.md` 에 적습니다(`release.yml` 의 `workflow_dispatch` 는 이미 있음).
+- **SDK**: `@modelcontextprotocol/sdk` 1.32.1 → 1.32.2.
+
+**범위 (제외)**: 저장소 응답 캐시 서버 내장, Gradle 생성물의 미러(Gradle 은 `init.gradle` 이 필요해 후속), 영구 장애 우회(다른 저장소로 자동 전환)
+
+**검증 기준**
+- 장애 주입 테스트(게이트): 처음 N 회 503·연결 끊김을 내고 그다음 정상 응답하는 로컬 HTTP 저장소를 미러로 두고, 생성 CI 의 Maven 명령·`build_egovframe_project` 가 성공하는지, N 이 재시도 한도를 넘으면 `failureKind: "repository-unavailable"` 인지
+- 컴파일 오류는 재시도하지 않음(시도 횟수 1)
+- 생성물: GitLab 공식 스키마·Jenkins 선언형 문법 검증 그대로, `test:ci-run-live` 에서 세 플랫폼 실행 통과
+
+**완료 정의**: 도구 35종 그대로, `docs/tools.md`·`docs/design-deploy.md` 갱신, CHANGELOG
+
+### v1.7.0 — 보안약점 자동 조치 (`fix_egovframe_secure_coding`)
+
+**목표**: `check_egovframe_secure_coding` 이 찾은 항목 중 **동작이 바뀌지 않음을 규칙으로 보장할 수 있는 것**만 고칩니다. 감리 소명 대신 조치 결과(전·후 건수, 변경 패치)를 제출할 수 있게 합니다.
+
+**범위 (포함)**
+- 새 도구 `fix_egovframe_secure_coding`(36종, destructive): 입력은 프로젝트와 규칙·파일 필터, 기본 `dryRun=true`(패치·건수만), 적용은 기존 transaction(백업·실패 복구)과 허용 root 를 따릅니다.
+- 조치 규칙(데이터, `catalog/secure-coding-fixes.json`):
+  - `xss-cout-unescaped`: 줄바꿈 치환(`fn:replace(x, crlf, '<br/>')`)은 `fn:replace(fn:escapeXml(x), crlf, '<br/>')` 로, 단순 값은 `escapeXml="false"` 제거. HTML 을 의도한 값(에디터 본문 등, 규칙에 이름 목록)은 고치지 않고 수동 항목으로 남김
+  - `print-stack-trace`·`debug-code`: 클래스에 로거 필드(`LOGGER`·`log`·`logger`, SLF4J·Commons Logging·Log4j2)가 있으면 그 로거 호출로 바꾸고, 없으면 수동 항목
+  - `cookie-flags`: `new Cookie(...)` 뒤 `setHttpOnly(true)`·`setSecure(true)` 추가(이미 있으면 건너뜀)
+- 결과: 규칙별 고친 수·남은 수와 사유, 파일별 패치, 다시 점검한 지문 비교(사라진 지문 = 고친 항목). 평가서 4절과 납품 패키지에 "조치 내역"을 넣을 수 있게 합니다.
+- CLI `fix`(기본 dryRun, `--apply`).
+
+**범위 (제외)**: 약한 암호·해시 교체(데이터 호환), 하드코드 비밀 이동(배포 설정 필요), SQL 결합 수정, 공통컴포넌트 원본을 고칠지에 대한 정책 판단(관리 대상 컴포넌트는 기본 제외, `includeComponents` 로 포함)
+
+**검증 기준**
+- 공식 공통컴포넌트 v5.0.7·v4.3.2 에서 조치 후 재점검: 대상 규칙 건수 감소를 수치로, 다른 규칙 지문 변화 없음
+- 조치 후 compile(CI 통합, JDK 17) 통과, JSP 는 Jasper 사전 컴파일(`jspc`)로 문법 확인
+- 단위: 규칙별 고침·건너뜀 경계(이미 escape 된 값, 로거 없음, 주석 안), 두 번 적용해도 같은 결과(멱등)
+
+**완료 정의**: 도구 36종, `docs/design-secure-coding.md` 조치 절, `api-contract` minor(도구 추가), CHANGELOG
+
+### v1.8.0 — CRUD 목록 페이징
+
+**목표**: `generate_egovframe_crud` 의 목록이 전체 행을 가져옵니다(v1.4 결과의 범위 밖 항목). 표준프레임워크 화면 관례(`PaginationInfo`·`<ui:pagination>`)와 방언별 페이징 SQL 을 생성해 실사용 목록을 바로 쓰게 합니다.
+
+**범위 (포함)**
+- 선택 파라미터 `paging`(기본 false, true 면 페이지 크기 10·페이지 수 10 — 값 지정 가능)
+- Mapper: `dialect` 별 페이징
+  - MySQL·MariaDB·CUBRID·Altibase·HSQL: `LIMIT #{recordCountPerPage} OFFSET #{firstIndex}`
+  - PostgreSQL: `LIMIT … OFFSET …`
+  - Oracle·Tibero: `OFFSET … ROWS FETCH NEXT … ROWS ONLY`(12c 이상), `oracleLegacy` 옵션이면 `ROWNUM` 감싸기
+  - 건수 쿼리는 v1.4 검색 조건을 그대로 씀
+- classic: VO 에 `firstIndex`·`recordCountPerPage`(공식 `ComDefaultVO` 와 같은 이름), Controller 에 `PaginationInfo`, JSP 에 `<ui:pagination>` 과 렌더러 빈 설정(없을 때만 생성, 있으면 건너뜀)
+- boot(REST): `page`·`size` 파라미터와 `{content, totalCount, page, size}` 응답
+
+**범위 (제외)**: 키셋 페이징, 정렬 컬럼 선택(`ORDER BY ${}` 는 v1.7 관점에서도 위험 — 고정 PK 정렬만)
+
+**검증 기준**
+- `test:crud-search-live` 확장: HSQLDB 의 MySQL·PostgreSQL·Oracle 문법 모드에서 같은 데이터·같은 페이지 결과(첫·중간·마지막 페이지, 검색과 함께)
+- Tibero·Altibase·CUBRID 는 SQL 문자열 단위 테스트
+- 생성 CRUD 의 compile(공식 simple-backend·web-sample), 생성물 보안약점 0건, `paging` 생략 시 v1.7 과 바이트 동일
+
+**완료 정의**: 도구 36종 그대로, `docs/design-crud-generation.md` 갱신, CHANGELOG
+
+### 보류·운영 항목
+
+- **MCP `tasks`**: SDK 1.32.2(2026-10-23)에서도 `experimental/tasks` 입니다. 안정 API 가 되면 장시간 도구에 적용합니다.
+- **5.1.0 공식화**: 2026-10-26 기준 `egovframe-runtime` 에 `v5.1.0-Final` 태그·5.1 브랜치가 없습니다. 태그가 생기면 v1.3 근거를 `git-tag` 로 다시 만들고 전환 기본 목표를 5.1.0 으로 올립니다(MINOR).
+- **외부 기여**: #76(가이드 제목 들여쓰기 처리, 카탈로그 제목 갱신)은 main 위 게이트 통과를 확인했습니다. 들어오는 기여 수정은 다음 PATCH 또는 진행 중인 MINOR 에 함께 배포합니다.
+- **Initializr upstream**: 템플릿 parent 5.0.0·5.0.1 문제 등 기존 4건은 upstream 이슈로 제출할 가치가 있습니다.
+- **기준 없음 잔여**: `xerces:xercesImpl` 은 공개 기준이 없어 그대로 둡니다.
+
+### 선행 조사 결과 (2026-10-26)
+
+- **upstream 태그**: `egovframe-runtime` `v5.0.2-Final`(브랜치 `5.0.x` 최신), `egovframe-common-components` `v5.0.7`, `egovframe-vscode-initializr` `v5.0.7`, `egovframe-development` `v5.0.2`, `egovframe-ai-rag` `v5.0.0`, `egovframe-msa-edu` `v5.0.0` — 모두 2026-10-22 조사와 같음
+- **표준프레임워크 Maven 저장소 장애**
+  - 2026-10-25 CI: `test:ci-run-live` 의 Jenkins 빌드가 `egovframe-web-config-parent:5.0.0` 을 받다 503 으로 실패(재실행으로 통과). 이 저장소 CI 는 v0.42·v0.45 때부터 `scripts/mvn-retry.sh` 로 버팁니다.
+  - 2026-10-26 조사 중 `maven-metadata.xml` 요청이 연결 끊김
+  - 1.5.0 은 main CI 가 성공하지 않아 배포 조건을 채우지 못했고(태그·npm 없음), 1.5.1(2026-10-25)이 그 내용을 함께 배포했습니다.
+- **생성물의 현재 상태**: `generate_egovframe_ci` 세 플랫폼 모두 `mvn -B verify` 를 재시도 옵션 없이 실행합니다. 생성 Dockerfile 은 `-Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504`·`count=5` 를 씁니다.
+- **보안약점 분포**(공식 공통컴포넌트 v4.3.2, 516건, 모두 관리되지 않는 컴포넌트 출처): `xss-cout-unescaped` 304(다수가 `fn:replace(x, crlf, '<br/>')` + `escapeXml="false"`), `debug-code` 155, `print-stack-trace` 29, `hardcoded-config-password` 18, `hardcoded-secret` 5, `empty-catch` 3, `os-command` 2. MyBatis `${}` 는 주석 안에만 있어 0건입니다.
+- **CRUD 생성물**: 목록 쿼리에 페이징이 없고 `PaginationInfo` 를 쓰지 않습니다.
+- **MCP SDK**: 1.32.2(2026-10-23) 최신, `tasks` 는 여전히 experimental, zod `^3.25 || ^4.0` 그대로.
+
+## 이전 기획 (v1.3–v1.5, 완료)
 
 v1.2.0 까지 끝난 상태(2026-10-22, 도구 35종 + CLI 명령 12종)에서 다음 세 릴리스를 아래 순서로 진행합니다. 출발점은 선행 조사에서 확인한 **표준프레임워크 5.1.0 의 저장소 배포**입니다. 공식 Maven 저장소에 RTE 5.1.0 모듈·parent 2종·새 BOM `egovframe-rte-root` 가 2026-09-28~10-12 에 올라왔지만 GitHub 태그(`v5.1.0-Final`)와 공식 공지는 아직 없습니다. 지금 도구는 5.0.2 를 최신으로 보므로 5.1.0 프로젝트를 "기준 없음"·"버전 미검출"로 다루고, 5.0.x 프로젝트에 5.1.0 갱신을 안내하지 못합니다. 세 버전 모두 공개 API 를 깨지 않는 MINOR 입니다(도구 이름·기존 파라미터 그대로, 선택 파라미터·허용값 추가만).
 
@@ -157,7 +249,7 @@ v1.2.0 까지 끝난 상태(2026-10-22, 도구 35종 + CLI 명령 12종)에서 �
 
 **결과 (2026-10-24 완료)**: 도구 35종 그대로, 계약 변화는 선택 파라미터 `dataFlow` 와 출력 필드 `findings[].flow`·`dataFlow`(minor). 사람이 판정한 표본(TP 5·FP 6)에서 높음 정밀도 33% → 100%, 재현율(중간 이상) 40% → 100%, 중간 이상 오탐 5 → 0건입니다. 공식 공통컴포넌트 v5.0.7·MSA 템플릿(msa-edu·msa-common-components) 실측에서는 흐름 규칙 대상(JDBC·파일·명령·리다이렉트)이 대부분 서비스 메서드 안이라 판정은 판단 불가가 많았고 항목·지문 변화는 없었습니다. 처음 구현에서 MSA 템플릿에 새로 잡힌 3건은 모두 방어된 코드(`normalize().startsWith(base)`·`isSafeFilename`·DB 조회로 덮어쓴 VO)여서 검증 조건·덮어쓰기·조회 결과를 흐름에서 끊도록 고쳤습니다. 분석 시간은 1.1–1.9배(줄 번호 표·소스 없는 메서드 건너뛰기·위험 호출 사전 거르기로 처음 4–7배에서 줄임). 기획과 달라진 점: 오탐 표본은 공식 자산에 흐름 대상 표본이 적어 고정물로 만들었고, 실자산은 회귀(지문 유지)와 시간으로 확인합니다.
 
-### 보류·운영 항목
+### 보류·운영 항목 (당시)
 
 - **MCP `tasks`**: SDK 1.32.1(2026-10-05, 최신)에서도 `experimental/tasks` 입니다. 안정 API 가 되면 장시간 도구에 적용합니다(v1.2 진행 알림·취소로 당장의 필요는 해소).
 - **5.1.0 공식화**: GitHub `v5.1.0-Final` 태그·공지가 나오면 v1.3 의 근거를 `git-tag` 로 다시 만들고 전환 기본 목표를 5.1.0 으로 올립니다(MINOR).
