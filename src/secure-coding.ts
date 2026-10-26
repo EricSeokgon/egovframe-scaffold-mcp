@@ -100,6 +100,30 @@ function walk(root: string, dir: string, out: string[], limit: number): void {
   }
 }
 
+/** v1.7: HTMLTagFilter 등록 위치(web.xml filter-class·WebApplicationInitializer·FilterRegistrationBean). 테스트 코드는 보지 않는다. */
+export function findHtmlTagFilter(projectDir: string): string | null {
+  const re = /filter-class>\s*[\w.]*HTMLTagFilter\s*<|new\s+[\w.]*HTMLTagFilter\s*\(|[\w.]*HTMLTagFilter\.class/;
+  const stack = [projectDir];
+  let seen = 0;
+  while (stack.length && seen < 20_000) {
+    const d = stack.pop()!;
+    let ents: fs.Dirent[];
+    try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
+    for (const e of ents) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { if (!/^(\.|target$|build$|node_modules$|migration-backup$|test$)/.test(e.name)) stack.push(p); continue; }
+      if (!/\.(java|xml)$/.test(e.name)) continue;
+      seen++;
+      let t: string;
+      try { t = fs.readFileSync(p, "utf8"); } catch { continue; }
+      if (!t.includes("HTMLTagFilter")) continue;
+      const clean = e.name.endsWith(".java") ? stripJavaComments(t) : t.replace(/<!--[\s\S]*?-->/g, "");
+      if (re.test(clean)) return path.relative(projectDir, p).split(path.sep).join("/");
+    }
+  }
+  return null;
+}
+
 // ── 결과 ─────────────────────────────────────────────────
 export interface SecureFinding {
   rule: string; guideItem: string; category: string; cwe: number; severity: SecureSeverity;
@@ -145,6 +169,8 @@ export interface SecureCodingResult {
   sarif?: { path: string; written: boolean; overwritten: boolean; results: number };
   /** v1.5: 데이터 흐름 판정 집계(흐름 규칙의 항목) */
   dataFlow?: { enabled: boolean; tainted: number; constant: number; unknown: number; detected: number };
+  /** v1.7: 등록된 HTMLTagFilter 위치(c:out 규칙을 볼 때만, 없으면 null) */
+  htmlTagFilter?: string | null;
   notes: string[];
   disclaimer: string;
 }
@@ -219,6 +245,8 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
     return { origin: "project" };
   };
 
+  // v1.7: HTMLTagFilter(요청 값을 엔티티로 바꿔 저장)가 등록돼 있으면 c:out escapeXml="false" 는 두 번 escape 를 피하려는 설계 — 등급을 낮추고 사유를 적는다
+  const tagFilter = rules.some((r) => r.id === "xss-cout-unescaped") ? findHtmlTagFilter(projectDir) : null;
   const byTarget: Record<string, number> = {};
   const raw: SecureFinding[] = [];
   let scanned = 0;
@@ -265,6 +293,7 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
       const usedFlows = new Set<SinkFlow>();
       const push = (h: { line: number; col: number }, severity: SecureSeverity, note: string | undefined, flow?: SecureFinding["flow"]) => {
         if (isTest) { severity = "low"; note = [note, L("테스트 코드 — 등급을 낮춤", "test code — severity lowered")].filter(Boolean).join(" · "); }
+        if (tagFilter && c.r.id === "xss-cout-unescaped") { severity = "low"; note = [note, L(`HTMLTagFilter(${tagFilter})가 요청 값을 엔티티로 바꿔 저장 — 필터가 덮지 않는 경로(URL 패턴 밖·REST·배치·DB 직접 입력)로 들어온 값만 위험`, `HTMLTagFilter (${tagFilter}) stores request values as entities — only values entering outside the filter (other URL patterns, REST, batch, direct DB input) are at risk`)].filter(Boolean).join(" · "); }
         const code = (origLines[h.line] ?? "").trim().slice(0, 240);
         const key = `${c.r.id}|${rel}|${code.replace(/\s+/g, " ")}`;
         const nth = (seen.get(key) ?? 0) + 1; seen.set(key, nth);
@@ -324,6 +353,8 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
   if (byOrigin.component) notes.push(L(`공통컴포넌트 원본(매니페스트 해시 일치) ${byOrigin.component}건 — upstream 에도 있는 패턴입니다. 공통컴포넌트 업그레이드로 해결되는지 확인하고, 아니면 사유를 남겨 예외 처리하거나 upstream 에 보고하세요.`, `${byOrigin.component} findings in original common components (manifest hash matches) — the pattern also exists upstream. Check whether a common-component upgrade resolves it; otherwise suppress it with a documented reason or report it upstream.`));
   if (byOrigin["component-unmanaged"]) notes.push(L(`매니페스트 없는 공통컴포넌트 경로(egovframework/com) ${byOrigin["component-unmanaged"]}건 — 원본 그대로인지 알 수 없습니다. reassemble_egovframe_components 로 재조립하면 원본·수정본이 구분됩니다.`, `${byOrigin["component-unmanaged"]} findings in unmanaged common-component paths (egovframework/com, no manifest) — cannot tell whether they are unmodified. Reassembling with reassemble_egovframe_components distinguishes original from modified files.`));
 
+  const coutLow = tagFilter ? kept.filter((f) => f.rule === "xss-cout-unescaped").length : 0;
+  if (coutLow) notes.push(L(`HTMLTagFilter 가 등록돼 있어(${tagFilter}) c:out escapeXml="false" ${coutLow}건을 낮음으로 봤습니다 — 요청 값이 엔티티로 저장되므로 escape 하면 두 번 바뀝니다. 필터가 덮지 않는 입력 경로가 있는지 확인하세요.`, `HTMLTagFilter is registered (${tagFilter}), so ${coutLow} c:out escapeXml="false" findings are rated low — request values are stored as entities and escaping again would double them. Check for input paths the filter does not cover.`));
   const maxFindings = opts.maxFindings ?? 2000;
   const ws = detectWorkspace(projectDir);
   const byModule = isMultiModule(ws) && ws.kind !== "single" ? ws.modules.map((m) => {
@@ -342,6 +373,7 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
     truncated: kept.length > maxFindings,
     suppressions: { applied: suppressed, invalid: ign.invalid, file: ign.file },
     ...(baseline ? { baseline } : {}),
+    ...(rules.some((r) => r.id === "xss-cout-unescaped") ? { htmlTagFilter: tagFilter } : {}),
     dataFlow: { enabled: opts.dataFlow !== false, tainted: kept.filter((f) => f.flow?.status === "tainted").length, constant: kept.filter((f) => f.flow?.status === "constant").length, unknown: kept.filter((f) => f.flow?.status === "unknown").length, detected: kept.filter((f) => f.flow?.detected).length },
     notes, disclaimer: tr(all, "disclaimer"),
   };

@@ -170,7 +170,7 @@
       "message_en": "<c:out escapeXml=\"false\"> does not escape the value (stored XSS risk — user-entered posts, names, etc.)",
       "fix": "escapeXml 을 지우거나, HTML 을 허용해야 하는 본문은 저장 시점에 허용 태그 필터(XSS 필터·Lucy 등)를 적용",
       "fix_en": "Remove escapeXml, or apply an allowed-tag filter (XSS filter, Lucy, etc.) at save time for bodies that must allow HTML",
-      "unless": "<c:out\\b(?:[^>\"']|\"[^\"]*\"|'[^']*')*value\\s*=\\s*(\"[^\"$]*\"|'[^'$]*')"
+      "unless": "(?:<c:out\\b(?:[^>\"']|\"[^\"]*\"|'[^']*')*value\\s*=\\s*(\"[^\"$]*\"|'[^'$]*'))|fn:escapeXml\\s*\\("
     },
     {
       "id": "path-traversal",

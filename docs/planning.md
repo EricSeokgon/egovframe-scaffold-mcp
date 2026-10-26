@@ -4,7 +4,7 @@
 
 ## 진행 현황 (버전별 요약) (2026-10-26)
 
-- **소스 기준**: v1.6.0(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
+- **소스 기준**: v1.7.0(`package.json`), 도구 36종 + CLI 명령 13종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
@@ -40,7 +40,7 @@
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v1.6 외부 저장소 장애 내성(완료) → v1.7 보안약점 자동 조치 → v1.8 CRUD 목록 페이징. [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
+- **다음 계획**: v1.6 외부 저장소 장애 내성(완료) → v1.7 보안약점 자동 조치(완료) → v1.8 CRUD 목록 페이징. [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -86,7 +86,7 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.4 완료** | Initializr v5.0.7 정렬 + DDL 기반 CRUD | `generate_egovframe_crud(ddl, search)`: CREATE TABLE 해석(공식 결함 경계 고정), 방언 중립 LIKE `<bind>`, 검색 필드 이스케이프, 템플릿 카탈로그 v5.0.7 |
 | **v1.5 완료** | 보안약점 정밀화 | 메서드 안 데이터 흐름으로 등급 상·하향, SARIF `codeFlows`, 오탐 표본 정밀도 수치 (배포는 1.5.1 — 기여 수정 #72·#73 포함) |
 | **v1.6 완료** | 외부 저장소 장애 내성 | 생성 CI·빌드 도구의 Maven 재시도·미러(`mavenMirror`·`EGOVFRAME_MAVEN_MIRROR`), 일시 장애 분류(`failureKind`), 실제 mvn 장애 주입 테스트, SDK 1.32.2·zod 4 |
-| **v1.7 계획** | 보안약점 자동 조치 | 새 도구 `fix_egovframe_secure_coding`(36종): 결과가 같음을 보장할 수 있는 항목만 dryRun·transaction 으로 고치고 재점검·compile 로 확인 |
+| **v1.7 완료** | 보안약점 자동 조치 | 새 도구 `fix_egovframe_secure_coding`(36종): 규칙으로 정할 수 있는 항목만 dryRun·transaction 으로 고치고 재점검으로 확인, HTMLTagFilter 프로젝트의 c:out 은 낮음·수동 |
 | **v1.8 계획** | CRUD 목록 페이징 | `generate_egovframe_crud(paging)`: 방언별 페이징 SQL·`PaginationInfo`·`ui:pagination`, 실제 MyBatis·HSQLDB 실행 검증 |
 
 ## 다음 버전 기획 (v1.6–v1.8)
@@ -136,6 +136,8 @@ v1.5.1 까지 끝난 상태(2026-10-26, 도구 35종 + CLI 명령 12종)에서 �
 - 단위: 규칙별 고침·건너뜀 경계(이미 escape 된 값, 로거 없음, 주석 안), 두 번 적용해도 같은 결과(멱등)
 
 **완료 정의**: 도구 36종, `docs/design-secure-coding.md` 조치 절, `api-contract` minor(도구 추가), CHANGELOG
+
+**결과 (2026-10-26 완료)**: 도구 36종·CLI 명령 13종(`fix`), 계약 변화는 도구·명령 추가와 `check_egovframe_secure_coding` 출력 `htmlTagFilter`(minor). 공식 코퍼스를 보다가 **표준프레임워크 공통컴포넌트와 공식 템플릿 대부분이 `HTMLTagFilter` 를 등록**한다는 것을 확인했습니다. 이 필터는 요청 값을 엔티티로 저장하므로 `escapeXml="false"` 는 두 번 escape 를 피하려는 설계이고, 지우면 화면이 바뀝니다. 그래서 (1) 점검은 이 경우 c:out 항목을 낮음으로 보고 사유를 적고(코퍼스 중간 330·314 → 28·10), (2) 자동 조치는 c:out 을 수동으로 둡니다(`ignoreHtmlTagFilter`). 필터가 없는 프로젝트에서는 c:out 대부분을 고칩니다(필터를 걷어낸다고 가정한 코퍼스에서 289·291건, 본문 필드 13건 수동). 공식 코퍼스의 `System.out.println` 은 3.10.0 에서 16건을 고치고 로거 없는 27건은 수동입니다. 모든 조치 계획에서 재점검(규칙·파일·코드 줄별 건수)이 계획과 일치합니다. 기획과 달라진 점: (1) 고칠 수 있는 범위를 "동작이 바뀌지 않음"에서 "결과를 규칙으로 정할 수 있고 화면·로그 외 동작을 바꾸지 않음"으로 정했고, `cookie-flags` 는 제안만 냅니다(Secure·HttpOnly 가 쿠키 전송·스크립트를 바꿈). (2) JSP 의 Jasper 사전 컴파일은 하지 않았습니다 — 바꾸는 것이 속성 하나와 EL 함수 하나여서, 대신 고친 Java 를 `javac` 로 컴파일합니다. (3) 평가서·납품 패키지에 조치 내역을 넣는 것은 다음으로 미뤘습니다(조치 결과는 백업 디렉터리의 `secure-fix-plan.json` 에 남음).
 
 ### v1.8.0 — CRUD 목록 페이징
 

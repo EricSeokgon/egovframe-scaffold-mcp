@@ -278,6 +278,22 @@ export const OfflineBundleOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.7: fix_egovframe_secure_coding
+const FixCount = { candidates: z.number().int(), fixed: z.number().int(), manual: z.number().int(), excluded: z.number().int() };
+export const SecureFixOutput = loose({
+  projectDir: z.string(),
+  dryRun: z.boolean(),
+  summary: loose({ ...FixCount, files: z.number().int() }),
+  byRule: z.array(loose({ rule: z.string(), ...FixCount })),
+  files: z.array(loose({ path: z.string(), rules: z.array(z.string()), edits: z.number().int(), changes: z.array(loose({ line: z.number().int(), before: z.string(), after: z.string() })) })),
+  manual: z.array(loose({ rule: z.string(), file: z.string(), line: z.number().int(), code: z.string(), reason: z.string(), suggestion: z.string().optional() })),
+  verify: loose({ before: z.number().int(), after: z.number().int(), removed: z.number().int(), expectedRemoved: z.number().int(), otherRulesUnchanged: z.boolean(), ok: z.boolean(), unexpected: z.array(z.string()) }),
+  htmlTagFilter: z.string().nullable().optional(),
+  backupDir: z.string().optional(),
+  planPath: z.string().optional(),
+  notes: z.array(z.string()),
+});
+
 // v0.44: check_egovframe_secure_coding
 const SecureSeverity = z.enum(["high", "medium", "low"]);
 export const SecureCodingOutput = loose({
@@ -295,6 +311,7 @@ export const SecureCodingOutput = loose({
   baseline: loose({ path: z.string(), findings: z.number().int(), resolved: z.number().int() }).optional(),
   sarif: loose({ path: z.string(), written: z.boolean(), overwritten: z.boolean(), results: z.number().int() }).optional(),
   dataFlow: loose({ enabled: z.boolean(), tainted: z.number().int(), constant: z.number().int(), unknown: z.number().int(), detected: z.number().int() }).optional(),
+  htmlTagFilter: z.string().nullable().optional(),
   notes: z.array(z.string()),
   disclaimer: z.string(),
 });
@@ -347,6 +364,7 @@ export const OUTPUT_SCHEMAS = {
   generate_egovframe_sbom: SbomOutput,
   check_egovframe_sbom: SbomCheckOutput,
   check_egovframe_secure_coding: SecureCodingOutput,
+  fix_egovframe_secure_coding: SecureFixOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,

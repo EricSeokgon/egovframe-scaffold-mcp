@@ -100,8 +100,8 @@
         "secure": {
           "total": 495,
           "high": 0,
-          "medium": 330,
-          "low": 165,
+          "medium": 28,
+          "low": 467,
           "byRule": {
             "cookie-flags": 2,
             "debug-code": 140,
@@ -202,8 +202,8 @@
         "secure": {
           "total": 516,
           "high": 0,
-          "medium": 314,
-          "low": 202,
+          "medium": 10,
+          "low": 506,
           "byRule": {
             "debug-code": 155,
             "empty-catch": 3,
@@ -217,9 +217,9 @@
       }
     }
   ],
-  "generatedAt": "2026-10-25",
+  "generatedAt": "2026-10-26",
   "generatedWith": {
-    "version": "1.5.1",
+    "version": "1.7.0",
     "rulesTag": "v5.0.2-Final",
     "baselineSurveyedAt": "2026-10-22"
   },
@@ -276,8 +276,8 @@
       "simple-homepage": {
         "total": 7,
         "high": 0,
-        "medium": 7,
-        "low": 0,
+        "medium": 0,
+        "low": 7,
         "byRule": {
           "xss-cout-unescaped": 7
         },
