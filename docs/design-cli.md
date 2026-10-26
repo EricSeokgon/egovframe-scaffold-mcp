@@ -72,6 +72,24 @@ v0.43 에서 `sbom` 과 `assess` 사이에 `sbom-check --out egovframe-sbom-chec
 
 검증: 생성 `.gitlab-ci.yml` 은 GitLab 공식 CI JSON 스키마(gitlab `v19.4.1-ee` 의 `app/assets/javascripts/editor/schema/ci.json`, 테스트 고정물)로, `Jenkinsfile` 은 구조 단언(pipeline·agent·options·stages·post, 문자열 밖 괄호 짝, 단계 순서)으로 확인합니다. GitHub 워크플로는 기존대로 CI 통합에서 `actionlint` 로 검사합니다. Jenkins 의 실제 실행은 보류입니다.
 
+## 6.2 원격 저장소 일시 장애 (v1.6)
+
+표준프레임워크 Maven 저장소(`maven.egovframe.go.kr`)는 503·연결 끊김을 자주 냅니다. 생성 CI 의 Maven 빌드 단계는 세 겹으로 버팁니다.
+
+1. **요청 재시도**: `-Daether.connector.http.retryHandler.count=5`·`interval=10000`·`serviceUnavailable=429,500,502,503,504`(Maven 3.9 Resolver — 모르는 Maven 은 무시). 생성 Dockerfile(v0.45)과 같은 방식에 간격을 더했습니다.
+2. **명령 재시도**: 실패 로그에 **저장소 실패 문맥**(`Could not transfer`·`transfer failed`·`Non-resolvable`·`Could not resolve` 등)과 **일시 장애 원인**(`status: 5xx`·`status code: 5xx`·`Connection reset`·`timed out`·`Service Unavailable` 등)이 함께 있을 때만 30초·60초 뒤 `-U` 로 다시(최대 3회). 컴파일·테스트 실패, 404 는 다시 실행하지 않습니다. 문구 목록은 `src/maven-resilience.ts` 의 `TRANSIENT_CONTEXT`·`TRANSIENT_CAUSE` 하나이고 세 플랫폼이 그것으로 만듭니다.
+3. **미러**: `mavenMirror` 면 모든 저장소(`*`)를 그 URL 로 보내는 settings 를 작업 디렉터리 `.egovframe-ci-settings.xml` 에 쓰고 `-gs` 로 씁니다(사용자 settings 의 인증·미러는 그대로). 게이트의 CLI 단계는 `EGOVFRAME_MAVEN_MIRROR` 로 받습니다.
+
+| | GitHub Actions | GitLab CI | Jenkins |
+|---|---|---|---|
+| 껍데기 | `shell: bash`(pipefail) + `tee` 로 로그를 흘리며 | `sh` 한 줄(`set -e` 에서도 안전한 `&& s=0 \|\| s=$?`), 실행 뒤 로그 출력 | `mvnResilient(goals)` — `sh`/`bat` 의 `returnStatus`·`readFile`, 클로저·정규식 없이(샌드박스·CPS 안전) |
+| 미러 settings | `printf` 단계 | 스크립트 첫 줄 `printf` | `writeFile` |
+| 게이트 CLI | job `env` | `variables` | `environment` |
+
+MAVEN_ARGS 는 쓰지 않습니다 — Jenkins `environment` 나 GitLab `variables` 에 넣으면 에이전트·러너가 이미 쓰는 값(프록시 settings 등)을 덮기 때문입니다.
+
+MCP 도구(`build_`·`test_egovframe_project`, 이를 쓰는 전환 검증·리허설·5.x 갱신·재조립·납품)는 같은 판정으로 `failureKind`(`compile`·`test`·`repository-unavailable`·`timeout`·`other`)·`repository`(URL·상태)·`failureHint` 를 돌려주고, `retryTransient`(기본 1)만큼 `-U`(Gradle `--refresh-dependencies`)로 다시 실행합니다. Maven 실행에는 `MAVEN_ARGS` 로 요청 재시도와 `EGOVFRAME_MAVEN_MIRROR` 미러(`-gs` 임시 settings)를 더합니다 — 이미 재시도가 지정돼 있으면 그대로 둡니다.
+
 ## 7. 범위 밖
 
 - Azure DevOps·Bamboo 등 다른 CI, Jenkins 플러그인 설치·서버 설정(v0.43 범위 밖).

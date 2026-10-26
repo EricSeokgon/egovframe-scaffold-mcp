@@ -6,6 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
 import { AbortError, throwIfAborted, type Progress } from "./progress.js";
+import { classifyFailure, mavenResilienceEnv, repositoryFailureHint, type FailureKind, type RepositoryFailure } from "./maven-resilience.js";
 
 export type BuildTool = "maven" | "gradle";
 export type BuildGoal = "compile" | "test" | "package";
@@ -58,6 +59,14 @@ export interface BuildRunResult {
   logTail?: string;
   logTruncated?: boolean;
   totalLogLines?: number;
+  /** v1.6: 실패 종류 — repository-unavailable 이면 코드가 아니라 원격 저장소 일시 장애 */
+  failureKind?: FailureKind;
+  /** v1.6: 실패한 원격 저장소 요청(repository-unavailable 일 때) */
+  repository?: RepositoryFailure;
+  /** v1.6: 실패 안내(repository-unavailable 일 때) */
+  failureHint?: string;
+  /** v1.6: 실행 횟수(일시 장애로 다시 실행했으면 2 이상) */
+  attempts?: number;
 }
 
 /** pom.xml → maven, build.gradle(.kts) → gradle, 없으면 null. */
@@ -109,7 +118,8 @@ export function resolveCommand(
       : isWin
         ? "mvn.cmd"
         : "mvn";
-    return { command, args, cwd: projectDir, usedWrapper: hasWrapper };
+    // v1.6: Maven 3.9 의 MAVEN_ARGS 로 요청 재시도·미러(EGOVFRAME_MAVEN_MIRROR)를 더한다 — 명령 문자열은 그대로
+    return { command, args, cwd: projectDir, usedWrapper: hasWrapper, env: mavenResilienceEnv() };
   }
 
   const wrapperName = isWin ? "gradlew.bat" : "gradlew";
@@ -273,6 +283,56 @@ export const defaultRunner: Runner = (cmd, opts) =>
     child.on("close", (code) => finish(code));
   });
 
+/** v1.6: 일시 장애로 다시 실행할 때 붙이는 갱신 인자(실패 기록·캐시를 무시하고 다시 받음) */
+export const refreshArgs = (buildTool: BuildTool): string[] => (buildTool === "maven" ? ["-U"] : ["--refresh-dependencies"]);
+/** 다시 실행하기 전 대기(시도 n 회차 뒤 n × 이 값) */
+export const TRANSIENT_RETRY_DELAY_MS = 20_000;
+
+/**
+ * runner 를 실행하고, 실패가 원격 저장소 일시 장애(컴파일 오류 없음 + 저장소 문구)면 retryTransient 회까지 갱신 인자를 붙여 다시 실행한다.
+ * 컴파일·테스트 실패는 다시 실행하지 않는다. 출력은 마지막 시도의 것.
+ */
+export async function runWithTransientRetry(input: {
+  resolved: ResolvedCommand;
+  buildTool: BuildTool;
+  runner: Runner;
+  timeoutMs: number;
+  signal?: AbortSignal;
+  retryTransient?: number;
+  retryDelayMs?: number;
+  onRetry?: (attempt: number, repo: RepositoryFailure | undefined) => void;
+}): Promise<{ result: RunnerResult; buffer: string; attempts: number }> {
+  const max = 1 + Math.max(0, Math.min(3, Math.floor(input.retryTransient ?? 1)));
+  const delay = input.retryDelayMs ?? TRANSIENT_RETRY_DELAY_MS;
+  for (let attempt = 1; ; attempt++) {
+    let buffer = "";
+    const cmd = attempt === 1 ? input.resolved : { ...input.resolved, args: [...input.resolved.args, ...refreshArgs(input.buildTool)] };
+    const result = await input.runner(cmd, { timeoutMs: input.timeoutMs, onData: (chunk) => (buffer += chunk), signal: input.signal });
+    if (result.aborted || input.signal?.aborted || (result.exitCode === 0 && !result.timedOut) || attempt >= max) return { result, buffer, attempts: attempt };
+    const c = classifyFailure({ output: buffer, timedOut: result.timedOut, compileErrors: parseBuildErrors(input.buildTool, buffer).length });
+    if (c.kind !== "repository-unavailable") return { result, buffer, attempts: attempt };
+    input.onRetry?.(attempt, c.repository);
+    if (delay > 0) await new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, delay * attempt);
+      input.signal?.addEventListener("abort", () => { clearTimeout(t); resolve(); }, { once: true });
+    });
+    if (input.signal?.aborted) return { result: { ...result, aborted: true }, buffer, attempts: attempt };
+  }
+}
+
+/** 실패한 실행 결과에 붙일 v1.6 필드(성공이면 빈 객체) */
+export function failureFields(input: { success: boolean; output: string; timedOut?: boolean; compileErrors: number; testFailures?: number; goal?: string; attempts: number }): Pick<BuildRunResult, "failureKind" | "repository" | "failureHint" | "attempts"> {
+  const att = input.attempts > 1 ? { attempts: input.attempts } : {};
+  if (input.success) return att;
+  const c = classifyFailure({ output: input.output, timedOut: input.timedOut, compileErrors: input.compileErrors, testFailures: input.testFailures, goal: input.goal });
+  return { failureKind: c.kind, ...(c.repository ? { repository: c.repository, failureHint: repositoryFailureHint(c.repository, input.attempts) } : {}), attempts: input.attempts };
+}
+
+/** v1.6: 다른 도구의 검증 결과(build·compile 절)에 넣을 실패 요약 */
+export function failureSummary(b: BuildRunResult): Pick<BuildRunResult, "failureKind" | "failureHint" | "attempts"> {
+  return { ...(b.failureKind ? { failureKind: b.failureKind } : {}), ...(b.failureHint ? { failureHint: b.failureHint } : {}), ...(b.attempts && b.attempts > 1 ? { attempts: b.attempts } : {}) };
+}
+
 /**
  * 프로젝트를 빌드한다. dryRun이면 실행 없이 감지된 명령만 반환한다.
  * runner를 주입하면(테스트) 실제 프로세스 없이 검증할 수 있다.
@@ -292,6 +352,10 @@ export async function runBuild(opts: {
   env?: Record<string, string>;
   /** v1.2: 진행 알림·취소(signal). 취소되면 프로세스 트리를 끝내고 AbortError 를 던진다 */
   progress?: Progress;
+  /** v1.6: 원격 저장소 일시 장애로 실패하면 다시 실행할 횟수(0–3, 기본 1) */
+  retryTransient?: number;
+  /** v1.6: 다시 실행 전 대기 기준(ms, 테스트용) */
+  retryDelayMs?: number;
 }): Promise<BuildRunResult> {
   throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
@@ -306,7 +370,7 @@ export async function runBuild(opts: {
   }
   const goal: BuildGoal = opts.goal ?? "compile";
   const base = resolveCommand(projectDir, buildTool, goal, { platform: opts.platform });
-  const resolved: ResolvedCommand = { ...base, args: [...base.args, ...(opts.extraArgs ?? [])], ...(opts.env ? { env: opts.env } : {}) };
+  const resolved: ResolvedCommand = { ...base, args: [...base.args, ...(opts.extraArgs ?? [])], ...(opts.env || base.env ? { env: { ...base.env, ...opts.env } } : {}) };
   const command = [resolved.command, ...resolved.args].join(" ");
 
   if (opts.dryRun) {
@@ -316,16 +380,19 @@ export async function runBuild(opts: {
   const runner = opts.runner ?? defaultRunner;
   const now = opts.now ?? Date.now;
   const timeoutMs = opts.timeoutMs ?? 300_000;
-  let buffer = "";
   const started = now();
   opts.progress?.report(`${buildTool} ${goal}: ${command}`, 0, 1);
-  const result = await runner(resolved, { timeoutMs, onData: (chunk) => (buffer += chunk), signal: opts.progress?.signal });
+  const { result, buffer, attempts } = await runWithTransientRetry({
+    resolved, buildTool, runner, timeoutMs, signal: opts.progress?.signal, retryTransient: opts.retryTransient, retryDelayMs: opts.retryDelayMs,
+    onRetry: (n, repo) => opts.progress?.report(`${buildTool} ${goal}: repository unavailable${repo?.status ? ` (HTTP ${repo.status})` : ""} — retry ${n + 1}`, 0, 1),
+  });
   const durationMs = now() - started;
   if (result.aborted || opts.progress?.signal?.aborted) throw new AbortError(`${buildTool} ${goal} cancelled after ${durationMs}ms`);
   opts.progress?.report(`${buildTool} ${goal}: exit ${result.exitCode ?? "-"}${result.timedOut ? " (timeout)" : ""}`, 1, 1);
 
   const errors = parseBuildErrors(buildTool, buffer);
   const capped = capOutput(buffer, opts.maxLogLines ?? 200);
+  const success = result.exitCode === 0 && !result.timedOut;
 
   return {
     buildTool,
@@ -334,7 +401,7 @@ export async function runBuild(opts: {
     cwd: resolved.cwd,
     usedWrapper: resolved.usedWrapper,
     dryRun: false,
-    success: result.exitCode === 0 && !result.timedOut,
+    success,
     exitCode: result.exitCode,
     timedOut: result.timedOut,
     durationMs,
@@ -342,5 +409,6 @@ export async function runBuild(opts: {
     logTail: capped.text,
     logTruncated: capped.truncated,
     totalLogLines: capped.totalLines,
+    ...failureFields({ success, output: buffer, timedOut: result.timedOut, compileErrors: errors.length, goal, attempts }),
   };
 }

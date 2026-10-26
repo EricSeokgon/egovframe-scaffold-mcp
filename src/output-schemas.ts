@@ -38,7 +38,7 @@ const MigrationItem = loose({
   action: z.enum(["auto", "manual"]),
   reason: z.string(),
 });
-const MigrateSummary = loose({ auto: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: z.record(z.number().int()) });
+const MigrateSummary = loose({ auto: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: z.record(z.string(), z.number().int()) });
 export const MigrateOutput = loose({
   projectDir: z.string(),
   /** "5.x"(전환) 또는 "5.0.x"(v0.46 갱신 모드) */
@@ -53,7 +53,7 @@ export const MigrateOutput = loose({
   notes: z.array(z.string()),
   // 2단계(apply)·3단계(verify) 전용 — 진단만 할 때는 없음
   mode: z.enum(["apply", "verify"]).optional(),
-  build: loose({ ran: z.boolean(), success: z.boolean().nullable(), errors: z.number().int() }).optional(),
+  build: loose({ ran: z.boolean(), success: z.boolean().nullable(), errors: z.number().int(), failureKind: z.enum(["compile", "test", "repository-unavailable", "timeout", "other"]).optional(), failureHint: z.string().optional(), attempts: z.number().int().optional() }).optional(),
   links: z.array(loose({ error: loose({ file: z.string(), line: z.number().int(), message: z.string() }), itemIndex: z.number().int().nullable(), how: z.enum(["same-file-symbol", "same-file-line", "rules-symbol", "unlinked"]) })).optional(),
   worklist: z.array(loose({ index: z.number().int(), item: MigrationItem, errors: z.number().int() })).optional(),
   unlinked: z.array(loose({ file: z.string(), line: z.number().int(), message: z.string() })).optional(),
@@ -79,13 +79,13 @@ export const DependenciesOutput = loose({
   parent: loose({ groupId: z.string().nullable(), artifactId: z.string().nullable(), version: z.string().nullable(), kind: z.enum(["web", "boot", "other", "none"]), status: z.enum(["ok", "outdated", "n/a"]) }),
   java: loose({ value: z.string().nullable(), status: z.enum(["ok", "outdated", "unknown"]) }),
   findings: z.array(loose({ file: z.string(), line: z.number().int(), groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), resolvedVersion: z.string().nullable(), scope: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable(), basis: DependencyBasis.nullable(), origin: z.enum(["declared", "transitive"]), via: z.array(z.string()).optional(), depth: z.number().int().optional(), treeVersion: z.string().optional() })),
-  summary: z.record(z.number().int()),
+  summary: z.record(z.string(), z.number().int()),
   checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })),
   vulnerabilities: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })).optional(),
-  resolution: loose({ ran: z.boolean(), success: z.boolean(), scope: z.enum(["runtime", "all"]), command: z.string(), artifacts: z.number().int(), direct: z.number().int(), transitive: z.number().int(), differs: z.array(loose({ groupId: z.string(), artifactId: z.string(), declared: z.string(), resolved: z.string() })), summary: z.record(z.number().int()), error: z.string().optional() }).optional(),
+  resolution: loose({ ran: z.boolean(), success: z.boolean(), scope: z.enum(["runtime", "all"]), command: z.string(), artifacts: z.number().int(), direct: z.number().int(), transitive: z.number().int(), differs: z.array(loose({ groupId: z.string(), artifactId: z.string(), declared: z.string(), resolved: z.string() })), summary: z.record(z.string(), z.number().int()), error: z.string().optional() }).optional(),
   osvError: z.string().optional(),
   // v0.47: 멀티 모듈 작업공간
-  workspace: loose({ kind: z.string(), modules: z.array(loose({ name: z.string(), dir: z.string(), buildTool: z.string(), findings: z.number().int(), summary: z.record(z.number().int()) })) }).optional(),
+  workspace: loose({ kind: z.string(), modules: z.array(loose({ name: z.string(), dir: z.string(), buildTool: z.string(), findings: z.number().int(), summary: z.record(z.string(), z.number().int()) })) }).optional(),
   notes: z.array(z.string()),
 });
 
@@ -101,7 +101,7 @@ export const NetworkOutput = loose({
     http: loose({ kind: NetworkKind, status: z.number().int().nullable(), ms: z.number(), error: z.string().nullable() }),
     ok: z.boolean(),
   })),
-  summary: loose({ ok: z.number().int(), failed: z.number().int(), byKind: z.record(z.number().int()) }),
+  summary: loose({ ok: z.number().int(), failed: z.number().int(), byKind: z.record(z.string(), z.number().int()) }),
   prescriptions: z.array(loose({ id: z.string(), title: z.string(), commands: z.array(loose({ shell: z.enum(["bash", "cmd", "powershell"]), command: z.string() })), reason: z.string() })),
   notes: z.array(z.string()),
 });
@@ -123,7 +123,7 @@ export const SbomOutput = loose({
   components: z.number().int(),
   direct: z.number().int(),
   transitive: z.number().int(),
-  statuses: z.record(z.number().int()),
+  statuses: z.record(z.string(), z.number().int()),
   vulnerabilities: z.number().int(),
   osvError: z.string().optional(),
   minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()), componentsWithGaps: z.number().int(), supplierFromCatalog: z.number().int() }).optional(),
@@ -148,7 +148,7 @@ export const SbomCheckOutput = loose({
   minimum: MinimumElements,
   recheck: loose({
     components: z.number().int(),
-    summary: z.record(z.number().int()),
+    summary: z.record(z.string(), z.number().int()),
     changed: z.array(loose({ component: z.string(), from: z.string(), to: z.string(), baseline: z.string().nullable() })),
     unrecorded: z.number().int(),
     osv: loose({ queried: z.boolean(), recorded: z.boolean(), error: z.string().optional(), ids: z.number().int(), newIds: z.array(z.string()), goneIds: z.array(z.string()), items: z.array(loose({ component: z.string(), ref: z.string(), ids: z.array(z.string()) })) }),
@@ -163,7 +163,7 @@ export const SbomCheckOutput = loose({
     resolvedVulnerabilities: z.array(z.string()),
     unchanged: z.number().int(),
   }).optional(),
-  vex: loose({ path: z.string(), dryRun: z.boolean(), written: z.boolean(), created: z.boolean(), added: z.number().int(), extended: z.number().int(), preserved: z.number().int(), notDetected: z.array(z.string()), states: z.record(z.number().int()), usedBomLink: z.boolean(), vulnerabilities: z.number().int() }).optional(),
+  vex: loose({ path: z.string(), dryRun: z.boolean(), written: z.boolean(), created: z.boolean(), added: z.number().int(), extended: z.number().int(), preserved: z.number().int(), notDetected: z.array(z.string()), states: z.record(z.string(), z.number().int()), usedBomLink: z.boolean(), vulnerabilities: z.number().int() }).optional(),
   notes: z.array(z.string()),
 });
 
@@ -187,13 +187,13 @@ export const AssessmentOutput = loose({
     database: z.string().nullable(), components: loose({ count: z.number().int(), ids: z.array(z.string()) }), aiLayer: z.boolean(), hasManifest: z.boolean(), filesScanned: z.number().int(),
   }),
   migration: loose({
-    items: z.number().int(), auto: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: z.record(z.number().int()), manualByKind: z.record(z.number().int()),
+    items: z.number().int(), auto: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: z.record(z.string(), z.number().int()), manualByKind: z.record(z.string(), z.number().int()),
     reassemble: z.array(z.string()), removedApiRefs: z.number().int(),
     manualTop: z.array(loose({ kind: z.string(), from: z.string(), to: z.string().nullable(), count: z.number().int(), files: z.number().int(), example: z.string(), reason: z.string() })),
     manualTotalGroups: z.number().int(), notes: z.array(z.string()),
   }),
   dependencies: loose({
-    offline: z.boolean(), findings: z.number().int(), declared: z.number().int(), transitive: z.number().int(), summary: z.record(z.number().int()),
+    offline: z.boolean(), findings: z.number().int(), declared: z.number().int(), transitive: z.number().int(), summary: z.record(z.string(), z.number().int()),
     actions: z.array(loose({ groupId: z.string(), artifactId: z.string(), version: z.string().nullable(), status: DependencyStatus, baseline: z.string().nullable(), basis: z.string().nullable(), origin: z.enum(["declared", "transitive"]), file: z.string(), line: z.number().int(), action: z.string() })),
     unknown: z.array(z.string()), vendor: z.array(z.string()),
     resolution: loose({ ran: z.boolean(), success: z.boolean(), scope: z.enum(["runtime", "all"]), artifacts: z.number().int(), direct: z.number().int(), transitive: z.number().int(), differs: z.number().int(), error: z.string().optional() }).optional(),
@@ -201,7 +201,7 @@ export const AssessmentOutput = loose({
     osvError: z.string().optional(), notes: z.array(z.string()),
   }),
   security: loose({ ok: z.number().int(), missing: z.number().int(), na: z.number().int(), checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })) }),
-  sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.number().int()).optional() }).optional(), note: z.string() }),
+  sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.string(), z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
   rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable() }).optional(),
   notes: z.array(z.string()),
@@ -226,9 +226,9 @@ export const ReassembleOutput = loose({
   target: loose({ tag: z.string(), commit: z.string().nullable() }),
   sourceEra: z.enum(["3.x", "4.x", "5.x", "unknown"]),
   origin: loose({ tag: z.string().nullable(), mode: z.enum(["auto", "fixed"]), candidates: z.array(loose({ tag: z.string(), matched: z.number().int(), total: z.number().int(), ratio: z.number() })) }),
-  components: z.array(loose({ id: z.string(), name: z.string(), files: z.number().int(), summary: z.record(z.number().int()) })),
-  summary: z.record(z.number().int()),
-  actions: z.record(z.number().int()),
+  components: z.array(loose({ id: z.string(), name: z.string(), files: z.number().int(), summary: z.record(z.string(), z.number().int()) })),
+  summary: z.record(z.string(), z.number().int()),
+  actions: z.record(z.string(), z.number().int()),
   files: z.array(loose({ componentId: z.string(), path: z.string(), asset: z.string(), state: ReassembleStateEnum, action: z.enum(["keep", "replace", "add", "delete", "keep-reference"]), patch: z.string().optional() })),
   worklist: z.array(loose({ componentId: z.string(), path: z.string(), kind: z.enum(["reapply-patch", "removed-in-5x", "review-config", "unverified-replaced"]), detail: z.string(), patch: z.string().optional(), errors: z.number().int().optional() })),
   sql: z.array(z.string()),
@@ -248,7 +248,7 @@ const ErrorAnalysisSchema = loose({
   capped: z.boolean(),
   topFiles: z.array(loose({ file: z.string(), errors: z.number().int(), sample: z.string() })),
 });
-const RehearsalPhaseSchema = loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), timedOut: z.boolean().optional(), analysis: ErrorAnalysisSchema.optional(), reason: z.string().optional() });
+const RehearsalPhaseSchema = loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), timedOut: z.boolean().optional(), analysis: ErrorAnalysisSchema.optional(), reason: z.string().optional(), failureKind: z.enum(["compile", "test", "repository-unavailable", "timeout", "other"]).optional(), failureHint: z.string().optional(), attempts: z.number().int().optional() });
 export const RehearseOutput = loose({
   projectDir: z.string(),
   buildTool: z.enum(["maven", "gradle"]).nullable(),
@@ -256,8 +256,8 @@ export const RehearseOutput = loose({
   workspace: loose({ path: z.string().nullable(), kept: z.boolean(), files: z.number().int(), bytes: z.number().int(), copyMs: z.number() }),
   original: loose({ files: z.number().int(), bytes: z.number().int(), sha256: z.string(), unchanged: z.boolean() }),
   steps: z.array(loose({ step: z.enum(["reassemble", "migrate", "verify", "align-pom"]), ran: z.boolean(), ok: z.boolean(), durationMs: z.number(), summary: z.string(), error: z.string().optional() })),
-  reassemble: loose({ origin: z.string().nullable(), components: z.number().int(), actions: z.record(z.number().int()), worklist: z.number().int() }).optional(),
-  migrate: loose({ applied: loose({ items: z.number().int(), edits: z.number().int(), files: z.number().int() }), manualRemaining: z.number().int(), byKind: z.record(z.number().int()) }).optional(),
+  reassemble: loose({ origin: z.string().nullable(), components: z.number().int(), actions: z.record(z.string(), z.number().int()), worklist: z.number().int() }).optional(),
+  migrate: loose({ applied: loose({ items: z.number().int(), edits: z.number().int(), files: z.number().int() }), manualRemaining: z.number().int(), byKind: z.record(z.string(), z.number().int()) }).optional(),
   afterAutomation: RehearsalPhaseSchema.optional(),
   afterPomAlignment: RehearsalPhaseSchema.extend({ reference: z.string().optional(), parent: z.string().nullable().optional(), added: z.array(z.string()).optional(), versionsChanged: z.array(z.string()).optional(), scopesChanged: z.array(z.string()).optional(), propertiesSet: z.array(z.string()).optional(), propertiesRemoved: z.array(z.string()).optional(), patch: z.string().optional() }).optional(),
   worklist: z.array(loose({ kind: z.enum(["align-pom", "missing-package", "manual-item", "file"]), title: z.string(), errors: z.number().int(), detail: z.string() })),
@@ -284,10 +284,10 @@ export const SecureCodingOutput = loose({
   projectDir: z.string(),
   rulesVersion: loose({ surveyedAt: z.string(), rules: z.number().int(), source: z.string() }),
   filesScanned: z.number().int(),
-  byTarget: z.record(z.number().int()),
+  byTarget: z.record(z.string(), z.number().int()),
   summary: loose({ total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), new: z.number().int().nullable(), suppressed: z.number().int() }),
   byRule: z.array(loose({ rule: z.string(), guideItem: z.string(), severity: SecureSeverity, count: z.number().int() })),
-  byOrigin: z.record(z.number().int()),
+  byOrigin: z.record(z.string(), z.number().int()),
   byModule: z.array(loose({ module: z.string(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), total: z.number().int() })).optional(),
   findings: z.array(loose({ rule: z.string(), guideItem: z.string(), category: z.string(), cwe: z.number().int(), severity: SecureSeverity, file: z.string(), line: z.number().int(), column: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), note: z.string().optional(), origin: z.enum(["component", "component-modified", "component-unmanaged", "project", "test"]), component: z.string().optional(), fingerprint: z.string(), isNew: z.boolean().optional(), flow: loose({ status: z.enum(["tainted", "constant", "unknown"]), method: z.string(), path: z.array(loose({ line: z.number().int(), code: z.string(), step: z.string() })), detected: z.boolean().optional() }).optional() })),
   truncated: z.boolean(),
@@ -319,7 +319,7 @@ export const DeployOutput = loose({
 });
 
 // v1.1: prepare_egovframe_delivery (만들기·verify 두 모양을 한 스키마로 — mode 로 구분)
-const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.unknown()), error: z.string().optional() });
+const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.string(), z.unknown()), error: z.string().optional() });
 export const DeliveryOutput = loose({
   mode: z.enum(["prepare", "verify"]),
   projectDir: z.string().optional(),

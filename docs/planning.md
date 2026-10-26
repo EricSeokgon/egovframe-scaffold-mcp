@@ -4,7 +4,7 @@
 
 ## 진행 현황 (버전별 요약) (2026-10-26)
 
-- **소스 기준**: v1.5.1(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
+- **소스 기준**: v1.6.0(`package.json`), 도구 35종 + CLI 명령 12종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
 - **v0.22.0 추가**: `EGOVFRAME_ALLOWED_ROOTS`를 19개 도구 진입점에 적용해 `..`·symlink/junction 이탈을 차단하고, 실패 시 rollback 결과를 구조화해 반환합니다. [PR #16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)은 7파일(+340/−31), 로컬 16종 스위트 전체 통과 후 병합됐습니다.
 - **v0.23.0 추가**: `build_egovframe_project` — 생성한 프로젝트를 실제로 빌드(maven/gradle·mvnw/gradlew 자동 감지)하고 컴파일·테스트 오류를 파일/라인 단위로 구조화해 생성→검증 루프를 완성합니다. 타임아웃·로그 상한·허용 root·dryRun 포함. [PR #18](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/18)은 4파일(+458/−3), 오프라인 40단언과 실제 spawn 경로를 검증했습니다.
@@ -40,7 +40,7 @@
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v1.6 외부 저장소 장애 내성 → v1.7 보안약점 자동 조치 → v1.8 CRUD 목록 페이징. [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
+- **다음 계획**: v1.6 외부 저장소 장애 내성(완료) → v1.7 보안약점 자동 조치 → v1.8 CRUD 목록 페이징. [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -85,7 +85,7 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.3 완료** | 표준프레임워크 5.1.0 대응 | 저장소에 배포된 5.1.0(BOM `egovframe-rte-root`)으로 의존성 기준·5.x 최신 유지·전환 목표·SBOM 판정, `-egov.N` 재빌드 좌표, jar·sources jar 근거(태그 생기면 교체) |
 | **v1.4 완료** | Initializr v5.0.7 정렬 + DDL 기반 CRUD | `generate_egovframe_crud(ddl, search)`: CREATE TABLE 해석(공식 결함 경계 고정), 방언 중립 LIKE `<bind>`, 검색 필드 이스케이프, 템플릿 카탈로그 v5.0.7 |
 | **v1.5 완료** | 보안약점 정밀화 | 메서드 안 데이터 흐름으로 등급 상·하향, SARIF `codeFlows`, 오탐 표본 정밀도 수치 (배포는 1.5.1 — 기여 수정 #72·#73 포함) |
-| **v1.6 계획** | 외부 저장소 장애 내성 | 생성 CI·빌드 도구의 Maven 재시도·미러, 일시 장애 분류(`failureKind`), 장애 주입 테스트, SDK 1.32.2 |
+| **v1.6 완료** | 외부 저장소 장애 내성 | 생성 CI·빌드 도구의 Maven 재시도·미러(`mavenMirror`·`EGOVFRAME_MAVEN_MIRROR`), 일시 장애 분류(`failureKind`), 실제 mvn 장애 주입 테스트, SDK 1.32.2·zod 4 |
 | **v1.7 계획** | 보안약점 자동 조치 | 새 도구 `fix_egovframe_secure_coding`(36종): 결과가 같음을 보장할 수 있는 항목만 dryRun·transaction 으로 고치고 재점검·compile 로 확인 |
 | **v1.8 계획** | CRUD 목록 페이징 | `generate_egovframe_crud(paging)`: 방언별 페이징 SQL·`PaginationInfo`·`ui:pagination`, 실제 MyBatis·HSQLDB 실행 검증 |
 
@@ -112,6 +112,8 @@ v1.5.1 까지 끝난 상태(2026-10-26, 도구 35종 + CLI 명령 12종)에서 �
 - 생성물: GitLab 공식 스키마·Jenkins 선언형 문법 검증 그대로, `test:ci-run-live` 에서 세 플랫폼 실행 통과
 
 **완료 정의**: 도구 35종 그대로, `docs/tools.md`·`docs/design-deploy.md` 갱신, CHANGELOG
+
+**결과 (2026-10-26 완료)**: 도구 35종 그대로, 계약 변화는 선택 파라미터 `retryTransient`(build·test)·`mavenMirror`(ci)와 환경 변수 `EGOVFRAME_MAVEN_MIRROR`(minor). 일시 장애 판정은 "저장소 실패 문맥 + 5xx·연결 끊김·타임아웃 원인"이 함께 있을 때만이고, 실측 로그 4종(Maven 3.9 `status: 503`·옛 `status code: 502`·Gradle·연결 끊김)을 고정했습니다. 처음 N 번 503 을 내는 로컬 저장소를 미러로 둔 실제 `mvn` 에서 요청 재시도(1회 실행)·명령 재시도(`-U`, 2회)·`repository-unavailable` 판정을 게이트에서 확인합니다(약 10초). 생성 CI 의 셸 재시도는 가짜 `mvn` 으로 sh·bash 에서 실제 실행합니다. 이 과정에서 저장소 CI 의 `mvn-retry.sh` 가 Maven 3.9 의 `status: 503` 형식을 놓쳐 2026-10-25 Jenkins 실패를 막지 못한 것을 찾아 고쳤습니다. 기획과 달라진 점: (1) 생성 Dockerfile 의 미러는 넣지 않았습니다(이미 요청 재시도가 있고, 빌드 인자·settings 반입 방식이 폐쇄망 레지스트리 설계와 함께 정해져야 함). (2) 생성 CI 는 `MAVEN_ARGS` 대신 명령줄에 인자를 넣습니다 — Jenkins `environment`·GitLab `variables` 의 `MAVEN_ARGS` 는 에이전트가 쓰는 값(프록시 settings 등)을 덮기 때문입니다. (3) 설계는 `docs/design-cli.md` 6.2 에 적었습니다(CI 생성 설계가 있는 곳). (4) 기획에 없던 의존성 정리: #71 로 CI audit 이 실제로 돌면 zod 3 의 high advisory 로 실패하므로 zod 4 로 올렸고, 계약 비교기가 zod 4 JSON Schema 의 안전 정수 범위·`$ref` 구체화를 실질 변화로 보지 않게 했습니다. SDK 1.32.2 에서 마지막 진행 알림이 응답 뒤로 밀려 사라지던 것은 모든 도구 처리기가 응답 전에 알림을 다 보내도록(`flushProgress`) 고쳤습니다. #71 자체는 기여 PR 로 병합합니다.
 
 ### v1.7.0 — 보안약점 자동 조치 (`fix_egovframe_secure_coding`)
 

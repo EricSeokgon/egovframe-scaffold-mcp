@@ -30,6 +30,7 @@ npm run prepublishOnly   # 빌드 + 게이트 테스트 전부(릴리스 전 필
 - 프로토콜 레벨: 빌드된 서버를 실제 프로세스로 띄워 MCP initialize / tools/list 핸드셰이크, `serverInfo.version`↔`package.json` 일치, 핵심 도구 노출, `jdk` 패턴 제약 노출 확인 (`npm run test:handshake`, 네트워크 불필요)
 - 릴리스 레벨: 배포 판정(버전·`server.json`·변경 이력·태그·npm 네 조건)과 릴리스 노트 추출, `npm pack --dry-run` 의 tarball 내용(포함·제외·크기 상한), `server.json` 설명 100자 제한 (`npm run test:release`·`npm run test:registry`, 네트워크 불필요); CI 통합이 `mcp-publisher validate` 로 레지스트리 스키마를 실제 검증
 - 플랫폼 레벨: CI가 릴리스 게이트를 ubuntu·windows × Node 22·24 매트릭스로(v1.0, 이전 18·20·22) 실행하고, 공식 저장소를 내려받는 통합 테스트는 ubuntu/Node 22에서 실행합니다. 타임아웃 시 프로세스 트리 종료는 POSIX·Windows 모두 실제 프로세스로 검증합니다 (`npm run test:build`).
+- 원격 저장소 장애 레벨(v1.6): 실측 로그(Maven 3.9·옛 형식·Gradle·연결 끊김)의 일시 장애 판정과 404·컴파일 오류 제외, 빌드·테스트의 `-U` 재실행·한도·취소, 처음 N 번 503 을 내는 로컬 저장소를 `EGOVFRAME_MAVEN_MIRROR` 로 둔 실제 `mvn` 의 요청 재시도·명령 재시도·`repository-unavailable` 판정 (`npm run test:maven-resilience`, mvn 이 없으면 장애 주입만 건너뜀). 생성 CI 의 셸 재시도는 가짜 `mvn` 으로 sh·bash 에서 실제 실행합니다(`npm run test:ci`)
 - 런타임 의존성 감사는 ubuntu/Node 22에서 한 번 실행합니다(`npm audit --omit=dev --audit-level=high`). 매트릭스에서 Node 버전을 제거할 때 감사 조건도 함께 바꾸며, high 이상 경고는 CI 실패로 유지합니다.
 - 레시피 레벨: `catalog/recipes.json`의 컴포넌트 id·의존성·템플릿 제공 컴포넌트 정합 검증 (`npm run test:recipes`, 네트워크 불필요). 공식 `simple-backend`의 기존 `cmm`을 보존하고 board-login의 bbs 88파일·login 41파일·SQL 4건(총 133파일)을 조립한 뒤 검증하며, 컴포넌트 이후 fault injection의 전체 staging rollback도 확인 (`npm run test:recipe-transaction`)
 - 진단 레벨: 픽스처(pom·DbType·컴포넌트 패키지)로 `diagnose_egovframe_project`의 빌드·버전·DbType·컴포넌트 지문·의존성 검출 검증 (`npm run test:diagnose`, 네트워크 불필요)
@@ -81,6 +82,7 @@ npm run prepublishOnly   # 빌드 + 게이트 테스트 전부(릴리스 전 필
 3. 푸시 → PR → CI 5개(ubuntu·windows × Node 22/24 + integration, v1.0 이전은 7개) 전부 통과 → squash 병합. 공개 API 를 바꿨으면 `npm run api-contract:update` 로 스냅샷을 갱신하고 그 diff 와 버전 증가 폭을 PR 에서 함께 검토합니다([버전 정책](versioning.md)). **여기까지가 사람의 일입니다.**
 4. 병합 뒤 `main` 의 CI 가 성공하면 `Release` 워크플로(`.github/workflows/release.yml`)가 `scripts/release-check.mjs` 로 전제(`server.json` 버전 일치·변경 이력 항목)를 확인하고 원격 상태(npm·태그·GitHub Release·MCP Registry)를 보아 **남은 단계만** 수행합니다: npm(OIDC trusted publishing, provenance 자동) → 게시된 커밋에 `vX.Y.Z` 태그 → GitHub Release(`scripts/release-notes.mjs`) → MCP Registry(GitHub OIDC). 조건이 안 맞으면 이유를 적고 성공 종료합니다(문서만 바꾼 병합은 아무것도 게시하지 않음)
 5. 확인: Actions 의 `Release` 요약(단계별 결과), `npm view egovframe-scaffold-mcp version`, Releases 페이지, 레지스트리 검색. 도중에 끊기면(v0.36.1 처럼 npm 전파 지연, Registry 실패 등) 손댈 것 없이 다음 `main` 병합(또는 `Run workflow`)의 Release 가 이어서 합니다 — npm 만 돼 있으면 태그를 npm 이 기록한 `gitHead` 커밋에 만들므로 패키지와 태그가 같은 코드를 가리킵니다(그 커밋이 `main` 의 조상이 아니면 수동 태그를 안내하고 멈춤)
+6. `main` 의 CI 가 원격 저장소 일시 장애(예: `maven.egovframe.go.kr` 503) 같은 코드 밖 이유로 실패하면 Release 가 돌지 않습니다(1.5.0 이 이렇게 건너뛰어져 1.5.1 이 함께 배포). 실패한 job 만 다시 돌려 성공시키면(`gh run rerun <run-id> --failed`) Release 가 이어서 돌고, 기다릴 수 없으면 `gh workflow run Release --ref main` 으로 직접 실행합니다(전제 검사는 같음)
 
 비상용 수동 절차(워크플로를 쓸 수 없을 때): `main` 에서 `node -p "require('./package.json').version"` 으로 버전 확인 **후** 태그를 `main` 커밋에 생성·푸시 → `npm publish` → `mcp-publisher publish`. 태그는 반드시 병합된 `main` 커밋에 답니다(v0.25.2·v0.28.0·v0.28.1·v0.30.0·v0.33.0 에서 잘못 단 적이 있어 자동화했습니다).
 

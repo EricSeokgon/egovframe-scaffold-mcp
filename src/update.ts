@@ -9,7 +9,8 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { diagnoseProject } from "./diagnose.js";
 import { withFileTransaction } from "./file-transaction.js";
-import { detectBuildToolAt, runBuild, type Runner } from "./build-runner.js";
+import { detectBuildToolAt, failureSummary, runBuild, type Runner } from "./build-runner.js";
+import type { FailureKind } from "./maven-resilience.js";
 import { readManifest } from "./manifest.js";
 import { loadCatalog } from "./catalog.js";
 import { detectWorkspace, isMultiModule, moduleOf } from "./workspace.js";
@@ -424,7 +425,7 @@ export async function applyUpdate(opts: UpdateApplyOptions): Promise<UpdateApply
 // ── 검증 ──────────────────────────────────────────────
 export interface UpdateVerifyResult extends UpdateResult {
   mode: "verify";
-  build: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; timedOut?: boolean; reason?: string };
+  build: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; timedOut?: boolean; reason?: string; failureKind?: FailureKind; failureHint?: string; attempts?: number };
   links: VerifyLink[]; worklist: VerifyWorkItem[]; unlinked: VerifyLink["error"][];
 }
 export interface UpdateVerifyOptions extends UpdateOptions { timeoutMs?: number; runner?: Runner; platform?: NodeJS.Platform | string }
@@ -442,7 +443,7 @@ export async function verifyUpdate(opts: UpdateVerifyOptions): Promise<UpdateVer
   for (const l of links) if (l.itemIndex !== null) counts.set(l.itemIndex, (counts.get(l.itemIndex) ?? 0) + 1);
   const worklist: VerifyWorkItem[] = [...counts].map(([index, n]) => ({ index, item: r.items[index], errors: n })).sort((a, b) => b.errors - a.errors);
   r.items.forEach((it, index) => { if (it.action === "manual" && !counts.has(index)) worklist.push({ index, item: it, errors: 0 }); });
-  return { ...r, mode: "verify", build: { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, errors: errors.length, timedOut: b.timedOut }, links, worklist, unlinked: links.filter((l) => l.how === "unlinked").map((l) => l.error) };
+  return { ...r, mode: "verify", build: { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, errors: errors.length, timedOut: b.timedOut, ...failureSummary(b) }, links, worklist, unlinked: links.filter((l) => l.how === "unlinked").map((l) => l.error) };
 }
 
 // ── 렌더링 ────────────────────────────────────────────

@@ -35,7 +35,7 @@ import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDepl
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
 import { renderBundleMarkdown } from "./offline-bundle.js";
-import { progressFromExtra } from "./progress.js";
+import { flushProgress, progressFromExtra } from "./progress.js";
 import { prepareDelivery, verifyDelivery, renderDeliveryMarkdown, renderVerifyMarkdown, DELIVERY_ITEMS, DELIVERY_DEFAULT_INCLUDE } from "./delivery.js";
 import { reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 import { resolveToolLang, toolDescription } from "./i18n.js";
@@ -46,6 +46,16 @@ import { applyDeprecatedParams } from "./deprecations.js";
 /** MCP handshake 에 알리는 서버 버전 — package.json 을 단일 출처로 사용한다. */
 export { SERVER_VERSION } from "./version.js";
 import { SERVER_VERSION } from "./version.js";
+import { L } from "./lang.js";
+import { MAVEN_MIRROR_RE } from "./maven-resilience.js";
+
+/** v1.6: 빌드·테스트 결과의 일시 장애 안내 줄 */
+function resilienceLines(r: { failureKind?: string; failureHint?: string; attempts?: number }): string[] {
+  const out: string[] = [];
+  if (r.attempts && r.attempts > 1) out.push(L(`- 실행 ${r.attempts}회(원격 저장소 일시 장애로 다시 실행)`, `- Ran ${r.attempts} times (re-run after a transient repository outage)`));
+  if (r.failureKind === "repository-unavailable" && r.failureHint) out.push("", `🌐 ${r.failureHint}`);
+  return out;
+}
 
 /** 통합 템플릿 카탈로그 요약 — 카탈로그 파일이 없어도 기본 목록은 계속 동작한다. */
 function unifiedTemplateSummary():
@@ -72,6 +82,13 @@ function stripEdits(r: Pick<MigrateResult, "items">): Record<string, unknown> {
 
 export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   const server = new McpServer({ name: "egovframe-scaffold-mcp", version: SERVER_VERSION });
+  // v1.6: 모든 도구 처리기가 응답 전에 진행 알림을 다 보내도록 감싼다
+  const register = server.registerTool.bind(server) as (...a: unknown[]) => unknown;
+  (server as unknown as { registerTool: (...a: unknown[]) => unknown }).registerTool = (name: unknown, config: unknown, handler: unknown) =>
+    register(name, config, async (...a: unknown[]) => {
+      // 입력 스키마가 있으면 (args, extra), 없으면 (extra) — extra 는 항상 마지막
+      try { return await (handler as (...x: unknown[]) => Promise<unknown>)(...a); } finally { const extra = a[a.length - 1]; if (extra && typeof extra === "object") await flushProgress(extra); }
+    });
   const lang = opts.lang ?? resolveToolLang();
   const d = (name: string, ko: string) => toolDescription(name, ko, lang);
   const t = (name: string) => toolTitle(name, lang);
@@ -962,7 +979,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
       configId: z.enum(loadConfigCatalog().entries.map((e) => e.id) as [string, ...string[]]).describe("설정 템플릿 id (예: datasource, transaction-datasource, logging-rolling-file, scheduling-cron-trigger)"),
       format: z.enum(CONFIG_FORMATS).default("xml").describe("xml | javaConfig | yaml | properties (yaml·properties 는 logging 계열만)"),
-      fields: z.record(z.union([z.string(), z.boolean()])).optional().describe("템플릿 변수 덮어쓰기 (예: { txtDatasourceName: 'dataSource', rdoType: 'DBCP', txtUrl: 'jdbc:mysql://…', txtConfigPackage: 'kr.go.sample.config' }). 템플릿에 없는 필드는 거부"),
+      fields: z.record(z.string(), z.union([z.string(), z.boolean()])).optional().describe("템플릿 변수 덮어쓰기 (예: { txtDatasourceName: 'dataSource', rdoType: 'DBCP', txtUrl: 'jdbc:mysql://…', txtConfigPackage: 'kr.go.sample.config' }). 템플릿에 없는 필드는 거부"),
       fileName: z.string().optional().describe("파일명(확장자 제외) 또는 JavaConfig 클래스명. 미지정 시 Initializr 기본값(예: context-datasource, EgovDataSourceConfig)"),
       outputDir: z.string().optional().describe("프로젝트 상대 출력 디렉터리. 미지정 시 xml→src/main/resources/egovframework/spring(logging 은 src/main/resources), javaConfig→src/main/java/<패키지>"),
       dryRun: z.boolean().default(false).describe("true면 파일을 쓰지 않고 내용·경로·컨텍스트만 반환"),
@@ -1136,7 +1153,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── CI 설정 생성 도구 (v0.19.0) ────────────────────────
   server.registerTool(
     "generate_egovframe_ci",
-    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 CI 설정을 생성합니다 — platform=github(.github/workflows/egovframe-ci.yml, 기본)·gitlab(.gitlab-ci.yml)·jenkins(Jenkinsfile, Declarative). 빌드도구(maven/gradle) 자동 감지, JDK 지정, 빌드·테스트(GitLab 은 JUnit 리포트). supplyChain=true 면 이 서버의 CLI(npx egovframe-scaffold-mcp)로 SBOM 생성 → 최소 요소 7종 점검(sbom-check --fail-on minimum) → 전환 준비도 평가서(failOn 기준, 기본 supplyChain:D)를 돌려 기준을 넘으면 실패하고 보고서·SBOM 을 아티팩트로 남기는 공급망 게이트를 추가합니다(GitHub 은 PR 요약에 등급, GitLab 은 CycloneDX 리포트). npmRegistry(사내 npm 레지스트리)·offlineBundle(러너에서 본 오프라인 번들 경로)은 환경 변수로 넣습니다. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다. delivery=true 면 게이트 끝에 납품 패키지 단계(deliver --write → egovframe-delivery/)를 더해 아티팩트로 남깁니다."), inputSchema: {
+    { title: t("generate_egovframe_ci"), description: d("generate_egovframe_ci", "프로젝트에 CI 설정을 생성합니다 — platform=github(.github/workflows/egovframe-ci.yml, 기본)·gitlab(.gitlab-ci.yml)·jenkins(Jenkinsfile, Declarative). 빌드도구(maven/gradle) 자동 감지, JDK 지정, 빌드·테스트(GitLab 은 JUnit 리포트). supplyChain=true 면 이 서버의 CLI(npx egovframe-scaffold-mcp)로 SBOM 생성 → 최소 요소 7종 점검(sbom-check --fail-on minimum) → 전환 준비도 평가서(failOn 기준, 기본 supplyChain:D)를 돌려 기준을 넘으면 실패하고 보고서·SBOM 을 아티팩트로 남기는 공급망 게이트를 추가합니다(GitHub 은 PR 요약에 등급, GitLab 은 CycloneDX 리포트). npmRegistry(사내 npm 레지스트리)·offlineBundle(러너에서 본 오프라인 번들 경로)은 환경 변수로 넣습니다. Maven 빌드 단계는 원격 저장소 일시 장애(5xx·연결 끊김)일 때만 -U 로 최대 3회 다시 실행하고, mavenMirror 로 사내 미러를 지정할 수 있습니다. dryRun으로 내용만 미리볼 수 있고, 실제 생성 시 기존 파일이 있으면 덮어쓰지 않고 거부합니다. delivery=true 면 게이트 끝에 납품 패키지 단계(deliver --write → egovframe-delivery/)를 더해 아티팩트로 남깁니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
       platform: z.enum(["github", "gitlab", "jenkins"]).default("github").describe("CI 플랫폼: github(GitHub Actions, 기본) | gitlab(.gitlab-ci.yml) | jenkins(Jenkinsfile, Declarative)"),
       jdk: z.string().regex(CI_JDK_RE, "숫자와 점으로 된 버전만 허용 (예: 17, 21, 1.8)").default("17").describe("JDK 버전 (기본 17, 숫자·점만 허용)"),
@@ -1147,6 +1164,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       supplier: z.string().regex(CI_SUPPLIER_RE, "문자·숫자·공백·.,&()_- 100자 이하").optional().describe("SBOM 공급자(pom <organization><name> 이 없으면 최소 요소 '공급자'가 빠져 게이트가 실패하므로 지정)"),
       npmRegistry: z.string().regex(CI_NPM_REGISTRY_RE, "http(s) URL").optional().describe("사내 npm 레지스트리 URL(NPM_CONFIG_REGISTRY 로 설정 — npx 가 이 서버를 받는 곳)"),
       offlineBundle: z.string().regex(CI_BUNDLE_PATH_RE, "러너에서 본 절대 경로").optional().describe("폐쇄망 러너·에이전트에서 본 오프라인 번들 경로(EGOVFRAME_OFFLINE_BUNDLE 로 설정)"),
+      mavenMirror: z.string().regex(MAVEN_MIRROR_RE, "http(s) URL").optional().describe("v1.6: 사내 Maven 미러 URL(Nexus·Artifactory 프록시). 빌드 단계는 모든 저장소(*)를 이 미러로 보내는 settings 를 -gs 로 쓰고, 게이트의 CLI 단계는 EGOVFRAME_MAVEN_MIRROR 로 받습니다. Maven 빌드에만 적용"),
       secureCoding: z.boolean().default(false).describe("v0.44: 게이트에 보안약점 점검 단계 추가(secure --fail-on high, SARIF 를 GitHub code scanning 에 업로드·GitLab·Jenkins 는 보관)"),
       delivery: z.boolean().default(false).describe("v1.1: 게이트 끝에 납품 패키지 단계 추가(deliver --write → egovframe-delivery/ 를 아티팩트로 보관, 실패 항목이 있으면 단계 실패). supplyChain=true 필요"),
     }, annotations: toolAnnotations("generate_egovframe_ci") },
@@ -1166,7 +1184,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // 컴파일·테스트하고, 오류를 파일·라인 단위로 구조화해 생성→검증 루프를 닫는다.
   server.registerTool(
     "build_egovframe_project",
-    { title: t("build_egovframe_project"), description: d("build_egovframe_project", "생성한 eGovFrame 프로젝트를 실제로 빌드(컴파일·테스트·패키지)하고 결과를 구조화해 반환합니다. 빌드도구(maven/gradle)와 래퍼(mvnw/gradlew)를 자동 감지하고, 컴파일·테스트 오류를 파일·라인 단위로 파싱합니다. dryRun으로 실행 예정 명령만 미리볼 수 있습니다. (생성→검증 루프 완성)"), inputSchema: {
+    { title: t("build_egovframe_project"), description: d("build_egovframe_project", "생성한 eGovFrame 프로젝트를 실제로 빌드(컴파일·테스트·패키지)하고 결과를 구조화해 반환합니다. 빌드도구(maven/gradle)와 래퍼(mvnw/gradlew)를 자동 감지하고, 컴파일·테스트 오류를 파일·라인 단위로 파싱합니다. 원격 저장소 일시 장애(5xx·연결 끊김)는 failureKind=repository-unavailable 로 구분하고 -U 로 다시 실행합니다(retryTransient). dryRun으로 실행 예정 명령만 미리볼 수 있습니다. (생성→검증 루프 완성)"), inputSchema: {
       projectDir: z.string().describe("빌드할 프로젝트 루트 디렉터리(pom.xml 또는 build.gradle 위치, 절대경로 권장)"),
       goal: z
         .enum(["compile", "test", "package"])
@@ -1187,6 +1205,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         .default(200)
         .describe("반환 로그의 최대 줄 수(마지막 N줄). 기본 200줄"),
       dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령만 반환"),
+      retryTransient: z.number().int().min(0).max(3).default(1).describe("원격 저장소 일시 장애(503·연결 끊김)로 실패하면 갱신 인자(-U / --refresh-dependencies)를 붙여 다시 실행할 횟수(0–3). 컴파일·테스트 실패는 다시 실행하지 않음. 기본 1"),
     }, annotations: toolAnnotations("build_egovframe_project") },
     async (args, extra) => {
       enforceAllowedRoots(args);
@@ -1196,6 +1215,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         timeoutMs: args.timeoutSeconds * 1000,
         maxLogLines: args.maxLogLines,
         dryRun: args.dryRun,
+        retryTransient: args.retryTransient,
       });
 
       if (r.dryRun) {
@@ -1217,14 +1237,14 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         : r.timedOut
           ? `⏱️ 빌드 시간 초과: ${r.goal} (${r.buildTool}) — ${secs}s 후 중단`
           : `❌ 빌드 실패: ${r.goal} (${r.buildTool}) — exit=${r.exitCode}, ${secs}s`;
-      const lines = [head, `- 명령: ${r.command}`, `- 디렉터리: ${r.cwd}`];
+      const lines = [head, `- 명령: ${r.command}`, `- 디렉터리: ${r.cwd}`, ...resilienceLines(r)];
       if (r.errors && r.errors.length) {
         lines.push(``, `발견된 오류 ${r.errors.length}개:`);
         for (const e of r.errors.slice(0, 50)) {
           lines.push(`  · ${e.file}:${e.line}${e.column ? ":" + e.column : ""} — ${e.message}`);
         }
         if (r.errors.length > 50) lines.push(`  … 외 ${r.errors.length - 50}개`);
-      } else if (!r.success) {
+      } else if (!r.success && r.failureKind !== "repository-unavailable") {
         lines.push(``, `구조화된 오류를 추출하지 못했습니다. 아래 로그를 확인하세요.`);
       }
       if (r.logTail) {
@@ -1241,7 +1261,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // 테스트 클래스 내 파일·라인까지 제공해 "어느 테스트가 왜 깨졌는가"에 바로 답한다.
   server.registerTool(
     "test_egovframe_project",
-    { title: t("test_egovframe_project"), description: d("test_egovframe_project", "eGovFrame 프로젝트의 테스트를 실제로 실행하고 JUnit XML 리포트(surefire/gradle)를 읽어 결과를 구조화합니다. 스위트별 통과·실패·오류·건너뜀 수와, 실패 케이스의 메시지·예외 타입·테스트 파일/라인을 반환합니다. testFilter로 특정 클래스/메서드만 실행할 수 있고, dryRun으로 실행 예정 명령을 미리볼 수 있습니다. (build_egovframe_project 의 테스트 후속)"), inputSchema: {
+    { title: t("test_egovframe_project"), description: d("test_egovframe_project", "eGovFrame 프로젝트의 테스트를 실제로 실행하고 JUnit XML 리포트(surefire/gradle)를 읽어 결과를 구조화합니다. 스위트별 통과·실패·오류·건너뜀 수와, 실패 케이스의 메시지·예외 타입·테스트 파일/라인을 반환합니다. testFilter로 특정 클래스/메서드만 실행할 수 있고, 원격 저장소 일시 장애는 다시 실행합니다(retryTransient). dryRun으로 실행 예정 명령을 미리볼 수 있습니다. (build_egovframe_project 의 테스트 후속)"), inputSchema: {
       projectDir: z.string().describe("테스트할 프로젝트 루트 디렉터리(pom.xml 또는 build.gradle 위치, 절대경로 권장)"),
       testFilter: z
         .string()
@@ -1269,6 +1289,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         .default(50)
         .describe("반환할 실패·오류 케이스 최대 수. 기본 50"),
       dryRun: z.boolean().default(false).describe("true면 실행 없이 감지된 빌드도구·명령·리포트 위치만 반환"),
+      retryTransient: z.number().int().min(0).max(3).default(1).describe("원격 저장소 일시 장애(503·연결 끊김)로 실패하면 갱신 인자(-U / --refresh-dependencies)를 붙여 다시 실행할 횟수(0–3). 컴파일·테스트 실패는 다시 실행하지 않음. 기본 1"),
     }, annotations: toolAnnotations("test_egovframe_project") },
     async (args, extra) => {
       enforceAllowedRoots(args);
@@ -1279,6 +1300,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         maxLogLines: args.maxLogLines,
         maxFailures: args.maxFailures,
         dryRun: args.dryRun,
+        retryTransient: args.retryTransient,
       });
 
       if (r.dryRun) {
@@ -1302,7 +1324,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         : r.timedOut
           ? `⏱️ 테스트 시간 초과 — ${secs}s 후 중단 — 집계 ${counts}`
           : `❌ 테스트 실패 — ${counts} — exit=${r.exitCode}, ${secs}s`;
-      const lines = [head, `- 명령: ${r.command}`, `- 디렉터리: ${r.cwd}`, `- 리포트: ${r.reportDir}${r.reportsFound ? "" : " (리포트 없음)"}`];
+      const lines = [head, `- 명령: ${r.command}`, `- 디렉터리: ${r.cwd}`, `- 리포트: ${r.reportDir}${r.reportsFound ? "" : " (리포트 없음)"}`, ...resilienceLines(r)];
 
       if (r.failures && r.failures.length) {
         lines.push(``, `실패·오류 케이스 ${r.failures.length}${r.failuresTruncated ? "+" : ""}개:`);
@@ -1326,7 +1348,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
           lines.push(`  · ${e.file}:${e.line}${e.column ? ":" + e.column : ""} — ${e.message}`);
         }
       }
-      if (!r.success && !r.reportsFound && !(r.compileErrors && r.compileErrors.length)) {
+      if (!r.success && !r.reportsFound && !(r.compileErrors && r.compileErrors.length) && r.failureKind !== "repository-unavailable") {
         lines.push(``, `리포트가 생성되지 않았습니다 — 컴파일 실패, testFilter 불일치, 테스트 없음, 또는 DB 등 외부 의존성 오류일 수 있습니다. 아래 로그를 확인하세요.`);
       }
       if (r.logTail) {

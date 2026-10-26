@@ -11,7 +11,8 @@ import { createHash } from "node:crypto";
 import { loadCatalog } from "./catalog.js";
 import { defaultCacheDir, type OriginSource } from "./component-origin.js";
 import { downloadComponentsZip } from "./components.js";
-import { detectBuildToolAt, runBuild, type BuildError, type BuildTool, type Runner } from "./build-runner.js";
+import { detectBuildToolAt, failureSummary, runBuild, type BuildError, type BuildTool, type Runner } from "./build-runner.js";
+import type { FailureKind } from "./maven-resilience.js";
 import { applyMigration, applyTextEdits, linkBuildError, loadMigrationRules, migrateProject, parsePomDeps, parsePomProperties, type MigrationItem, type PomDep, type TextEdit } from "./migrate.js";
 import { reassembleComponents, unifiedPatch } from "./reassemble.js";
 import { L } from "./lang.js";
@@ -348,6 +349,10 @@ export interface RehearsalPhase {
   command?: string;
   durationMs?: number;
   timedOut?: boolean;
+  /** v1.6: 실패 종류·안내(원격 저장소 일시 장애 구분) */
+  failureKind?: FailureKind;
+  failureHint?: string;
+  attempts?: number;
   analysis?: ErrorAnalysis;
   reason?: string;
 }
@@ -453,7 +458,7 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
     const items = migrateProject({ projectDir: ws }).items;
     const ref = (await loadReference()) ?? "";
     const capped = buildTool !== "maven" && (b.errors?.length ?? 0) === 100;
-    return { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, timedOut: b.timedOut, analysis: analyzeErrors(b.errors ?? [], ws, items, ref ? mainDependencies(ref) : [], capped) };
+    return { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, timedOut: b.timedOut, ...failureSummary(b), analysis: analyzeErrors(b.errors ?? [], ws, items, ref ? mainDependencies(ref) : [], capped) };
   };
 
   try {
@@ -533,7 +538,7 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
   return result;
 }
 
-const fmtPhase = (p: RehearsalPhase | undefined) => (!p ? "—" : !p.ran ? L(`건너뜀(${p.reason})`, `skipped (${p.reason})`) : p.success ? L("✅ 통과", "✅ passed") : L(`❌ ${p.analysis?.errors ?? 0}건 / 파일 ${p.analysis?.files ?? 0}${p.timedOut ? " (시간 초과)" : ""}`, `❌ ${p.analysis?.errors ?? 0} error(s) / ${p.analysis?.files ?? 0} file(s)${p.timedOut ? " (timed out)" : ""}`));
+const fmtPhase = (p: RehearsalPhase | undefined) => (!p ? "—" : !p.ran ? L(`건너뜀(${p.reason})`, `skipped (${p.reason})`) : p.success ? L("✅ 통과", "✅ passed") : p.failureKind === "repository-unavailable" ? L(`⚠️ 원격 저장소 일시 장애로 컴파일하지 못함 — ${p.failureHint ?? ""}`, `⚠️ not compiled: transient repository outage — ${p.failureHint ?? ""}`) : L(`❌ ${p.analysis?.errors ?? 0}건 / 파일 ${p.analysis?.files ?? 0}${p.timedOut ? " (시간 초과)" : ""}`, `❌ ${p.analysis?.errors ?? 0} error(s) / ${p.analysis?.files ?? 0} file(s)${p.timedOut ? " (timed out)" : ""}`));
 
 /** 결과 Markdown. */
 export function renderRehearsalMarkdown(r: RehearseResult): string {

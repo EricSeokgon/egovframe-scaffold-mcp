@@ -17,6 +17,9 @@ import {
   detectBuildToolAt,
   parseBuildErrors,
   resolveCommand,
+  runWithTransientRetry,
+  failureFields,
+  type BuildRunResult,
 } from "./build-runner.js";
 import { AbortError, throwIfAborted, type Progress } from "./progress.js";
 
@@ -79,6 +82,11 @@ export interface TestRunResult {
   logTail?: string;
   logTruncated?: boolean;
   totalLogLines?: number;
+  /** v1.6: 실패 종류·저장소·안내·실행 횟수(build_egovframe_project 와 같음) */
+  failureKind?: BuildRunResult["failureKind"];
+  repository?: BuildRunResult["repository"];
+  failureHint?: string;
+  attempts?: number;
 }
 
 /** 빌드도구별 JUnit XML 리포트 디렉터리(프로젝트 기준 상대경로). */
@@ -302,6 +310,10 @@ export async function runTests(opts: {
   now?: () => number;
   /** v1.2: 진행 알림·취소(signal). 취소되면 프로세스 트리를 끝내고 AbortError 를 던진다 */
   progress?: Progress;
+  /** v1.6: 원격 저장소 일시 장애로 실패하면 다시 실행할 횟수(0–3, 기본 1) */
+  retryTransient?: number;
+  /** v1.6: 다시 실행 전 대기 기준(ms, 테스트용) */
+  retryDelayMs?: number;
 }): Promise<TestRunResult> {
   throwIfAborted(opts.progress?.signal);
   const projectDir = path.resolve(opts.projectDir);
@@ -335,12 +347,14 @@ export async function runTests(opts: {
   const runner = opts.runner ?? defaultRunner;
   const now = opts.now ?? Date.now;
   const timeoutMs = opts.timeoutMs ?? 600_000;
-  let buffer = "";
   // 실행 전 리포트 스냅샷: 이번 실행이 새로 쓰거나 다시 쓴 리포트만 결과에 넣는다.
   const previous = snapshotReports(reportDirAbs);
   const started = now();
   opts.progress?.report(`${buildTool} test: ${command}`, 0, 1);
-  const result = await runner(resolved, { timeoutMs, onData: (chunk) => (buffer += chunk), signal: opts.progress?.signal });
+  const { result, buffer, attempts } = await runWithTransientRetry({
+    resolved, buildTool, runner, timeoutMs, signal: opts.progress?.signal, retryTransient: opts.retryTransient, retryDelayMs: opts.retryDelayMs,
+    onRetry: (n, repo) => opts.progress?.report(`${buildTool} test: repository unavailable${repo?.status ? ` (HTTP ${repo.status})` : ""} — retry ${n + 1}`, 0, 1),
+  });
   const durationMs = now() - started;
   if (result.aborted || opts.progress?.signal?.aborted) throw new AbortError(`${buildTool} test cancelled after ${durationMs}ms`);
   opts.progress?.report(`${buildTool} test: exit ${result.exitCode ?? "-"}${result.timedOut ? " (timeout)" : ""}`, 1, 1);
@@ -373,5 +387,6 @@ export async function runTests(opts: {
     logTail: capped.text,
     logTruncated: capped.truncated,
     totalLogLines: capped.totalLines,
+    ...failureFields({ success, output: buffer, timedOut: result.timedOut, compileErrors: compileErrors.length, testFailures: agg.summary.failures + agg.summary.errors, goal: "test", attempts }),
   };
 }

@@ -1,7 +1,7 @@
 {
-  "version": "1.5.1",
-  "base": "1.5.0",
-  "change": "none",
+  "version": "1.6.0",
+  "base": "1.5.1",
+  "change": "minor",
   "contract": {
     "tools": {
       "add_ai_components": {
@@ -162,6 +162,12 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "retryTransient": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 0,
+              "maximum": 3
             },
             "timeoutSeconds": {
               "type": "integer",
@@ -1505,7 +1511,14 @@
                   "rule": {
                     "type": "string"
                   },
-                  "severity": {}
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "high",
+                      "low",
+                      "medium"
+                    ]
+                  }
                 }
               }
             },
@@ -2182,6 +2195,10 @@
               "type": "string",
               "default": "17",
               "pattern": "^[0-9]{1,2}(\\.[0-9]{1,3}){0,2}$"
+            },
+            "mavenMirror": {
+              "type": "string",
+              "pattern": "^https?:\\/\\/[A-Za-z0-9.\\-]+(?::\\d{1,5})?(?:\\/[A-Za-z0-9._~%\\-\\/]*)?$"
             },
             "npmRegistry": {
               "type": "string",
@@ -3301,7 +3318,76 @@
                         }
                       }
                     },
-                    "supplyChain": {}
+                    "supplyChain": {
+                      "type": "object",
+                      "required": [
+                        "caveats",
+                        "factors",
+                        "grade",
+                        "max",
+                        "scale",
+                        "score"
+                      ],
+                      "properties": {
+                        "caveats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "factors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "band",
+                              "id",
+                              "label",
+                              "points",
+                              "value"
+                            ],
+                            "properties": {
+                              "band": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "points": {
+                                "type": "integer"
+                              },
+                              "value": {
+                                "type": "number"
+                              }
+                            }
+                          }
+                        },
+                        "grade": {
+                          "type": "string",
+                          "enum": [
+                            "A",
+                            "B",
+                            "C",
+                            "D"
+                          ]
+                        },
+                        "max": {
+                          "type": "integer"
+                        },
+                        "scale": {
+                          "type": "string"
+                        },
+                        "score": {
+                          "type": "integer"
+                        }
+                      }
+                    }
                   }
                 },
                 "migration": {
@@ -4167,8 +4253,24 @@
                 "success"
               ],
               "properties": {
+                "attempts": {
+                  "type": "integer"
+                },
                 "errors": {
                   "type": "integer"
+                },
+                "failureHint": {
+                  "type": "string"
+                },
+                "failureKind": {
+                  "type": "string",
+                  "enum": [
+                    "compile",
+                    "other",
+                    "repository-unavailable",
+                    "test",
+                    "timeout"
+                  ]
                 },
                 "ran": {
                   "type": "boolean"
@@ -4338,7 +4440,29 @@
             "projectDir": {
               "type": "string"
             },
-            "remaining": {},
+            "remaining": {
+              "type": "object",
+              "required": [
+                "auto",
+                "byKind",
+                "files",
+                "manual"
+              ],
+              "properties": {
+                "auto": {
+                  "type": "integer"
+                },
+                "byKind": {
+                  "type": "object"
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "manual": {
+                  "type": "integer"
+                }
+              }
+            },
             "rteVersion": {
               "type": [
                 "string",
@@ -4546,7 +4670,48 @@
                   "index": {
                     "type": "integer"
                   },
-                  "item": {}
+                  "item": {
+                    "type": "object",
+                    "required": [
+                      "action",
+                      "file",
+                      "from",
+                      "kind",
+                      "line",
+                      "reason",
+                      "to"
+                    ],
+                    "properties": {
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "manual"
+                        ]
+                      },
+                      "file": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "line": {
+                        "type": "integer"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5586,11 +5751,27 @@
                     }
                   }
                 },
+                "attempts": {
+                  "type": "integer"
+                },
                 "command": {
                   "type": "string"
                 },
                 "durationMs": {
                   "type": "number"
+                },
+                "failureHint": {
+                  "type": "string"
+                },
+                "failureKind": {
+                  "type": "string",
+                  "enum": [
+                    "compile",
+                    "other",
+                    "repository-unavailable",
+                    "test",
+                    "timeout"
+                  ]
                 },
                 "ran": {
                   "type": "boolean"
@@ -5622,9 +5803,159 @@
                     "type": "string"
                   }
                 },
-                "analysis": {},
-                "command": {},
-                "durationMs": {},
+                "analysis": {
+                  "type": "object",
+                  "required": [
+                    "byDirectory",
+                    "capped",
+                    "cascade",
+                    "errors",
+                    "files",
+                    "linked",
+                    "missingPackage",
+                    "missingPackages",
+                    "other",
+                    "topFiles"
+                  ],
+                  "properties": {
+                    "byDirectory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "dir",
+                          "errors"
+                        ],
+                        "properties": {
+                          "dir": {
+                            "type": "string"
+                          },
+                          "errors": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "capped": {
+                      "type": "boolean"
+                    },
+                    "cascade": {
+                      "type": "integer"
+                    },
+                    "errors": {
+                      "type": "integer"
+                    },
+                    "files": {
+                      "type": "integer"
+                    },
+                    "linked": {
+                      "type": "object",
+                      "required": [
+                        "manual",
+                        "rules",
+                        "unlinked"
+                      ],
+                      "properties": {
+                        "manual": {
+                          "type": "integer"
+                        },
+                        "rules": {
+                          "type": "integer"
+                        },
+                        "unlinked": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "missingPackage": {
+                      "type": "integer"
+                    },
+                    "missingPackages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "cascade",
+                          "direct",
+                          "errors",
+                          "files",
+                          "hint",
+                          "package"
+                        ],
+                        "properties": {
+                          "cascade": {
+                            "type": "integer"
+                          },
+                          "direct": {
+                            "type": "integer"
+                          },
+                          "errors": {
+                            "type": "integer"
+                          },
+                          "files": {
+                            "type": "integer"
+                          },
+                          "hint": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "package": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "other": {
+                      "type": "integer"
+                    },
+                    "topFiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "errors",
+                          "file",
+                          "sample"
+                        ],
+                        "properties": {
+                          "errors": {
+                            "type": "integer"
+                          },
+                          "file": {
+                            "type": "string"
+                          },
+                          "sample": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "attempts": {
+                  "type": "integer"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "number"
+                },
+                "failureHint": {
+                  "type": "string"
+                },
+                "failureKind": {
+                  "type": "string",
+                  "enum": [
+                    "compile",
+                    "other",
+                    "repository-unavailable",
+                    "test",
+                    "timeout"
+                  ]
+                },
                 "parent": {
                   "type": [
                     "string",
@@ -5646,8 +5977,12 @@
                     "type": "string"
                   }
                 },
-                "ran": {},
-                "reason": {},
+                "ran": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                },
                 "reference": {
                   "type": "string"
                 },
@@ -5657,8 +5992,15 @@
                     "type": "string"
                   }
                 },
-                "success": {},
-                "timedOut": {},
+                "success": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "timedOut": {
+                  "type": "boolean"
+                },
                 "versionsChanged": {
                   "type": "array",
                   "items": {
@@ -6011,6 +6353,12 @@
             "projectDir": {
               "type": "string"
             },
+            "retryTransient": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 0,
+              "maximum": 3
+            },
             "testFilter": {
               "type": "string"
             },
@@ -6193,6 +6541,7 @@
       "EGOVFRAME_BUNDLE_MAX_AGE_DAYS",
       "EGOVFRAME_CACHE_DIR",
       "EGOVFRAME_LANG",
+      "EGOVFRAME_MAVEN_MIRROR",
       "EGOVFRAME_OFFLINE_BUNDLE"
     ],
     "node": ">=22"

@@ -5,6 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { SERVER_VERSION } from "./version.js";
 import { pomIdentity } from "./sbom.js";
+import { CI_MIRROR_SETTINGS, MAVEN_MIRROR_ENV, MAVEN_RETRY_FLAGS, TRANSIENT_CAUSE, TRANSIENT_CONTEXT, mavenMirrorSettings, shellTransientTest, validateMavenMirror } from "./maven-resilience.js";
 
 // ── CI 설정 생성 + 문서 스니펫 (v0.19.0) ────────────────
 function detectBuildTool(projectDir: string): "maven" | "gradle" {
@@ -49,7 +50,7 @@ export interface CiSupplyChainOptions {
   delivery?: boolean;
 }
 /** v0.43: 실행 환경 변수(세 플랫폼 공통) */
-export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string }
+export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string; /** v1.6: 사내 Maven 미러(Nexus·Artifactory 프록시) — 빌드는 -gs settings, 게이트의 CLI 는 EGOVFRAME_MAVEN_MIRROR */ mavenMirror?: string }
 
 function checkSupplyChain(opts: CiSupplyChainOptions): void {
   const failOn = opts.failOn ?? "supplyChain:D";
@@ -67,7 +68,58 @@ export function ciEnvEntries(env: CiEnvOptions = {}): [string, string][] {
     if (!CI_BUNDLE_PATH_RE.test(env.offlineBundle)) throw new Error(`offlineBundle 은 러너에서 본 절대 경로여야 합니다(영문·숫자·._-/\\: 와 공백만): ${JSON.stringify(env.offlineBundle)}`);
     out.push(["EGOVFRAME_OFFLINE_BUNDLE", env.offlineBundle]);
   }
+  if (env.mavenMirror !== undefined) out.push([MAVEN_MIRROR_ENV, validateMavenMirror(env.mavenMirror)]);
   return out;
+}
+
+// ── v1.6: Maven 빌드 단계의 일시 장애 내성 ───────────────
+//   (1) 요청 단위 재시도(MAVEN_RETRY_FLAGS) (2) 명령 단위 재시도: 실패 로그가 "저장소 실패 문맥 + 일시 장애 원인"일 때만
+//   30초·60초 뒤 -U 를 붙여 다시(최대 3회). 컴파일·테스트 실패는 다시 실행하지 않는다. (3) mavenMirror 면 -gs settings.
+export const CI_MAVEN_LOG = ".egovframe-mvn.log";
+export const CI_MAVEN_ATTEMPTS = 3;
+/** 빌드 단계의 Maven 인자(mvn 다음) */
+export const ciMavenGoals = (mirror: boolean) => ["-B", "verify", ...MAVEN_RETRY_FLAGS, ...(mirror ? ["-gs", CI_MIRROR_SETTINGS] : [])].join(" ");
+/** 미러 settings 를 작업 디렉터리에 쓰는 POSIX 셸 명령 */
+export const ciMirrorWriteCommand = (url: string) => `printf '%s\\n' '${mavenMirrorSettings(url)}' > ${CI_MIRROR_SETTINGS}`;
+/** GitHub(bash, pipefail): 로그를 흘려 보내며 재시도 */
+export function ciMavenBashRetry(mirror: boolean): string[] {
+  return [
+    `for i in $(seq 1 ${CI_MAVEN_ATTEMPTS}); do`,
+    `  if mvn ${ciMavenGoals(mirror)} $([ "$i" -gt 1 ] && echo -U) 2>&1 | tee ${CI_MAVEN_LOG}; then exit 0; fi`,
+    `  if [ "$i" -lt ${CI_MAVEN_ATTEMPTS} ] && ${shellTransientTest(CI_MAVEN_LOG)}; then`,
+    `    echo "::warning::Maven repository unavailable - retrying in $((i * 30))s ($((i + 1))/${CI_MAVEN_ATTEMPTS})"; sleep $((i * 30))`,
+    "  else exit 1; fi",
+    "done",
+  ];
+}
+/** GitLab(sh, set -e 에서도 안전한 한 줄): 실행 뒤 로그를 출력 */
+export function ciMavenShRetry(mirror: boolean): string {
+  return `i=1; while :; do mvn ${ciMavenGoals(mirror)} $([ "$i" -gt 1 ] && echo -U) > ${CI_MAVEN_LOG} 2>&1 && s=0 || s=$?; cat ${CI_MAVEN_LOG}; [ "$s" -eq 0 ] && break; if [ "$i" -lt ${CI_MAVEN_ATTEMPTS} ] && ${shellTransientTest(CI_MAVEN_LOG)}; then echo "Maven repository unavailable - retrying in $((i * 30))s ($((i + 1))/${CI_MAVEN_ATTEMPTS})"; sleep $((i * 30)); i=$((i + 1)); else exit "$s"; fi; done`;
+}
+/** Jenkins(Groovy, sh·bat 공용): readFile 로 로그를 읽어 판정 — 샌드박스에서 허용된 String 메서드와 기본 단계만 쓴다 */
+export function jenkinsMavenRetryFunction(): string[] {
+  const list = (xs: string[]) => `[${xs.map((x) => `'${x}'`).join(", ")}]`;
+  return [
+    "def mvnResilient(String goals) {",
+    `  def context = ${list(TRANSIENT_CONTEXT)}`,
+    `  def causes = ${list(TRANSIENT_CAUSE)}`,
+    `  for (int i = 1; i <= ${CI_MAVEN_ATTEMPTS}; i++) {`,
+    `    String cmd = 'mvn ' + goals + (i > 1 ? ' -U' : '') + ' > ${CI_MAVEN_LOG} 2>&1'`,
+    "    int status = isUnix() ? sh(script: cmd, returnStatus: true) : bat(script: cmd, returnStatus: true)",
+    `    String log = readFile('${CI_MAVEN_LOG}')`,
+    "    echo log",
+    "    if (status == 0) { return }",
+    "    String low = log.toLowerCase()",
+    "    boolean hasContext = false",
+    "    boolean hasCause = false",
+    "    for (String c : context) { if (low.contains(c)) { hasContext = true } }",
+    "    for (String c : causes) { if (low.contains(c)) { hasCause = true } }",
+    `    if (i == ${CI_MAVEN_ATTEMPTS} || !(hasContext && hasCause)) { error('mvn ' + goals + ' failed (exit ' + status + ')') }`,
+    `    echo 'Maven repository unavailable - retrying in ' + (i * 30) + 's (' + (i + 1) + '/${CI_MAVEN_ATTEMPTS})'`,
+    "    sleep(time: i * 30, unit: 'SECONDS')",
+    "  }",
+    "}",
+  ];
 }
 
 /** 공급망 게이트의 CLI 명령(플랫폼 공통). stepSummary 는 GitHub 에서만. */
@@ -141,8 +193,15 @@ export function supplyChainJobYaml(buildTool: "maven" | "gradle", jdk: string, o
 
 export function generateCiYaml(buildTool: "maven" | "gradle", jdkInput: string, supplyChain?: CiSupplyChainOptions | false, env: CiEnvOptions = {}): string {
   const jdk = validateCiJdk(jdkInput);
+  const mirror = env.mavenMirror !== undefined ? validateMavenMirror(env.mavenMirror) : undefined;
   const buildStep = buildTool === "maven"
-    ? "      - run: mvn -B verify"
+    ? [
+      ...(mirror ? ["      - name: Maven mirror settings", `        run: ${yq(ciMirrorWriteCommand(mirror))}`] : []),
+      "      - name: Build (mvn -B verify, retried on transient repository outages)",
+      "        shell: bash",
+      "        run: |",
+      ...ciMavenBashRetry(!!mirror).map((l) => `          ${l}`),
+    ].join("\n")
     : "      - run: chmod +x ./gradlew\n      - run: ./gradlew build --no-daemon";
   return [
     "name: CI",
@@ -193,7 +252,7 @@ export function generateGitlabCi(buildTool: "maven" | "gradle", jdkInput: string
     "  stage: build",
     ...cache,
     "  script:",
-    ...(maven ? [`    - ${yq("mvn -B verify")}`] : [`    - ${yq("chmod +x ./gradlew")}`, `    - ${yq("./gradlew build --no-daemon")}`]),
+    ...(maven ? [...(env.mavenMirror !== undefined ? [`    - ${yq(ciMirrorWriteCommand(env.mavenMirror))}`] : []), `    - ${yq(ciMavenShRetry(env.mavenMirror !== undefined))}`] : [`    - ${yq("chmod +x ./gradlew")}`, `    - ${yq("./gradlew build --no-daemon")}`]),
     "  artifacts:",
     "    when: always",
     "    reports:",
@@ -233,7 +292,7 @@ export function generateJenkinsfile(buildTool: "maven" | "gradle", jdkInput: str
   const envs = ciEnvEntries(env);
   const stage = (name: string, body: string[]) => [`    stage(${gq(name)}) {`, "      steps {", "        script {", ...body.map((b) => `          ${b}`), "        }", "      }", "    }"];
   const build = buildTool === "maven"
-    ? [`run(${gq("mvn -B verify")})`]
+    ? [...(env.mavenMirror !== undefined ? [`writeFile file: ${gq(CI_MIRROR_SETTINGS)}, text: ${gq(mavenMirrorSettings(env.mavenMirror))}`] : []), `mvnResilient(${gq(ciMavenGoals(env.mavenMirror !== undefined))})`]
     : ["if (isUnix()) {", `  sh ${gq("chmod +x ./gradlew && ./gradlew build --no-daemon")}`, "} else {", `  bat ${gq("gradlew.bat build --no-daemon")}`, "}"];
   const L = [
     `// eGovFrame CI — egovframe-scaffold-mcp ${SERVER_VERSION} generate_egovframe_ci(platform=jenkins)`,
@@ -242,6 +301,7 @@ export function generateJenkinsfile(buildTool: "maven" | "gradle", jdkInput: str
     "  if (isUnix()) { sh cmd } else { bat cmd }",
     "}",
     "",
+    ...(buildTool === "maven" ? [...jenkinsMavenRetryFunction(), ""] : []),
     "pipeline {",
     "  agent any",
     "  options {",
@@ -292,7 +352,7 @@ export function generateCiConfig(opts: GenerateCiOptions): CiResult {
   const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}), ...(opts.secureCoding ? { secureCoding: true } : {}), ...(opts.delivery ? { delivery: true } : {}) } : false;
   if (opts.secureCoding && !opts.supplyChain) throw new Error("secureCoding 은 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
   if (opts.delivery && !opts.supplyChain) throw new Error("delivery 는 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
-  const env: CiEnvOptions = { ...(opts.npmRegistry ? { npmRegistry: opts.npmRegistry } : {}), ...(opts.offlineBundle ? { offlineBundle: opts.offlineBundle } : {}) };
+  const env: CiEnvOptions = { ...(opts.npmRegistry ? { npmRegistry: opts.npmRegistry } : {}), ...(opts.offlineBundle ? { offlineBundle: opts.offlineBundle } : {}), ...(opts.mavenMirror ? { mavenMirror: opts.mavenMirror } : {}) };
   const jdk = opts.jdk ?? "17";
   const content = platform === "gitlab" ? generateGitlabCi(buildTool, jdk, sc, env) : platform === "jenkins" ? generateJenkinsfile(buildTool, jdk, sc, env) : generateCiYaml(buildTool, jdk, sc, env);
   const rel = CI_PATHS[platform];
@@ -300,6 +360,8 @@ export function generateCiConfig(opts: GenerateCiOptions): CiResult {
   const notes: string[] = [];
   if (sc && !opts.supplier && !(buildTool === "maven" && pomIdentity(projectDir).organization))
     notes.push("supplier 미지정이고 pom <organization><name> 도 없어 SBOM 의 공급자(주 component)·작성자가 비므로 sbom-check --fail-on minimum 단계가 실패합니다 — supplier 를 지정하거나 pom 에 <organization> 을 넣으세요.");
+  if (opts.mavenMirror && buildTool === "gradle")
+    notes.push("mavenMirror 는 Maven 빌드에만 적용됩니다 — Gradle 은 settings.gradle 의 repositories(또는 init 스크립트)에 미러를 지정하세요. 게이트 단계의 CLI 는 EGOVFRAME_MAVEN_MIRROR 를 받지만 Gradle 실행에는 쓰지 않습니다.");
   if (!dryRun) {
     const dest = path.join(projectDir, rel);
     if (fs.existsSync(dest)) throw new Error(`이미 존재합니다: ${rel} — 덮어쓰지 않습니다(수동 확인).`);

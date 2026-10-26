@@ -21,7 +21,7 @@ export interface ApiContract {
 }
 
 /** 공개 환경 변수(README 「보안 설정」·「폐쇄망」·CLI 절에 문서화된 것) */
-export const PUBLIC_ENV = ["EGOVFRAME_ALLOWED_ROOTS", "EGOVFRAME_BUNDLE_MAX_AGE_DAYS", "EGOVFRAME_CACHE_DIR", "EGOVFRAME_LANG", "EGOVFRAME_OFFLINE_BUNDLE"];
+export const PUBLIC_ENV = ["EGOVFRAME_ALLOWED_ROOTS", "EGOVFRAME_BUNDLE_MAX_AGE_DAYS", "EGOVFRAME_CACHE_DIR", "EGOVFRAME_LANG", "EGOVFRAME_MAVEN_MIRROR", "EGOVFRAME_OFFLINE_BUNDLE"];
 
 const KEEP = ["type", "enum", "const", "default", "required", "properties", "items", "anyOf", "oneOf", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "minItems", "maxItems", "pattern"];
 
@@ -36,6 +36,8 @@ export function normalizeSchema(s: unknown): Schema {
     else if (k === "items") out[k] = normalizeSchema(v);
     else if (k === "anyOf" || k === "oneOf") out[k] = (v as unknown[]).map(normalizeSchema);
     else if (k === "required" || k === "enum") out[k] = [...(v as unknown[])].map(String).sort();
+    // v1.6: zod 4 는 .int() 에 안전 정수 범위(±2^53-1)를 적는다 — 실질 제약이 아니므로 계약에서 뺀다(zod 3 스냅샷과 같게)
+    else if ((k === "maximum" && v === Number.MAX_SAFE_INTEGER) || (k === "minimum" && v === Number.MIN_SAFE_INTEGER)) continue;
     else out[k] = v;
   }
   return out;
@@ -82,6 +84,8 @@ const cmp3 = (a: number[], b: number[]) => (a[0] - b[0]) || (a[1] - b[1]) || (a[
 /** 스키마 비교. input: 호출자가 보내는 쪽(좁히면 major), output: 받는 쪽(빼거나 선택으로 바꾸면 major) */
 function compareSchema(a: Schema, b: Schema, mode: "input" | "output", at: string, out: ContractChange[]): void {
   const add = (level: ContractChange["level"], what: string) => out.push({ level, path: at, what });
+  // v1.6: 출력에서 제약 없던 스키마({} — 예: zod 3 변환의 $ref 를 계약에서 뺀 자리)가 구체화되면 받는 쪽 호환(minor)
+  if (mode === "output" && Object.keys(a).length === 0) { if (Object.keys(b).length) add("minor", "스키마 구체화(제약 없음 → 명시)"); return; }
   if (!same(a.type, b.type)) add("major", `타입 ${JSON.stringify(a.type)} → ${JSON.stringify(b.type)}`);
   for (const k of ["anyOf", "oneOf", "const"] as const) if (!same(a[k], b[k])) add(mode === "input" ? "major" : "minor", `${k} 변경`);
   if (!same(a.pattern, b.pattern)) {

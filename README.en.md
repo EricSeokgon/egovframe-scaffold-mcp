@@ -42,6 +42,7 @@ Requires Node.js 22+ (since 1.0.0; Node 18 and 20 are end-of-life). Downloads go
 | Variable | Purpose |
 |---|---|
 | `EGOVFRAME_ALLOWED_ROOTS` | Optional sandbox: every directory argument (`projectDir`, `outputDir`) must be inside one of these roots (path-separator-delimited, realpath-checked). |
+| `EGOVFRAME_MAVEN_MIRROR` | Internal Maven mirror URL (Nexus, Artifactory proxy): every Maven request from build, test, SBOM and dependency-tree runs goes there (v1.6). Useful when the eGovFrame repository keeps returning 503. |
 | `EGOVFRAME_LANG` | `en` → English tool descriptions in `tools/list` **and English responses** (v1.2): the Markdown body and sentence fields of the assessment, migration, dependency, SBOM, secure-coding, deployment and delivery results. The CLI takes `--lang en` (overrides the variable). |
 
 With `EGOVFRAME_LANG=en` a response looks like this (`check_egovframe_secure_coding`, or `npx -y egovframe-scaffold-mcp secure --project . --lang en`):
