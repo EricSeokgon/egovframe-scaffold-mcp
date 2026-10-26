@@ -66,11 +66,11 @@ export interface CatalogDriftDeps {
   githubToken?: string | null;
 }
 
-/** 일시적 네트워크 오류("fetch failed"·연결 재설정)는 1초·2초 뒤 두 번 더 시도한다. HTTP 상태 오류·시간 초과는 그대로 던진다. */
+/** 일시적 네트워크 오류("fetch failed"·연결 재설정)와 시간 초과(v1.6 — 표준프레임워크 저장소의 응답 지연)는 1초·2초 뒤 두 번 더 시도한다. HTTP 상태 오류는 그대로 던진다. */
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
   for (let i = 1; ; i++) {
     try { return await fn(); } catch (error) {
-      const transient = error instanceof TypeError || /fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(String((error as Error)?.message) + String((error as { cause?: unknown })?.cause ?? ""));
+      const transient = error instanceof TypeError || /fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|시간 초과\(/i.test(String((error as Error)?.message) + String((error as { cause?: unknown })?.cause ?? ""));
       if (!transient || i >= attempts) throw error;
       await new Promise((r) => setTimeout(r, 1000 * i));
     }

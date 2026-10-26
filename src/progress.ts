@@ -67,6 +67,13 @@ export function stepper(progress: Progress | undefined, steps: readonly string[]
 }
 
 /** MCP 핸들러의 extra 에서 Progress 를 만든다(server.ts 전용). progressToken 이 없으면 알림은 보내지 않고 signal 만 넘긴다. */
+/** 요청(extra)별 아직 보내는 중인 진행 알림 — 응답보다 먼저 끝나야 클라이언트가 받는다(SDK 는 응답을 받으면 진행 처리기를 지운다) */
+const pending = new WeakMap<object, () => Promise<void>>();
+/** 도구 처리기가 끝나기 전에 그 요청의 진행 알림을 모두 보낸다(v1.6, SDK 1.32.2 에서 마지막 알림이 응답 뒤로 밀리던 것) */
+export async function flushProgress(extra: object): Promise<void> {
+  await pending.get(extra)?.();
+}
+
 export function progressFromExtra(extra: {
   _meta?: { progressToken?: string | number } | undefined;
   signal?: AbortSignal;
@@ -76,6 +83,7 @@ export function progressFromExtra(extra: {
   const send = extra.sendNotification;
   let last = -1;
   let chain: Promise<void> = Promise.resolve();
+  pending.set(extra, () => chain);
   return {
     signal: extra.signal,
     report(message, done, total) {

@@ -49,7 +49,18 @@ export const RTE_ROOT_ARTIFACT = "egovframe-rte-root";
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 export const pomUrl = (p, repo = REPO) => `${repo}${p.groupId.replace(/\./g, "/")}/${p.artifactId}/${p.version}/${p.artifactId}-${p.version}.pom`;
 
-async function fetchText(url, timeoutMs = 30_000) {
+// v1.6: 표준프레임워크 저장소의 일시 장애(5xx·끊김·지연)는 3회까지 다시 받는다
+async function fetchText(url, timeoutMs = 60_000) {
+  for (let i = 1; ; i++) {
+    try { return await fetchTextOnce(url, timeoutMs); } catch (e) {
+      const transient = e?.name === "AbortError" || /^5\d\d /.test(String(e?.message)) || /fetch failed|ECONNRESET|ETIMEDOUT/.test(String(e?.message) + String(e?.cause?.code));
+      if (!transient || i >= 3) throw e;
+      console.error(`재시도 ${i + 1}/3: ${url} (${e?.message ?? e})`);
+      await new Promise((r) => setTimeout(r, 5_000 * i));
+    }
+  }
+}
+async function fetchTextOnce(url, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -176,7 +187,16 @@ async function main() {
     for (const [k, v] of Object.entries(parsed.properties)) if (!(k in w.properties)) w.properties[k] = v;
   }
 
-  // 두 parent 의 관리 목록을 합친다. 같은 좌표가 양쪽에 있으면 높은 버전을 기준으로 삼고 출처를 모두 적는다.
+  // 두 parent 의 관리 목록을 합친다. 같은 좌표가 양쪽에 있으면 높은 버전을 기준으로 삼고 출처별 버전을 적는다.
+  // v1.6: Maven 의 우선순위대로 출처별 실제 버전을 정한다 — parent 의 직접 선언 > (boot: 상속한 spring-boot-dependencies) > import BOM(선언 순서, 먼저 나온 쪽).
+  //   5.1.0 재배포(2026-10-26 확인)에서 web parent 가 Jakarta EE 9 버전(servlet 5.0·annotation 2.0.0 등)을 직접 선언해 rte-root BOM 의 EE 10 버전을 덮는데,
+  //   예전 생성기는 BOM 값과 높은 쪽을 골라 web 기준이 실제보다 높았다. boot 는 상속한 Boot BOM 이 자기 import(rte-root)보다 우선한다(Maven 3 import 규칙, 실측 트리로 확인).
+  const effectiveOf = (list) => {
+    const eff = new Map();
+    for (const e of list) if (!e.via) { const k = `${e.groupId}:${e.artifactId}`; if (!eff.has(k)) eff.set(k, e.version); }
+    return eff;
+  };
+  const effWeb = effectiveOf(w.managed), effBoot = effectiveOf(b.managed);
   const byKey = new Map();
   const add = (list, source) => {
     for (const e of list) {
@@ -184,12 +204,13 @@ async function main() {
       const cur = byKey.get(k);
       if (!cur) { byKey.set(k, { ...e, sources: [source] }); continue; }
       if (!cur.sources.includes(source)) cur.sources.push(source);
-      if (compareVersions(e.version, cur.version) > 0) { cur.version = e.version; cur.versionBySource = { ...(cur.versionBySource ?? {}), [source]: e.version }; }
-      else if (e.version !== cur.version) cur.versionBySource = { ...(cur.versionBySource ?? {}), [source]: e.version };
+      if (compareVersions(e.version, cur.version) > 0) cur.version = e.version;
     }
   };
-  add(w.managed, "web");
-  add(b.managed, "boot");
+  add(w.managed.filter((e) => !e.via), "web");
+  add(b.managed.filter((e) => !e.via), "boot");
+  add(w.managed.filter((e) => e.via), "web");
+  add(b.managed.filter((e) => e.via), "boot");
   // RTE 모듈은 실행환경 최신(규칙 카탈로그 목표) 기준으로 올린다 — parent 가 관리하는 버전보다 새 릴리스가 있을 수 있다
   for (const [k, e] of byKey) if (e.groupId === "org.egovframe.rte" && compareVersions(rteVersion, e.version) > 0) { e.parentVersion = e.version; e.version = rteVersion; }
   const managed = [...byKey.values()].sort((x, y) => `${x.groupId}:${x.artifactId}`.localeCompare(`${y.groupId}:${y.artifactId}`));
@@ -251,6 +272,50 @@ async function main() {
     bootImports.push({ groupId: e.groupId, artifactId: e.artifactId, version: e.version, url: pomUrl(e, bomRepo), sha256: sha256(xml), members, ...(parsed.unresolved.length ? { unresolved: parsed.unresolved.length } : {}) });
   }
   const bootDirect = bb.managed.filter((e) => !(e.type === "pom" && e.scope === "import")).length;
+
+  // v1.6: 출처별 실제 버전 — web: 직접 > import(선언 순서), boot: 직접 > Boot BOM > import(선언 순서)
+  const firstVia = (list, k) => list.find((e) => e.via && `${e.groupId}:${e.artifactId}` === k)?.version;
+  for (const [k, e] of byKey) {
+    const vb = {};
+    if (e.sources.includes("web")) vb.web = effWeb.get(k) ?? firstVia(w.managed, k) ?? e.version;
+    if (e.sources.includes("boot")) vb.boot = effBoot.get(k) ?? bootManaged.get(k) ?? firstVia(b.managed, k) ?? e.version;
+    if (e.groupId === "org.egovframe.rte") { for (const s of Object.keys(vb)) if (compareVersions(rteVersion, vb[s]) > 0) vb[s] = rteVersion; }
+    const vals = Object.values(vb);
+    e.version = vals.reduce((a, x) => (compareVersions(x, a) > 0 ? x : a), vals[0] ?? e.version);
+    if (new Set(vals).size > 1) e.versionBySource = vb; else delete e.versionBySource;
+  }
+
+  // v1.6: import BOM 의 실제 구성원 — 계열 규칙(groupId → 한 버전)은 같은 groupId 에 버전 줄이 다른 BOM 이 둘이면 틀린다
+  //   (io.micrometer: micrometer-bom 1.15.x 와 micrometer-tracing-bom 1.5.x), 구성원 버전이 BOM 번호와 다를 수도 있다(jackson-annotations 2.22 ← jackson-bom 2.22.3).
+  //   출처별 선언 순서(order)를 적어 두고, 판정은 그 순서로 처음 구성원으로 가진 BOM 의 버전을 쓴다.
+  const readBomMembers = async (e) => {
+    const bomRepo = /-egov\.\d+$/.test(e.version) ? REPO : CENTRAL;
+    const xml = await read(pomUrl(e, bomRepo), `bom/${e.artifactId}-${e.version}.pom`);
+    let parsed = parseParentPom(xml, { strict: false });
+    if (parsed.unresolved.length && parsed.parentCoord?.groupId && parsed.parentCoord.version) {
+      const pc = { groupId: parsed.parentCoord.groupId, artifactId: parsed.parentCoord.artifactId, version: parsed.parentCoord.version };
+      try { parsed = parseParentPom(xml, { strict: false, extraProps: parsePomProps(await read(pomUrl(pc, /-egov\.\d+$/.test(pc.version) ? REPO : CENTRAL), `bom/${pc.artifactId}-${pc.version}.parent.pom`)) }); } catch { /* 상위 없음 */ }
+    }
+    const members = {};
+    for (const m of parsed.managed) if (!(m.type === "pom" && m.scope === "import") && !/\$\{/.test(m.version)) members[`${m.groupId}:${m.artifactId}`] ??= m.version;
+    return members;
+  };
+  const bomMembers = new Map(); // "g:a:v" → { bom, groupIdPrefix, matchSubgroups, sources, order, members }
+  for (const [source, list] of [["web", w.managed], ["boot", b.managed]]) {
+    let i = 0;
+    // 직접 선언한 import 가 먼저, 그다음 rte-root 안의 import(선언 순서)
+    for (const e of [...list.filter((x) => !x.via), ...list.filter((x) => x.via)]) {
+      if (!(e.type === "pom" && e.scope === "import") || /^\d{4}\.\d+/.test(e.version) || e.artifactId === RTE_ROOT_ARTIFACT) continue;
+      const id = `${e.groupId}:${e.artifactId}:${e.version}`;
+      let cur = bomMembers.get(id);
+      if (!cur) {
+        const prefix = e.artifactId === "jackson-bom" ? "com.fasterxml.jackson" : e.groupId;
+        cur = { bom: id, groupIdPrefix: prefix, matchSubgroups: prefix === "com.fasterxml.jackson", sources: [], order: {}, members: await readBomMembers(e) };
+        bomMembers.set(id, cur);
+      }
+      if (!cur.sources.includes(source)) { cur.sources.push(source); cur.order[source] = i++; }
+    }
+  }
 
   // ── v0.34: RTE 모듈 전이 의존성 (표준프레임워크 Maven 저장소) ───────────────────────────────
   const rteRoot = { groupId: "org.egovframe.rte", artifactId: RTE_ROOT_ARTIFACT, version: rteVersion };
@@ -320,6 +385,8 @@ async function main() {
     properties: { web: w.properties, boot: b.properties },
     managed,
     families: [...families.values()].sort((x, y) => x.groupIdPrefix.localeCompare(y.groupIdPrefix)),
+    // v1.6: import BOM 의 구성원(계열 규칙보다 우선)
+    bomMembers: [...bomMembers.values()].sort((x, y) => x.bom.localeCompare(y.bom)).map((x) => ({ ...x, members: Object.fromEntries(Object.entries(x.members).sort((p, q) => p[0].localeCompare(q[0]))) })),
     releaseTrains,
     boot: {
       bom: { ...bootBom, url: pomUrl(bootBom, CENTRAL), sha256: sha256(bootBomXml), direct: bootDirect, imports: bootImports.length },

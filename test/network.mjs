@@ -24,6 +24,11 @@ const run = (opts) => diagnoseNetwork({ env: {}, nodeVersion: "v22.0.0", envProx
 const ok = await run({ probe: async () => ({ status: 200 }), lookup: async () => addrs.v4 });
 assert(ok.summary.ok === 7 && ok.summary.failed === 0 && ok.prescriptions.length === 0 && ok.hosts.every((h) => h.ok && h.dns.ok), "전부 도달 → 처방 없음");
 assert(ok.notes.some((x) => x.includes("모든 호스트에 도달")), "도달 안내");
+// v1.6: Maven 저장소 503 → 미러 처방(다른 호스트는 정상)
+const m503 = await run({ probe: async (u) => ({ status: u.includes("maven.egovframe.go.kr") ? 503 : 200 }), lookup: async () => addrs.v4 });
+const mm = m503.prescriptions.find((p) => p.id === "maven-mirror");
+assert(m503.summary.failed === 1 && mm && mm.reason.includes("maven.egovframe.go.kr(HTTP 503)") && mm.commands.find((c) => c.shell === "cmd").command.startsWith("set EGOVFRAME_MAVEN_MIRROR="), "Maven 저장소 503 → maven-mirror 처방(EGOVFRAME_MAVEN_MIRROR)");
+assert(!ok.prescriptions.some((p) => p.id === "maven-mirror"), "정상이면 미러 처방 없음");
 const okMd = renderNetworkMarkdown(ok);
 assert(okMd.startsWith("# 네트워크 진단") && okMd.includes("| codeload.github.com |") && okMd.includes("✅ 200") && !okMd.includes("## 처방"), "Markdown(도달)");
 

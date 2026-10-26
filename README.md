@@ -55,6 +55,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 | `EGOVFRAME_ALLOWED_ROOTS` | 도구가 읽고 쓸 수 있는 디렉터리 제한(여러 개는 OS 경로 구분자로). 미설정 시 제한 없음 |
 | `EGOVFRAME_OFFLINE_BUNDLE` | 폐쇄망 오프라인 번들 디렉터리([폐쇄망](#폐쇄망에서-쓰기)) |
 | `EGOVFRAME_CACHE_DIR` | 공통컴포넌트 아카이브·태그 미러 캐시 위치(기본 `~/.cache/egovframe-scaffold-mcp`) |
+| `EGOVFRAME_MAVEN_MIRROR` | 사내 Maven 미러(Nexus·Artifactory 프록시) URL — 빌드·테스트·SBOM·의존성 트리의 모든 Maven 요청을 이 미러로(v1.6). 표준프레임워크 저장소가 503 을 자주 낼 때 |
 | `HTTPS_PROXY` + `NODE_USE_ENV_PROXY=1` | 사내 프록시 뒤에서 다운로드가 타임아웃될 때 |
 
 ## 사용 시나리오

@@ -7,7 +7,8 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { diagnoseProject } from "./diagnose.js";
 import { withFileTransaction } from "./file-transaction.js";
-import { detectBuildToolAt, runBuild, type BuildError, type Runner } from "./build-runner.js";
+import { detectBuildToolAt, failureSummary, runBuild, type BuildError, type Runner } from "./build-runner.js";
+import type { FailureKind } from "./maven-resilience.js";
 import { L, tr } from "./lang.js";
 
 // ── 규칙 ──────────────────────────────────────────────
@@ -848,7 +849,7 @@ export interface VerifyLink { error: BuildError; itemIndex: number | null; how: 
 export interface VerifyWorkItem { index: number; item: MigrationItem; errors: number }
 export interface MigrateVerifyResult extends MigrateResult {
   mode: "verify";
-  build: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; timedOut?: boolean; reason?: string };
+  build: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; timedOut?: boolean; reason?: string; failureKind?: FailureKind; failureHint?: string; attempts?: number };
   links: VerifyLink[];
   /** 수동 항목별로 "처리하면 해결될 오류 수" 내림차순 */
   worklist: VerifyWorkItem[];
@@ -914,7 +915,7 @@ export async function verifyMigration(opts: VerifyOptions): Promise<MigrateVerif
   const unlinked = links.filter((l) => l.how === "unlinked").map((l) => l.error);
   return {
     ...base,
-    build: { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, errors: errors.length, timedOut: b.timedOut },
+    build: { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, errors: errors.length, timedOut: b.timedOut, ...failureSummary(b) },
     links, worklist, unlinked,
   };
 }
@@ -926,7 +927,8 @@ export function renderMigrationVerifyMarkdown(r: MigrateVerifyResult): string {
   out.push(L(`- 경로: ${r.projectDir}`, `- Path: ${r.projectDir}`));
   out.push(L(`- 진단: 항목 ${r.items.length}건 (자동 ${r.summary.auto} · 수동 ${r.summary.manual})${r.summary.auto > 0 ? " — ⚠️ 자동 항목이 남아 있습니다. 먼저 apply=true, dryRun=false 로 적용하세요." : ""}`, `- Diagnosis: ${r.items.length} items (auto ${r.summary.auto} · manual ${r.summary.manual})${r.summary.auto > 0 ? " — ⚠️ Auto items remain. Apply them first with apply=true, dryRun=false." : ""}`));
   if (!r.build.ran) out.push(L(`- 컴파일: 건너뜀 — ${r.build.reason}`, `- Compile: skipped — ${r.build.reason}`));
-  else out.push(L(`- 컴파일: ${r.build.success ? "✅ 통과" : `❌ 오류 ${r.build.errors}건`}${r.build.timedOut ? " (타임아웃)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`, `- Compile: ${r.build.success ? "✅ passed" : `❌ ${r.build.errors} errors`}${r.build.timedOut ? " (timed out)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`));
+  else out.push(L(`- 컴파일: ${r.build.success ? "✅ 통과" : r.build.failureKind === "repository-unavailable" ? "⚠️ 원격 저장소 일시 장애로 컴파일하지 못함" : `❌ 오류 ${r.build.errors}건`}${r.build.timedOut ? " (타임아웃)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`, `- Compile: ${r.build.success ? "✅ passed" : r.build.failureKind === "repository-unavailable" ? "⚠️ not compiled: transient repository outage" : `❌ ${r.build.errors} errors`}${r.build.timedOut ? " (timed out)" : ""} · \`${r.build.command}\` · ${r.build.durationMs ?? 0}ms`));
+  if (r.build.failureKind === "repository-unavailable" && r.build.failureHint) out.push(`- ${r.build.failureHint}`);
   const linked = r.links.filter((l) => l.itemIndex !== null).length;
   const byRules = r.links.filter((l) => l.how === "rules-symbol").length;
   if (r.build.ran && r.build.errors > 0) out.push(L(`- 연결: 수동 항목과 연결 ${linked} · 규칙 심볼로 설명 ${byRules} · 분류 불가 ${r.unlinked.length}`, `- Links: linked to manual items ${linked} · explained by rule symbols ${byRules} · unclassified ${r.unlinked.length}`));

@@ -1,7 +1,8 @@
 // node test/ci.mjs — 오프라인 CI 생성 검증
-import { generateCiConfig, generateCiYaml, generateGitlabCi, generateJenkinsfile, supplyChainCommands, jdkMajor, ciEnvEntries, validateCiJdk, supplyChainJobYaml, CI_FAIL_ON_RE, CI_PATHS, SERVER_VERSION } from "../dist/index.js";
+import { ciMavenBashRetry, ciMavenShRetry, ciMirrorWriteCommand, CI_MAVEN_LOG, generateCiConfig, generateCiYaml, generateGitlabCi, generateJenkinsfile, supplyChainCommands, jdkMajor, ciEnvEntries, validateCiJdk, supplyChainJobYaml, CI_FAIL_ON_RE, CI_PATHS, SERVER_VERSION } from "../dist/index.js";
 import { validateGitlabCi, parseYaml } from "./spec-schemas.mjs";
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, chmodSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 function assert(c, m) { if (!c) { console.error("FAIL:", m); process.exitCode = 1; } else console.log("ok:", m); }
@@ -77,7 +78,7 @@ for (const [bt, j, s2, e2] of [["gradle", "21", false, {}], ["maven", "1.8", { o
   assert(validateGitlabCi(t) === null, `GitLab 스키마 통과: ${bt} jdk ${j} ${s2 ? "게이트" : "빌드만"}${validateGitlabCi(t) ? `: ${validateGitlabCi(t)}` : ""}`);
 }
 assert(validateGitlabCi("build:\n  scriptx: [a]\n") !== null, "GitLab 스키마 검증이 실제로 동작(알 수 없는 키 거부)");
-assert(glDoc.stages.join() === "build,supply-chain" && glDoc.default.image === "maven:3.9-eclipse-temurin-17" && glDoc.build.script[0] === "mvn -B verify" && glDoc.build.artifacts.reports.junit[0] === "target/surefire-reports/TEST-*.xml" && glDoc.build.cache.paths[0] === ".m2/repository", "GitLab build job: 이미지·mvn -B verify·JUnit 리포트·Maven 캐시");
+assert(glDoc.stages.join() === "build,supply-chain" && glDoc.default.image === "maven:3.9-eclipse-temurin-17" && glDoc.build.script[0].includes("mvn -B verify -Daether.connector.http.retryHandler.count=5") && glDoc.build.artifacts.reports.junit[0] === "target/surefire-reports/TEST-*.xml" && glDoc.build.cache.paths[0] === ".m2/repository", "GitLab build job: 이미지·mvn -B verify(재시도 인자)·JUnit 리포트·Maven 캐시");
 assert(glDoc.variables.NPM_CONFIG_REGISTRY === env.npmRegistry && glDoc.variables.EGOVFRAME_OFFLINE_BUNDLE === env.offlineBundle && glDoc.variables.MAVEN_OPTS.includes("$CI_PROJECT_DIR/.m2/repository"), "GitLab 변수: 사내 레지스트리·오프라인 번들·로컬 저장소");
 const job = glDoc["supply-chain"];
 assert(job.script.length === 3 && job.script[0].includes(" sbom --project . --write --overwrite --offline=false --supplier \"예시 기관\"") && job.script[1].endsWith("sbom-check --project . --out egovframe-sbom-check.md --fail-on minimum") && job.script[2].endsWith("--fail-on supplyChain:D") && !gl.includes("--step-summary"), "GitLab 게이트: 같은 CLI 명령(step-summary 없음)");
@@ -93,10 +94,73 @@ const balance = (open, close) => [...bodyNoStrings].reduce((a, ch) => a + (ch ==
 assert(balance("{", "}") === 0 && balance("(", ")") === 0, "Jenkinsfile: 중괄호·괄호 짝(문자열 밖)");
 assert(/^pipeline \{$/m.test(jf) && /^  agent any$/m.test(jf) && /^  stages \{$/m.test(jf) && /^  post \{\n    always \{/m.test(jf) && /^  options \{\n    buildDiscarder\(logRotator\(numToKeepStr: '20'\)\)\n    timeout\(time: 60, unit: 'MINUTES'\)/m.test(jf), "Jenkinsfile: Declarative 구조(pipeline·agent·options·stages·post)");
 assert([...jf.matchAll(/^    stage\('([^']+)'\) \{\n      steps \{\n        script \{/gm)].map((x) => x[1]).join() === "Build,SBOM,SBOM check,Assessment", "Jenkinsfile: 단계 Build → SBOM → SBOM check → Assessment(각 steps·script)");
-assert(jf.includes("def run(String cmd) {\n  if (isUnix()) { sh cmd } else { bat cmd }\n}") && jf.includes("run('mvn -B verify')") && jf.includes(`run('${npx} sbom-check --project . --out egovframe-sbom-check.md --fail-on minimum')`), "Jenkinsfile: Linux(sh)·Windows(bat) 공용 실행·같은 CLI 명령");
+assert(jf.includes("def run(String cmd) {\n  if (isUnix()) { sh cmd } else { bat cmd }\n}") && jf.includes("mvnResilient('-B verify -Daether.connector.http.retryHandler.count=5") && jf.includes(`run('${npx} sbom-check --project . --out egovframe-sbom-check.md --fail-on minimum')`), "Jenkinsfile: Linux(sh)·Windows(bat) 공용 실행·같은 CLI 명령");
 assert(jf.includes(`    EGOVFRAME_OFFLINE_BUNDLE = 'D:\\\\egov bundle'`) && jf.includes(`    NPM_CONFIG_REGISTRY = '${env.npmRegistry}'`) && jf.includes("archiveArtifacts artifacts: 'egovframe-assessment.md, egovframe-sbom-check.md, sbom/bom.cdx.json', allowEmptyArchive: true"), "Jenkinsfile: environment(역슬래시 이스케이프)·항상 보관");
 const jg = generateJenkinsfile("gradle", "21", false);
 assert(jg.includes("bat 'gradlew.bat build --no-daemon'") && jg.includes("sh 'chmod +x ./gradlew && ./gradlew build --no-daemon'") && !jg.includes("environment {") && !jg.includes("stage('SBOM')") && jg.includes("build/test-results/test/*.xml"), "Jenkinsfile gradle·빌드만(환경 변수 없음)");
+
+// ── v1.6: Maven 빌드 단계의 일시 장애 내성 ──
+const MIRROR = "https://nexus.example.go.kr/repository/maven-public/";
+const ghM = generateCiYaml("maven", "17", false, { mavenMirror: MIRROR });
+const ghMDoc = parseYaml(ghM);
+const ghBuild = ghMDoc.jobs.build.steps.find((x) => x.name?.startsWith("Build"));
+assert(ghBuild.shell === "bash" && ghBuild.run.includes("mvn -B verify -Daether.connector.http.retryHandler.count=5") && ghBuild.run.includes(" -gs .egovframe-ci-settings.xml") && ghBuild.run.includes("tee .egovframe-mvn.log"), "GitHub: bash(pipefail)·재시도 인자·미러 -gs·로그");
+assert(ghMDoc.jobs.build.steps.some((x) => x.name === "Maven mirror settings" && x.run.includes("<mirrorOf>*</mirrorOf>")), "GitHub: 미러 settings 를 쓰는 단계");
+const ghSc = parseYaml(generateCiYaml("maven", "17", {}, { mavenMirror: MIRROR }));
+assert(ghSc.jobs["supply-chain"].env.EGOVFRAME_MAVEN_MIRROR === MIRROR, "GitHub 게이트: CLI 는 EGOVFRAME_MAVEN_MIRROR");
+assert(!generateCiYaml("maven", "17").includes("-gs ") && !generateCiYaml("maven", "17").includes("Maven mirror settings"), "미러 없으면 settings 단계·-gs 없음");
+const glM = generateGitlabCi("maven", "17", {}, { mavenMirror: MIRROR });
+const glMDoc = parseYaml(glM);
+assert(validateGitlabCi(glM) === null && glMDoc.build.script[0].startsWith("printf '%s\\n' '<settings") && glMDoc.build.script[1].includes("-gs .egovframe-ci-settings.xml") && glMDoc.variables.EGOVFRAME_MAVEN_MIRROR === MIRROR, `GitLab: 미러 settings·-gs·변수, 공식 스키마 통과${validateGitlabCi(glM) ? `: ${validateGitlabCi(glM)}` : ""}`);
+const jfM = generateJenkinsfile("maven", "17", {}, { mavenMirror: MIRROR });
+assert(jfM.includes("def mvnResilient(String goals) {") && jfM.includes("readFile('.egovframe-mvn.log')") && jfM.includes("returnStatus: true") && jfM.includes("writeFile file: '.egovframe-ci-settings.xml', text: '<settings") && jfM.includes(`    EGOVFRAME_MAVEN_MIRROR = '${MIRROR}'`), "Jenkins: mvnResilient(sh·bat 공용)·미러 writeFile·환경 변수");
+assert(!/\.(any|every|find)\s*\{/.test(jfM) && !/=~/.test(jfM), "Jenkins: 클로저·정규식 없이(샌드박스·CPS 안전) 판정");
+const bodyM = jfM.replace(/'(?:\\.|[^'\\])*'/g, "''").replace(/^\s*\/\/.*$/gm, "");
+assert([...bodyM].reduce((x, ch) => x + (ch === "{") - (ch === "}"), 0) === 0 && [...bodyM].reduce((x, ch) => x + (ch === "(") - (ch === ")"), 0) === 0, "Jenkins(재시도 함수 포함): 중괄호·괄호 짝");
+assert(!generateJenkinsfile("gradle", "17", false).includes("mvnResilient"), "Gradle Jenkinsfile 에는 Maven 재시도 함수 없음");
+for (const bad of ["ftp://x", "https://x/a b", "https://x/'$(id)'"]) {
+  let r = false; try { generateCiYaml("maven", "17", false, { mavenMirror: bad }); } catch { r = true; }
+  assert(r, `mavenMirror 주입 거부: ${JSON.stringify(bad)}`);
+}
+const grM = mkdtempSync(path.join(tmpdir(), "ci-grm-")); writeFileSync(path.join(grM, "build.gradle"), "");
+assert(generateCiConfig({ projectDir: grM, mavenMirror: MIRROR, dryRun: true }).notes.some((x) => x.includes("Gradle")), "Gradle 프로젝트에 mavenMirror → 적용 범위 안내");
+rmSync(grM, { recursive: true, force: true });
+
+// 생성한 셸 재시도를 실제로 실행(가짜 mvn·sleep) — POSIX 만
+if (process.platform !== "win32") {
+  const T503 = "[ERROR] Could not transfer artifact a:b:pom:1 from/to egovframe (https://maven.egovframe.go.kr/maven/): transfer failed for https://maven.egovframe.go.kr/maven/a/b/1/b-1.pom, status: 503 Service Unavailable";
+  const TCOMPILE = "[ERROR] /p/src/main/java/A.java:[3,8] cannot find symbol";
+  const runScript = (shell, script, plan) => {
+    const d = mkdtempSync(path.join(tmpdir(), "ci-sh-"));
+    const bin = path.join(d, "bin"); mkdirSync(bin);
+    writeFileSync(path.join(d, "plan"), plan.join("\n") + "\n");
+    // n 번째 호출은 plan 의 n 번째 줄(503|compile|ok) 대로
+    writeFileSync(path.join(bin, "mvn"), `#!/bin/sh\nn=$(cat "${d}/calls" 2>/dev/null | wc -l)\necho "$*" >> "${d}/calls"\nk=$(sed -n "$((n + 1))p" "${d}/plan")\ncase "$k" in ok) echo "[INFO] BUILD SUCCESS"; exit 0;; compile) echo '${TCOMPILE}'; exit 1;; *) echo '${T503}'; exit 1;; esac\n`);
+    writeFileSync(path.join(bin, "sleep"), "#!/bin/sh\nexit 0\n");
+    chmodSync(path.join(bin, "mvn"), 0o755); chmodSync(path.join(bin, "sleep"), 0o755);
+    const r = spawnSync(shell[0], [...shell.slice(1), script], { cwd: d, encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+    const calls = existsSync(path.join(d, "calls")) ? readFileSync(path.join(d, "calls"), "utf8").trim().split("\n") : [];
+    rmSync(d, { recursive: true, force: true });
+    return { status: r.status, calls, out: r.stdout + r.stderr };
+  };
+  const shells = [["GitLab(sh -e)", ["sh", "-e", "-c"], ciMavenShRetry(false)], ["GitHub(bash -eo pipefail)", ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c"], ciMavenBashRetry(false).join("\n")]];
+  for (const [name, sh, script] of shells) {
+    let r = runScript(sh, script, ["503", "ok"]);
+    assert(r.status === 0 && r.calls.length === 2 && !r.calls[0].includes("-U") && r.calls[1].endsWith("-U"), `${name}: 503 뒤 -U 로 다시 실행해 성공 (호출 ${r.calls.length})`);
+    r = runScript(sh, script, ["compile"]);
+    assert(r.status !== 0 && r.calls.length === 1, `${name}: 컴파일 실패는 다시 실행하지 않고 실패`);
+    r = runScript(sh, script, ["503", "503", "503", "ok"]);
+    assert(r.status !== 0 && r.calls.length === 3, `${name}: 3회 모두 503 → 실패(호출 3)`);
+    r = runScript(sh, script, ["503", "compile"]);
+    assert(r.status !== 0 && r.calls.length === 2, `${name}: 두 번째가 컴파일 실패면 거기서 멈춤`);
+  }
+  const w = mkdtempSync(path.join(tmpdir(), "ci-mw-"));
+  const wr = spawnSync("sh", ["-e", "-c", ciMirrorWriteCommand(MIRROR)], { cwd: w, encoding: "utf8" });
+  const xml = existsSync(path.join(w, ".egovframe-ci-settings.xml")) ? readFileSync(path.join(w, ".egovframe-ci-settings.xml"), "utf8") : "";
+  assert(wr.status === 0 && xml.includes(`<url>${MIRROR}</url>`) && xml.startsWith("<settings"), "미러 settings 쓰기 명령이 올바른 XML 을 만듦");
+  rmSync(w, { recursive: true, force: true });
+  assert(CI_MAVEN_LOG === ".egovframe-mvn.log", "로그 파일 이름");
+}
 
 // generateCiConfig: platform
 const pf = mkdtempSync(path.join(tmpdir(), "ci-pf-"));

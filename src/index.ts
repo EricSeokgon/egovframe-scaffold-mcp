@@ -52,7 +52,7 @@ export { classifyUpgrade, upgradeProject } from "./upgrade.js";
 export type { UpgradeClass, UpgradeItem, UpgradeResult, UpgradeOptions } from "./upgrade.js";
 export { explainComponent } from "./explain.js";
 export type { ComponentExplain } from "./explain.js";
-export { CI_JDK_RE, CI_FAIL_ON_RE, CI_NPM_REGISTRY_RE, CI_BUNDLE_PATH_RE, CI_SUPPLIER_RE, CI_PATHS, validateCiJdk, jdkMajor, ciEnvEntries, supplyChainCommands, supplyChainJobYaml, generateCiYaml, generateGitlabCi, generateJenkinsfile, generateCiConfig } from "./ci-config.js";
+export { CI_JDK_RE, CI_FAIL_ON_RE, CI_NPM_REGISTRY_RE, CI_BUNDLE_PATH_RE, CI_SUPPLIER_RE, CI_PATHS, validateCiJdk, jdkMajor, ciEnvEntries, ciMavenGoals, ciMirrorWriteCommand, ciMavenBashRetry, ciMavenShRetry, jenkinsMavenRetryFunction, CI_MAVEN_LOG, CI_MAVEN_ATTEMPTS, supplyChainCommands, supplyChainJobYaml, generateCiYaml, generateGitlabCi, generateJenkinsfile, generateCiConfig } from "./ci-config.js";
 export type { CiResult, CiPlatform, CiSupplyChainOptions, CiEnvOptions, GenerateCiOptions } from "./ci-config.js";
 export { cdxToSpdx, spdxToCdx, isSpdxDocument, spdxAgent, spdxTimestamp, SPDX_VERSION, DEFAULT_SPDX_PATH } from "./spdx.js";
 export type { SpdxDocument, SpdxPackage, SpdxRelationship } from "./spdx.js";
@@ -66,7 +66,10 @@ export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from ".
 export { ProjectFileTransaction, TransactionError, withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";
 export type { RollbackFailure, RollbackReport } from "./file-transaction.js";
 export { ALLOWED_ROOTS_ENV, AllowedRootsError, assertPathAllowed, describeAllowedRoots, enforceAllowedRoots, loadAllowedRoots } from "./allowed-roots.js";
-export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capOutput, defaultRunner, killProcessTree, KILL_GRACE_MS, runBuild } from "./build-runner.js";
+export { detectBuildToolAt, resolveGoals, resolveCommand, parseBuildErrors, capOutput, defaultRunner, killProcessTree, KILL_GRACE_MS, runBuild, runWithTransientRetry, failureFields, failureSummary, refreshArgs, TRANSIENT_RETRY_DELAY_MS } from "./build-runner.js";
+// v1.6: 원격 저장소 일시 장애 내성
+export { MAVEN_RETRY_FLAGS, MAVEN_MIRROR_RE, MAVEN_MIRROR_ENV, CI_MIRROR_SETTINGS, TRANSIENT_CONTEXT, TRANSIENT_CAUSE, validateMavenMirror, mavenMirrorSettings, findRepositoryFailure, classifyFailure, repositoryFailureHint, mavenResilienceEnv, shellTransientTest } from "./maven-resilience.js";
+export type { FailureKind, RepositoryFailure } from "./maven-resilience.js";
 export type { BuildTool, BuildGoal, BuildError, ResolvedCommand, Runner, RunnerResult, BuildRunResult } from "./build-runner.js";
 export { reportDirFor, resolveTestArgs, validateTestFilter, locateInStack, parseJUnitXml, snapshotReports, readJUnitReports, summarizeReports, runTests } from "./test-runner.js";
 export type { TestOutcome, TestCaseResult, TestSuiteResult, TestSummary, TestRunResult, ParsedReport } from "./test-runner.js";

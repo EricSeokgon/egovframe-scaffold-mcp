@@ -195,6 +195,15 @@ export async function diagnoseNetwork(opts: NetworkOptions = {}): Promise<Networ
       reason: `폐쇄망이면 네트워크 담당자에게 다음 호스트의 허용을 요청하세요: ${NETWORK_HOSTS.map((h) => h.host).join(", ")}. 프록시 환경에서는 DNS 실패가 아니라 프록시 미설정일 수도 있습니다(위 처방 참조).`,
     });
   }
+  // v1.6: Maven 저장소의 5xx·연결 끊김·타임아웃은 대개 일시 장애 — 재시도는 빌드 도구가 하고, 반복되면 사내 미러로 돌린다
+  const mavenDown = failed.filter((h) => (h.host === "maven.egovframe.go.kr" || h.host === "repo1.maven.org") && ["http", "reset", "timeout"].includes(h.http.kind));
+  if (mavenDown.length) {
+    prescriptions.push({
+      id: "maven-mirror", title: "Maven 저장소 응답 없음(5xx·연결 끊김) — 일시 장애면 다시 실행, 반복되면 사내 미러 지정",
+      commands: both("export EGOVFRAME_MAVEN_MIRROR=https://nexus.example.com/repository/maven-public/", "set EGOVFRAME_MAVEN_MIRROR=https://nexus.example.com/repository/maven-public/", "$env:EGOVFRAME_MAVEN_MIRROR=\"https://nexus.example.com/repository/maven-public/\""),
+      reason: `${mavenDown.map((h) => `${h.host}(${h.http.error ?? h.http.kind})`).join(", ")} — build_·test_egovframe_project 는 이런 실패를 failureKind=repository-unavailable 로 구분하고 -U 로 다시 실행합니다(retryTransient). 사내 Nexus·Artifactory 가 maven.egovframe.go.kr 과 Central 을 프록시하면 EGOVFRAME_MAVEN_MIRROR 로 모든 Maven 요청을 그쪽으로 보냅니다(생성 CI 는 generate_egovframe_ci 의 mavenMirror).`,
+    });
+  }
   if (failed.length > 0) {
     // v0.42: 망분리 환경이면 허용 요청 대신 인터넷 PC 에서 만든 오프라인 번들을 반입할 수 있다
     prescriptions.push({
