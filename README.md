@@ -198,6 +198,8 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 
 이슈와 PR 을 환영합니다. 규칙·카탈로그는 데이터이므로 `catalog/*.json` 과 생성 스크립트(`scripts/generate-*.mjs`)를 함께 고치고, `npm run prepublishOnly` 가 통과해야 합니다. 공개 API 를 바꾸면 `npm run api-contract:update` 로 계약 스냅샷을 갱신해 PR 에 포함합니다. 자세한 절차는 [docs/development.md](docs/development.md) 입니다.
 
+보안 취약점은 공개 이슈 대신 GitHub 비공개 제보(Security → Report a vulnerability)로 알려 주세요 — [SECURITY.md](SECURITY.md).
+
 ## 라이선스
 
 [Apache License 2.0](LICENSE)
