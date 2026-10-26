@@ -84,8 +84,10 @@ export const ciMirrorWriteCommand = (url: string) => `printf '%s\\n' '${mavenMir
 /** GitHub(bash, pipefail): 로그를 흘려 보내며 재시도 */
 export function ciMavenBashRetry(mirror: boolean): string[] {
   return [
-    `for i in $(seq 1 ${CI_MAVEN_ATTEMPTS}); do`,
-    `  if mvn ${ciMavenGoals(mirror)} $([ "$i" -gt 1 ] && echo -U) 2>&1 | tee ${CI_MAVEN_LOG}; then exit 0; fi`,
+    `for i in ${Array.from({ length: CI_MAVEN_ATTEMPTS }, (_, k) => k + 1).join(" ")}; do`,
+    // shellcheck SC2046 회피: 갱신 인자는 변수에 담아 따옴표 확장(빈 값이면 인자 없음)
+    '  refresh=""; [ "$i" -gt 1 ] && refresh="-U"',
+    `  if mvn ${ciMavenGoals(mirror)} \${refresh:+"$refresh"} 2>&1 | tee ${CI_MAVEN_LOG}; then exit 0; fi`,
     `  if [ "$i" -lt ${CI_MAVEN_ATTEMPTS} ] && ${shellTransientTest(CI_MAVEN_LOG)}; then`,
     `    echo "::warning::Maven repository unavailable - retrying in $((i * 30))s ($((i + 1))/${CI_MAVEN_ATTEMPTS})"; sleep $((i * 30))`,
     "  else exit 1; fi",
@@ -94,7 +96,7 @@ export function ciMavenBashRetry(mirror: boolean): string[] {
 }
 /** GitLab(sh, set -e 에서도 안전한 한 줄): 실행 뒤 로그를 출력 */
 export function ciMavenShRetry(mirror: boolean): string {
-  return `i=1; while :; do mvn ${ciMavenGoals(mirror)} $([ "$i" -gt 1 ] && echo -U) > ${CI_MAVEN_LOG} 2>&1 && s=0 || s=$?; cat ${CI_MAVEN_LOG}; [ "$s" -eq 0 ] && break; if [ "$i" -lt ${CI_MAVEN_ATTEMPTS} ] && ${shellTransientTest(CI_MAVEN_LOG)}; then echo "Maven repository unavailable - retrying in $((i * 30))s ($((i + 1))/${CI_MAVEN_ATTEMPTS})"; sleep $((i * 30)); i=$((i + 1)); else exit "$s"; fi; done`;
+  return `i=1; while :; do refresh=""; [ "$i" -gt 1 ] && refresh="-U"; mvn ${ciMavenGoals(mirror)} \${refresh:+"$refresh"} > ${CI_MAVEN_LOG} 2>&1 && s=0 || s=$?; cat ${CI_MAVEN_LOG}; [ "$s" -eq 0 ] && break; if [ "$i" -lt ${CI_MAVEN_ATTEMPTS} ] && ${shellTransientTest(CI_MAVEN_LOG)}; then echo "Maven repository unavailable - retrying in $((i * 30))s ($((i + 1))/${CI_MAVEN_ATTEMPTS})"; sleep $((i * 30)); i=$((i + 1)); else exit "$s"; fi; done`;
 }
 /** Jenkins(Groovy, sh·bat 공용): readFile 로 로그를 읽어 판정 — 샌드박스에서 허용된 String 메서드와 기본 단계만 쓴다 */
 export function jenkinsMavenRetryFunction(): string[] {
