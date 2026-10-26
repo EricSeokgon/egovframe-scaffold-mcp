@@ -118,6 +118,17 @@ generate_egovframe_sbom(projectDir, outputPath="sbom/bom.cdx.json", bomFormat="c
 - `-egov.N`: 5.1.0 은 `spring-security 6.5.11-egov.1`·`spring-integration 6.5.10-egov.1`·`spring-ai-* 1.1.8-egov.1` 같은 재빌드본을 씁니다. 버전 비교는 숫자 부분만 보므로 원 버전과 같게 취급하고, OSV 는 원 버전으로 조회하며(`osvVersion`) 판정 note 에 재빌드라고 적습니다. 재빌드 BOM 은 표준프레임워크 저장소에서 받습니다.
 - 5.0.x parent 프로젝트에는 "5.1.0 parent 가 저장소에 배포돼 있다(GitHub 태그 없음)"는 안내를 notes 에 남깁니다.
 
+### 5.1.0 재배포와 Maven 우선순위 (v1.6)
+
+2026-10-26 CI 에서 5.1 기준 판정이 바뀐 것을 계기로, 저장소의 5.1.0 parent 2종과 `egovframe-rte-root` 가 **같은 버전 번호로 다시 배포**된 것을 확인했습니다(세 pom 모두 sha256 변경). web parent 는 Jakarta EE 9(Servlet 5.0·JSP 3.0·EL 4.0·JSTL 2.0, Tomcat 10.0)로 바뀌어 BOM 의 EE 10 버전을 자기 `dependencyManagement` 직접 선언으로 덮습니다(`jakarta.annotation-api` 2.0.0, `jakarta.xml.bind-api` 3.0.1, `jaxb-bom` 3.0.2 를 rte-root 보다 먼저 import 등). 5.1 기준을 다시 만들면서 생성기와 판정을 Maven 규칙에 맞췄습니다.
+
+- **출처별 실제 버전**(`managed[].versionBySource`): web 은 parent 직접 선언 > import BOM(선언 순서, 먼저 나온 쪽). boot 는 parent 직접 선언 > 상속한 `spring-boot-dependencies` > 자기 import(rte-root 등) — Maven 3 은 이미 관리되는(상속 포함) 좌표를 import 가 덮지 않습니다(boot parent 의 주석과 다르며, 실제 `dependency:tree` 로 확인: `jakarta.validation-api` 3.0.2·`jakarta.annotation-api` 2.1.1). 판정은 프로젝트 parent 종류의 값을 씁니다.
+- **BOM 구성원**(`bomMembers`): import BOM 마다 실제 구성원과 출처별 선언 순서를 적고, 계열 규칙보다 먼저 씁니다. 같은 groupId 에 버전 줄이 다른 BOM(`micrometer-bom` 1.15.x·`micrometer-tracing-bom` 1.5.x)과 BOM 번호와 다른 구성원 버전(`jackson-bom` 2.22.3 의 `jackson-annotations` 2.22)을 맞게 판정합니다. 그 groupId 의 BOM 이 있는데 구성원이 아니면 계열 규칙을 쓰지 않습니다(예: `io.micrometer:context-propagation` 은 Boot BOM 기준).
+- boot parent 프로젝트에서 Boot BOM 버전이 BOM 구성원·계열과 다르면 Boot BOM 을 기준으로 씁니다(같으면 예전처럼 계열로 표시).
+- 결과(공식 템플릿을 5.1.0 으로 갱신): web 기준 미만 2(`classmate` 1.5.1·`jboss-logging` 3.4.1 — EE 9 용 `hibernate-validator` 7.0.5 가 끌어오는 버전, Boot BOM 대비), boot-web 0.
+- 5.0.2 기준은 pom 이 그대로라 다시 만들지 않았습니다(재생성하면 `bomMembers`·`versionBySource` 가 생김).
+- `test:update-live` 는 동봉 5.1 기준을 만든 pom 3종과 지금 저장소의 sha256 을 먼저 비교해, 다시 배포됐으면 기대값 대신 "재생성 필요"를 알립니다. `test:catalog-drift-live`(`sync_egovframe_templates`)도 같은 변화를 `sha256 변경` 으로 보고합니다.
+
 ## 기준 갱신 절차
 
 1. `sync_egovframe_templates` 의 "규칙·의존성 기준 카탈로그 drift" 절(또는 CI 통합의 `test:catalog-drift-live` 경고)이 새 parent 버전·새 RTE 태그를 알려 준다.

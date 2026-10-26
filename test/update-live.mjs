@@ -16,9 +16,21 @@ const root = mkdtempSync(path.join(tmpdir(), "egovupdate-live-"));
 
 // 실측 고정값(2026-10-15, 5.1.0 은 2026-10-22, Initializr 고정 commit · 의존성 기준 동봉본) — 바뀌면 원인(템플릿·기준·parent)을 확인하고 갱신한다
 const EXPECT = {
-  web: { parent: "egovframe-web-config-parent", changes: ["html-tag-filter", "idgnr-table-lock"], outdated: [6, 4], grade: ["C", "B"], outdated51: 4 },
-  "boot-web": { parent: "egovframe-boot-starter-parent", changes: ["idgnr-table-lock"], outdated: [3, 1], grade: ["C", "B"], outdated51: 3 },
+  web: { parent: "egovframe-web-config-parent", changes: ["html-tag-filter", "idgnr-table-lock"], outdated: [6, 4], grade: ["C", "B"], outdated51: 2 },
+  "boot-web": { parent: "egovframe-boot-starter-parent", changes: ["idgnr-table-lock"], outdated: [3, 1], grade: ["C", "B"], outdated51: 0 },
 };
+
+// v1.6: 5.1.0 은 GitHub 태그 없이 저장소에만 있어 같은 버전 번호로 다시 올라올 수 있다(2026-10-26: web parent 가 Jakarta EE 9 로 재배포).
+//   동봉 5.1 기준을 만든 pom 과 지금 저장소의 pom 이 다르면 기대값이 무의미하므로 먼저 그 사실을 알린다.
+{
+  const { createHash } = await import("node:crypto");
+  const b51 = JSON.parse(readFileSync(new URL("../catalog/dependency-baseline-5.1.json", import.meta.url), "utf8"));
+  for (const src of [...b51.sources, { artifactId: b51.rte.bom.artifactId, url: b51.rte.bom.url, sha256: b51.rte.bom.sha256 }]) {
+    let now = null;
+    try { const r = await fetch(src.url, { headers: { "User-Agent": "egovframe-scaffold-mcp" } }); if (r.ok) now = createHash("sha256").update(Buffer.from(await r.arrayBuffer())).digest("hex"); } catch { /* 조회 실패는 아래 단언에서 */ }
+    assert(now === null || now === src.sha256, `5.1 기준을 만든 ${src.artifactId} 5.1.0 이 저장소와 같음${now && now !== src.sha256 ? ` — 다시 배포됨(${src.sha256.slice(0, 12)} → ${now.slice(0, 12)}): node scripts/generate-dependency-baseline.mjs --web 5.1.0 --boot 5.1.0 --out catalog/dependency-baseline-5.1.json 로 재생성하고 기대값을 확인` : now === null ? " (조회 실패 — 건너뜀)" : ""}`);
+  }
+}
 
 try {
   for (const [template, exp] of Object.entries(EXPECT)) {
@@ -58,7 +70,7 @@ try {
     const v51 = await m.verifyUpdate({ projectDir: dir, target: "5.1.0", timeoutMs: 600_000 });
     assert(v51.build.ran && v51.build.success === true, `${template}: 5.1.0 에서 JDK 17 mvn compile 통과(${Math.round((v51.build.durationMs ?? 0) / 1000)}초)${v51.build.success ? "" : ` 오류 ${v51.build.errors}`}`);
     const dep51 = await m.checkDependencies({ projectDir: dir, resolve: true });
-    assert(dep51.resolution?.success && dep51.baseline.rte === "5.1.0" && dep51.summary.unknown <= dep1.summary.unknown && dep51.summary.outdated === exp.outdated51, `${template}: 5.1 기준 판정 — 기준 미만 ${dep51.summary.outdated} · 기준 없음 ${dep1.summary.unknown} → ${dep51.summary.unknown}`);
+    assert(dep51.resolution?.success && dep51.baseline.rte === "5.1.0" && dep51.summary.unknown <= dep1.summary.unknown && dep51.summary.outdated === exp.outdated51, `${template}: 5.1 기준 판정 — 기준 미만 ${dep51.summary.outdated} · 기준 없음 ${dep1.summary.unknown} → ${dep51.summary.unknown}${dep51.summary.outdated === exp.outdated51 ? "" : ` (기대 ${exp.outdated51}) — 기준 미만: ${dep51.findings.filter((f) => f.status === "outdated").map((f) => `${f.groupId}:${f.artifactId} ${f.resolvedVersion ?? f.version} < ${f.baseline}`).join(", ")}`}`);
   }
 
   // create alignParent

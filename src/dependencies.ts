@@ -29,6 +29,8 @@ export interface DependencyBaseline {
   managed: BaselineManaged[];
   /** BOM import·버전 속성이 정하는 groupId 계열 기준(개별 artifact 가 managed 에 없어도 적용) */
   families: { groupIdPrefix: string; version: string; via: string; matchSubgroups?: boolean }[];
+  /** v1.6: import BOM 의 구성원(출처별 선언 순서). 있으면 같은 groupId 의 계열 규칙보다 우선 */
+  bomMembers?: { bom: string; groupIdPrefix: string; matchSubgroups?: boolean; sources: ("web" | "boot")[]; order: Partial<Record<"web" | "boot", number>>; members: Record<string, string> }[];
   /** 달력형 릴리스 트레인 BOM(구성 artifact 버전이 달라 계열 규칙으로 쓰지 않음) — schemaVersion 2 */
   releaseTrains?: { groupId: string; artifactId: string; version: string; sources: string[] }[];
   /** Spring Boot BOM 전체(직접 항목 + import 한 단계) — schemaVersion 2 */
@@ -189,12 +191,21 @@ export function classifyDependency(
   }
   // 3) 기준 목록: parent 직접 → 계열 → (Boot parent 면 Boot BOM → RTE 전이, 아니면 RTE 전이 → Boot BOM)
   const exact = baseline.managed.find((x) => x.groupId === dep.groupId && x.artifactId === dep.artifactId);
+  const kind = ctx.parentKind === "web" || ctx.parentKind === "boot" ? ctx.parentKind : null;
+  const inGroup = (f: { groupIdPrefix: string; matchSubgroups?: boolean }) => dep.groupId === f.groupIdPrefix || ((f.matchSubgroups ?? baseline.schemaVersion < 2) && dep.groupId.startsWith(`${f.groupIdPrefix}.`));
+  // v1.6: import BOM 구성원 — 프로젝트 parent 종류의 선언 순서로 처음 구성원으로 가진 BOM. 그 groupId 의 BOM 이 있는데 구성원이 아니면 계열 규칙을 쓰지 않는다
+  const boms = exact ? [] : (baseline.bomMembers ?? []).filter((b) => inGroup(b) && (!kind || b.sources.includes(kind)));
+  const member = boms.filter((b) => key in b.members).sort((a, b) => (kind ? (a.order[kind] ?? 99) - (b.order[kind] ?? 99) : 0))[0] ?? null;
   // 계열은 groupId 가 정확히 같을 때 적용하고, matchSubgroups 인 계열(jackson)만 하위 groupId 도 받는다. schemaVersion 1 기준(필드 없음)은 예전처럼 접두 일치.
-  const family = exact ? null : [...baseline.families].filter((f) => dep.groupId === f.groupIdPrefix || ((f.matchSubgroups ?? baseline.schemaVersion < 2) && dep.groupId.startsWith(`${f.groupIdPrefix}.`))).sort((a, b) => b.groupIdPrefix.length - a.groupIdPrefix.length)[0] ?? null;
+  const family = exact || member || boms.length ? null : [...baseline.families].filter(inGroup).sort((a, b) => b.groupIdPrefix.length - a.groupIdPrefix.length)[0] ?? null;
   const bootV = baseline.boot?.managed[key];
   const rte = baseline.rteTransitive?.managed[key];
   let m: { version: string; basis: DependencyBasis; note?: string } | null = null;
-  if (exact) m = { version: exact.version, basis: "parent" };
+  // v1.6: parent 종류별 실제 버전(web 은 EE 9 직접 선언, boot 는 상속한 Boot BOM 이 import 보다 우선)
+  if (exact) m = { version: (kind && exact.versionBySource?.[kind]) || exact.version, basis: "parent" };
+  // boot parent 는 spring-boot-dependencies 를 상속하므로 그 관리 버전이 자기 import BOM 보다 우선한다(Maven 3) — 같은 버전이면 예전처럼 계열로 표시
+  else if (kind === "boot" && bootV && (member || family) && bootV !== (member ? member.members[key] : family!.version)) m = { version: bootV, basis: "boot-bom", note: L(`Spring Boot ${baseline.boot!.bom.version} BOM 기준`, `Spring Boot ${baseline.boot!.bom.version} BOM baseline`) };
+  else if (member) m = { version: member.members[key], basis: "family", note: L(`BOM 기준: ${member.bom}`, `BOM baseline: ${member.bom}`) };
   else if (family) m = { version: family.version, basis: "family", note: L(`계열 기준: ${family.via}`, `family baseline: ${family.via}`) };
   else {
     const boot = bootV ? { version: bootV, basis: "boot-bom" as const, note: L(`Spring Boot ${baseline.boot!.bom.version} BOM 기준`, `Spring Boot ${baseline.boot!.bom.version} BOM baseline`) } : null;
