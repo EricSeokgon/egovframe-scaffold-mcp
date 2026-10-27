@@ -127,7 +127,8 @@ generate_egovframe_sbom(projectDir, outputPath="sbom/bom.cdx.json", bomFormat="c
 - boot parent 프로젝트에서 Boot BOM 버전이 BOM 구성원·계열과 다르면 Boot BOM 을 기준으로 씁니다(같으면 예전처럼 계열로 표시).
 - 결과(공식 템플릿을 5.1.0 으로 갱신): web 기준 미만 2(`classmate` 1.5.1·`jboss-logging` 3.4.1 — EE 9 용 `hibernate-validator` 7.0.5 가 끌어오는 버전, Boot BOM 대비), boot-web 0.
 - 5.0.2 기준은 pom 이 그대로라 다시 만들지 않았습니다(재생성하면 `bomMembers`·`versionBySource` 가 생김).
-- `test:update-live` 는 동봉 5.1 기준을 만든 pom 3종과 지금 저장소의 sha256 을 먼저 비교해, 다시 배포됐으면 기대값 대신 "재생성 필요"를 알립니다. `test:catalog-drift-live`(`sync_egovframe_templates`)도 같은 변화를 `sha256 변경` 으로 보고합니다.
+- 2026-10-27 에 parent 2종이 한 번 더 다시 배포됐습니다(모든 프로젝트에 넣던 RTE·Boot 스타터 의존성 제거, SpringDoc OpenAPI 관리 추가). 기준을 다시 만들었고 공식 템플릿 판정은 그대로입니다(web 2·boot-web 0).
+- 5.1.0 은 태그 전이라 이렇게 자주 바뀌므로 `test:update-live` 는 동봉 5.1 기준을 만든 pom 3종과 지금 저장소의 sha256 이 다르면 실패 대신 "재생성 권장" 알림만 남깁니다. 판정이 실제로 바뀌면 5.1 기준 판정 단언이 기준 미만 좌표 목록과 함께 실패합니다. `test:catalog-drift-live`(`sync_egovframe_templates`)도 같은 변화를 `sha256 변경` 으로 보고합니다.
 
 ## 기준 갱신 절차
 
