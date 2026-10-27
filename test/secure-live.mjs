@@ -25,6 +25,9 @@ try {
     if (pinned) assert(diffs.length === 0, `${label} = 기대값${diffs.length ? `\n  - ${diffs.join("\n  - ")}` : ""}`);
     else if (diffs.length) console.log(`info: ${label} — 기대값과 다름(저장소 브랜치 템플릿, upstream 변경 가능): ${diffs.join(" / ")}`);
     else console.log(`ok-info: ${label} = 기대값`);
+    // v1.7: 자동 조치 계획(공통컴포넌트 포함) — 재점검이 계획과 일치하고 원본은 그대로
+    const fx = await m.fixSecureCoding({ projectDir: c.projectPath, includeComponents: true });
+    assert(fx.dryRun && fx.verify.ok, `${id}: 자동 조치 계획 — 고침 ${fx.summary.fixed} · 수동 ${fx.summary.manual}${fx.htmlTagFilter ? ` (HTMLTagFilter ${fx.htmlTagFilter})` : ""} · 재점검 ${fx.verify.ok ? "일치" : `불일치 ${fx.verify.unexpected.slice(0, 3).join("; ")}`}`);
     // v1.5: 데이터 흐름은 기존 항목의 지문을 바꾸지 않고(등급·note 만), 걸린 시간을 흐름 없이와 비교
     let t0 = Date.now(); const plain = await m.checkSecureCoding({ projectDir: c.projectPath, dataFlow: false }); tPlain += Date.now() - t0;
     t0 = Date.now(); await m.checkSecureCoding({ projectDir: c.projectPath }); tFlow += Date.now() - t0;

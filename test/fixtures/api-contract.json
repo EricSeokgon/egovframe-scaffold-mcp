@@ -1,6 +1,6 @@
 {
-  "version": "1.6.0",
-  "base": "1.5.1",
+  "version": "1.7.0",
+  "base": "1.6.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -1522,6 +1522,12 @@
                 }
               }
             },
+            "htmlTagFilter": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "notes": {
               "type": "array",
               "items": {
@@ -2133,6 +2139,283 @@
           }
         },
         "output": null,
+        "deprecated": {}
+      },
+      "fix_egovframe_secure_coding": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "ignoreHtmlTagFilter": {
+              "type": "boolean",
+              "default": false
+            },
+            "includeComponents": {
+              "type": "boolean",
+              "default": false
+            },
+            "includeTests": {
+              "type": "boolean",
+              "default": false
+            },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "cookie-flags",
+                  "debug-code",
+                  "print-stack-trace",
+                  "xss-cout-unescaped"
+                ]
+              }
+            },
+            "topN": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "byRule",
+            "dryRun",
+            "files",
+            "manual",
+            "notes",
+            "projectDir",
+            "summary",
+            "verify"
+          ],
+          "properties": {
+            "backupDir": {
+              "type": "string"
+            },
+            "byRule": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "candidates",
+                  "excluded",
+                  "fixed",
+                  "manual",
+                  "rule"
+                ],
+                "properties": {
+                  "candidates": {
+                    "type": "integer"
+                  },
+                  "excluded": {
+                    "type": "integer"
+                  },
+                  "fixed": {
+                    "type": "integer"
+                  },
+                  "manual": {
+                    "type": "integer"
+                  },
+                  "rule": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "changes",
+                  "edits",
+                  "path",
+                  "rules"
+                ],
+                "properties": {
+                  "changes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "after",
+                        "before",
+                        "line"
+                      ],
+                      "properties": {
+                        "after": {
+                          "type": "string"
+                        },
+                        "before": {
+                          "type": "string"
+                        },
+                        "line": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "edits": {
+                    "type": "integer"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "htmlTagFilter": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "manual": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "file",
+                  "line",
+                  "reason",
+                  "rule"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "rule": {
+                    "type": "string"
+                  },
+                  "suggestion": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "planPath": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "candidates",
+                "excluded",
+                "files",
+                "fixed",
+                "manual"
+              ],
+              "properties": {
+                "candidates": {
+                  "type": "integer"
+                },
+                "excluded": {
+                  "type": "integer"
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "fixed": {
+                  "type": "integer"
+                },
+                "manual": {
+                  "type": "integer"
+                }
+              }
+            },
+            "verify": {
+              "type": "object",
+              "required": [
+                "after",
+                "before",
+                "expectedRemoved",
+                "ok",
+                "otherRulesUnchanged",
+                "removed",
+                "unexpected"
+              ],
+              "properties": {
+                "after": {
+                  "type": "integer"
+                },
+                "before": {
+                  "type": "integer"
+                },
+                "expectedRemoved": {
+                  "type": "integer"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "otherRulesUnchanged": {
+                  "type": "boolean"
+                },
+                "removed": {
+                  "type": "integer"
+                },
+                "unexpected": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
         "deprecated": {}
       },
       "generate_agents_md": {
@@ -6521,6 +6804,7 @@
         "check": "check_egovframe_dependencies",
         "deliver": "prepare_egovframe_delivery",
         "diagnose": "diagnose_egovframe_project",
+        "fix": "fix_egovframe_secure_coding",
         "migrate": "migrate_egovframe_project",
         "network": "diagnose_egovframe_network",
         "rehearse": "rehearse_egovframe_migration",

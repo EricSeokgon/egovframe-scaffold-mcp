@@ -31,6 +31,7 @@ import { generateAgentsMd } from "./agents-md.js";
 import { generateSbom, renderSbomMarkdown } from "./sbom.js";
 import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
 import { checkSecureCoding, renderSecureCodingMarkdown, toSarif } from "./secure-coding.js";
+import { FIXABLE_RULES, fixSecureCoding, renderSecureFixMarkdown } from "./secure-fix.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -811,7 +812,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 보안약점 점검 (v0.44) ─────────────────────────────
   server.registerTool(
     "check_egovframe_secure_coding",
-    { title: t("check_egovframe_secure_coding"), description: d("check_egovframe_secure_coding", "행정안전부·KISA 「소프트웨어 개발보안 가이드」(2021) 구현단계 보안약점 중 정적 패턴으로 오탐을 통제할 수 있는 항목을 소스에서 찾습니다 — SQL 삽입(MyBatis ${…}·iBATIS $…$·JDBC 문자열 연결), 크로스사이트 스크립트(요청 값·EL param/header/cookie 무이스케이프 출력, <c:out escapeXml=\"false\">), 경로 조작, 신뢰되지 않는 URL 자동접속, 운영체제 명령어, XML 외부개체, 취약한 해시·암호, 보안 문맥의 부적절한 난수, 코드·설정의 하드코드된 중요정보, HttpOnly·Secure 없는 쿠키, printStackTrace, 빈 catch, 역직렬화, 남은 디버그 출력. 규칙은 catalog/secure-coding-rules.json 데이터이고 주석은 무시합니다. 항목마다 파일·라인·CWE·등급·조치와 출처(공통컴포넌트 원본·수정본·매니페스트 없음·프로젝트 코드·테스트)를 냅니다. 예외는 .egovframe-secure-ignore.json(사유·검토자 필수), baselinePath(이전 JSON 결과·SARIF)와 비교해 새 항목 표시, format=sarif 또는 sarifPath 로 SARIF 2.1.0(GitHub code scanning 등). v1.5: 메서드 안 데이터 흐름(요청 파라미터·헤더·쿠키·Spring 바인딩 값 → 대입·결합·append → JDBC·파일 경로·OS 명령·리다이렉트)으로 등급을 올리거나 내리고 변수를 거친 미탐을 찾습니다(메서드 간 흐름은 보지 않음). 패턴 기반 진단 보조이며 공인 진단을 대체하지 않습니다."), inputSchema: {
+    { title: t("check_egovframe_secure_coding"), description: d("check_egovframe_secure_coding", "행정안전부·KISA 「소프트웨어 개발보안 가이드」(2021) 구현단계 보안약점 중 정적 패턴으로 오탐을 통제할 수 있는 항목을 소스에서 찾습니다 — SQL 삽입(MyBatis ${…}·iBATIS $…$·JDBC 문자열 연결), 크로스사이트 스크립트(요청 값·EL param/header/cookie 무이스케이프 출력, <c:out escapeXml=\"false\">), 경로 조작, 신뢰되지 않는 URL 자동접속, 운영체제 명령어, XML 외부개체, 취약한 해시·암호, 보안 문맥의 부적절한 난수, 코드·설정의 하드코드된 중요정보, HttpOnly·Secure 없는 쿠키, printStackTrace, 빈 catch, 역직렬화, 남은 디버그 출력. 규칙은 catalog/secure-coding-rules.json 데이터이고 주석은 무시합니다. 항목마다 파일·라인·CWE·등급·조치와 출처(공통컴포넌트 원본·수정본·매니페스트 없음·프로젝트 코드·테스트)를 냅니다. 예외는 .egovframe-secure-ignore.json(사유·검토자 필수), baselinePath(이전 JSON 결과·SARIF)와 비교해 새 항목 표시, format=sarif 또는 sarifPath 로 SARIF 2.1.0(GitHub code scanning 등). v1.5: 메서드 안 데이터 흐름(요청 파라미터·헤더·쿠키·Spring 바인딩 값 → 대입·결합·append → JDBC·파일 경로·OS 명령·리다이렉트)으로 등급을 올리거나 내리고 변수를 거친 미탐을 찾습니다(메서드 간 흐름은 보지 않음). v1.7: HTMLTagFilter 가 등록돼 있으면(요청 값을 엔티티로 저장) c:out escapeXml=\"false\" 를 낮음으로 보고 사유를 적습니다. 고칠 수 있는 항목은 fix_egovframe_secure_coding 으로. 패턴 기반 진단 보조이며 공인 진단을 대체하지 않습니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장) — 읽기만 함"),
       rules: z.array(z.string()).optional().describe("점검할 규칙 id(기본 전체)"),
       paths: z.array(z.string()).optional().describe("프로젝트 상대 경로 접두어로 좁히기(예: src/main/java/egovframework/example)"),
@@ -832,6 +833,27 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "sarif" ? JSON.stringify(toSarif(r), null, 2) : renderSecureCodingMarkdown(r, args.topN ?? 40);
       // 경고는 본문과 섞지 않는다(format=json·sarif 본문이 그대로 파싱되도록 별도 content 항목)
       return { content: [{ type: "text" as const, text }, ...warnings.map((w) => ({ type: "text" as const, text: `⚠ ${w}` }))], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 보안약점 자동 조치 (v1.7) ─────────────────────────
+  server.registerTool(
+    "fix_egovframe_secure_coding",
+    { title: t("fix_egovframe_secure_coding"), description: d("fix_egovframe_secure_coding", "check_egovframe_secure_coding 이 찾은 항목 중 고친 결과를 규칙으로 정할 수 있는 것만 고치고, 나머지는 사유와 함께 수동 항목으로 냅니다. xss-cout-unescaped: 줄바꿈을 <br/> 로 바꾸는 값은 fn:escapeXml 로 먼저 감싸고, 단순 속성 값은 escapeXml=\"false\" 를 지웁니다(HTML 편집기 값일 수 있는 본문 필드는 수동, HTMLTagFilter 가 등록돼 있으면 요청 값이 엔티티로 저장되므로 ignoreHtmlTagFilter=true 가 아니면 모두 수동). print-stack-trace·debug-code: 클래스의 로거(SLF4J·Commons Logging·Log4j 2/1·Lombok)로 바꿉니다(로거가 없거나 정적 문맥에서 인스턴스 로거면 수동). cookie-flags: Secure·HttpOnly 는 동작을 바꾸므로 제안만. 공통컴포넌트 출처·테스트는 기본 제외(includeComponents·includeTests). 기본 dryRun(바뀔 줄과 재점검 결과), 적용은 파일 트랜잭션(원본은 migration-backup/)이며 재점검이 계획과 다르면(고친 항목만 사라지고 새 항목·다른 규칙 변화가 없어야 함) 적용하지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      rules: z.array(z.enum(FIXABLE_RULES)).optional().describe("조치할 규칙(기본 전체: xss-cout-unescaped·print-stack-trace·debug-code·cookie-flags)"),
+      paths: z.array(z.string()).optional().describe("프로젝트 상대 경로 접두어로 좁히기"),
+      includeComponents: z.boolean().default(false).describe("공통컴포넌트 출처(매니페스트·egovframework/com 경로)도 고침 — 업그레이드·재조립 때 원본으로 바뀔 수 있음"),
+      includeTests: z.boolean().default(false).describe("src/test 도 고침"),
+      ignoreHtmlTagFilter: z.boolean().default(false).describe("HTMLTagFilter 가 등록돼 있어도 c:out 을 고침(필터를 걷어내고 출력 escape 로 바꿀 때만)"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 파일을 쓰지 않고 계획·재점검만"),
+      topN: z.number().int().min(1).max(500).default(30).describe("Markdown 에 보일 파일·수동 항목 수"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.fix_egovframe_secure_coding.shape, annotations: toolAnnotations("fix_egovframe_secure_coding") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await fixSecureCoding({ projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeComponents: args.includeComponents, includeTests: args.includeTests, ignoreHtmlTagFilter: args.ignoreHtmlTagFilter, dryRun: args.dryRun });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderSecureFixMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── SBOM 운영 (v0.40) ─────────────────────────────────

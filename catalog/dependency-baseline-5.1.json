@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-dependency-baseline.mjs",
-  "surveyedAt": "2026-10-26",
+  "surveyedAt": "2026-10-27",
   "repository": "https://maven.egovframe.go.kr/maven/",
   "sources": [
     {
@@ -10,7 +10,7 @@
       "artifactId": "egovframe-web-config-parent",
       "version": "5.1.0",
       "url": "https://maven.egovframe.go.kr/maven/org/egovframe/web/egovframe-web-config-parent/5.1.0/egovframe-web-config-parent-5.1.0.pom",
-      "sha256": "7dd1766c6b9093152ef4c25fc3c9678c20a98e53d41326c6780f1899eba1061c",
+      "sha256": "c8f74d48de83ca8a3423300f31596140b0fa3c47990f2bd226e64ba9a34d5dd3",
       "managed": 363
     },
     {
@@ -19,8 +19,8 @@
       "artifactId": "egovframe-boot-starter-parent",
       "version": "5.1.0",
       "url": "https://maven.egovframe.go.kr/maven/org/egovframe/boot/egovframe-boot-starter-parent/5.1.0/egovframe-boot-starter-parent-5.1.0.pom",
-      "sha256": "9805f31db1802ed91ce8be3bf038260775c51c6793a361dc2238e3abdada6f88",
-      "managed": 154,
+      "sha256": "827ce27d4dfdda86ee7b0416aa7681e1391555e9727d814cb034ca80a51e0c04",
+      "managed": 156,
       "parent": {
         "groupId": "org.springframework.boot",
         "artifactId": "spring-boot-starter-parent",
@@ -217,6 +217,7 @@
       "commons-net.version": "3.13.0",
       "commons-pool2.version": "2.13.1",
       "commons-lang3.version": "3.20.0",
+      "springdoc.version": "2.8.17",
       "querydsl.version": "5.1.0",
       "hsqldb.version": "2.7.4",
       "selenium.version": "4.44.0",
@@ -2596,6 +2597,22 @@
       "via": "egovframe-rte-root",
       "sources": [
         "web",
+        "boot"
+      ]
+    },
+    {
+      "groupId": "org.springdoc",
+      "artifactId": "springdoc-openapi-starter-webflux-ui",
+      "version": "2.8.17",
+      "sources": [
+        "boot"
+      ]
+    },
+    {
+      "groupId": "org.springdoc",
+      "artifactId": "springdoc-openapi-starter-webmvc-ui",
+      "version": "2.8.17",
+      "sources": [
         "boot"
       ]
     },

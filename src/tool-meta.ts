@@ -50,6 +50,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   // v0.45: 새 파일만 만든다(기존 파일 거부) — 로컬 파일만 읽음
   generate_egovframe_deploy: { title: { ko: "컨테이너·배포 산출물 생성", en: "Generate container and deployment files" }, annotations: create() },
   check_egovframe_secure_coding: { title: { ko: "보안약점 점검 (개발보안 가이드)", en: "Check secure coding weaknesses" }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+  // v1.7: 프로젝트 소스를 고친다(dryRun 기본, 백업·트랜잭션)
+  fix_egovframe_secure_coding: { title: { ko: "보안약점 자동 조치", en: "Fix secure coding weaknesses" }, annotations: destructive() },
   check_egovframe_sbom: { title: { ko: "SBOM 점검 (최소 요소·비교·VEX)", en: "Check SBOM (minimum elements, diff, VEX)" }, annotations: create(true) },
   search_egovframe_docs: { title: { ko: "가이드 문서 검색", en: "Search guide documents" }, annotations: ro(true) },
   // v0.37: outputPath 로 새 파일을 만들 수 있고(기존 파일 거부 → 비파괴) resolve/offline=false 는 네트워크를 쓴다 → 읽기 전용 힌트는 뗀다

@@ -66,7 +66,7 @@ With `EGOVFRAME_LANG=en` a response looks like this (`check_egovframe_secure_cod
 
 Structured output (`structuredContent`, `--json`) keeps the same keys in both languages; only sentence fields such as `reason`, `message`, `fix` and `note` follow the language. Text quoted from the project and official document search results stay as they are. Long-running tools (`rehearse_egovframe_migration`, `prepare_egovframe_offline_bundle`, `generate_egovframe_sbom`, `check_egovframe_dependencies(resolve=true)`, `build_egovframe_project`, `test_egovframe_project`, `reassemble_egovframe_components`, `prepare_egovframe_delivery`) send `notifications/progress` when the client passes a `progressToken`, and `notifications/cancelled` stops the child process tree and rolls back files (v1.2, [docs/design-i18n.md](docs/design-i18n.md)).
 
-## Tools (35)
+## Tools (36)
 
 | Tool | What it does |
 |---|---|
@@ -96,6 +96,7 @@ Structured output (`structuredContent`, `--json`) keeps the same keys in both la
 | `generate_egovframe_sbom` | CycloneDX 1.6 JSON (default) or SPDX 2.3 JSON (`bomFormat="spdx-json"`) SBOM without touching build files — Maven via cyclonedx-maven-plugin (hashes, licenses), Gradle from the resolved tree; baseline verdict per component (`egovframe:*` properties), optional OSV `vulnerabilities[]`; writes inside the project only, `dryRun` by default |
 | `check_egovframe_sbom` | Check an existing CycloneDX or SPDX 2.x SBOM (format detected) without changing it: the 7 minimum elements (supplier, name, version, unique identifier, dependency relationship, author, timestamp) per component with a ready / needs-work verdict, a purl-only re-check (changed baseline verdicts, OSV findings published since generation), a diff against `baselinePath`, and with `vex=true` a CycloneDX VEX draft (`in_triage`, BOM-Link) that keeps human decisions |
 | `check_egovframe_secure_coding` | Scan sources for security weaknesses from the implementation-stage list of the Korean secure coding guide (MOIS/KISA 2021) that static patterns can find: SQL injection, XSS, path traversal, open redirect, OS commands, XXE, weak crypto, insecure random, hard-coded secrets, cookies, error exposure, empty catch, deserialization, debug code — file, line, CWE, severity, fix and origin (common component original/modified/unmanaged, project, test); exceptions need a reason and reviewer; baseline diff; SARIF 2.1.0. A pattern-based aid, not a certified diagnosis v1.5: an intra-method data-flow pass raises severity when request values reach SQL, file paths, OS commands or redirects (path in SARIF `codeFlows`) and lowers it for constants only |
+| `fix_egovframe_secure_coding` | (v1.7) Fix the findings whose fix can be decided by rule and list the rest as manual items with the reason: `<c:out escapeXml="false">` (newline-to-`<br/>` values are wrapped in `fn:escapeXml` first; plain property values lose `escapeXml`; body fields stay manual; with `HTMLTagFilter` registered — it stores request values as entities — they all stay manual), `printStackTrace()` and `System.out.println` replaced with the class logger, cookie flags suggested only. dryRun by default; applying uses a file transaction with backups and is refused unless a re-check shows exactly the planned findings gone. CLI `fix` (`--write` applies) |
 | `generate_egovframe_deploy` | Container and deployment files from the project diagnosis: multi-stage Dockerfile (Classic war unpacked as ROOT on Tomcat 10.1 or 11.0, Boot jar on the Temurin JRE; non-root, HEALTHCHECK; or a prebuilt artifact), `.dockerignore`, `deploy/docker-compose.yml` with a mysql/mariadb/postgres container initialised from the template SQL, and Kubernetes manifests (Deployment with probes and a hardened securityContext, Service, ConfigMap, Secret, optional Ingress). Database settings via Spring environment variables (Boot) or an overridden `globals.properties` (Classic); `imageRegistry` for air-gapped registries. New files only, `dryRun` by default |
 | `diagnose_egovframe_network` | Probe the hosts the server downloads from, classify failures (DNS, timeout, TLS, proxy auth) and prescribe environment settings as bash/cmd/PowerShell commands |
 | `generate_agents_md` | `AGENTS.md` for AI coding tools: build/test commands, RTE and migration status, components, rules, available MCP tools (ko/en) |
@@ -219,7 +220,7 @@ The server is described for the [MCP Registry](https://registry.modelcontextprot
 | Document | Contents |
 |---|---|
 | [README.md](README.md) | Usage scenarios for AI-tool users, CI/DevOps and auditors (Korean) |
-| [docs/tools.md](docs/tools.md) | Parameters, behaviour and examples of all 35 tools; MCP resources and prompts |
+| [docs/tools.md](docs/tools.md) | Parameters, behaviour and examples of all 36 tools; MCP resources and prompts |
 | [docs/design-i18n.md](docs/design-i18n.md) | English responses (`L(ko, en)`, `_en` rule fields, byte-identical Korean goldens) and progress notifications / cancellation (v1.2, Korean) |
 | [docs/versioning.md](docs/versioning.md) | Versioning policy, public API surface, deprecation process |
 | [CHANGELOG.md](CHANGELOG.md) | Per-release change log |

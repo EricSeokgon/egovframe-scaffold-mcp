@@ -155,7 +155,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 
 모든 결과는 Markdown(사람용)과 JSON(`--json`, 구조화 출력)으로 받을 수 있어 감리 양식에 옮기거나 대시보드에 넣을 수 있습니다.
 
-## 도구 목록 (35종)
+## 도구 목록 (36종)
 
 파라미터와 동작 상세는 [docs/tools.md](docs/tools.md) 에 있습니다.
 
@@ -165,7 +165,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 | 카탈로그·문서 | `list_egovframe_components` · `search_egovframe_components` · `explain_egovframe_component` · `get_egovframe_guide` · `search_egovframe_docs` · `sync_egovframe_catalog` · `sync_egovframe_templates` |
 | 빌드·진단 | `build_egovframe_project` · `test_egovframe_project` · `validate_egovframe_project` · `diagnose_egovframe_project` · `diagnose_egovframe_network` · `generate_agents_md` |
 | 5.x 전환·유지 | `migrate_egovframe_project` · `rehearse_egovframe_migration` · `reassemble_egovframe_components` · `upgrade_egovframe_project` |
-| 납품 점검 | `check_egovframe_dependencies` · `generate_egovframe_sbom` · `check_egovframe_sbom` · `check_egovframe_secure_coding` · `generate_egovframe_report` · `prepare_egovframe_delivery` |
+| 납품 점검 | `check_egovframe_dependencies` · `generate_egovframe_sbom` · `check_egovframe_sbom` · `check_egovframe_secure_coding` · `fix_egovframe_secure_coding` · `generate_egovframe_report` · `prepare_egovframe_delivery` |
 | 배포·CI·폐쇄망 | `generate_egovframe_deploy` · `generate_egovframe_ci` · `prepare_egovframe_offline_bundle` |
 
 MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이 읽을 수 있고, 프롬프트 `scaffold_board_login`·`scaffold_ai_chatbot`·`scaffold_portal`·`maintain_existing` 이 자주 쓰는 흐름을 안내합니다. 모든 도구에 `readOnlyHint`·`destructiveHint` 등 annotations 가 있어 클라이언트가 위험한 도구를 구분합니다.
@@ -187,7 +187,7 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 
 | 문서 | 내용 |
 |---|---|
-| [docs/tools.md](docs/tools.md) | 도구 35종 파라미터·동작·예시, MCP 리소스·프롬프트 |
+| [docs/tools.md](docs/tools.md) | 도구 36종 파라미터·동작·예시, MCP 리소스·프롬프트 |
 | [docs/versioning.md](docs/versioning.md) | 버전 정책, 공개 API 범위, 폐기 절차 |
 | [CHANGELOG.md](CHANGELOG.md) | 버전별 변경 이력 |
 | [docs/development.md](docs/development.md) | 로컬 개발, 검증 체계, 릴리스 절차, 브랜치 보호 (기여자용) |

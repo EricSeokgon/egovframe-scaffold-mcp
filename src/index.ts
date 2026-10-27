@@ -153,7 +153,10 @@ export { EXIT as CLI_EXIT, COMMANDS as CLI_COMMANDS, parseArgs, kebabToCamel, co
 export type { ParsedArgs, FailCondition, CliIo } from "./cli.js";
 export { REASSEMBLE_STATES, REASSEMBLE_STATE_LABEL, unifiedPatch, reassembleComponents, renderReassembleMarkdown } from "./reassemble.js";
 export type { ReassembleState, ReassembleAction, ReassembleFile, ReassembleWorkItem, ReassembleOptions, ReassembleResult } from "./reassemble.js";
-export { loadSecureRules, compileRulePattern, stripJavaComments, stripMarkupComments, targetOf, checkSecureCoding, toSarif, renderSecureCodingMarkdown, IGNORE_FILE } from "./secure-coding.js";
+export { loadSecureRules, compileRulePattern, stripJavaComments, stripMarkupComments, targetOf, checkSecureCoding, toSarif, renderSecureCodingMarkdown, IGNORE_FILE, findHtmlTagFilter } from "./secure-coding.js";
+// v1.7: 보안약점 자동 조치
+export { FIXABLE_RULES, HTML_FIELD_RE, fixSecureCoding, fixCoutLine, fixJavaLine, findLogger, renderSecureFixMarkdown } from "./secure-fix.js";
+export type { SecureFixOptions, SecureFixResult, FixChange, FixFile, FixManual, LoggerField, FixableRule } from "./secure-fix.js";
 export { analyzeJavaFlows, findMethods, blankJavaLiterals } from "./java-flow.js";
 export type { SinkFlow, FlowSink, FlowStep } from "./java-flow.js";
 export type { SecureRule, SecureRules, SecureFinding, SecureCodingOptions, SecureCodingResult, SecureSeverity, SecureOrigin } from "./secure-coding.js";

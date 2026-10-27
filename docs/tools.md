@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 35종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 36종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -38,6 +38,7 @@
 | `generate_egovframe_sbom` | **SBOM 생성** — Maven/Gradle 프로젝트의 CycloneDX 1.6 JSON(기본) 또는 SPDX 2.3 JSON(`bomFormat="spdx-json"`)을 빌드 파일 변경 없이 생성(Maven: cyclonedx-maven-plugin makeAggregateBom, 해시·라이선스 포함 / Gradle: 해석된 의존성 트리로 구성). `enrich` 로 component 마다 기준 판정(`egovframe:status·basis·baseline`) 속성, `offline=false` 로 OSV 취약점을 `vulnerabilities[]` 에 포함. 출력은 프로젝트 안 경로(기본 `sbom/bom.cdx.json`, SPDX 는 `sbom/bom.spdx.json`), 기존 파일은 `overwrite` 없이는 거부, `dryRun`(기본)은 계획만 |
 | `check_egovframe_sbom` | **SBOM 점검** — 기존 CycloneDX·SPDX 2.x SBOM(형식 자동 판별)의 최소 요소 7종(공급자·구성요소명·버전·고유식별자·의존관계·작성자·생성 시각) 충족 여부와 빠진 component, 빌드 도구 없이 purl 로 기준 재판정·OSV 재조회(생성 이후 새 취약점), `baselinePath` 와 비교(추가·제거·버전·판정·취약점), `vex=true` 면 CycloneDX VEX 초안(`in_triage`, BOM-Link, 사람의 판단 보존, CycloneDX 입력만). SBOM 파일은 바꾸지 않음 |
 | `check_egovframe_secure_coding` | **보안약점 점검** — 행안부·KISA 개발보안 가이드(2021) 구현단계 보안약점 중 정적 패턴 14개 항목(규칙 20종: SQL 삽입·XSS·경로 조작·URL 자동접속·OS 명령·XXE·약한 암호·난수·하드코드 정보·쿠키·오류 노출·빈 catch·역직렬화·디버그 코드)을 파일·라인·CWE·등급·조치·출처(공통컴포넌트 원본/수정본/매니페스트 없음·프로젝트·테스트)로. 예외 파일(사유·검토자), `baselinePath` 비교(새 항목), SARIF 2.1.0(`format=sarif`·`sarifPath`). 진단 보조이며 공인 진단을 대체하지 않음 |
+| `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `generate_egovframe_deploy` | **컨테이너·배포 산출물** — Dockerfile(멀티 스테이지·Classic war → Tomcat 10.1(Servlet 6.1+ 는 11.0) ROOT, Boot jar → Temurin JRE, 비루트·HEALTHCHECK, `buildInImage=false` 면 미리 빌드한 산출물)·`.dockerignore`·`deploy/docker-compose.yml`(DbType 별 DB 컨테이너·초기화 SQL)·`deploy/k8s/<app>.yaml`(Deployment·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 환경 변수·Classic 설정 파일 덮어쓰기, `imageRegistry`(폐쇄망), `dockerfilePath`(템플릿 자체 Dockerfile 과 공존). 새 파일만, `dryRun` 기본 |
 | `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
 | `generate_agents_md` | 프로젝트 진단 결과로 AI 코딩 도구용 `AGENTS.md` 생성 — 빌드·테스트 명령(래퍼 감지), RTE·5.x 전환 상태, DbType, 기본 패키지·설정 디렉터리, 설치 컴포넌트(매니페스트 여부), 규칙(좌표·백업 디렉터리·비밀 정보·의존성 기준), MCP 도구 목록. 기존 파일은 `overwrite` 없이는 거부, `dryRun`, ko/en, 파일명 변경(`CLAUDE.md` 등) |
@@ -267,6 +268,31 @@ check_egovframe_secure_coding(projectDir, dataFlow=false)                       
 - **출처**: 공통컴포넌트 매니페스트의 해시로 "원본(업그레이드·예외·upstream 보고)"과 "수정본(직접 수정)"을 나누고, 매니페스트 없이 복사된 공통컴포넌트는 재조립을 안내합니다. 같은 규칙으로 공식 공통컴포넌트 v4.3.2 는 516건(중간 314), **v5.0.7 은 38건**(중간 16)입니다.
 - **예외**: `.egovframe-secure-ignore.json` 에 `{"ignores":[{"rule":"debug-code","path":"src/main/java/egovframework/com/**","reason":"upstream 원본, 업그레이드 대기","reviewer":"홍길동"}]}` — 사유·검토자가 없는 항목은 적용하지 않고 목록으로 돌려줍니다.
 - **CI**: `npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.sarif --overwrite --fail-on high`, 또는 `generate_egovframe_ci(supplyChain=true, secureCoding=true)` 게이트 단계(GitHub 는 code scanning 에 SARIF 업로드). 평가서 4절에 요약이 나오며 등급 산식에는 넣지 않습니다. 설계: [docs/design-secure-coding.md](design-secure-coding.md).
+
+## 보안약점 자동 조치 (`fix_egovframe_secure_coding`, v1.7)
+
+`check_egovframe_secure_coding` 이 찾은 항목 중 **고친 결과를 규칙으로 정할 수 있는 것만** 고칩니다. 나머지는 사유와 함께 수동 항목으로 냅니다. 감리 소명 대신 조치 결과(전·후 건수, 바뀐 줄, 백업)를 낼 수 있게 하려는 도구입니다.
+
+```text
+fix_egovframe_secure_coding(projectDir)                                   # 계획(dryRun): 고칠 줄·수동 항목·재점검
+fix_egovframe_secure_coding(projectDir, dryRun=false)                     # 적용(원본은 migration-backup/<시각>-secure-fix-…/)
+fix_egovframe_secure_coding(projectDir, rules=["print-stack-trace"], paths=["src/main/java/egovframework/example"])
+fix_egovframe_secure_coding(projectDir, includeComponents=true)           # 공통컴포넌트 출처도(업그레이드·재조립 때 원본으로 바뀔 수 있음)
+npx -y egovframe-scaffold-mcp fix --project . [--write] [--fail-on manual]
+```
+
+| 규칙 | 고치는 것 | 수동으로 두는 것 |
+|---|---|---|
+| `xss-cout-unescaped` | `${fn:replace(x, crlf, '<br/>')}` → `${fn:replace(fn:escapeXml(x), crlf, '<br/>')}`(`escapeXml="false"` 유지, 줄바꿈 표시 그대로), 단순 속성 값(`${vo.title}`, `${a} ~ ${b}`)은 `escapeXml="false"` 제거 | 식·함수가 든 값, 본문 필드(이름이 `…Cn`·`…Dc`·`…Cntnt`·`…Html`·`memo` 등 — HTML 편집기 값이면 태그가 글자로 보임), 한 줄에 고칠 수 없는 태그가 섞인 줄, **HTMLTagFilter 가 등록된 프로젝트의 모든 항목** |
+| `print-stack-trace` | `e.printStackTrace();` → `logger.error(e.getMessage(), e);` | 로거 필드가 없는 클래스, 정적 메서드에서 인스턴스 로거, 식의 `printStackTrace()` |
+| `debug-code` | `System.out.println(x);` → `logger.debug(…)`, `System.err` → `logger.error(…)`(문자열이 아니면 `String.valueOf`) | `print`·`printf`·여러 줄·인자 둘, 로거 없음, 정적 문맥 |
+| `cookie-flags` | — | 전부(제안 줄 `c.setHttpOnly(true); c.setSecure(true);`) — `Secure` 는 HTTP 로 서비스하면 쿠키가 안 가고 `HttpOnly` 는 스크립트의 쿠키 읽기를 막음 |
+
+- **로거**: 클래스의 `Logger`(SLF4J·Log4j 2·Log4j 1)·`Log`(Commons Logging) 필드, Lombok `@Slf4j`·`@Log4j2`·`@CommonsLog`·`@Log4j`. `java.util.logging` 은 `error` 가 없어 쓰지 않습니다.
+- **HTMLTagFilter**: 표준프레임워크 공통컴포넌트·공식 템플릿 대부분이 등록하는 이 필터는 요청 값을 엔티티(`&lt;` 등)로 바꿔 저장합니다. 그래서 `escapeXml="false"` 는 두 번 escape 를 피하려는 설계이고, 지우면 화면에 `&amp;lt;` 처럼 보입니다. 등록돼 있으면 c:out 은 고치지 않고(필터를 걷어내고 출력 escape 로 바꿀 때만 `ignoreHtmlTagFilter=true`), `check_egovframe_secure_coding` 도 이 항목을 낮음으로 보고 사유를 적습니다.
+- **기본 제외**: 공통컴포넌트 출처(매니페스트·`egovframework/com` 경로)와 `src/test` — `includeComponents`·`includeTests` 로 포함.
+- **재점검**: 고친 파일만 임시 디렉터리에 전·후로 두고 같은 규칙으로 다시 점검해, 사라진 항목이 고친 항목과 같고 새 항목·다른 규칙 변화가 없는지 봅니다(`verify`). 다르면 적용하지 않습니다. 줄 끝(CRLF)은 그대로 둡니다.
+- 공식 공통컴포넌트 v3.10.0·v4.3.2 실측: 둘 다 HTMLTagFilter 를 등록해 c:out 304건(4.3.2)은 수동, 3.10.0 의 `System.out.println` 16건은 고침(로거 없는 27건은 수동). 필터를 걷어낸다고 가정하면 c:out 289·291건을 고치고 본문 필드 13건이 수동입니다. 모두 재점검이 계획과 일치합니다.
 
 ## generate_egovframe_report 파라미터 (전환 준비도 평가서)
 
