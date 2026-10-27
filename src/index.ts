@@ -57,10 +57,10 @@ export type { CiResult, CiPlatform, CiSupplyChainOptions, CiEnvOptions, Generate
 export { cdxToSpdx, spdxToCdx, isSpdxDocument, spdxAgent, spdxTimestamp, SPDX_VERSION, DEFAULT_SPDX_PATH } from "./spdx.js";
 export type { SpdxDocument, SpdxPackage, SpdxRelationship } from "./spdx.js";
 export { SERVER_VERSION, buildServer } from "./server.js";
-export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
+export { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud, PAGING_STYLE, detectDbType, detectJdbcDialect } from "./crud.js";
 export { parseCreateTable, splitTopLevel, stripSqlComments, mapSqlType, chooseBackslashMode } from "./ddl.js";
 export type { ParsedDdl } from "./ddl.js";
-export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult } from "./crud.js";
+export type { CrudFieldInput, GenerateCrudOptions, GenerateCrudResult, CrudPaging } from "./crud.js";
 export { inspectCatalogArchive, syncCatalog } from "./catalog-sync.js";
 export type { ArchiveInspection, CatalogSyncOptions, CatalogSyncResult } from "./catalog-sync.js";
 export { ProjectFileTransaction, TransactionError, withDirectoryTransaction, withFileTransaction } from "./file-transaction.js";

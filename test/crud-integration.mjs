@@ -43,6 +43,18 @@ async function compileTemplate({ projectName, template, profile, expectedFiles }
     search: ["SUBJECT", "WRITER"],
   });
   if (fromDdl.files.length !== expectedFiles || fromDdl.fieldsFromDdl !== 5) throw new Error(`${template}/${profile} ddl CRUD: files ${fromDdl.files.length}, fields ${fromDdl.fieldsFromDdl}`);
+  // v1.8: 페이징 CRUD 도 함께 컴파일(classic 은 PaginationInfo·<ui:pagination>, boot 는 page·size) — 방언은 프로젝트의 Globals.DbType(hsql)
+  const paged = generateCrud({
+    projectDir: created.projectPath,
+    entityName: "Faq",
+    basePackage: "egovframework.example.faq",
+    profile,
+    ddl: "CREATE TABLE SAMPLE_FAQ (FAQ_ID INT NOT NULL, QUESTION VARCHAR(200), PRIMARY KEY (FAQ_ID))",
+    search: ["QUESTION"],
+    paging: true,
+    pageUnit: 5,
+  });
+  if (paged.files.length !== expectedFiles || paged.paging?.style !== "limit") throw new Error(`${template}/${profile} paged CRUD: files ${paged.files.length}, paging ${JSON.stringify(paged.paging)}`);
 
   const compiled = spawnSync(executable, commandArgs, {
     cwd: created.projectPath,
@@ -56,7 +68,7 @@ async function compileTemplate({ projectName, template, profile, expectedFiles }
   }
   if (generated.files.length !== expectedFiles)
     throw new Error(`${template}/${profile} generated ${generated.files.length} files, expected ${expectedFiles}`);
-  console.log(`crud compile OK: ${generated.files.length} files + DDL·search ${expectedFiles} files on ${template}/${profile} (${created.filesExtracted} template files)`);
+  console.log(`crud compile OK: ${generated.files.length} files + DDL·search·paging ${expectedFiles}×2 files on ${template}/${profile} (${created.filesExtracted} template files)`);
 }
 
 try {
