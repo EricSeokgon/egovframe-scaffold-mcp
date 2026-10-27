@@ -181,7 +181,7 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 
 ## 버전 정책
 
-1.0.0 부터 [SemVer 2.0](https://semver.org/lang/ko/) 을 따릅니다. **공개 API** 는 도구 이름과 입력 파라미터, 구조화 출력 13종의 필드, CLI 명령과 종료 코드, 환경 변수 `EGOVFRAME_*` 5종, 지원 Node 버전입니다. 이것을 지우거나 호환되지 않게 바꾸면 MAJOR, 더하면 MINOR, 버그 수정·데이터 갱신·문구는 PATCH 입니다. Markdown 응답 문구와 카탈로그 데이터의 내용은 공개 API 가 아니라 PATCH 에서도 바뀔 수 있습니다. 폐기할 파라미터는 옛 이름을 경고와 함께 계속 받다가 다음 MAJOR 에서만 지웁니다(현재: `check_egovframe_secure_coding` 의 `top` → `topN`, 2.0.0 제거). 계약 테스트가 매 릴리스에서 변경 등급과 버전 증가 폭을 맞춰 봅니다. 자세한 기준은 [docs/versioning.md](docs/versioning.md) 입니다.
+1.0.0 부터 [SemVer 2.0](https://semver.org/lang/ko/) 을 따릅니다. **공개 API** 는 도구 이름과 입력 파라미터, 구조화 출력 15종의 필드, CLI 명령과 종료 코드, 환경 변수 `EGOVFRAME_*` 5종, 지원 Node 버전입니다. 이것을 지우거나 호환되지 않게 바꾸면 MAJOR, 더하면 MINOR, 버그 수정·데이터 갱신·문구는 PATCH 입니다. Markdown 응답 문구와 카탈로그 데이터의 내용은 공개 API 가 아니라 PATCH 에서도 바뀔 수 있습니다. 폐기할 파라미터는 옛 이름을 경고와 함께 계속 받다가 다음 MAJOR 에서만 지웁니다(현재: `check_egovframe_secure_coding` 의 `top` → `topN`, 2.0.0 제거). 계약 테스트가 매 릴리스에서 변경 등급과 버전 증가 폭을 맞춰 봅니다. 자세한 기준은 [docs/versioning.md](docs/versioning.md) 입니다.
 
 ## 문서
 

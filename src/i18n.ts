@@ -18,7 +18,7 @@ export const TOOL_DESCRIPTIONS_EN: Record<string, string> = {
   search_egovframe_components: "Search common components by keyword (id, name, description; top 10 by score).",
   remove_egovframe_components: "Remove installed components transactionally using the install manifest: protects dependents and user-modified files, dryRun classification, force backs up to remove-backup/ before deleting.",
   validate_egovframe_project: "Validate an assembled project: file presence, DbType vs DB scripts, AI layer prerequisites. Read-only.",
-  get_egovframe_guide: "Fetch the official guide document for a component (egovframe-docs, 151 mappings).",
+  get_egovframe_guide: "Fetch the official guide document for a component (egovframe-docs, 199 component links, 156 unique documents).",
   add_ai_components: "Add an AI RAG chatbot layer from the official egovframe-ai-rag sample: Spring AI (Redis Stack) or LangChain4j (PGVector), sources/config/UI/infra copied, only missing pom dependencies inserted in a marked block (backup kept). Conflicts rejected; dryRun.",
   list_egovframe_recipes: "List curated recipes (template + component bundles).",
   apply_egovframe_recipe: "Apply a recipe end to end (create project → components → optional AI layer) with a single atomic commit to the final path; template-provided base components are preserved. dryRun supported.",
