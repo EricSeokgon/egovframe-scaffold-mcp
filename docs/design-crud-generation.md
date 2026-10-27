@@ -77,6 +77,18 @@ MyBatis XML은 기본키 조건으로 select/update/delete를 만들고, `genera
 - 검색: `search` 컬럼(문자열)마다 `LIKE #{searchKeywordLike}` 를 쓰고 패턴은 `<bind name="searchKeywordLike" value="'%' + searchKeyword + '%'"/>` 로 만듭니다. 공식이 고친 `||` 결합은 MySQL 기본 설정(PIPES_AS_CONCAT 미적용)에서 논리 OR 라 검색어와 무관하게 전체 행을 돌려줍니다. 검색 조건은 목록과 건수에 같이 들어가며, 화면은 Spring form 태그(`form:select`·`form:hidden`)로만 출력해 이스케이프됩니다(공식이 고친 반사형 XSS 경계).
 - `test:crud-search-live`(CI 통합)는 생성 Mapper 를 MyBatis 3.5.19 로 읽어 HSQLDB 의 MySQL·PostgreSQL·Oracle 문법 모드에서 같은 검색을 실행해 결과가 같음을 확인합니다. `test:crud-integration` 은 DDL·검색으로 만든 CRUD 를 공식 simple-backend(boot)·web-sample(classic)에서 함께 컴파일합니다.
 
+## 목록 페이징 (v1.8)
+
+v1.4 까지 목록은 전체 행을 가져왔습니다. `paging` 은 표준프레임워크 화면 관례(`DefaultVO` 의 `pageIndex`·`pageUnit`·`pageSize`·`firstIndex`·`recordCountPerPage`, `PaginationInfo`, `<ui:pagination>`)와 방언별 SQL 을 만듭니다.
+
+- **SQL**: 공식 공통컴포넌트 v4.3.2 매퍼(`EgovArticle_SQL_*.xml`)와 같은 꼴입니다. MySQL·MariaDB·PostgreSQL(·HSQL)은 `ORDER BY` 뒤 `LIMIT #{recordCountPerPage} OFFSET #{firstIndex}`, Oracle·Tibero·Altibase·CUBRID(·Goldilocks)는 정렬한 목록을 `SELECT * FROM ( SELECT rownum rn, TB.* FROM ( … ) TB ) Z WHERE rn BETWEEN #{firstIndex} + 1 AND #{firstIndex} + #{recordCountPerPage}` 로 감쌉니다(12c 의 `OFFSET … FETCH` 는 Tibero·Altibase 에 없어 공통컴포넌트처럼 ROWNUM 하나로). 건수 쿼리는 페이징 없이 같은 검색 조건입니다.
+- **방언**: `dialect` → `Globals.DbType`(공식 템플릿의 `globals.properties`, `maria`·`postgres` 별칭) → 설정 파일의 JDBC URL(`log4jdbc` 포함)·`<jdbc:embedded-database type="HSQL">`(공식 web-sample) 중 한 방언일 때. 셋 다 없거나 여럿이면 거부합니다.
+- **classic**: 컨트롤러가 요청 값의 `pageIndex`(≥1)·`pageUnit`(1–100)·`pageSize`(1–20)를 제한한 뒤 `PaginationInfo` 로 `firstIndex`·`lastIndex`·`recordCountPerPage` 를 정하고 전체 건수를 넣습니다. 화면은 검색 폼에 `pageIndex` hidden(검색하면 1쪽으로)과 `<ui:pagination type="text" jsFunction="fn_egov_link_page">` — `paginationManager` 빈이 없으면 RTE 가 기본 텍스트 렌더러를 쓰므로 설정 파일을 만들지 않습니다(이미지 렌더러는 `type="image"` 와 `imageRenderer` 빈).
+- **boot(REST)**: `GET /api/{entity}?page=1&size=10`(size 1–100) → `{content, totalCount, page, size}`.
+- **기본값**: `pageUnit`·`pageSize` 는 `DefaultVO` 의 초기값으로 들어갑니다. `paging` 을 생략하면 v1.7 까지와 같은 바이트입니다.
+- **검증**: `test:crud-paging`(게이트) — 방언 8종 SQL, 방언 결정 순서와 거부, classic·boot 코드, 생성물 보안약점 0건. `test:crud-search-live`(CI 통합) — 생성 Mapper 를 MyBatis 로 HSQLDB 의 MySQL·PostgreSQL(LIMIT/OFFSET)·Oracle(ROWNUM) 문법 모드에서 실행해 정렬된 페이지와 검색 페이지가 같음(`p1=[1,2] p2=[3] s1=[1] s2=[3]`). `test:crud-integration` — 공식 simple-backend(boot)·web-sample(classic)에 페이징 CRUD 를 더해 함께 컴파일(방언은 각 템플릿 설정에서).
+- **범위 밖**: 키셋 페이징, 정렬 컬럼 선택(`ORDER BY ${…}` 는 SQL 삽입 위험 — 기본키 정렬만), Tibero·Altibase·CUBRID 실DB 실행(SQL 문자열 단위 확인).
+
 ## 검증
 
 `npm run test:crud`는 네트워크 없이 다음을 확인한다.

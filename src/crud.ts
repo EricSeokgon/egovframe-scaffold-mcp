@@ -44,6 +44,12 @@ export interface GenerateCrudOptions {
   dialect?: string;
   /** v1.4: 목록 검색 대상 컬럼(문자열 타입) — Mapper 에 방언 중립 LIKE(<bind>), 화면에 검색 조건 */
   search?: string[];
+  /** v1.8: 목록 페이징 — 방언별 SQL(LIMIT/OFFSET 또는 ROWNUM), classic 은 PaginationInfo·<ui:pagination>, boot 는 page·size */
+  paging?: boolean;
+  /** v1.8: 한 페이지 행 수(1–100, 기본 10) */
+  pageUnit?: number;
+  /** v1.8: 페이지 목록에 보일 페이지 수(1–20, 기본 10) */
+  pageSize?: number;
   profile?: CrudProfile;
   author?: string;
   createDate?: string;
@@ -80,7 +86,15 @@ export interface GenerateCrudResult {
   fieldsFromDdl?: number;
   /** v1.4: 검색 대상 컬럼 */
   search?: string[];
+  /** v1.8: 페이징(방언·SQL 방식·기본 페이지 크기, 방언을 어디서 정했는지) */
+  paging?: CrudPaging;
 }
+
+/** v1.8: 페이징 SQL 방식 — limit: LIMIT n OFFSET m(MySQL·MariaDB·PostgreSQL·HSQL), rownum: 공통컴포넌트와 같은 ROWNUM 감싸기(Oracle·Tibero·Altibase·CUBRID) */
+export interface CrudPaging { dialect: string; style: "limit" | "rownum"; pageUnit: number; pageSize: number; dialectFrom: "dialect" | "globals" | "jdbc-url" }
+export const PAGING_STYLE: Record<string, CrudPaging["style"]> = { mysql: "limit", mariadb: "limit", postgresql: "limit", hsql: "limit", oracle: "rownum", tibero: "rownum", altibase: "rownum", cubrid: "rownum", goldilocks: "rownum" };
+/** Globals.DbType 값 → 방언 */
+const DBTYPE_ALIAS: Record<string, string> = { maria: "mariadb", postgres: "postgresql", hsqldb: "hsql" };
 
 interface NormalizedField {
   columnName: string;
@@ -120,6 +134,8 @@ interface CrudModel {
   searchFields: NormalizedField[];
   /** v1.4: DDL 해석 경고 */
   ddlWarnings: string[];
+  /** v1.8: 페이징(없으면 v1.7 과 같은 출력) */
+  paging: CrudPaging | null;
 }
 
 interface PlannedFile {
@@ -297,6 +313,29 @@ function normalizeModel(opts: GenerateCrudOptions): CrudModel {
     return f;
   }).filter((f, i, all) => all.indexOf(f) === i);
 
+  // v1.8: 페이징 — 방언은 dialect, 없으면 프로젝트의 Globals.DbType
+  let paging: CrudPaging | null = null;
+  if (opts.paging) {
+    const pageUnit = opts.pageUnit ?? 10, pageSize = opts.pageSize ?? 10;
+    if (!Number.isInteger(pageUnit) || pageUnit < 1 || pageUnit > 100) throw new Error("pageUnit 은 1–100 정수입니다");
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 20) throw new Error("pageSize 는 1–20 정수입니다");
+    let dialect = opts.dialect?.toLowerCase();
+    let dialectFrom: CrudPaging["dialectFrom"] = "dialect";
+    if (!dialect) {
+      dialect = detectDbType(projectDir) ?? undefined;
+      dialectFrom = "globals";
+    }
+    if (!dialect) {
+      dialect = detectJdbcDialect(projectDir) ?? undefined;
+      dialectFrom = "jdbc-url";
+    }
+    if (!dialect || !PAGING_STYLE[dialect])
+      throw new Error(`paging 에는 DB 방언이 필요합니다 — dialect 를 주거나 Globals.DbType 을 설정하세요(${dialect ? `알 수 없는 방언: ${dialect}` : "Globals.DbType·JDBC URL 을 찾지 못함"}; 가능: ${Object.keys(PAGING_STYLE).join(", ")})`);
+    paging = { dialect, style: PAGING_STYLE[dialect], pageUnit, pageSize, dialectFrom };
+  } else if (opts.pageUnit !== undefined || opts.pageSize !== undefined) {
+    throw new Error("pageUnit·pageSize 는 paging=true 일 때만 씁니다");
+  }
+
   const mapperPackage = validatePackage(opts.mapperPackage?.trim() || `${basePackage}.service.impl`, "mapperPackage");
   const voPackage = validatePackage(opts.voPackage?.trim() || `${basePackage}.service`, "voPackage");
   const servicePackage = validatePackage(opts.servicePackage?.trim() || `${basePackage}.service`, "servicePackage");
@@ -335,7 +374,52 @@ function normalizeModel(opts: GenerateCrudOptions): CrudModel {
     primaryKeys,
     searchFields,
     ddlWarnings,
+    paging,
   };
+}
+
+/** v1.8: 설정 파일의 JDBC URL(·Spring 내장 HSQL)이 한 방언만 가리키면 그 방언(여럿이거나 없으면 null) */
+export function detectJdbcDialect(projectDir: string): string | null {
+  const MAP: Record<string, string> = { mysql: "mysql", mariadb: "mariadb", postgresql: "postgresql", oracle: "oracle", tibero: "tibero", altibase: "altibase", cubrid: "cubrid", hsqldb: "hsql" };
+  const found = new Set<string>();
+  const stack = ["src/main/resources", "src/main/webapp/WEB-INF"].map((d) => path.join(projectDir, d));
+  let seen = 0;
+  while (stack.length && seen < 2000) {
+    const d = stack.pop()!;
+    let ents: fs.Dirent[];
+    try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
+    for (const e of ents) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { stack.push(p); continue; }
+      if (!/\.(xml|properties|ya?ml)$/i.test(e.name)) continue;
+      seen++;
+      let t: string;
+      try { t = fs.readFileSync(p, "utf8"); } catch { continue; }
+      const clean = t.replace(/<!--[\s\S]*?-->/g, "");
+      for (const m of clean.matchAll(/jdbc:(?:log4jdbc:)?([A-Za-z]+)[:@]/g)) { const v = MAP[m[1].toLowerCase()]; if (v) found.add(v); }
+      // Spring 내장 DB(<jdbc:embedded-database type="HSQL">, 공식 web-sample)
+      if (/embedded-database\b[^>]*\btype\s*=\s*["']HSQL["']/i.test(clean)) found.add("hsql");
+    }
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+
+/** v1.8: 프로젝트 설정의 Globals.DbType(공식 템플릿의 globals.properties·application 설정) → 방언 */
+export function detectDbType(projectDir: string): string | null {
+  const files = [
+    "src/main/resources/egovframework/egovProps/globals.properties",
+    "src/main/resources/globals.properties",
+    "src/main/resources/application.properties",
+    "src/main/resources/application.yml",
+    "src/main/resources/application.yaml",
+  ];
+  for (const f of files) {
+    let t: string;
+    try { t = fs.readFileSync(path.join(projectDir, f), "utf8"); } catch { continue; }
+    const m = t.match(/^\s*Globals\.DbType\s*[:=]\s*["']?([A-Za-z]+)/m);
+    if (m) { const v = m[1].toLowerCase(); return DBTYPE_ALIAS[v] ?? v; }
+  }
+  return null;
 }
 
 function javaDoc(model: CrudModel, description: string): string {
@@ -363,11 +447,11 @@ public class ${model.entityName}DefaultVO implements Serializable {
     private String searchCondition = "";
     private String searchKeyword = "";
     private int pageIndex = 1;
-    private int pageUnit = 10;
-    private int pageSize = 10;
+    private int pageUnit = ${model.paging?.pageUnit ?? 10};
+    private int pageSize = ${model.paging?.pageSize ?? 10};
     private int firstIndex;
     private int lastIndex;
-    private int recordCountPerPage = 10;
+    private int recordCountPerPage = ${model.paging?.pageUnit ?? 10};
 
     public String getSearchCondition() { return searchCondition; }
     public void setSearchCondition(String searchCondition) { this.searchCondition = searchCondition; }
@@ -462,6 +546,22 @@ ${cond}
         </where>`;
 }
 
+/** 목록 SELECT. v1.8 페이징이면 방언별로 감싼다(공통컴포넌트 매퍼와 같은 꼴). */
+function renderListSelect(model: CrudModel): string {
+  const base = [
+    `SELECT ${model.fields.map((field) => field.columnName).join(", ")}`,
+    `FROM ${model.tableName}${renderSearchWhere(model)}`,
+    `ORDER BY ${model.primaryKeys.map((field) => field.columnName).join(", ")}`,
+  ];
+  if (!model.paging) return base.map((l) => `        ${l}`).join("\n");
+  if (model.paging.style === "limit") return [...base, "LIMIT #{recordCountPerPage} OFFSET #{firstIndex}"].map((l) => `        ${l}`).join("\n");
+  return [
+    "        SELECT * FROM ( SELECT rownum rn, TB.* FROM (",
+    ...base.map((l) => `            ${l.replace(/\n/g, "\n    ")}`),
+    "        ) TB ) Z WHERE rn BETWEEN #{firstIndex} + 1 AND #{firstIndex} + #{recordCountPerPage}",
+  ].join("\n");
+}
+
 function renderMapperXml(model: CrudModel): string {
   const namespace = `${model.mapperPackage}.${model.entityName}Mapper`;
   const voType = `${model.voPackage}.${model.entityName}VO`;
@@ -512,9 +612,7 @@ ${keyWhere}
     </select>
 
     <select id="select${model.entityName}List" parameterType="${voType}" resultMap="${model.entityVariable}ResultMap">
-        SELECT ${model.fields.map((field) => field.columnName).join(", ")}
-        FROM ${model.tableName}${renderSearchWhere(model)}
-        ORDER BY ${model.primaryKeys.map((field) => field.columnName).join(", ")}
+${renderListSelect(model)}
     </select>
 
     <select id="select${model.entityName}ListTotCnt" parameterType="${voType}" resultType="int">
@@ -607,7 +705,7 @@ function renderClassicController(model: CrudModel): string {
   const basePath = `/${model.entityVariable}`;
   return `package ${model.controllerPackage};
 
-import org.springframework.stereotype.Controller;
+${model.paging ? "import org.egovframe.rte.ptl.mvc.tags.ui.pagination.PaginationInfo;\n" : ""}import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -628,9 +726,27 @@ public class ${model.entityName}Controller {
 
     @GetMapping("${basePath}/${model.entityVariable}List.do")
     public String select${model.entityName}List(@ModelAttribute("${model.entityVariable}VO") ${model.entityName}VO vo, Model model) throws Exception {
+${model.paging ? `        // 요청 값으로 큰 페이지를 만들지 않도록 범위를 제한한다
+        vo.setPageIndex(Math.max(vo.getPageIndex(), 1));
+        vo.setPageUnit(Math.min(Math.max(vo.getPageUnit(), 1), 100));
+        vo.setPageSize(Math.min(Math.max(vo.getPageSize(), 1), 20));
+
+        PaginationInfo paginationInfo = new PaginationInfo();
+        paginationInfo.setCurrentPageNo(vo.getPageIndex());
+        paginationInfo.setRecordCountPerPage(vo.getPageUnit());
+        paginationInfo.setPageSize(vo.getPageSize());
+        vo.setFirstIndex(paginationInfo.getFirstRecordIndex());
+        vo.setLastIndex(paginationInfo.getLastRecordIndex());
+        vo.setRecordCountPerPage(paginationInfo.getRecordCountPerPage());
+
         model.addAttribute("resultList", ${model.entityVariable}Service.select${model.entityName}List(vo));
+        int totCnt = ${model.entityVariable}Service.select${model.entityName}ListTotCnt(vo);
+        paginationInfo.setTotalRecordCount(totCnt);
+        model.addAttribute("resultCount", totCnt);
+        model.addAttribute("paginationInfo", paginationInfo);
+` : `        model.addAttribute("resultList", ${model.entityVariable}Service.select${model.entityName}List(vo));
         model.addAttribute("resultCount", ${model.entityVariable}Service.select${model.entityName}ListTotCnt(vo));
-        return "${model.entityVariable}/${model.entityVariable}List";
+`}        return "${model.entityVariable}/${model.entityVariable}List";
     }
 
     @PostMapping("${basePath}/add${model.entityName}View.do")
@@ -668,15 +784,14 @@ public class ${model.entityName}Controller {
 function renderBootController(model: CrudModel): string {
   return `package ${model.controllerPackage};
 
-import java.util.List;
-
+${model.paging ? "import java.util.LinkedHashMap;\nimport java.util.Map;\n" : "import java.util.List;\n"}
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+${model.paging ? "import org.springframework.web.bind.annotation.RequestParam;\n" : ""}import org.springframework.web.bind.annotation.RestController;
 
 import ${model.servicePackage}.${model.entityName}Service;
 import ${model.voPackage}.${model.entityName}VO;
@@ -692,10 +807,23 @@ public class ${model.entityName}Controller {
         this.${model.entityVariable}Service = ${model.entityVariable}Service;
     }
 
+${model.paging ? `    /** 목록(페이징): page 는 1부터, size 는 1–100 */
     @GetMapping
+    public Map<String, Object> list(${model.entityName}VO vo, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "${model.paging.pageUnit}") int size) throws Exception {
+        int p = Math.max(page, 1);
+        int s = Math.min(Math.max(size, 1), 100);
+        vo.setFirstIndex((p - 1) * s);
+        vo.setRecordCountPerPage(s);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("content", ${model.entityVariable}Service.select${model.entityName}List(vo));
+        result.put("totalCount", ${model.entityVariable}Service.select${model.entityName}ListTotCnt(vo));
+        result.put("page", p);
+        result.put("size", s);
+        return result;
+    }` : `    @GetMapping
     public List<${model.entityName}VO> list(${model.entityName}VO vo) throws Exception {
         return ${model.entityVariable}Service.select${model.entityName}List(vo);
-    }
+    }`}
 
     @PostMapping("/detail")
     public ${model.entityName}VO detail(@RequestBody ${model.entityName}VO vo) throws Exception {
@@ -730,7 +858,7 @@ function renderListJsp(model: CrudModel): string {
   return `<%@ page contentType="text/html; charset=utf-8" pageEncoding="utf-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
-<!DOCTYPE html>
+${model.paging ? `<%@ taglib prefix="ui" uri="http://egovframework.gov/ctl/ui" %>\n` : ""}<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="utf-8" />
@@ -739,13 +867,15 @@ function renderListJsp(model: CrudModel): string {
 <body>
 <main>
     <h1>${model.entityName} 목록</h1>
-    <form:form modelAttribute="${model.entityVariable}VO" method="get" action="${model.entityVariable}List.do">${model.searchFields.length > 1 ? `
+    <form:form ${model.paging ? `id="listForm" ` : ""}modelAttribute="${model.entityVariable}VO" method="get" action="${model.entityVariable}List.do">${model.searchFields.length > 1 ? `
         <form:select path="searchCondition">
             <form:option value="">전체</form:option>
 ${model.searchFields.map((f) => `            <form:option value="${f.columnName}">${f.label}</form:option>`).join("\n")}
         </form:select>` : ""}
-        <form:input path="searchKeyword" />
-        <button type="submit">검색</button>
+        <form:input path="searchKeyword" />${model.paging ? `
+        <form:hidden path="pageIndex" />
+        <button type="submit" onclick="this.form.pageIndex.value = 1;">검색</button>` : `
+        <button type="submit">검색</button>`}
     </form:form>
     <table>
         <thead>
@@ -760,7 +890,18 @@ ${cells}
                 </tr>
             </c:forEach>
         </tbody>
-    </table>
+    </table>${model.paging ? `
+    <%-- 렌더러 빈(paginationManager)이 없으면 RTE 기본 텍스트 렌더러를 쓴다. 이미지 렌더러는 type="image" 와 imageRenderer 빈 설정 --%>
+    <div class="pagination">
+        <ui:pagination paginationInfo="${jspExpression("paginationInfo")}" type="text" jsFunction="fn_egov_link_page" />
+    </div>
+    <script>
+        function fn_egov_link_page(pageNo) {
+            var f = document.getElementById("listForm");
+            f.pageIndex.value = pageNo;
+            f.submit();
+        }
+    </script>` : ""}
     <form method="post" action="add${model.entityName}View.do">
         <button type="submit">등록</button>
     </form>
@@ -938,5 +1079,6 @@ export function generateCrud(opts: GenerateCrudOptions): GenerateCrudResult {
     warnings,
     ...(opts.ddl !== undefined ? { fieldsFromDdl: model.fields.length } : {}),
     ...(model.searchFields.length ? { search: model.searchFields.map((f) => f.columnName) } : {}),
+    ...(model.paging ? { paging: model.paging } : {}),
   };
 }

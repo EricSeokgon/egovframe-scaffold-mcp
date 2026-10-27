@@ -1,6 +1,6 @@
 {
-  "version": "1.7.0",
-  "base": "1.6.0",
+  "version": "1.8.0",
+  "base": "1.7.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -2713,6 +2713,20 @@
             },
             "mapperPackage": {
               "type": "string"
+            },
+            "pageSize": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "pageUnit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "paging": {
+              "type": "boolean",
+              "default": false
             },
             "profile": {
               "type": "string",

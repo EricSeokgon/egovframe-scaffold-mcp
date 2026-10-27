@@ -67,6 +67,7 @@
 - `fields` — `columnName`, `javaType`, `jdbcType`, `primaryKey`, `generated`, `nullable`, `label` 컬럼 스펙. 안전한 update/delete 생성을 위해 기본키가 최소 1개 필요합니다.
 - `ddl`(v1.4) — `fields` 대신 `CREATE TABLE` 문. 컬럼·타입·`PRIMARY KEY`(인라인·테이블 제약)·`NOT NULL`·자동 증가(`AUTO_INCREMENT`·`IDENTITY`·`SERIAL`)·`COMMENT`(또는 `COMMENT ON COLUMN … IS`)를 읽어 필드를 만듭니다. COMMENT·DEFAULT 안의 콤마·괄호, COMMENT 의 "primary key" 문구, `'C:\'` 같은 끝 백슬래시와 `\'` 이스케이프에 속지 않습니다(공식 Initializr v5.0.7 DDL 파서 테스트와 같은 결과). `dialect` 가 `oracle`·`tibero` 면 `DATE` 를 `LocalDateTime` 으로 봅니다. 알 수 없는 타입은 String 으로 만들고 경고합니다.
 - `search`(v1.4) — 목록 검색 대상 문자열 컬럼(최대 10). Mapper 목록·건수에 `<bind>` 로 만든 LIKE 패턴(방언 중립 — `||`·`CONCAT` 을 쓰지 않음)과 `searchCondition` 분기(없으면 전체 OR), classic 화면에 검색 조건 select 와 등록 화면의 `form:hidden` 검색 필드(이스케이프)를 넣습니다. 생략하면 v1.3 까지와 같은 출력입니다.
+- `paging`(v1.8)·`pageUnit`(1–100, 기본 10)·`pageSize`(1–20, 기본 10) — 목록 페이징. Mapper 목록은 방언별로 MySQL·MariaDB·PostgreSQL·HSQL 이 `LIMIT #{recordCountPerPage} OFFSET #{firstIndex}`, Oracle·Tibero·Altibase·CUBRID 가 공통컴포넌트 매퍼와 같은 `ROWNUM` 감싸기(정렬 안쪽)이고 건수 쿼리는 같은 검색 조건 그대로입니다. classic 은 컨트롤러가 `PaginationInfo` 로 `firstIndex` 를 정하고(요청 값의 페이지 번호·크기는 1–100·1–20 으로 제한) 목록 화면에 `<ui:pagination type="text">`(렌더러 빈이 없어도 RTE 기본 텍스트 렌더러)와 `pageIndex` hidden 을 넣고, boot 는 `GET ?page=&size=`(size 1–100)에 `{content, totalCount, page, size}` 를 돌려줍니다. 방언은 `dialect` → 프로젝트의 `Globals.DbType` → 설정 파일의 JDBC URL·Spring 내장 HSQL(한 방언일 때) 순서로 정하고, 못 정하면 거부합니다. 생략하면 v1.7 까지와 같은 출력입니다.
 - `profile` — `classic`(Spring MVC+JSP) 또는 `boot`(REST Controller)
 - `checkDataAccess`, `checkService`, `checkWeb` — 공식 `wizard.xml`의 생성 그룹과 대응
 - `includeJsp`, `withTest`, `dryRun` — JSP·JUnit 5 테스트 선택 생성 및 무기록 미리보기
@@ -94,6 +95,10 @@ generate_egovframe_crud(
   ddl="CREATE TABLE SAMPLE_NOTICE (NOTICE_ID BIGINT NOT NULL AUTO_INCREMENT COMMENT '공지 ID', SUBJECT VARCHAR(200) NOT NULL COMMENT '제목', WRITER VARCHAR(50), PRIMARY KEY (NOTICE_ID))",
   search=["SUBJECT", "WRITER"]
 )
+```
+
+```text
+generate_egovframe_crud(projectDir="/work/my-egov-app", basePackage="egovframework.example.notice", ddl="…", search=["SUBJECT"], paging=true, pageUnit=20)   # 방언은 Globals.DbType
 ```
 
 생성 전 모든 대상 경로를 검사하며 기존 파일이 하나라도 있으면 아무 파일도 쓰지 않습니다. 지원 타입과 출력 계약은 [CRUD 생성 설계](design-crud-generation.md)를 참고하세요.
