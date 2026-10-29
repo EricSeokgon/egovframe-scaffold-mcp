@@ -40,7 +40,8 @@
 - **v0.35.0 추가**: 릴리스 자동화 — `main` 에서 CI 가 성공하면 `release.yml` 이 네 조건(`server.json` 버전 일치·변경 이력 항목·태그 없음·npm 미배포)을 검사해 npm(OIDC trusted publishing, provenance 자동) → 그 커밋에 태그 → GitHub Release(변경 이력에서 추출) → MCP Registry(GitHub OIDC) 순으로 게시합니다. 사람은 PR 병합만 합니다. 게이트에 `test:release`(판정 함수·릴리스 노트·`npm pack` 내용·크기 상한)와 `server.json` 설명 100자 제한(레지스트리 검증 조건 — 실제 `mcp-publisher validate` 로 발견한 결함 수정)을 추가했습니다.
 - **v0.34.0 추가**: 의존성 기준 완성 + 규칙·기준 drift 감시 — `check_egovframe_dependencies` 의 기준에 **Spring Boot BOM 전체**(`spring-boot-dependencies` 3.5.6 직접 항목 + BOM import 44종을 한 단계 풀어 1,473 좌표)와 **RTE 모듈 18종의 전이 의존성**(58 좌표, 어느 모듈이 끌어오는지)을 더해 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이·전환 규칙)를 표시하고, 국내 벤더·기관 배포 좌표는 `vendor` 로, EOL·이전 좌표(옛 MySQL/Oracle 드라이버·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social)는 교체 규칙으로 분류해 공식 공통컴포넌트 3.10 pom 의 '기준 없음'을 17 → 1 로 줄였습니다. `sync_egovframe_templates` 가 동봉 규칙·기준의 upstream drift(`egovframe-runtime`·공통컴포넌트 새 태그, 공식 parent 새 버전, 고정 pom sha256 변화)를 갱신 절차와 함께 보고합니다. 기준 parent 를 5.0.2 로 올렸습니다.
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
-- **다음 계획**: v1.9 취약 의존성 자동 조치 → v1.10 DB 준비·검증 → v1.11 기동 검증([다음 버전 기획](#다음-버전-기획-v19v111)). 그 뒤 유지보수 자동화(v1.12–v1.14) → 운영 전환·조직 단위(v1.15–v1.17) → 2.0 계약 정리([장기 로드맵](#장기-로드맵-2026-11--2027-v112-이후)). [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
+- **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
+- **다음 계획**: v1.10 DB 준비·검증 → v1.11 기동 검증([다음 버전 기획](#다음-버전-기획-v19v111)). 그 뒤 유지보수 자동화(v1.12–v1.14) → 운영 전환·조직 단위(v1.15–v1.17) → 2.0 계약 정리([장기 로드맵](#장기-로드맵-2026-11--2027-v112-이후)). [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -88,7 +89,7 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.6 완료** | 외부 저장소 장애 내성 | 생성 CI·빌드 도구의 Maven 재시도·미러(`mavenMirror`·`EGOVFRAME_MAVEN_MIRROR`), 일시 장애 분류(`failureKind`), 실제 mvn 장애 주입 테스트, SDK 1.32.2·zod 4 |
 | **v1.7 완료** | 보안약점 자동 조치 | 새 도구 `fix_egovframe_secure_coding`(36종): 규칙으로 정할 수 있는 항목만 dryRun·transaction 으로 고치고 재점검으로 확인, HTMLTagFilter 프로젝트의 c:out 은 낮음·수동 |
 | **v1.8 완료** | CRUD 목록 페이징 | `generate_egovframe_crud(paging)`: 방언별 페이징 SQL(LIMIT/OFFSET·공통컴포넌트와 같은 ROWNUM)·`PaginationInfo`·`ui:pagination`·boot page/size, 실제 MyBatis·HSQLDB 실행 검증 |
-| **v1.9 계획** | 취약 의존성 자동 조치 | 새 도구 `fix_egovframe_dependencies`(37종): 기준보다 낮게 고정한 버전 제거·parent 상향·OSV `fixed` 버전으로 같은 major 안 상향을 dryRun·transaction 으로 적용하고 compile·취약점 재조회로 확인 |
+| **v1.9 완료** | 취약 의존성 자동 조치 | 새 도구 `fix_egovframe_dependencies`(37종): parent 상향·기준보다 낮게 고정한 버전 제거·패키지가 같은 좌표 교체·OSV `fixed` 와 저장소 배포 목록으로 같은 major 안 상향을 dryRun·transaction 으로 적용하고 compile 로 확인(실패 시 되돌림), 평가서·납품 패키지에 조치 내역 |
 | **v1.10 계획** | DB 준비·검증 | 새 도구 `prepare_egovframe_database`(38종): 설치 컴포넌트의 DDL·DML 을 DbType 별로 묶고(문자셋 utf8mb4 등 교정), 선택 시 docker-compose DB 를 띄워 적재·확인 |
 | **v1.11 계획** | 기동 검증 | 새 도구 `verify_egovframe_startup`(39종): 컴파일 다음 단계 — 실제로 띄워 Spring 컨텍스트 기동 오류(빈·설정·DB)를 구조화하고 URL 을 두드림. 전환 리허설에 연결 |
 | **v1.12–v1.14** | 유지보수 자동화 | 사용자 수정 자동 재적용(3-way), 설정·비밀값 외부화, 프로젝트 구조 지도·변경 영향 — [장기 로드맵](#장기-로드맵-2026-11--2027-v112-이후) |
@@ -121,6 +122,12 @@ v1.8.0 까지 끝난 상태(2026-10-27, 도구 36종 + CLI 명령 13종)에서 �
 - `test:update-live` 와 같은 방식으로 5.1.0 재배포에 흔들리지 않게 기대값은 범위(이하)로
 
 **완료 정의**: 도구 37종, `docs/design-dependency-check.md` 「자동 조치」절, api-contract minor(도구·CLI 명령 추가), CHANGELOG
+
+#### v1.9.0 결과 (2026-10-29)
+
+- 도구 37종·CLI 명령 14종(`fix-deps`)·구조화 출력 16종, api-contract minor. 설계: [design-dependency-check.md 「자동 조치」](design-dependency-check.md#자동-조치-v19-fix_egovframe_dependencies), 사용법: [tools.md](tools.md#취약-의존성-자동-조치-fix_egovframe_dependencies-v19).
+- 기획과 달라진 점: (1) parent 관리 버전(버전을 적지 않은 좌표)의 취약점은 `dependencyManagement` 에 넣지 않고 수동 보고 — 계열의 다른 artifact 가 parent 버전에 남아 버전이 섞입니다. (2) parent 관리 버전에 권고가 있으면 고정을 풀지 않고 고정 버전을 올립니다(5.1.0 목표에서 tomcat 10.1.52 → 관리 10.1.55 도 취약). (3) OSV `fixed` 를 그대로 쓰지 않고 저장소 `maven-metadata.xml` 로 실제 배포 버전을 고릅니다(guava `33.7.2` → `33.7.2-jre`, 배포되지 않은 tomcat `10.1.58` 건너뜀). (4) 좌표 교체는 전환 규칙에 commons-lang 이 없고 패키지가 바뀌는 교체가 대부분이라 3종(mysql-connector-java·ojdbc·xbean)만 자동. (5) v1.7 에서 미룬 조치 내역을 평가서 3절·납품 패키지에 함께 넣었습니다(보안약점 조치 포함).
+- 실측: 공식 msa-common-components 는 10-27 조사 뒤 upstream 이 고정 버전을 parent 보다 높게 올려 두어(5.0.4) 기획 당시 수치(170 → 34)와 달라졌습니다. 오늘 기준 선언 권고 47 → 3(목표 5.0.2), → 1(목표 5.1.0), 적용 후 루트 compile 통과·재실행 조치 0. 공식 web·boot-web 은 parent 상향 말고 0건.
 
 ### v1.10.0 — DB 준비·검증 (`prepare_egovframe_database`)
 

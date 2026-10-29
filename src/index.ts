@@ -157,6 +157,11 @@ export { loadSecureRules, compileRulePattern, stripJavaComments, stripMarkupComm
 // v1.7: 보안약점 자동 조치
 export { FIXABLE_RULES, HTML_FIELD_RE, fixSecureCoding, fixCoutLine, fixJavaLine, findLogger, renderSecureFixMarkdown } from "./secure-fix.js";
 export type { SecureFixOptions, SecureFixResult, FixChange, FixFile, FixManual, LoggerField, FixableRule } from "./secure-fix.js";
+export { DEPS_FIX_KINDS, COORDINATE_SWAPS, fixDependencies, pickFixVersion, parentManagedVersion, sameFamily, versionFlavor, previewChanges, defaultOsvDetails, defaultMavenVersions, renderDepsFixMarkdown, depsFixKindLabel } from "./deps-fix.js";
+export type { DepsFixKind, DepsFixOptions, DepsFixResult, DepsFixAction, DepsFixManual, OsvAdvisory, OsvDetailsQuery, MavenVersionsQuery, VulnCount } from "./deps-fix.js";
+export { queryOsvIndexDetails, bundleOsvDetails } from "./offline-bundle.js";
+export { readFixHistory } from "./fix-history.js";
+export type { FixHistoryEntry } from "./fix-history.js";
 export { analyzeJavaFlows, findMethods, blankJavaLiterals } from "./java-flow.js";
 export type { SinkFlow, FlowSink, FlowStep } from "./java-flow.js";
 export type { SecureRule, SecureRules, SecureFinding, SecureCodingOptions, SecureCodingResult, SecureSeverity, SecureOrigin } from "./secure-coding.js";

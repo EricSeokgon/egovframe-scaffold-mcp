@@ -2,6 +2,7 @@
 //   기존 도구를 그대로 불러 쓰며(평가서·의존성·SBOM·SBOM 점검·VEX·보안약점·SARIF·배포 산출물·빌드), 실패한 항목은 빼지 않고 이유와 함께 목차에 남긴다.
 //   새 디렉터리에만 쓴다(오프라인 번들과 같은 방식: 비어 있지 않으면 거부, 스테이징 → rename). 프로젝트는 읽기만 한다(SBOM 도 프로젝트에 쓰지 않음).
 //   verify: 받은 쪽이 manifest 의 지문을 다시 계산해 변조·누락을 본다.
+import { readFixHistory } from "./fix-history.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
@@ -349,13 +350,18 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
     const r = await checkDependencies({ projectDir, offline, osvQuery: opts.osvQuery, ...(sub ? { progress: sub } : {}) });
     ctx.dependencies = r;
     item.files.push(put("dependencies/dependencies.md", `${renderDependencyMarkdown(r)}\n`), put("dependencies/dependencies.json", json(r)));
-    item.summary = { findings: r.findings.length, ...r.summary, vulnerabilities: (r.vulnerabilities ?? []).length };
+    // v1.9: 적용한 자동 조치의 계획 파일(전·후)을 함께 싣는다
+    const hist = readFixHistory(projectDir).filter((h) => h.tool === "fix_egovframe_dependencies");
+    for (const h of hist) item.files.push(put(`dependencies/fix-history/${path.posix.basename(path.posix.dirname(h.planPath))}.json`, fs.readFileSync(path.join(projectDir, h.planPath))));
+    item.summary = { findings: r.findings.length, ...r.summary, vulnerabilities: (r.vulnerabilities ?? []).length, ...(hist.length ? { fixHistory: hist.length } : {}) };
   });
   if (include.includes("secure-coding")) await run("secure-coding", async (item) => {
     const r = await checkSecureCoding({ projectDir, maxFindings: 20_000 });
     ctx.secure = r;
     item.files.push(put("secure-coding/secure-coding.md", `${renderSecureCodingMarkdown(r, 100)}\n`), put("secure-coding/secure-coding.json", json(r)), put("secure-coding/egovframe-secure.sarif", json(toSarif(r))));
-    item.summary = { ...r.summary, byOrigin: r.byOrigin };
+    const hist = readFixHistory(projectDir).filter((h) => h.tool === "fix_egovframe_secure_coding");
+    for (const h of hist) item.files.push(put(`secure-coding/fix-history/${path.posix.basename(path.posix.dirname(h.planPath))}.json`, fs.readFileSync(path.join(projectDir, h.planPath))));
+    item.summary = { ...r.summary, byOrigin: r.byOrigin, ...(hist.length ? { fixHistory: hist.length } : {}) };
   });
   if (include.includes("assessment")) await run("assessment", async (item) => {
     const o: AssessmentOptions = { projectDir, offline, osvQuery: opts.osvQuery, now };

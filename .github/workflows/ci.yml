@@ -151,6 +151,8 @@ jobs:
           ./actionlint -color generated-ci.yml
       - name: Dependency check with OSV lookup
         run: npm run test:dependencies-live
+      - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)
+        run: npm run test:deps-fix-live
       - name: Resolved dependency tree and CycloneDX SBOM (Maven plugin, Gradle tree)
         run: npm run test:sbom-live
       - name: Network diagnosis against real hosts

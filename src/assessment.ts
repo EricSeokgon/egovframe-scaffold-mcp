@@ -4,6 +4,7 @@
 //   사람이 같은 숫자로 다시 계산할 수 있게 한다. 구간은 공식 공통컴포넌트 3.10.0·4.3.2 코퍼스(catalog/migration-corpus.json)와
 //   공식 5.x 템플릿의 결과를 양 끝으로 삼아 정했다(docs/design-assessment-report.md).
 //   비용·공수는 산정하지 않는다 — 건수와 등급까지만.
+import { readFixHistory, type FixHistoryEntry } from "./fix-history.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { diagnoseProject } from "./diagnose.js";
@@ -136,6 +137,8 @@ export interface AssessmentResult {
     vulnerabilities: { queried: boolean; dependencies: number; ids: number; items: Vulnerability[] };
     osvError?: string;
     notes: string[];
+    /** v1.9: 자동 조치 내역(fix_egovframe_dependencies·fix_egovframe_secure_coding 가 적용 때 남긴 계획 파일) — 등급 산식에는 넣지 않는다 */
+    fixHistory?: FixHistoryEntry[];
   };
   security: { ok: number; missing: number; na: number; checks: SecurityCheck[] };
   /** v0.44: 보안약점 점검(check_egovframe_secure_coding) 요약 — 등급 산식에는 넣지 않는다 */
@@ -223,6 +226,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const now = opts.now ?? Date.now;
   const diag = diagnoseProject({ projectDir });
   const mig: MigrateResult = migrateProject({ projectDir, maxFiles: opts.maxFiles });
+  const fixHistory = readFixHistory(projectDir);
   const dep = await checkDependencies({ projectDir, offline: opts.offline ?? true, osvQuery: opts.osvQuery, maxFiles: opts.maxFiles, resolve: opts.resolve, resolveScope: opts.resolveScope, resolveTimeoutMs: opts.resolveTimeoutMs, runner: opts.runner, platform: opts.platform });
   const topN = opts.topN ?? 20;
   const notes: string[] = [];
@@ -294,6 +298,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       vulnerabilities: { queried: vulnQueried, dependencies: vulns.length, ids: vulns.reduce((s, v) => s + v.ids.length, 0), items: vulns },
       ...(dep.osvError ? { osvError: dep.osvError } : {}),
       notes: dep.notes,
+      ...(fixHistory.length ? { fixHistory } : {}),
     },
     security, secureCoding, sbom,
     grades: { migration, supplyChain },
@@ -391,6 +396,15 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
   if (d.vulnerabilities.items.length) {
     out.push(``, L(`### 알려진 취약점 (${d.vulnerabilities.items.length})`, `### Known vulnerabilities (${d.vulnerabilities.items.length})`), ``);
     for (const v of d.vulnerabilities.items) out.push(`- ${v.dependency}:${v.version} — ${v.ids.slice(0, 6).join(", ")}${v.ids.length > 6 ? L(` 외 ${v.ids.length - 6}건`, ` and ${v.ids.length - 6} more`) : ""}`);
+  }
+  if (d.fixHistory?.length) {
+    out.push(``, L(`### 자동 조치 내역 (${d.fixHistory.length})`, `### Automated fix history (${d.fixHistory.length})`), ``, L(`| 시각 | 도구 | 내용 | 계획 파일 |`, `| Time | Tool | Content | Plan file |`), `|---|---|---|---|`);
+    for (const h of d.fixHistory) {
+      const what = h.dependencies
+        ? L(`조치 ${h.dependencies.actions} · 수동 ${h.dependencies.manual}${h.dependencies.target ? ` · parent → ${h.dependencies.target}` : ""}${h.dependencies.before !== null ? ` · 권고 ${h.dependencies.before} → ${h.dependencies.after}` : ""}`, `fixes ${h.dependencies.actions} · manual ${h.dependencies.manual}${h.dependencies.target ? ` · parent → ${h.dependencies.target}` : ""}${h.dependencies.before !== null ? ` · advisories ${h.dependencies.before} → ${h.dependencies.after}` : ""}`)
+        : L(`고침 ${h.secureCoding?.fixed ?? 0} · 수동 ${h.secureCoding?.manual ?? 0} · 파일 ${h.secureCoding?.files ?? 0}`, `fixed ${h.secureCoding?.fixed ?? 0} · manual ${h.secureCoding?.manual ?? 0} · files ${h.secureCoding?.files ?? 0}`);
+      out.push(`| ${h.createdAt.slice(0, 19).replace("T", " ")} | ${h.tool === "fix_egovframe_dependencies" ? L("의존성", "dependencies") : L("보안약점", "secure coding")} | ${what} | ${h.planPath} |`);
+    }
   }
   if (d.vendor.length) out.push(``, L(`벤더·기관 배포(기준 없음, 등급 미반영) ${d.vendor.length}건: ${d.vendor.join(", ")}`, `Vendor/agency distributed (no baseline, not graded) ${d.vendor.length}: ${d.vendor.join(", ")}`));
   if (d.unknown.length) out.push(``, L(`기준 없음(판단 보류, 등급 미반영) ${d.unknown.length}건: ${d.unknown.join(", ")}`, `No baseline (no verdict, not graded) ${d.unknown.length}: ${d.unknown.join(", ")}`));

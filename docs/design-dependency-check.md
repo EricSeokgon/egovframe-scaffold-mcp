@@ -107,6 +107,22 @@ generate_egovframe_sbom(projectDir, outputPath="sbom/bom.cdx.json", bomFormat="c
 - `test:dependencies-live`(CI): log4j 1.2.17 픽스처를 `offline=false` 로 점검해 OSV 결과가 붙는지 확인; v0.34 — 공식 `egovframe-boot-web`·`egovframe-web` 템플릿 pom(Initializr 고정 commit)에서 기준 없음 0건, 공식 공통컴포넌트 v3.10.0 pom 에서 기준 없음 5건 이하
 - 실제 자산(v0.34): 공식 5.x `egovframe-boot-web` 템플릿 → parent 관리 15건(Boot BOM 기준 버전 표시)·기준 없음 0, `egovframe-web` → parent 관리 19·기준 없음 0, 공식 공통컴포넌트 v3.10.0 pom 66건 → 기준 없음 **17 → 1**(`xerces:xercesImpl`), 벤더 6(Altibase·Tibero·CUBRID·mGov·GPKI 2), 교체 3 → 12(옛 MySQL/Oracle 좌표·Jackson 1·xmlbeans·Ehcache 2·HttpClient 4·ANTLR 3·Spring Social·DBCP1·Log4j1·fileupload), RTE 전이로 mybatis 3.1.1 → 3.5.19 기준 미만 판정
 
+## 자동 조치 (v1.9, `fix_egovframe_dependencies`)
+
+**왜**: 점검은 "무엇이 취약한가"까지였고, "어느 버전으로 올려야 parent 와 충돌하지 않는가"는 사용자가 좌표마다 찾았습니다. 공식 `egovframe-msa-common-components` 는 모듈마다 parent 보다 낮은 버전·취약 버전을 직접 고정해 두어(tomcat-embed·netty·logback·log4j 버전 속성) 그대로 두면 parent 를 올려도 줄지 않습니다. 기준 데이터(parent·Boot BOM 관리 버전)와 OSV 범위, 저장소의 배포 버전 목록으로 대부분을 규칙으로 정할 수 있습니다.
+
+**결정**
+- 조치 순서: parent 상향(기존 `planPomUpdate` 자동 항목) → 고정 해제 → 좌표 교체 → 취약 버전 상향. 같은 메모리 사본에 차례로 적용하고 단계마다 pom 을 다시 읽어, 앞 단계의 결과(새 parent 의 관리 버전, 지운 고정)가 다음 판정에 들어갑니다.
+- **고정 해제는 parent 관리 버전이 깨끗할 때만**: 관리 버전에 권고가 있으면 고정을 풀지 않습니다. 풀면 더 취약해지고(msa 를 5.1.0 으로 올리면 tomcat 관리 10.1.55 가 고정 10.1.52 보다 높지만 둘 다 취약), 대신 취약 버전 상향이 고정 버전을 올립니다. major 가 다른 해제(mysql-connector-j 8.4 → Boot BOM 9.4)는 의도한 고정일 수 있어 수동입니다.
+- **취약 버전 상향은 "직접 적은 버전"만**: 리터럴이거나 같은 계열(가장 짧은 groupId 와 같거나 그 하위) 좌표만 쓰는 버전 속성. 속성이면 속성 정의 하나를 바꿔 계열 버전이 엇갈리지 않게 합니다. 버전을 적지 않은 좌표(parent 관리)와 전이 의존성은 `dependencyManagement` 로 억지로 올리지 않고 보고만 합니다 — 계열의 다른 artifact 는 parent 버전에 남아 버전이 섞이기 때문입니다(기획에서 고려했던 dependencyManagement 추가는 이 이유로 뺐습니다).
+- **수정 버전**: 권고별 최소 `fixed` 의 최댓값 → 다른 권고 범위면 다음 `fixed` → 그 버전으로 OSV 재조회(새 권고면 반복, 3회) → 저장소 `maven-metadata.xml` 의 같은 꼬리·정식 릴리스 중 최소. 같은 major 가 아니면 수동. 실측에서 OSV `fixed` 는 배포 버전과 두 번 달랐습니다 — guava `33.7.2`(실제 `33.7.2-jre`), tomcat `10.1.58`(배포 안 됨, 다음은 10.1.59).
+- **검증 = compile, 실패하면 전부 되돌림**: 파일 트랜잭션 안에서 쓰고 compile 을 돌려, 실패하면 트랜잭션 롤백(백업 폴더도 남지 않음). 어느 조치가 깨뜨렸는지 이분 탐색하지 않습니다(단순함 우선 — `kinds` 로 나눠 다시 적용).
+- 전·후 수치는 선언 좌표 기준(버전이 없으면 parent 기준 버전). `check_egovframe_dependencies` 의 OSV 집계(버전을 확정한 선언만)와 범위가 달라 숫자가 다를 수 있습니다.
+
+**실측(2026-10-29)**: msa-common-components(parent 5.0.1, 11 모듈) — 목표 5.0.2: parent 11 · 고정 해제 5 · 상향 54 · 수동 10, 권고 47 → 3, 적용 후 `mvn compile` 통과(약 1분). 목표 5.1.0: 권고 47 → 1. 공식 web·boot-web 템플릿: parent 상향 1건 말고 0건.
+
+**검증**: `test:deps-fix`(게이트, 가짜 OSV·저장소 목록) — 수정 버전 선택 11경우, 원문 보존(주석·들여쓰기·CRLF, 기대 텍스트와 바이트 일치), dryRun 무기록, 백업·계획 파일, 멱등, compile 실패·저장소 장애 롤백, 실패 주입, 멀티 모듈 루트 속성, Gradle, offline, kinds, MCP·CLI. `test:deps-fix-live`(CI 통합) — 위 실측을 방향(절반 이하·compile 통과·멱등)으로 단언.
+
 ## parent 버전별 기준 (v1.3, 표준프레임워크 5.1.0)
 
 표준프레임워크 5.1.0 이 공식 저장소에 배포되면서(2026-09-28~10-12, GitHub 태그·공지 없음) 기준을 parent 계열마다 따로 둡니다.
