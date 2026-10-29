@@ -89,6 +89,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => { const sm = rec(s.summary), v = rec(s.vulnerabilities), a = rec(v.after), b = rec(v.before); return { actions: num(sm.actions), manual: num(sm.manual), files: num(sm.files), before: num(b.ids), after: num(a.ids), rolledBack: s.rolledBack === true ? 1 : 0 }; },
     line: (s) => { const sm = rec(s.summary), v = s.vulnerabilities ? rec(s.vulnerabilities) : null; return L(`의존성 ${s.dryRun ? "조치 계획" : s.rolledBack ? "조치 되돌림" : "조치"} — 조치 ${num(sm.actions)} · 수동 ${num(sm.manual)} · 파일 ${num(sm.files)}${v ? ` · 권고 ${num(rec(v.before).ids)} → ${num(rec(v.after).ids)}` : ""}`, `Dependency ${s.dryRun ? "fix plan" : s.rolledBack ? "fix rolled back" : "fix"} — fixes ${num(sm.actions)} · manual ${num(sm.manual)} · files ${num(sm.files)}${v ? ` · advisories ${num(rec(v.before).ids)} → ${num(rec(v.after).ids)}` : ""}`); },
   },
+  db: {
+    tool: "prepare_egovframe_database", summary: "DB 준비(적재용 스크립트·compose, --write 로 기록, --run 으로 Docker 적재·확인)", summaryEn: "Prepare the DB (load-ready scripts and compose; --write to write, --run to load and check in Docker)", defaults: { dryRun: true }, blocked: ["dryRun"],
+    metrics: (s) => { const r = rec(s.run); return { tables: num(s.tables), statements: num(rec(s.statements).schema) + num(rec(s.statements).data), supplemented: Array.isArray(s.supplemented) ? s.supplemented.length : 0, failed: s.run && r.ran && r.ok === false ? 1 : 0, errors: Array.isArray(r.errors) ? r.errors.length : 0 }; },
+    line: (s) => { const r = s.run ? rec(s.run) : null; return L(`DB ${s.database} ${s.dryRun ? "준비 계획" : "준비"} — 테이블 ${num(s.tables)} · 문장 ${num(rec(s.statements).schema) + num(rec(s.statements).data)}${r ? ` · 적재 ${r.ran ? (r.ok ? "통과" : "실패") : "건너뜀"}` : ""}`, `DB ${s.database} ${s.dryRun ? "preparation plan" : "prepared"} — tables ${num(s.tables)} · statements ${num(rec(s.statements).schema) + num(rec(s.statements).data)}${r ? ` · load ${r.ran ? (r.ok ? "passed" : "failed") : "skipped"}` : ""}`); },
+  },
   rehearse: {
     tool: "rehearse_egovframe_migration", summary: "전환 리허설(사본에서 재조립·적용·컴파일, 원본 불변)", summaryEn: "Migration rehearsal (reassemble, apply, compile on a copy; original untouched)",
     metrics: (s) => {
@@ -222,7 +227,7 @@ export function usage(): string {
     L(`  --step-summary        Markdown 을 $GITHUB_STEP_SUMMARY 에 덧붙임`, `  --step-summary        Append the Markdown to $GITHUB_STEP_SUMMARY`),
     L(`  --fail-on <식>        기준을 넘으면 종료 코드 2 — 예: supplyChain:C · migration:D · vulnerabilities · manual>20`, `  --fail-on <expr>      Exit code 2 when a threshold is exceeded — e.g. supplyChain:C · migration:D · vulnerabilities · manual>20`),
     L(`  --lang ko|en          응답 언어(기본 EGOVFRAME_LANG, 없으면 ko) — Markdown 본문과 문장 필드가 영문으로`, `  --lang ko|en          Response language (default EGOVFRAME_LANG, else ko) — Markdown body and sentence fields in English`),
-    L(`  --write               sbom: 실제로 파일을 씀(기본은 계획만) · sbom-check: VEX 초안 작성·갱신(판단 보존) · bundle: 번들 내려받기 · deliver: 패키지 만들기 · fix·fix-deps: 고친 내용을 씀(원본은 migration-backup/)`, `  --write               sbom: actually write the file (default: plan only) · sbom-check: create/update VEX draft (keeps decisions) · bundle: download the bundle · deliver: build the package · fix/fix-deps: write the fixes (originals in migration-backup/)`),
+    L(`  --write               sbom: 실제로 파일을 씀(기본은 계획만) · sbom-check: VEX 초안 작성·갱신(판단 보존) · bundle: 번들 내려받기 · deliver: 패키지 만들기 · fix·fix-deps: 고친 내용을 씀(원본은 migration-backup/) · db: 적재용 스크립트·compose 를 씀`, `  --write               sbom: actually write the file (default: plan only) · sbom-check: create/update VEX draft (keeps decisions) · bundle: download the bundle · deliver: build the package · fix/fix-deps: write the fixes (originals in migration-backup/) · db: write the load-ready scripts and compose`),
     L(`  --verify              deliver: 받은 패키지(--output-dir)의 manifest 지문 재검증`, `  --verify              deliver: re-verify manifest fingerprints of a received package (--output-dir)`),
     L(`  그 밖의 옵션은 도구 파라미터와 같은 이름(kebab-case 가능): --resolve --offline=false --resolve-scope all --top-n 10 …`, `  Other options use the tool parameter names (kebab-case allowed): --resolve --offline=false --resolve-scope all --top-n 10 …`),
     ``,
@@ -279,6 +284,7 @@ async function runCommand(command: string, def: CommandDef, options: Record<stri
     if (command === "deliver" && options.write === true) finalArgs.dryRun = false;
     if (command === "fix" && options.write === true) finalArgs.dryRun = false;
     if (command === "fix-deps" && options.write === true) finalArgs.dryRun = false;
+    if (command === "db" && options.write === true) finalArgs.dryRun = false;
     if (command === "deliver" && options.verify === true) finalArgs.verify = true;
     if (command === "deliver" && typeof finalArgs.outputDir === "string") finalArgs.outputDir = path.resolve(io.cwd, finalArgs.outputDir);
     if (command === "deliver" && typeof finalArgs.previousDelivery === "string") finalArgs.previousDelivery = path.resolve(io.cwd, finalArgs.previousDelivery);

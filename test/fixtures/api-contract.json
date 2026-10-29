@@ -1,6 +1,6 @@
 {
-  "version": "1.9.0",
-  "base": "1.8.0",
+  "version": "1.10.0",
+  "base": "1.9.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -2047,6 +2047,7 @@
             "aiLayer",
             "buildSystem",
             "database",
+            "dbScripts",
             "detectedComponents",
             "egovVersion",
             "hasManifest",
@@ -2072,6 +2073,28 @@
                 "string",
                 "null"
               ]
+            },
+            "dbScripts": {
+              "type": "object",
+              "required": [
+                "componentScripts",
+                "compose",
+                "prepared"
+              ],
+              "properties": {
+                "componentScripts": {
+                  "type": "integer"
+                },
+                "compose": {
+                  "type": "boolean"
+                },
+                "prepared": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
             },
             "detectedComponents": {
               "type": "array",
@@ -5457,6 +5480,390 @@
         },
         "deprecated": {}
       },
+      "prepare_egovframe_database": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "database": {
+              "type": "string",
+              "enum": [
+                "altibase",
+                "cubrid",
+                "goldilocks",
+                "maria",
+                "mariadb",
+                "mysql",
+                "oracle",
+                "postgres",
+                "postgresql",
+                "tibero"
+              ]
+            },
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "imageRegistry": {
+              "type": "string",
+              "default": "docker.io/library",
+              "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\\d{1,5})?(\\/[a-z0-9._-]+)*$"
+            },
+            "includeComments": {
+              "type": "boolean",
+              "default": false
+            },
+            "keep": {
+              "type": "boolean",
+              "default": false
+            },
+            "offline": {
+              "type": "boolean",
+              "default": false
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "run": {
+              "type": "boolean",
+              "default": false
+            },
+            "scripts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 600000,
+              "minimum": 30000,
+              "maximum": 3600000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "charsetFixed",
+            "commands",
+            "connection",
+            "database",
+            "databaseFrom",
+            "dryRun",
+            "notes",
+            "outputs",
+            "projectDir",
+            "sources",
+            "statements",
+            "supplemented",
+            "tables",
+            "views"
+          ],
+          "properties": {
+            "charsetFixed": {
+              "type": "integer"
+            },
+            "commands": {
+              "type": "object",
+              "required": [
+                "bash",
+                "cmd"
+              ],
+              "properties": {
+                "bash": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "cmd": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "connection": {
+              "type": "object",
+              "required": [
+                "database",
+                "host",
+                "passwordKey",
+                "port",
+                "source",
+                "user"
+              ],
+              "properties": {
+                "database": {
+                  "type": "string"
+                },
+                "host": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "passwordKey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "user": {
+                  "type": "string"
+                }
+              }
+            },
+            "database": {
+              "type": "string"
+            },
+            "databaseFrom": {
+              "type": "string",
+              "enum": [
+                "parameter",
+                "project"
+              ]
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "outputs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "bytes",
+                  "path",
+                  "status"
+                ],
+                "properties": {
+                  "bytes": {
+                    "type": "integer"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "create",
+                      "same",
+                      "written"
+                    ]
+                  }
+                }
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "run": {
+              "type": "object",
+              "required": [
+                "errors",
+                "ok",
+                "ran"
+              ],
+              "properties": {
+                "container": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "number"
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "hangul": {
+                  "type": "object",
+                  "required": [
+                    "column",
+                    "expected",
+                    "key",
+                    "ok",
+                    "table"
+                  ],
+                  "properties": {
+                    "actualHex": {
+                      "type": "string"
+                    },
+                    "column": {
+                      "type": "string"
+                    },
+                    "expected": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "table": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "image": {
+                  "type": "string"
+                },
+                "kept": {
+                  "type": "boolean"
+                },
+                "logTail": {
+                  "type": "string"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "actual",
+                      "expected",
+                      "table"
+                    ],
+                    "properties": {
+                      "actual": {
+                        "type": "integer"
+                      },
+                      "expected": {
+                        "type": "integer"
+                      },
+                      "table": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "tables": {
+                  "type": "object",
+                  "required": [
+                    "actual",
+                    "expected"
+                  ],
+                  "properties": {
+                    "actual": {
+                      "type": "integer"
+                    },
+                    "expected": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "path"
+                ],
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "components",
+                      "found",
+                      "full",
+                      "listed"
+                    ]
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "statements": {
+              "type": "object",
+              "required": [
+                "comment",
+                "data",
+                "duplicates",
+                "schema",
+                "skipped"
+              ],
+              "properties": {
+                "comment": {
+                  "type": "integer"
+                },
+                "data": {
+                  "type": "integer"
+                },
+                "duplicates": {
+                  "type": "integer"
+                },
+                "schema": {
+                  "type": "integer"
+                },
+                "skipped": {
+                  "type": "integer"
+                }
+              }
+            },
+            "supplemented": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tables": {
+              "type": "integer"
+            },
+            "views": {
+              "type": "integer"
+            }
+          }
+        },
+        "deprecated": {}
+      },
       "prepare_egovframe_delivery": {
         "input": {
           "type": "object",
@@ -7257,6 +7664,7 @@
         "assess": "generate_egovframe_report",
         "bundle": "prepare_egovframe_offline_bundle",
         "check": "check_egovframe_dependencies",
+        "db": "prepare_egovframe_database",
         "deliver": "prepare_egovframe_delivery",
         "diagnose": "diagnose_egovframe_project",
         "fix": "fix_egovframe_secure_coding",
