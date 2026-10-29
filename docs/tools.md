@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 37종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 38종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -40,6 +40,7 @@
 | `check_egovframe_secure_coding` | **보안약점 점검** — 행안부·KISA 개발보안 가이드(2021) 구현단계 보안약점 중 정적 패턴 14개 항목(규칙 20종: SQL 삽입·XSS·경로 조작·URL 자동접속·OS 명령·XXE·약한 암호·난수·하드코드 정보·쿠키·오류 노출·빈 catch·역직렬화·디버그 코드)을 파일·라인·CWE·등급·조치·출처(공통컴포넌트 원본/수정본/매니페스트 없음·프로젝트·테스트)로. 예외 파일(사유·검토자), `baselinePath` 비교(새 항목), SARIF 2.1.0(`format=sarif`·`sarifPath`). 진단 보조이며 공인 진단을 대체하지 않음 |
 | `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
+| `prepare_egovframe_database` | **DB 준비·적재 확인**(v1.10) — 조립 선별본·공통컴포넌트 전체·지정 스크립트를 문장 단위로 나눠 외래키·뷰 순서로 정렬하고 중복을 지우며, 선별본이 빠뜨린 참조 테이블을 통합 스크립트에서 보완. MySQL·MariaDB 는 테이블 문자셋 `utf8mb4_unicode_ci`·`SET NAMES utf8mb4`(upstream #1386·#1387). `scripts/egovframe-db/<db>/01-schema.sql·02-data.sql`·`docker-compose.db.yml`·적재 명령, `run=true` 면 Docker 로 적재해 테이블 수·필수 행·한글 왕복 확인. [자세히](#db-준비적재-확인-prepare_egovframe_database-v110) |
 | `generate_egovframe_deploy` | **컨테이너·배포 산출물** — Dockerfile(멀티 스테이지·Classic war → Tomcat 10.1(Servlet 6.1+ 는 11.0) ROOT, Boot jar → Temurin JRE, 비루트·HEALTHCHECK, `buildInImage=false` 면 미리 빌드한 산출물)·`.dockerignore`·`deploy/docker-compose.yml`(DbType 별 DB 컨테이너·초기화 SQL)·`deploy/k8s/<app>.yaml`(Deployment·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 환경 변수·Classic 설정 파일 덮어쓰기, `imageRegistry`(폐쇄망), `dockerfilePath`(템플릿 자체 Dockerfile 과 공존). 새 파일만, `dryRun` 기본 |
 | `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
 | `generate_agents_md` | 프로젝트 진단 결과로 AI 코딩 도구용 `AGENTS.md` 생성 — 빌드·테스트 명령(래퍼 감지), RTE·5.x 전환 상태, DbType, 기본 패키지·설정 디렉터리, 설치 컴포넌트(매니페스트 여부), 규칙(좌표·백업 디렉터리·비밀 정보·의존성 기준), MCP 도구 목록. 기존 파일은 `overwrite` 없이는 거부, `dryRun`, ko/en, 파일명 변경(`CLAUDE.md` 등) |
@@ -223,6 +224,27 @@ check_egovframe_sbom(projectDir, baselinePath="sbom/bom-2026Q3.cdx.json", offlin
 규칙은 `catalog/sbom-rules.json` 데이터입니다(출처: NTIA 최소 요소 2021, SW 공급망 보안 가이드라인 1.0) — 국내 지침이 요소를 더하면 데이터로 추가합니다. CI 에서는 `npx -y egovframe-scaffold-mcp sbom-check --offline=false --fail-on "minimum,newVulns"` 로 제출 전 점검을 게이트로 걸 수 있습니다.
 
 제출처가 SPDX 를 요구하면(가이드라인 1.0 은 SPDX·CycloneDX 를 모두 언급) `bomFormat="spdx-json"` 으로 같은 내용을 SPDX 2.3 JSON 으로 냅니다. 체크섬·선언 라이선스(이름만 있는 라이선스는 `LicenseRef-` + `hasExtractedLicensingInfos`)·OSV 권고(`SECURITY`/`advisory` externalRefs)·기준 판정(`egovframe:*` annotations)도 옮기므로, SPDX 로 낸 뒤 `check_egovframe_sbom(sbomPath="sbom/bom.spdx.json")` 의 재판정·비교가 CycloneDX 와 같은 결과를 냅니다. SPDX 3.0, 취약점 판단 자동화(VEX 상태는 사람의 결정), 중앙 저장소 제출 API 는 범위 밖입니다.
+
+## DB 준비·적재 확인 (`prepare_egovframe_database`, v1.10)
+
+공통컴포넌트는 테이블 수백 개가 있어야 뜹니다. 조립 때 DbType 별 DDL·DML 을 선별해 두지만(`scripts/egovframe-components/<db>/`) 어떻게 넣느냐가 첫 장벽이었습니다 — upstream 의 열린 이슈 두 건이 모두 적재 문제입니다(MySQL 8 Docker 초기화의 한글 이중 인코딩 #1386, latin1 클라이언트로 넣은 뒤 로그인 조회의 `Illegal mix of collations` #1387).
+
+```text
+prepare_egovframe_database(projectDir)                                    # 계획(dryRun): 원본·테이블 수·만들 파일·적재 명령
+prepare_egovframe_database(projectDir, dryRun=false)                      # scripts/egovframe-db/<db>/ 와 docker-compose.db.yml 작성
+prepare_egovframe_database(projectDir, run=true)                          # Docker 로 띄워 적재·확인(파일은 dryRun 에 따름)
+prepare_egovframe_database(projectDir, database="postgres", scripts=["db/schema.sql","db/data.sql"])
+npx -y egovframe-scaffold-mcp db --project . [--write] [--run] [--fail-on failed]
+```
+
+- **원본 고르기**: `scripts` 를 주면 그 파일들(순서대로). 없으면 조립 선별본(`scripts/egovframe-components/<db>/ddl·dml/`, 매니페스트 설치 순서 — 의존 컴포넌트가 앞) → 공통컴포넌트 전체 프로젝트(`script/ddl·dml/<db>/`) → 경로에 DB 이름이 있고 파일 이름이 `ddl·schema·create` / `dml·data·insert` 인 `*.sql`. DB 종류는 `database` 또는 프로젝트의 `Globals.DbType`·JDBC URL.
+- **정리**: 따옴표·주석·`$$` 를 지키며 문장으로 나눠 스키마·데이터로 가르고, 같은 문장은 한 번만(컴포넌트 선별본은 공유 테이블을 겹쳐 담습니다 — 공식 4종 조립에서 430여 개), 테이블·뷰는 외래키·뷰 참조 순서, 데이터도 부모 행이 먼저입니다. 원본의 `SET`·`COMMIT` 은 빼고 우리 머리말을 둡니다.
+- **빠진 참조 보완**: 선별본이 참조하는데 정의가 없는 테이블(예: `bbs` 의 `COMTCCMMNDETAILCODE` → `COMTCCMMNCODE` → `COMTCCMMNCLCODE`)은 공통컴포넌트 통합 스크립트(프로젝트의 `script/` 또는 매니페스트의 고정 커밋 아카이브)에서 정의·인덱스·기본 데이터를 가져옵니다(`supplemented`). MySQL 은 외래키 검사를 끄고 넣어 이 문제가 드러나지 않지만 PostgreSQL·Oracle 은 CREATE 가 실패합니다. `offline=true` 면 내려받지 않습니다.
+- **문자셋**: MySQL·MariaDB 는 테이블마다 `DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`(없으면 붙이고 utf8·latin1 이면 바꿈)와 스크립트 첫 줄 `SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci` — Docker 초기화든 `--default-character-set=latin1` 클라이언트든 같은 결과가 됩니다. PostgreSQL 은 `SET client_encoding = 'UTF8'` 과 `--encoding=UTF8` DB, Oracle·Tibero 는 `NLS_LANG=KOREAN_KOREA.AL32UTF8` 안내, 데이터 끝 `COMMIT`.
+- **산출물**: `scripts/egovframe-db/<db>/01-schema.sql`·`02-data.sql`(`includeComments=true` 면 `03-comment.sql`), MySQL 8.4·MariaDB 11.4·PostgreSQL 16 은 `scripts/egovframe-db/docker-compose.db.yml`(배포 산출물과 같은 이미지·문자셋 설정, DB 이름·계정·포트는 설정 파일 값, 비밀번호는 `DB_PASSWORD` 환경 변수 — 파일에 쓰지 않음, `127.0.0.1` 에만 공개). 적재 명령은 bash·cmd 로. 기존 파일은 덮어쓰지 않습니다(같은 내용이면 그대로, 다르면 거부).
+- **확인(`run=true`)**: 임시 디렉터리의 준비본을 초기화 스크립트로 마운트해 공식 이미지를 띄우고(`imageRegistry` 로 사내 미러), 초기화 오류 줄, 테이블 수(= 준비한 수), 필수 행(관리자 계정·메뉴·공통코드·ID 생성·권한 — 데이터에 있는 것만), 한글 왕복(데이터의 첫 한글 값을 HEX 로 비교)을 봅니다. 컨테이너는 지우고(`keep=true` 면 남기고 포트를 알려줌) 프로젝트 파일은 `dryRun` 에 따릅니다.
+- 실측(공통컴포넌트 v5.0.7 전체): 테이블 182·뷰 1·문장 407+976, MySQL 8.4 16초·PostgreSQL 16 5초에 오류 0·필수 행·한글 통과. 원본을 그대로 MySQL Docker 초기화에 넣으면 `상담답변관리` 가 이중 인코딩되고(#1386), latin1 클라이언트로 넣어도 깨집니다 — 준비본은 두 조건 모두 그대로입니다. 조립 4종(bbs·uss.umt·sec.ram·sym.mnu.mpm)의 PostgreSQL 은 빠진 공통코드 테이블 3개를 보완해 34개 테이블로 통과합니다.
+- 하지 않는 것: 운영 DB 적재, 스키마 비교·마이그레이션(Flyway 류), 데이터 이관.
 
 ## 컨테이너·배포 산출물 (`generate_egovframe_deploy`)
 
@@ -438,7 +460,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 7종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 16종(진단·검증·전환·의존성·의존성 조치·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 7종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 17종(진단·검증·전환·의존성·의존성 조치·DB 준비·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 

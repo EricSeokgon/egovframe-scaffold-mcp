@@ -7,8 +7,8 @@
 | 대상 | 계약에 들어가는 것 | 들어가지 않는 것 |
 |---|---|---|
 | MCP 도구 | 도구 이름. 입력 파라미터의 이름·타입·필수 여부·기본값·허용값·범위 | 도구 설명·제목·annotations(힌트) |
-| 구조화 출력 | 출력 스키마가 있는 16종의 `structuredContent` 필드·타입·필수 여부. `format=json` 본문은 같은 객체입니다 | 출력 스키마가 없는 21종의 응답 본문 |
-| CLI | 명령(`assess`·`check`·`sbom`·`sbom-check`·`secure`·`fix`·`fix-deps`·`rehearse`·`bundle`·`deliver`·`migrate`·`validate`·`diagnose`·`network`)과 연결된 도구, 종료 코드(0 통과·2 `--fail-on` 초과·3 실행 실패·64 사용법 오류) | 사람이 읽는 stderr 한 줄 요약 |
+| 구조화 출력 | 출력 스키마가 있는 17종의 `structuredContent` 필드·타입·필수 여부. `format=json` 본문은 같은 객체입니다 | 출력 스키마가 없는 21종의 응답 본문 |
+| CLI | 명령(`assess`·`check`·`sbom`·`sbom-check`·`secure`·`fix`·`fix-deps`·`db`·`rehearse`·`bundle`·`deliver`·`migrate`·`validate`·`diagnose`·`network`)과 연결된 도구, 종료 코드(0 통과·2 `--fail-on` 초과·3 실행 실패·64 사용법 오류) | 사람이 읽는 stderr 한 줄 요약 |
 | 환경 변수 | `EGOVFRAME_ALLOWED_ROOTS`·`EGOVFRAME_BUNDLE_MAX_AGE_DAYS`·`EGOVFRAME_CACHE_DIR`·`EGOVFRAME_LANG`·`EGOVFRAME_MAVEN_MIRROR`·`EGOVFRAME_OFFLINE_BUNDLE` | — |
 | 실행 환경 | 지원 Node 최소 버전(`package.json` 의 `engines.node`, 1.0.0 은 `>=22`) | — |
 

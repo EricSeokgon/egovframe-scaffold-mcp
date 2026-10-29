@@ -16,6 +16,7 @@ export const DiagnoseOutput = loose({
   hasManifest: z.boolean(),
   issues: z.array(z.string()),
   suggestions: z.array(z.string()),
+  dbScripts: loose({ componentScripts: z.number().int(), prepared: z.array(z.string()), compose: z.boolean() }),
 });
 
 export const ValidateOutput = loose({
@@ -316,6 +317,33 @@ export const DepsFixOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.10: prepare_egovframe_database
+const DbConn = loose({ database: z.string(), user: z.string(), passwordKey: z.string().nullable(), port: z.number().int(), host: z.string().nullable(), source: z.string().nullable() });
+export const DatabaseOutput = loose({
+  projectDir: z.string(),
+  database: z.string(),
+  dryRun: z.boolean(),
+  databaseFrom: z.enum(["parameter", "project"]),
+  sources: z.array(loose({ path: z.string(), kind: z.enum(["components", "full", "listed", "found"]), role: z.string().optional() })),
+  supplemented: z.array(z.string()),
+  outputs: z.array(loose({ path: z.string(), bytes: z.number().int(), status: z.enum(["create", "same", "written"]) })),
+  statements: loose({ schema: z.number().int(), data: z.number().int(), comment: z.number().int(), duplicates: z.number().int(), skipped: z.number().int() }),
+  tables: z.number().int(),
+  views: z.number().int(),
+  charsetFixed: z.number().int(),
+  connection: DbConn,
+  commands: loose({ bash: z.array(z.string()), cmd: z.array(z.string()) }),
+  run: loose({
+    ran: z.boolean(), ok: z.boolean(), image: z.string().optional(), container: z.string().optional(), kept: z.boolean().optional(), port: z.number().int().optional(), durationMs: z.number().optional(),
+    errors: z.array(z.string()),
+    tables: loose({ expected: z.number().int(), actual: z.number().int() }).optional(),
+    rows: z.array(loose({ table: z.string(), expected: z.number().int(), actual: z.number().int() })).optional(),
+    hangul: loose({ table: z.string(), column: z.string(), key: z.string(), expected: z.string(), ok: z.boolean(), actualHex: z.string().optional() }).optional(),
+    reason: z.string().optional(), logTail: z.string().optional(),
+  }).optional(),
+  notes: z.array(z.string()),
+});
+
 // v0.44: check_egovframe_secure_coding
 const SecureSeverity = z.enum(["high", "medium", "low"]);
 export const SecureCodingOutput = loose({
@@ -388,6 +416,7 @@ export const OUTPUT_SCHEMAS = {
   check_egovframe_secure_coding: SecureCodingOutput,
   fix_egovframe_secure_coding: SecureFixOutput,
   fix_egovframe_dependencies: DepsFixOutput,
+  prepare_egovframe_database: DatabaseOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,

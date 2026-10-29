@@ -33,6 +33,7 @@ import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
 import { checkSecureCoding, renderSecureCodingMarkdown, toSarif } from "./secure-coding.js";
 import { FIXABLE_RULES, fixSecureCoding, renderSecureFixMarkdown } from "./secure-fix.js";
 import { DEPS_FIX_KINDS, fixDependencies, renderDepsFixMarkdown } from "./deps-fix.js";
+import { DATABASE_TYPES, prepareDatabase, renderDatabaseMarkdown } from "./database.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -579,6 +580,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         `- DbType: ${r.database ?? "미설정"}`,
         `- 감지 컴포넌트(${r.detectedComponents.length}): ${r.detectedComponents.map((c) => c.id).join(", ") || "없음"}`,
         `- AI 계층: ${r.aiLayer ? "있음" : "없음"} / 매니페스트: ${r.hasManifest ? "있음" : "없음"}`,
+        `- DB 준비: 조립 스크립트 ${r.dbScripts.componentScripts}개 · 적재용 준비본 ${r.dbScripts.prepared.join(", ") || "없음"} · compose ${r.dbScripts.compose ? "있음" : "없음"}`,
       ];
       if (r.issues.length) lines.push(``, `⚠️ 이슈:`, ...r.issues.map((i) => ` · ${i}`));
       if (r.suggestions.length) lines.push(``, `💡 제안:`, ...r.suggestions.map((s) => ` · ${s}`));
@@ -875,6 +877,29 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       enforceAllowedRoots(args);
       const r = await fixDependencies({ progress: progressFromExtra(extra), projectDir: args.projectDir, kinds: args.kinds, target: args.target, offline: args.offline, verify: args.verify, dryRun: args.dryRun, timeoutMs: args.timeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDepsFixMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── DB 준비·검증 (v1.10) ───────────────────────────────
+  server.registerTool(
+    "prepare_egovframe_database",
+    { title: t("prepare_egovframe_database"), description: d("prepare_egovframe_database", "공통컴포넌트·프로젝트의 DB 스크립트를 개발·테스트 DB 에 바로 넣을 수 있게 준비합니다. 원본은 자동으로 고릅니다 — 조립 선별본(scripts/egovframe-components/<db>/, 매니페스트 설치 순서) → 공통컴포넌트 전체(script/ddl·dml/<db>/) → 이름 규칙(ddl·schema / dml·data), 또는 scripts 로 지정. 문장 단위로 나눠 스키마·데이터로 가르고, 겹친 문장을 한 번만 두고, 외래키·뷰 참조 순서로 테이블을 정렬하며(데이터도 부모 행이 먼저), 선별본이 참조하는데 빠진 테이블(예: COMTCCMMNDETAILCODE → COMTCCMMNCODE)은 공통컴포넌트 통합 스크립트에서 보완합니다. MySQL·MariaDB 는 테이블마다 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 와 스크립트 머리의 SET NAMES utf8mb4 로 클라이언트 문자셋과 무관하게 한글이 같게 저장되게 하고(Docker 초기화의 한글 이중 인코딩·latin1 클라이언트의 정렬 규칙 충돌), PostgreSQL 은 client_encoding UTF8. 산출물은 scripts/egovframe-db/<db>/01-schema.sql·02-data.sql 과 docker-compose.db.yml(MySQL 8.4·MariaDB 11.4·PostgreSQL 16, 접속 정보는 프로젝트 설정), 적재 명령(bash·cmd). Oracle·Tibero·Altibase·CUBRID 는 스크립트·명령만. run=true 면 Docker 로 DB 를 띄워 넣고 테이블 수·필수 행(관리자 계정·메뉴·공통코드)·한글 왕복을 확인한 뒤 컨테이너를 지웁니다(keep=true 면 남김). 기본 dryRun, 기존 파일은 덮어쓰지 않습니다(다른 내용이면 거부). 운영 DB 적재·스키마 이관은 하지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      database: z.enum([...DATABASE_TYPES, "mariadb", "postgresql"] as [string, ...string[]]).optional().describe("DB 종류(기본: 프로젝트 Globals.DbType·JDBC URL)"),
+      scripts: z.array(z.string()).optional().describe("직접 고를 원본 스크립트(프로젝트 상대 경로, 순서대로)"),
+      includeComments: z.boolean().default(false).describe("공통컴포넌트 전체의 주석 스크립트(script/comment/<db>/)도 넣음"),
+      offline: z.boolean().default(false).describe("true 면 빠진 참조 테이블 보완에 공통컴포넌트 저장소를 내려받지 않음"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 파일을 쓰지 않고 계획만"),
+      run: z.boolean().default(false).describe("Docker 로 DB 를 띄워 적재·확인(mysql·maria·postgres)"),
+      keep: z.boolean().default(false).describe("run=true 뒤 컨테이너를 남김"),
+      imageRegistry: z.string().regex(DEPLOY_IMAGE_REGISTRY_RE, "예: docker.io/library, mirror.gcr.io/library").default("docker.io/library").describe("DB 이미지 레지스트리(사내 미러 등)"),
+      timeoutMs: z.number().int().min(30_000).max(3_600_000).default(600_000).describe("run=true 초기화 대기 제한(ms)"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.prepare_egovframe_database.shape, annotations: toolAnnotations("prepare_egovframe_database") },
+    async (args, extra) => {
+      enforceAllowedRoots(args);
+      const r = await prepareDatabase({ progress: progressFromExtra(extra), projectDir: args.projectDir, database: args.database, scripts: args.scripts, includeComments: args.includeComments, offline: args.offline, dryRun: args.dryRun, run: args.run, keep: args.keep, imageRegistry: args.imageRegistry, timeoutMs: args.timeoutMs });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDatabaseMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );

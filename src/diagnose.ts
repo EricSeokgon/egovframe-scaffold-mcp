@@ -16,6 +16,8 @@ export interface DiagnoseResult {
   hasManifest: boolean;
   issues: string[];
   suggestions: string[];
+  /** v1.10: DB 준비 상태 — 조립 선별 스크립트(scripts/egovframe-components/<db>/) 수, 적재용 준비본(scripts/egovframe-db/<db>/01-schema.sql)·compose 유무 */
+  dbScripts: { componentScripts: number; prepared: string[]; compose: boolean };
 }
 
 /** 기존 프로젝트를 읽기 전용으로 스캔해 구성·설치 컴포넌트·설정 문제를 진단한다. (디스크 변경 없음) */
@@ -89,6 +91,12 @@ export function diagnoseProject(opts: { projectDir: string }): DiagnoseResult {
     }
   }
   const uniqIssues = [...new Set(issues)];
+  // v1.10: DB 준비 상태
+  const sqlIn = (d: string): number => { try { return fs.readdirSync(path.join(dir, d), { recursive: true }).filter((f) => String(f).endsWith(".sql")).length; } catch { return 0; } };
+  const preparedDbs = (() => { try { return fs.readdirSync(path.join(dir, "scripts/egovframe-db"), { withFileTypes: true }).filter((e) => e.isDirectory() && fs.existsSync(path.join(dir, "scripts/egovframe-db", e.name, "01-schema.sql"))).map((e) => e.name).sort(); } catch { return []; } })();
+  const dbScripts = { componentScripts: sqlIn("scripts/egovframe-components"), prepared: preparedDbs, compose: existsRel("scripts/egovframe-db/docker-compose.db.yml") };
+  if (dbScripts.componentScripts > 0 && !preparedDbs.length)
+    suggestions.push("조립된 DB 스크립트가 있지만 적재용으로 준비되지 않았습니다 — prepare_egovframe_database 로 순서·문자셋을 맞춘 스크립트와 개발용 DB compose 를 만들 수 있습니다.");
 
   if (!hasManifest && detectedComponents.length > 0)
     suggestions.push("스캐폴딩 매니페스트(.egovframe-components.json)가 없어 remove/validate 수명주기 도구는 쓸 수 없습니다. 신규 조립은 add_egovframe_components를 사용하세요.");
@@ -98,7 +106,7 @@ export function diagnoseProject(opts: { projectDir: string }): DiagnoseResult {
 
   return {
     projectDir: dir, isEgovProject, buildSystem, egovVersion, database,
-    detectedComponents, aiLayer, hasManifest, issues: uniqIssues, suggestions,
+    detectedComponents, aiLayer, hasManifest, issues: uniqIssues, suggestions, dbScripts,
   };
 }
 
