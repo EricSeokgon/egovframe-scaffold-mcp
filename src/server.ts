@@ -32,6 +32,7 @@ import { generateSbom, renderSbomMarkdown } from "./sbom.js";
 import { checkSbom, renderSbomCheckMarkdown } from "./sbom-check.js";
 import { checkSecureCoding, renderSecureCodingMarkdown, toSarif } from "./secure-coding.js";
 import { FIXABLE_RULES, fixSecureCoding, renderSecureFixMarkdown } from "./secure-fix.js";
+import { DEPS_FIX_KINDS, fixDependencies, renderDepsFixMarkdown } from "./deps-fix.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -853,6 +854,27 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       enforceAllowedRoots(args);
       const r = await fixSecureCoding({ projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeComponents: args.includeComponents, includeTests: args.includeTests, ignoreHtmlTagFilter: args.ignoreHtmlTagFilter, dryRun: args.dryRun });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderSecureFixMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 취약 의존성 자동 조치 (v1.9) ──────────────────────
+  server.registerTool(
+    "fix_egovframe_dependencies",
+    { title: t("fix_egovframe_dependencies"), description: d("fix_egovframe_dependencies", "check_egovframe_dependencies 가 찾기만 하던 의존성 문제를 규칙으로 정할 수 있는 만큼 pom.xml(멀티 모듈 포함)에서 고칩니다. 순서: (1) parent 상향 — 공식 parent 5.x 를 target(기본 권장 버전)으로(migrate_egovframe_project target 의 자동 항목), (2) 고정 해제 — parent(또는 Boot BOM)가 관리하는 좌표에 그보다 낮게 적은 <version> 을 지워 parent 에 맡김(major 가 다르면 수동), (3) 좌표 교체 — 좌표만 바뀌고 패키지가 같은 것(mysql-connector-java→mysql-connector-j, ojdbc→ojdbc11, xbean→xmlbeans), (4) 취약 버전 상향 — 직접 적은 버전(리터럴 또는 같은 계열 좌표만 쓰는 버전 속성)이 OSV 에 걸리면 모든 권고를 피하는 가장 낮은 같은 major 정식 릴리스로(저장소 maven-metadata 로 실제 배포 버전 확인, major 가 바뀌거나 수정 버전이 없으면 수동). parent 가 관리하는 버전·전이 의존성의 취약점은 고치지 않고 보고합니다. 결과에 선언 좌표 기준 전·후 취약점 수를 적습니다. 기본 dryRun(계획·변경 미리보기), 적용은 파일 트랜잭션(원본은 migration-backup/<시각>-deps-fix-…/)이며 compile 로 확인해 실패하면 모두 되돌립니다. Gradle 은 리터럴 'g:a:v' 의 고정 해제·취약 버전 상향만. 오프라인 번들(EGOVFRAME_OFFLINE_BUNDLE)이 있으면 OSV 를 번들로 판정합니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      kinds: z.array(z.enum(DEPS_FIX_KINDS)).optional().describe("적용할 조치(기본 전부: parent·unpin·coordinate·cve-bump)"),
+      target: z.string().regex(/^5\.\d+\.\d+$/).optional().describe("parent 상향 목표 5.x 버전(기본: 권장 버전)"),
+      offline: z.boolean().default(false).describe("true 면 OSV 를 조회하지 않음(취약 버전 상향·전후 집계 생략)"),
+      verify: z.boolean().default(true).describe("dryRun=false 일 때 compile 로 확인하고 실패하면 되돌림"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 파일을 쓰지 않고 계획만"),
+      timeoutMs: z.number().int().min(10_000).max(3_600_000).optional().describe("compile 제한 시간(기본 600000)"),
+      topN: z.number().int().min(1).max(500).default(40).describe("Markdown 에 보일 조치·수동 항목 수"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.fix_egovframe_dependencies.shape, annotations: toolAnnotations("fix_egovframe_dependencies") },
+    async (args, extra) => {
+      enforceAllowedRoots(args);
+      const r = await fixDependencies({ progress: progressFromExtra(extra), projectDir: args.projectDir, kinds: args.kinds, target: args.target, offline: args.offline, verify: args.verify, dryRun: args.dryRun, timeoutMs: args.timeoutMs });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDepsFixMarkdown(r, args.topN);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );

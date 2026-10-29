@@ -1,6 +1,6 @@
 {
-  "version": "1.8.0",
-  "base": "1.7.0",
+  "version": "1.9.0",
+  "base": "1.8.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -2139,6 +2139,447 @@
           }
         },
         "output": null,
+        "deprecated": {}
+      },
+      "fix_egovframe_dependencies": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "coordinate",
+                  "cve-bump",
+                  "parent",
+                  "unpin"
+                ]
+              }
+            },
+            "offline": {
+              "type": "boolean",
+              "default": false
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "target": {
+              "type": "string",
+              "pattern": "^5\\.\\d+\\.\\d+$"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 10000,
+              "maximum": 3600000
+            },
+            "topN": {
+              "type": "integer",
+              "default": 40,
+              "minimum": 1,
+              "maximum": 500
+            },
+            "verify": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "actions",
+            "buildSystem",
+            "dryRun",
+            "files",
+            "kinds",
+            "manual",
+            "notes",
+            "projectDir",
+            "summary",
+            "target"
+          ],
+          "properties": {
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "coordinate",
+                  "file",
+                  "from",
+                  "kind",
+                  "line",
+                  "reason",
+                  "to"
+                ],
+                "properties": {
+                  "coordinate": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "coordinate",
+                      "cve-bump",
+                      "parent",
+                      "unpin"
+                    ]
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "backupDir": {
+              "type": "string"
+            },
+            "build": {
+              "type": "object",
+              "required": [
+                "errors",
+                "ran",
+                "success"
+              ],
+              "properties": {
+                "attempts": {
+                  "type": "integer"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "number"
+                },
+                "errors": {
+                  "type": "integer"
+                },
+                "failureHint": {
+                  "type": "string"
+                },
+                "failureKind": {
+                  "type": "string"
+                },
+                "firstErrors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "logTail": {
+                  "type": "string"
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "success": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "timedOut": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "buildSystem": {
+              "type": "string",
+              "enum": [
+                "gradle",
+                "maven",
+                "unknown"
+              ]
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "edits",
+                  "file",
+                  "items",
+                  "preview"
+                ],
+                "properties": {
+                  "edits": {
+                    "type": "integer"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "integer"
+                  },
+                  "preview": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "after",
+                        "before",
+                        "line"
+                      ],
+                      "properties": {
+                        "after": {
+                          "type": "string"
+                        },
+                        "before": {
+                          "type": "string"
+                        },
+                        "line": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "coordinate",
+                  "cve-bump",
+                  "parent",
+                  "unpin"
+                ]
+              }
+            },
+            "manual": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "coordinate",
+                  "file",
+                  "kind",
+                  "line",
+                  "reason",
+                  "version"
+                ],
+                "properties": {
+                  "coordinate": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "osvError": {
+              "type": "string"
+            },
+            "planPath": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rolledBack": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "actions",
+                "byKind",
+                "files",
+                "manual"
+              ],
+              "properties": {
+                "actions": {
+                  "type": "integer"
+                },
+                "byKind": {
+                  "type": "object",
+                  "required": [
+                    "coordinate",
+                    "cve-bump",
+                    "parent",
+                    "unpin"
+                  ],
+                  "properties": {
+                    "coordinate": {
+                      "type": "integer"
+                    },
+                    "cve-bump": {
+                      "type": "integer"
+                    },
+                    "parent": {
+                      "type": "integer"
+                    },
+                    "unpin": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "manual": {
+                  "type": "integer"
+                }
+              }
+            },
+            "target": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "vulnerabilities": {
+              "type": "object",
+              "required": [
+                "after",
+                "before",
+                "predicted",
+                "remaining"
+              ],
+              "properties": {
+                "after": {
+                  "type": "object",
+                  "required": [
+                    "coordinates",
+                    "declarations",
+                    "ids"
+                  ],
+                  "properties": {
+                    "coordinates": {
+                      "type": "integer"
+                    },
+                    "declarations": {
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "before": {
+                  "type": "object",
+                  "required": [
+                    "coordinates",
+                    "declarations",
+                    "ids"
+                  ],
+                  "properties": {
+                    "coordinates": {
+                      "type": "integer"
+                    },
+                    "declarations": {
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "predicted": {
+                  "type": "boolean"
+                },
+                "remaining": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "dependency",
+                      "ids",
+                      "version"
+                    ],
+                    "properties": {
+                      "dependency": {
+                        "type": "string"
+                      },
+                      "ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "deprecated": {}
       },
       "fix_egovframe_secure_coding": {
@@ -6819,6 +7260,7 @@
         "deliver": "prepare_egovframe_delivery",
         "diagnose": "diagnose_egovframe_project",
         "fix": "fix_egovframe_secure_coding",
+        "fix-deps": "fix_egovframe_dependencies",
         "migrate": "migrate_egovframe_project",
         "network": "diagnose_egovframe_network",
         "rehearse": "rehearse_egovframe_migration",

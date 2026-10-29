@@ -294,6 +294,28 @@ export const SecureFixOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.9: fix_egovframe_dependencies
+const DepsFixKind = z.enum(["parent", "unpin", "coordinate", "cve-bump"]);
+const VulnCount = loose({ coordinates: z.number().int(), ids: z.number().int(), declarations: z.number().int() });
+export const DepsFixOutput = loose({
+  projectDir: z.string(),
+  dryRun: z.boolean(),
+  buildSystem: z.enum(["maven", "gradle", "unknown"]),
+  kinds: z.array(DepsFixKind),
+  target: z.string().nullable(),
+  summary: loose({ actions: z.number().int(), manual: z.number().int(), files: z.number().int(), byKind: loose({ parent: z.number().int(), unpin: z.number().int(), coordinate: z.number().int(), "cve-bump": z.number().int() }) }),
+  actions: z.array(loose({ kind: DepsFixKind, file: z.string(), line: z.number().int(), coordinate: z.string(), from: z.string(), to: z.string().nullable(), reason: z.string(), ids: z.array(z.string()).optional() })),
+  manual: z.array(loose({ kind: z.string(), file: z.string(), line: z.number().int(), coordinate: z.string(), version: z.string().nullable(), reason: z.string(), ids: z.array(z.string()).optional() })),
+  files: z.array(loose({ file: z.string(), items: z.number().int(), edits: z.number().int(), preview: z.array(loose({ line: z.number().int(), before: z.string(), after: z.string() })) })),
+  vulnerabilities: loose({ before: VulnCount, after: VulnCount, predicted: z.boolean(), remaining: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })) }).optional(),
+  osvError: z.string().optional(),
+  build: loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), errors: z.number().int(), timedOut: z.boolean().optional(), reason: z.string().optional(), failureKind: z.string().optional(), failureHint: z.string().optional(), attempts: z.number().int().optional(), firstErrors: z.array(z.string()).optional(), logTail: z.string().optional() }).optional(),
+  rolledBack: z.boolean().optional(),
+  backupDir: z.string().optional(),
+  planPath: z.string().optional(),
+  notes: z.array(z.string()),
+});
+
 // v0.44: check_egovframe_secure_coding
 const SecureSeverity = z.enum(["high", "medium", "low"]);
 export const SecureCodingOutput = loose({
@@ -365,6 +387,7 @@ export const OUTPUT_SCHEMAS = {
   check_egovframe_sbom: SbomCheckOutput,
   check_egovframe_secure_coding: SecureCodingOutput,
   fix_egovframe_secure_coding: SecureFixOutput,
+  fix_egovframe_dependencies: DepsFixOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,

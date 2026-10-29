@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 36종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 37종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -38,6 +38,7 @@
 | `generate_egovframe_sbom` | **SBOM 생성** — Maven/Gradle 프로젝트의 CycloneDX 1.6 JSON(기본) 또는 SPDX 2.3 JSON(`bomFormat="spdx-json"`)을 빌드 파일 변경 없이 생성(Maven: cyclonedx-maven-plugin makeAggregateBom, 해시·라이선스 포함 / Gradle: 해석된 의존성 트리로 구성). `enrich` 로 component 마다 기준 판정(`egovframe:status·basis·baseline`) 속성, `offline=false` 로 OSV 취약점을 `vulnerabilities[]` 에 포함. 출력은 프로젝트 안 경로(기본 `sbom/bom.cdx.json`, SPDX 는 `sbom/bom.spdx.json`), 기존 파일은 `overwrite` 없이는 거부, `dryRun`(기본)은 계획만 |
 | `check_egovframe_sbom` | **SBOM 점검** — 기존 CycloneDX·SPDX 2.x SBOM(형식 자동 판별)의 최소 요소 7종(공급자·구성요소명·버전·고유식별자·의존관계·작성자·생성 시각) 충족 여부와 빠진 component, 빌드 도구 없이 purl 로 기준 재판정·OSV 재조회(생성 이후 새 취약점), `baselinePath` 와 비교(추가·제거·버전·판정·취약점), `vex=true` 면 CycloneDX VEX 초안(`in_triage`, BOM-Link, 사람의 판단 보존, CycloneDX 입력만). SBOM 파일은 바꾸지 않음 |
 | `check_egovframe_secure_coding` | **보안약점 점검** — 행안부·KISA 개발보안 가이드(2021) 구현단계 보안약점 중 정적 패턴 14개 항목(규칙 20종: SQL 삽입·XSS·경로 조작·URL 자동접속·OS 명령·XXE·약한 암호·난수·하드코드 정보·쿠키·오류 노출·빈 catch·역직렬화·디버그 코드)을 파일·라인·CWE·등급·조치·출처(공통컴포넌트 원본/수정본/매니페스트 없음·프로젝트·테스트)로. 예외 파일(사유·검토자), `baselinePath` 비교(새 항목), SARIF 2.1.0(`format=sarif`·`sarifPath`). 진단 보조이며 공인 진단을 대체하지 않음 |
+| `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `generate_egovframe_deploy` | **컨테이너·배포 산출물** — Dockerfile(멀티 스테이지·Classic war → Tomcat 10.1(Servlet 6.1+ 는 11.0) ROOT, Boot jar → Temurin JRE, 비루트·HEALTHCHECK, `buildInImage=false` 면 미리 빌드한 산출물)·`.dockerignore`·`deploy/docker-compose.yml`(DbType 별 DB 컨테이너·초기화 SQL)·`deploy/k8s/<app>.yaml`(Deployment·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 환경 변수·Classic 설정 파일 덮어쓰기, `imageRegistry`(폐쇄망), `dockerfilePath`(템플릿 자체 Dockerfile 과 공존). 새 파일만, `dryRun` 기본 |
 | `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
@@ -274,6 +275,34 @@ check_egovframe_secure_coding(projectDir, dataFlow=false)                       
 - **예외**: `.egovframe-secure-ignore.json` 에 `{"ignores":[{"rule":"debug-code","path":"src/main/java/egovframework/com/**","reason":"upstream 원본, 업그레이드 대기","reviewer":"홍길동"}]}` — 사유·검토자가 없는 항목은 적용하지 않고 목록으로 돌려줍니다.
 - **CI**: `npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.sarif --overwrite --fail-on high`, 또는 `generate_egovframe_ci(supplyChain=true, secureCoding=true)` 게이트 단계(GitHub 는 code scanning 에 SARIF 업로드). 평가서 4절에 요약이 나오며 등급 산식에는 넣지 않습니다. 설계: [docs/design-secure-coding.md](design-secure-coding.md).
 
+## 취약 의존성 자동 조치 (`fix_egovframe_dependencies`, v1.9)
+
+`check_egovframe_dependencies` 가 찾기만 하던 의존성 문제를 **규칙으로 정할 수 있는 만큼** 고칩니다. 보안 점검·감리에서 지적받는 알려진 취약점(CVE)을 "어느 버전으로 올려야 parent 와 충돌하지 않는지" 하나씩 찾던 일을 대신합니다.
+
+```text
+fix_egovframe_dependencies(projectDir)                                   # 계획(dryRun): 조치·수동 항목·전·후 권고 수·변경 미리보기
+fix_egovframe_dependencies(projectDir, dryRun=false)                     # 적용 + compile 확인(실패하면 모두 되돌림)
+fix_egovframe_dependencies(projectDir, target="5.1.0")                   # parent 상향 목표(기본: 권장 버전)
+fix_egovframe_dependencies(projectDir, kinds=["unpin","cve-bump"])        # 조치 종류 고르기
+npx -y egovframe-scaffold-mcp fix-deps --project . [--write] [--fail-on "after>0"]
+```
+
+| 순서 | 종류(`kinds`) | 고치는 것 | 수동으로 두는 것 |
+|---|---|---|---|
+| 1 | `parent` | 공식 parent 5.x 를 `target` 으로(`migrate_egovframe_project` target 의 자동 항목: parent 버전·RTE 버전 속성·parent 기본값을 그대로 덮어쓴 속성), 같은 `<dependencies>` 안의 내용이 같은 중복 선언 제거(일부 Maven 이 "must be unique" 로 빌드를 거부 — compile 확인을 위해) | 내용이 다른 중복 선언 |
+| 2 | `unpin` | parent(Boot parent 는 상속한 Boot BOM 포함)가 관리하는 좌표에 **그보다 낮게** 적은 `<version>` 을 지워 parent 에 맡김. 프로젝트 `dependencyManagement` 항목이면 그 항목을 지움 | 관리 버전과 major 가 다름(의도한 고정일 수 있음), `classifier`·`type` 이 있는 좌표, **parent 관리 버전에 권고가 있으면 풀지 않음**(취약 버전 상향이 고정 버전을 올림) |
+| 3 | `coordinate` | 좌표만 바뀌고 Java 패키지가 같은 교체: `mysql:mysql-connector-java` → `com.mysql:mysql-connector-j`, `ojdbc:ojdbc` → `com.oracle.database.jdbc:ojdbc11`, `xmlbeans:xbean` → `org.apache.xmlbeans:xmlbeans`(parent 가 관리하면 버전을 지우고, 아니면 기준 버전) | 패키지가 바뀌는 교체(commons-dbcp → dbcp2, Jackson 1 → 2, Log4j 1 등), parent 관리 버전으로 major 가 바뀜 |
+| 4 | `cve-bump` | OSV 에 걸린 **직접 적은 버전**(리터럴, 또는 같은 계열 좌표만 쓰는 버전 속성 — `${tomcat-embed.version}` 처럼 여러 artifact 가 쓰면 속성 하나를)을 모든 권고를 피하는 **가장 낮은 같은 major 정식 릴리스**로 | 수정 버전이 major 를 바꿈(API 변경 가능), 수정 버전이 없는 권고, 저장소에 맞는 릴리스가 없음, 다른 계열 좌표·설정이 같이 쓰는 속성, `-egov.N` 재빌드 좌표 |
+
+- **수정 버전 고르기**: 권고마다 현재 버전을 포함한 범위의 `fixed` 중 가장 낮은 것을 구하고 그 최댓값에서 시작해, 다른 권고 범위에 들면(현재 버전과 무관했던 권고 포함) 다음 `fixed` 로 올립니다. 고른 버전으로 OSV 를 다시 조회해 새 권고가 나오면 반복합니다(최대 3회). 마지막으로 저장소(사내 미러 `EGOVFRAME_MAVEN_MIRROR` 또는 Maven Central)의 `maven-metadata.xml` 에 실제로 있는, 같은 꼬리(`-jre`·`.Final`)의 정식 릴리스 중 가장 낮은 것을 고릅니다 — OSV 의 `fixed` 문자열이 배포 버전과 다를 수 있기 때문입니다(guava `33.7.2` ↔ `33.7.2-jre`, 배포되지 않은 tomcat `10.1.58`). 속성 하나를 여러 좌표가 쓰면 모든 좌표에 공통으로 있는 버전만 봅니다.
+- **고치지 않고 보고하는 것**: 버전을 적지 않은 좌표의 parent 관리 버전에 걸린 권고(`managed-vulnerable` — 같은 계열 버전이 엇갈릴 수 있어 더 새 parent 또는 계열 전체 고정을 검토), 전이 의존성의 취약점.
+- **전·후 집계**: 선언 좌표(버전이 없으면 parent 기준 버전)의 취약 좌표·권고·선언 수. dryRun 이면 조치 뒤는 예측입니다.
+- **적용**: pom.xml 만 원문 오프셋 편집(주석·들여쓰기·CRLF 보존), 파일 트랜잭션, 원본과 `deps-fix-plan.json` 은 `migration-backup/<시각>-deps-fix-…/`. 기본으로 루트에서 `mvn compile` 을 돌려 실패하면 **모두** 되돌립니다(어느 조치가 깨뜨렸는지 나누지 않음 — `kinds` 로 나눠 다시 적용). 원격 저장소 장애(v1.6 판정)로 실패하면 되돌리고 코드 문제가 아님을 알립니다. `verify=false` 면 compile 없이 적용합니다.
+- **Gradle**: 리터럴 `'g:a:v'` 의 고정 해제(Boot 플러그인 + dependency-management 또는 공식 parent BOM)와 취약 버전 상향만. parent BOM 상향은 `migrate_egovframe_project(target)`, 좌표 교체는 직접.
+- **오프라인**: `offline=true` 면 OSV·저장소를 보지 않고 1–3 만. 오프라인 번들(`EGOVFRAME_OFFLINE_BUNDLE`)이 있으면 OSV 를 번들 덤프로 판정합니다(저장소 목록은 미러가 있을 때만).
+- **조치 내역**: 적용한 계획 파일은 평가서 3절 「자동 조치 내역」과 납품 패키지(`dependencies/fix-history/`, 보안약점 조치는 `secure-coding/fix-history/`)에 전·후 수치로 실립니다.
+- 공식 `egovframe-msa-common-components`(11 모듈, parent 5.0.1) 실측(2026-10-29): 계획 71건(parent 11 · 고정 해제 5 · 취약 버전 상향 54)·수동 10건, 선언 기준 권고 47 → 3건(목표 5.1.0 이면 → 1건), 적용 후 루트 `mvn compile` 통과. 공식 web·boot-web 템플릿은 parent 상향 말고 조치 0건.
+
 ## 보안약점 자동 조치 (`fix_egovframe_secure_coding`, v1.7)
 
 `check_egovframe_secure_coding` 이 찾은 항목 중 **고친 결과를 규칙으로 정할 수 있는 것만** 고칩니다. 나머지는 사유와 함께 수동 항목으로 냅니다. 감리 소명 대신 조치 결과(전·후 건수, 바뀐 줄, 백업)를 낼 수 있게 하려는 도구입니다.
@@ -409,7 +438,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 6종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`upgrade_egovframe_project`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 15종(진단·검증·전환·의존성·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 7종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 16종(진단·검증·전환·의존성·의존성 조치·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 

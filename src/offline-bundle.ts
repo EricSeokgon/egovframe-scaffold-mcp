@@ -162,6 +162,23 @@ export function queryOsvIndex(index: Map<string, OsvEntry[]>, queries: { package
     }),
   };
 }
+/** v1.9: 질의 버전에 해당하는 권고와 그 패키지의 범위(ECOSYSTEM events) — 같은 권고의 affected 여러 개는 합친다. */
+export function queryOsvIndexDetails(index: Map<string, OsvEntry[]>, queries: { name: string; version: string }[]): { id: string; ranges: Record<string, string>[][] }[][] {
+  return queries.map((q) => {
+    const all = index.get(q.name) ?? [];
+    const hit = new Set(all.filter((e) => e.versions.has(q.version) || e.ranges.some((r) => inOsvRange(q.version, r))).map((e) => e.id));
+    return [...hit].sort().map((id) => ({ id, ranges: all.filter((e) => e.id === id).flatMap((e) => e.ranges) }));
+  });
+}
+/** v1.9: 번들 OSV 덤프로 권고와 범위를 조회한다(번들이 없으면 null). */
+export function bundleOsvDetails(queries: { name: string; version: string }[]): { id: string; ranges: Record<string, string>[][] }[][] | null {
+  const b = loadBundle();
+  const osv = bundleOsv();
+  if (!b || !osv) return null;
+  const key = `${b.dir}:${osv.file.sha256}`;
+  if (!osvIndexCache || osvIndexCache.key !== key) osvIndexCache = { key, ...buildOsvIndex(readBundleFile(b, osv.file)) };
+  return queryOsvIndexDetails(osvIndexCache.index, queries);
+}
 /** 번들 OSV 덤프 정보(없으면 null). */
 export function bundleOsv(): { file: BundleFile; bundleDir: string } | null {
   const b = loadBundle();
