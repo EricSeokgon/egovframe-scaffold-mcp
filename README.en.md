@@ -86,7 +86,7 @@ Structured output (`structuredContent`, `--json`) keeps the same keys in both la
 | `generate_egovframe_ci` | CI configuration for `platform` github (default), gitlab (`.gitlab-ci.yml`) or jenkins (Declarative `Jenkinsfile`), Maven/Gradle auto-detected; `supplyChain=true` adds the SBOM → minimum-elements → assessment gate |
 | `build_egovframe_project` / `test_egovframe_project` | Run builds and tests; compiler errors and JUnit XML structured by file/line |
 | `diagnose_egovframe_project` / `generate_egovframe_report` | Scan any existing project; Markdown report — `sections=["assessment"]` adds the 5.x migration readiness assessment (overview, migration scope, dependency actions, security settings, SBOM summary, two A–D grades with the formula printed), `format=json`, optional `outputPath` (new file only) |
-| `get_egovframe_guide` / `search_egovframe_docs` | Official guide documents (151 mappings) and offline keyword search |
+| `get_egovframe_guide` / `search_egovframe_docs` | Official guide documents (199 component links, 156 unique documents) and offline keyword search |
 | `migrate_egovframe_project` | **5.x migration**: diagnose RTE coordinates, package/class renames and removals (runtime and common components), javax→jakarta, web.xml, removed XML namespaces, libraries to replace (auto/manual with file:line); `apply=true` rewrites auto items in one transaction with backups; `verify=true` compiles and links compiler errors to the remaining manual items as a prioritised worklist |
 | `check_egovframe_dependencies` | Compare dependencies (declared, or with `resolve=true` the whole tree resolved by Maven/Gradle — transitive artifacts with their path, declared-vs-resolved differences) with the official 5.x parent baseline (139 coordinates + BOM families), the full Spring Boot BOM (1,473 coordinates) and the transitive dependencies of the 18 RTE modules (58): ok / outdated / parent-managed / legacy / replace / vendor / unknown, each with the basis it was compared against; security-config presence checks; optional OSV lookup |
 | `reassemble_egovframe_components` | Reassemble the common-component sources copied into a 3.x/4.x project onto v5.0.7: identifies the original tag by git blob ids (no downloads), three-way classifies every file, keeps user changes as patches plus a worklist, backs up and removes files 5.x dropped, writes the manifest (then upgrade/validate/remove work); dryRun by default, one transaction, optional compile verify |
@@ -202,7 +202,7 @@ Six sections: overview (build tool, RTE generation, parent, Java, components), m
 Since 1.0.0 the package follows [SemVer 2.0](https://semver.org/). The public API is defined as:
 
 - tool names and input parameters (name, type, required, default, allowed values, ranges);
-- the structured output of the 13 tools with an output schema;
+- the structured output of the 15 tools with an output schema;
 - CLI commands and exit codes (0/2/3/64);
 - the five `EGOVFRAME_*` environment variables;
 - the supported Node range (`>=22`).

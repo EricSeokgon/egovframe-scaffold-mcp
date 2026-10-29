@@ -13,7 +13,7 @@ const check = (name, value) => { const r = OUTPUT_SCHEMAS[name].safeParse(value)
 // ── 메타데이터 정합 ───────────────────────────────────
 const server = buildServer();
 const names = Object.keys(server._registeredTools);
-assert(names.length === 36 && names.every((nm) => TOOL_META[nm]) && Object.keys(TOOL_META).every((nm) => names.includes(nm)), "TOOL_META 와 등록 도구 35종 일치");
+assert(names.length === 36 && names.every((nm) => TOOL_META[nm]) && Object.keys(TOOL_META).every((nm) => names.includes(nm)), "TOOL_META 와 등록 도구 36종 일치");
 assert(names.every((nm) => { const t = server._registeredTools[nm]; return typeof t.title === "string" && t.title.length > 0 && t.annotations && typeof t.annotations.readOnlyHint === "boolean"; }), "모든 도구에 title·annotations");
 // v0.37: generate_egovframe_report 는 outputPath 로 새 파일을 만들 수 있어 읽기 전용 힌트를 뗐다(14 → 13)
 assert(READ_ONLY_TOOLS.length === 13 && DESTRUCTIVE_TOOLS.length === 6, `readOnly 13 · destructive 6 (got ${READ_ONLY_TOOLS.length}/${DESTRUCTIVE_TOOLS.length})`);
@@ -30,7 +30,7 @@ assert(!READ_ONLY_TOOLS.includes("check_egovframe_sbom") && !DESTRUCTIVE_TOOLS.i
 assert(!READ_ONLY_TOOLS.includes("rehearse_egovframe_migration") && !DESTRUCTIVE_TOOLS.includes("rehearse_egovframe_migration") && TOOL_META.rehearse_egovframe_migration.annotations.openWorldHint && TOOL_META.rehearse_egovframe_migration.annotations.idempotentHint, "rehearse_egovframe_migration: 비읽기(캐시 사본·빌드)·비파괴(프로젝트 불변)·멱등·openWorld");
 assert(!READ_ONLY_TOOLS.includes("prepare_egovframe_offline_bundle") && !DESTRUCTIVE_TOOLS.includes("prepare_egovframe_offline_bundle") && TOOL_META.prepare_egovframe_offline_bundle.annotations.openWorldHint, "prepare_egovframe_offline_bundle: 비읽기(새 디렉터리)·비파괴(비어 있지 않으면 거부)·openWorld");
 const en = buildServer({ lang: "en" });
-assert(names.every((nm) => en._registeredTools[nm].title !== server._registeredTools[nm].title && /^[\x20-\x7E]+$/.test(en._registeredTools[nm].title)), "영문 title 34종(ASCII, 한국어와 다름)");
+assert(names.every((nm) => en._registeredTools[nm].title !== server._registeredTools[nm].title && /^[\x20-\x7E]+$/.test(en._registeredTools[nm].title)), "영문 title 36종(ASCII, 한국어와 다름)");
 
 // ── 실제 결과 ↔ 스키마 ────────────────────────────────
 const legacy = mkdtempSync(path.join(tmpdir(), "egovschema-"));
