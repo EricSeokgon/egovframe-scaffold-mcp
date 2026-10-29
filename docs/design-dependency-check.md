@@ -119,7 +119,9 @@ generate_egovframe_sbom(projectDir, outputPath="sbom/bom.cdx.json", bomFormat="c
 - **검증 = compile, 실패하면 전부 되돌림**: 파일 트랜잭션 안에서 쓰고 compile 을 돌려, 실패하면 트랜잭션 롤백(백업 폴더도 남지 않음). 어느 조치가 깨뜨렸는지 이분 탐색하지 않습니다(단순함 우선 — `kinds` 로 나눠 다시 적용).
 - 전·후 수치는 선언 좌표 기준(버전이 없으면 parent 기준 버전). `check_egovframe_dependencies` 의 OSV 집계(버전을 확정한 선언만)와 범위가 달라 숫자가 다를 수 있습니다.
 
-**실측(2026-10-29)**: msa-common-components(parent 5.0.1, 11 모듈) — 목표 5.0.2: parent 11 · 고정 해제 5 · 상향 54 · 수동 10, 권고 47 → 3, 적용 후 `mvn compile` 통과(약 1분). 목표 5.1.0: 권고 47 → 1. 공식 web·boot-web 템플릿: parent 상향 1건 말고 0건.
+- **중복 선언도 parent 단계에서 지움**: 공식 msa 의 EgovQuestionnaire 는 commons-configuration2·commons-lang3 를 두 번 선언합니다. 로컬 Maven 3.9.11 은 경고지만 GitHub Actions 의 Maven 은 "must be unique" 로 프로젝트를 읽지 않아 compile 확인이 3초 만에 실패하고 모두 되돌려졌습니다(첫 CI 실행). `update` 의 같은 자동 항목(내용이 같은 뒤 선언 제거)을 함께 적용하고, compile 실패 결과에 로그 끝 40줄(`build.logTail`)을 남깁니다.
+
+**실측(2026-10-29)**: msa-common-components(parent 5.0.1, 11 모듈) — 목표 5.0.2: parent 13(중복 선언 2 포함) · 고정 해제 5 · 상향 54 · 수동 10, 권고 47 → 3, 적용 후 `mvn compile` 통과(약 1분). 목표 5.1.0: 권고 47 → 1. 공식 web·boot-web 템플릿: parent 상향 1건 말고 0건.
 
 **검증**: `test:deps-fix`(게이트, 가짜 OSV·저장소 목록) — 수정 버전 선택 11경우, 원문 보존(주석·들여쓰기·CRLF, 기대 텍스트와 바이트 일치), dryRun 무기록, 백업·계획 파일, 멱등, compile 실패·저장소 장애 롤백, 실패 주입, 멀티 모듈 루트 속성, Gradle, offline, kinds, MCP·CLI. `test:deps-fix-live`(CI 통합) — 위 실측을 방향(절반 이하·compile 통과·멱등)으로 단언.
 

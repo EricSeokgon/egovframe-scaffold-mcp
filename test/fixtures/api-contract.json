@@ -2303,6 +2303,9 @@
                     "type": "string"
                   }
                 },
+                "logTail": {
+                  "type": "string"
+                },
                 "ran": {
                   "type": "boolean"
                 },

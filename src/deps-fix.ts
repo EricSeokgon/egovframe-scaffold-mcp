@@ -55,7 +55,7 @@ export interface DepsFixResult {
   /** 선언 좌표 기준 전·후 취약점(offline 이면 없음). dryRun 이면 after 는 예측 */
   vulnerabilities?: { before: VulnCount; after: VulnCount; predicted: boolean; remaining: { dependency: string; version: string; ids: string[] }[] };
   osvError?: string;
-  build?: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; timedOut?: boolean; reason?: string; failureKind?: FailureKind; failureHint?: string; attempts?: number; firstErrors?: string[] };
+  build?: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; timedOut?: boolean; reason?: string; failureKind?: FailureKind; failureHint?: string; attempts?: number; firstErrors?: string[]; logTail?: string };
   /** compile 실패 등으로 적용을 되돌렸으면 true */
   rolledBack?: boolean;
   backupDir?: string;
@@ -336,8 +336,9 @@ function stepParent(texts: Map<string, string>, target: string): StepOut {
   for (const [rel, text] of texts) {
     const plan = planPomUpdate(rel, text, target);
     for (const it of plan.items) {
-      if (it.action !== "auto" || !it.edits?.length || !["parent-version", "rte-version", "parent-property"].includes(it.kind)) continue;
+      if (it.action !== "auto" || !it.edits?.length || !["parent-version", "rte-version", "parent-property", "duplicate-dependency"].includes(it.kind)) continue;
       for (const e of it.edits) addEdit(s, rel, e);
+      // 중복 선언(같은 내용)은 버전과 무관하지만 일부 Maven 이 "must be unique" 로 빌드를 거부해 compile 확인이 깨지므로 함께 지운다
       s.actions.push({ kind: "parent", file: rel, line: it.line, coordinate: it.kind === "parent-version" ? it.from.split(":").slice(0, 2).join(":") : it.from, from: it.from, to: it.to, reason: it.reason });
     }
   }
@@ -618,7 +619,7 @@ export async function fixDependencies(opts: DepsFixOptions): Promise<DepsFixResu
       if (!detectBuildToolAt(dir)) { st.build = { ran: false, success: null, errors: 0, reason: L("루트에 빌드 파일이 없어 compile 확인을 건너뜀", "No build file at the root; compile check skipped") }; return; }
       opts.progress?.report("deps-fix: compile", 4, 5);
       const b = await runBuild({ projectDir: dir, goal: "compile", timeoutMs: opts.timeoutMs ?? 600_000, runner: opts.runner, platform: opts.platform });
-      st.build = { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, errors: b.errors?.length ?? 0, timedOut: b.timedOut, ...failureSummary(b), ...(!b.success && b.errors?.length ? { firstErrors: b.errors.slice(0, 5).map((e) => `${e.file ?? ""}${e.line ? `:${e.line}` : ""} ${e.message}`.trim()) } : {}) };
+      st.build = { ran: true, success: b.success ?? null, command: b.command, durationMs: b.durationMs, errors: b.errors?.length ?? 0, timedOut: b.timedOut, ...failureSummary(b), ...(!b.success && b.logTail ? { logTail: b.logTail.split("\n").slice(-40).join("\n") } : {}), ...(!b.success && b.errors?.length ? { firstErrors: b.errors.slice(0, 5).map((e) => `${e.file ?? ""}${e.line ? `:${e.line}` : ""} ${e.message}`.trim()) } : {}) };
       if (!b.success) throw new Error("compile failed");
     });
   } catch (e) {

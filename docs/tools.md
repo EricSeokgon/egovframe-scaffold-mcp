@@ -289,7 +289,7 @@ npx -y egovframe-scaffold-mcp fix-deps --project . [--write] [--fail-on "after>0
 
 | 순서 | 종류(`kinds`) | 고치는 것 | 수동으로 두는 것 |
 |---|---|---|---|
-| 1 | `parent` | 공식 parent 5.x 를 `target` 으로(`migrate_egovframe_project` target 의 자동 항목: parent 버전·RTE 버전 속성·parent 기본값을 그대로 덮어쓴 속성) | — |
+| 1 | `parent` | 공식 parent 5.x 를 `target` 으로(`migrate_egovframe_project` target 의 자동 항목: parent 버전·RTE 버전 속성·parent 기본값을 그대로 덮어쓴 속성), 같은 `<dependencies>` 안의 내용이 같은 중복 선언 제거(일부 Maven 이 "must be unique" 로 빌드를 거부 — compile 확인을 위해) | 내용이 다른 중복 선언 |
 | 2 | `unpin` | parent(Boot parent 는 상속한 Boot BOM 포함)가 관리하는 좌표에 **그보다 낮게** 적은 `<version>` 을 지워 parent 에 맡김. 프로젝트 `dependencyManagement` 항목이면 그 항목을 지움 | 관리 버전과 major 가 다름(의도한 고정일 수 있음), `classifier`·`type` 이 있는 좌표, **parent 관리 버전에 권고가 있으면 풀지 않음**(취약 버전 상향이 고정 버전을 올림) |
 | 3 | `coordinate` | 좌표만 바뀌고 Java 패키지가 같은 교체: `mysql:mysql-connector-java` → `com.mysql:mysql-connector-j`, `ojdbc:ojdbc` → `com.oracle.database.jdbc:ojdbc11`, `xmlbeans:xbean` → `org.apache.xmlbeans:xmlbeans`(parent 가 관리하면 버전을 지우고, 아니면 기준 버전) | 패키지가 바뀌는 교체(commons-dbcp → dbcp2, Jackson 1 → 2, Log4j 1 등), parent 관리 버전으로 major 가 바뀜 |
 | 4 | `cve-bump` | OSV 에 걸린 **직접 적은 버전**(리터럴, 또는 같은 계열 좌표만 쓰는 버전 속성 — `${tomcat-embed.version}` 처럼 여러 artifact 가 쓰면 속성 하나를)을 모든 권고를 피하는 **가장 낮은 같은 major 정식 릴리스**로 | 수정 버전이 major 를 바꿈(API 변경 가능), 수정 버전이 없는 권고, 저장소에 맞는 릴리스가 없음, 다른 계열 좌표·설정이 같이 쓰는 속성, `-egov.N` 재빌드 좌표 |

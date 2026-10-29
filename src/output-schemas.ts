@@ -309,7 +309,7 @@ export const DepsFixOutput = loose({
   files: z.array(loose({ file: z.string(), items: z.number().int(), edits: z.number().int(), preview: z.array(loose({ line: z.number().int(), before: z.string(), after: z.string() })) })),
   vulnerabilities: loose({ before: VulnCount, after: VulnCount, predicted: z.boolean(), remaining: z.array(loose({ dependency: z.string(), version: z.string(), ids: z.array(z.string()) })) }).optional(),
   osvError: z.string().optional(),
-  build: loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), errors: z.number().int(), timedOut: z.boolean().optional(), reason: z.string().optional(), failureKind: z.string().optional(), failureHint: z.string().optional(), attempts: z.number().int().optional(), firstErrors: z.array(z.string()).optional() }).optional(),
+  build: loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), errors: z.number().int(), timedOut: z.boolean().optional(), reason: z.string().optional(), failureKind: z.string().optional(), failureHint: z.string().optional(), attempts: z.number().int().optional(), firstErrors: z.array(z.string()).optional(), logTail: z.string().optional() }).optional(),
   rolledBack: z.boolean().optional(),
   backupDir: z.string().optional(),
   planPath: z.string().optional(),

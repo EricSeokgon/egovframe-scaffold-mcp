@@ -34,7 +34,7 @@ try {
   const done = await m.fixDependencies({ projectDir: dir, dryRun: false, timeoutMs: 1_200_000 });
   info(`msa 적용: compile ${done.build?.success} (${done.build?.durationMs}ms${done.build?.failureKind ? `, ${done.build.failureKind}` : ""}) · 권고 ${done.vulnerabilities?.before.ids} → ${done.vulnerabilities?.after.ids}`);
   if (done.build?.failureKind === "repository-unavailable") info("원격 저장소 장애 — compile 확인을 건너뜀(되돌림 확인만)");
-  else assert(done.build?.ran && done.build.success && !done.rolledBack && done.backupDir, `msa: 적용 후 루트 mvn compile 통과${done.build?.firstErrors ? ` — ${done.build.firstErrors.join(" | ")}` : ""}`);
+  else assert(done.build?.ran && done.build.success && !done.rolledBack && done.backupDir, `msa: 적용 후 루트 mvn compile 통과${done.build?.firstErrors ? ` — ${done.build.firstErrors.join(" | ")}` : ""}${done.build?.success ? "" : `\n${done.build?.logTail ?? ""}`}`);
   if (done.rolledBack) assert(done.backupDir === undefined, "msa: 되돌렸으면 백업 폴더도 없음");
   else {
     const again = await m.fixDependencies({ projectDir: dir });
