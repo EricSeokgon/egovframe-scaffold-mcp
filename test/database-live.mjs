@@ -58,15 +58,22 @@ try {
   const run = sh(["run", "-d", "--name", name, "-e", "MYSQL_ROOT_PASSWORD=pw", "-e", "MYSQL_DATABASE=com", "-v", `${initDir}:/docker-entrypoint-initdb.d:ro`, `${registry}/${svc.image}`, ...svc.command]);
   assert(run.code === 0, `원본 스크립트 MySQL 컨테이너${run.code ? `: ${run.out}` : ""}`);
   for (let i = 0; i < 150 && !/MySQL init process done/.test(sh(["logs", name]).out); i++) await new Promise((r) => setTimeout(r, 2000));
+  // 초기화가 끝나면 서버가 한 번 재시작한다 — 접속이 되기 전에 질의하면 ERROR 2002(소켓 없음)가 나므로 접속될 때까지 기다린다
   const q = (dbn, sql) => sh(["exec", "-e", "MYSQL_PWD=pw", name, "mysql", "-uroot", "--default-character-set=utf8mb4", "-N", "-B", dbn, "-e", sql]).out.replace(/^.*Warning.*\n/gm, "").trim();
+  let ready = false;
+  for (let i = 0; i < 60 && !ready; i++) { ready = q("com", "SELECT 1") === "1"; if (!ready) await new Promise((r) => setTimeout(r, 2000)); }
+  assert(ready, "원본 스크립트 MySQL: 초기화 뒤 재시작해 접속 가능");
+  const isHex = (v) => /^[0-9A-F]+$/.test(v);
   const origHex = q("com", PROBE);
-  assert(origHex !== HEX && origHex.length > HEX.length, `#1386 재현: 원본을 Docker 초기화로 넣으면 한글 이중 인코딩 (${origHex.slice(0, 24)}… ≠ ${HEX.slice(0, 24)}…)`);
+  assert(isHex(origHex) && origHex !== HEX && origHex.length > HEX.length, `#1386 재현: 원본을 Docker 초기화로 넣으면 한글 이중 인코딩 (${origHex.slice(0, 24)}… ≠ ${HEX.slice(0, 24)}…)`);
   q("com", "CREATE DATABASE c_ours; CREATE DATABASE c_orig;");
-  sh(["exec", "-i", "-e", "MYSQL_PWD=pw", name, "mysql", "-uroot", "--default-character-set=latin1", "c_ours"], ours.join("\n"));
-  sh(["exec", "-i", "-e", "MYSQL_PWD=pw", name, "mysql", "-uroot", "--default-character-set=latin1", "c_orig"], orig.join("\n"));
+  const loadOurs = sh(["exec", "-i", "-e", "MYSQL_PWD=pw", name, "mysql", "-uroot", "--default-character-set=latin1", "c_ours"], ours.join("\n"));
+  const loadOrig = sh(["exec", "-i", "-e", "MYSQL_PWD=pw", name, "mysql", "-uroot", "--default-character-set=latin1", "c_orig"], orig.join("\n"));
+  assert(loadOurs.code === 0 && loadOrig.code === 0, `latin1 클라이언트 적재(준비본·원본) 오류 없음${loadOurs.code || loadOrig.code ? `: ${(loadOurs.out + loadOrig.out).slice(-300)}` : ""}`);
   const collation = q("c_ours", "SELECT DISTINCT TABLE_COLLATION FROM information_schema.tables WHERE table_schema='c_ours' AND table_type='BASE TABLE'");
   assert(q("c_ours", PROBE) === HEX && collation === "utf8mb4_unicode_ci", `#1387 조건(latin1 클라이언트): 준비본은 한글 그대로·정렬 규칙 ${collation}`);
-  assert(q("c_orig", PROBE) !== HEX, "#1387 조건: 원본은 latin1 클라이언트에서 한글이 깨짐");
+  const origLatin1 = q("c_orig", PROBE);
+  assert(isHex(origLatin1) && origLatin1 !== HEX, `#1387 조건: 원본은 latin1 클라이언트에서 한글이 깨짐 (${origLatin1.slice(0, 24)}…)`);
   info(`준비본 MySQL: 문자셋 교정 ${prep.charsetFixed}개 테이블`);
 
   // (5) compose
