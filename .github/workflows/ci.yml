@@ -151,6 +151,8 @@ jobs:
           ./actionlint -color generated-ci.yml
       - name: Dependency check with OSV lookup
         run: npm run test:dependencies-live
+      - name: Start official templates for real (7 templates on embedded HSQL, broken copies classified)
+        run: npm run test:startup-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)

@@ -34,6 +34,7 @@ import { checkSecureCoding, renderSecureCodingMarkdown, toSarif } from "./secure
 import { FIXABLE_RULES, fixSecureCoding, renderSecureFixMarkdown } from "./secure-fix.js";
 import { DEPS_FIX_KINDS, fixDependencies, renderDepsFixMarkdown } from "./deps-fix.js";
 import { DATABASE_TYPES, prepareDatabase, renderDatabaseMarkdown } from "./database.js";
+import { verifyStartup, renderStartupMarkdown } from "./startup.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -900,6 +901,24 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       enforceAllowedRoots(args);
       const r = await prepareDatabase({ progress: progressFromExtra(extra), projectDir: args.projectDir, database: args.database, scripts: args.scripts, includeComments: args.includeComments, offline: args.offline, dryRun: args.dryRun, run: args.run, keep: args.keep, imageRegistry: args.imageRegistry, timeoutMs: args.timeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDatabaseMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 기동 검증 (v1.11) ──────────────────────────────────
+  server.registerTool(
+    "verify_egovframe_startup",
+    { title: t("verify_egovframe_startup"), description: d("verify_egovframe_startup", "프로젝트를 바꾸지 않고 실제로 띄워 기동되는지 확인합니다 — 컴파일로 잡히지 않는 빈 생성 실패·설정 파일 경로·DB 접속·JDBC 드라이버·MyBatis 매퍼 XML 오류를 찾습니다. Spring Boot 는 mvn spring-boot:run / gradle bootRun 에 빈 포트를 --server.port 로 주고, Classic war 는 패키징한 war 를 캐시의 고정 버전 Tomcat 10.1(Servlet 6.1 이상이면 11.0, sha256 검증, 사내 미러 EGOVFRAME_MAVEN_MIRROR 우선)에 ROOT 로 두고 임시 CATALINA_BASE 로 띄웁니다(tomcatHome 으로 설치된 Tomcat 지정 가능). 로그의 기동 완료 문구 뒤 HTTP(기본 /, actuator 가 있으면 /actuator/health)로 확인해 5xx 가 아니면 기동으로 보고, 실패면 Spring 원인 사슬을 구조화합니다 — 종류(빌드 실패·원격 저장소 장애·포트 사용 중·JDBC 드라이버 없음·DB 접속 실패·매퍼 XML 오류·설정 누락·javax 네임스페이스·빈 생성 실패·HTTP 오류·시간 초과), 실제로 실패한 빈 이름, 관련 설정 자원(배포 사본 경로를 프로젝트 원본 경로로)·줄, JDBC URL·드라이버, 종류별 처방(드라이버 좌표, prepare_egovframe_database, migrate_egovframe_project 등)과 로그 끝부분. 끝나면 프로세스 트리를 끝냅니다. 화면 기능 테스트·운영 WAS(JEUS 등) 기동은 하지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장, 멀티 모듈이면 모듈 디렉터리)"),
+      path: z.string().regex(/^\/[\w\-./]*$/).optional().describe("기동 뒤 확인할 경로(기본 / — Boot 에 actuator 가 있으면 /actuator/health)"),
+      port: z.number().int().min(1024).max(65535).optional().describe("고정 포트(기본: 빈 포트)"),
+      timeoutMs: z.number().int().min(30_000).max(1_800_000).default(300_000).describe("전체 제한(ms, 첫 실행은 의존성 다운로드 포함)"),
+      tomcatHome: z.string().optional().describe("Classic war 를 띄울 설치된 Tomcat 10.1/11.0(폐쇄망 등, 기본: 캐시에 내려받음)"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.verify_egovframe_startup.shape, annotations: toolAnnotations("verify_egovframe_startup") },
+    async (args, extra) => {
+      enforceAllowedRoots(args);
+      const r = await verifyStartup({ progress: progressFromExtra(extra), projectDir: args.projectDir, path: args.path, port: args.port, timeoutMs: args.timeoutMs, tomcatHome: args.tomcatHome });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderStartupMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );

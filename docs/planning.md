@@ -42,7 +42,8 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
-- **다음 계획**: v1.11 기동 검증([다음 버전 기획](#다음-버전-기획-v19v111)). 그 뒤 유지보수 자동화(v1.12–v1.14) → 운영 전환·조직 단위(v1.15–v1.17) → 2.0 계약 정리([장기 로드맵](#장기-로드맵-2026-11--2027-v112-이후)). [다음 버전 기획](#다음-버전-기획-v16v18) 참조.
+- **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
+- **다음 계획**: v1.9–v1.11 흐름(의존성 → DB → 기동)을 마쳤습니다. v1.12–v1.14(유지보수 자동화)는 [장기 로드맵](#장기-로드맵-2026-11--2027-v112-이후)의 방향대로, 선행 조사 뒤 세 버전 기획으로 다시 씁니다.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -92,7 +93,7 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.8 완료** | CRUD 목록 페이징 | `generate_egovframe_crud(paging)`: 방언별 페이징 SQL(LIMIT/OFFSET·공통컴포넌트와 같은 ROWNUM)·`PaginationInfo`·`ui:pagination`·boot page/size, 실제 MyBatis·HSQLDB 실행 검증 |
 | **v1.9 완료** | 취약 의존성 자동 조치 | 새 도구 `fix_egovframe_dependencies`(37종): parent 상향·기준보다 낮게 고정한 버전 제거·패키지가 같은 좌표 교체·OSV `fixed` 와 저장소 배포 목록으로 같은 major 안 상향을 dryRun·transaction 으로 적용하고 compile 로 확인(실패 시 되돌림), 평가서·납품 패키지에 조치 내역 |
 | **v1.10 완료** | DB 준비·검증 | 새 도구 `prepare_egovframe_database`(38종): 조립 선별본·공통컴포넌트 전체를 문장 단위로 정리(참조 순서·중복 제거·빠진 참조 보완)하고 MySQL 문자셋 고정, 적재용 스크립트·compose·명령, Docker 로 적재해 테이블·필수 행·한글 확인 |
-| **v1.11 계획** | 기동 검증 | 새 도구 `verify_egovframe_startup`(39종): 컴파일 다음 단계 — 실제로 띄워 Spring 컨텍스트 기동 오류(빈·설정·DB)를 구조화하고 URL 을 두드림. 전환 리허설에 연결 |
+| **v1.11 완료** | 기동 검증 | 새 도구 `verify_egovframe_startup`(39종): Boot `spring-boot:run`·Classic war 를 고정 Tomcat 에 ROOT 로 띄워 완료 문구·HTTP 로 판정, 실패 원인(빈·설정·DB·드라이버·매퍼 XML 등)을 분류·처방. 템플릿 7종 실제 기동 |
 | **v1.12–v1.14** | 유지보수 자동화 | 사용자 수정 자동 재적용(3-way), 설정·비밀값 외부화, 프로젝트 구조 지도·변경 영향 — [장기 로드맵](#장기-로드맵-2026-11--2027-v112-이후) |
 | **v1.15–v1.17** | 운영 전환·조직 단위 | 운영 준비 점검, 관측(OTel) 산출물, 포트폴리오 현황 |
 | **2.0** | 계약 정리 | 폐기 제거, 도구 묶기, 기관별 규칙 팩, MCP tasks, 5.1 기본값 |
@@ -177,6 +178,13 @@ v1.8.0 까지 끝난 상태(2026-10-27, 도구 36종 + CLI 명령 13종)에서 �
 - 시간: 템플릿 기동 검증이 CI 통합에서 각 2분 이내
 
 **완료 정의**: 도구 39종, `docs/design-startup.md`(새 문서), 리허설 설계 갱신, CHANGELOG
+
+#### v1.11.0 결과 (2026-10-30)
+
+- 도구 39종·CLI 명령 16종(`startup`)·구조화 출력 18종, api-contract minor. 설계: [design-startup.md](design-startup.md), 사용법: [tools.md](tools.md#기동-검증-verify_egovframe_startup-v111).
+- 실측이 찾은 것: `create_egovframe_project(database="hsql")` 로 만든 portal-site·enterprise-business 가 뜨지 않았습니다(`Globals.Hsql.AutoInit=false` 기본 → 빈 DB). hsql 을 고르면 AutoInit 도 켜도록 고쳤습니다. batch-db-web 은 GUI 빈 때문에 화면 없는 환경에서 실패합니다(템플릿 특성, 분류·처방만).
+- 기획과 달라진 점: (1) Cargo 대신 고정 Tomcat 을 캐시에 풀어 `Bootstrap` 을 직접 실행 — Cargo 내장 다운로더가 프록시 환경에서 실패했고, 스크립트 권한·OS 차이도 피합니다. (2) `database="compose"` 와 리허설·평가서 연결은 미뤘습니다 — Classic 은 접속 정보를 파일에서만 읽어 프로젝트를 바꾸지 않고는 주입할 수 없고, 리허설 사본은 DB 없이 뜨지 않습니다(v1.12·v1.13 과 함께). (3) 원인 종류에 `db-schema`(테이블 없음)·GUI 빈을 더했습니다(실측). (4) 템플릿 7종은 카탈로그 이름(portal-site·enterprise-business)과 msa-edu 대신 mobile-web.
+- 수치: 템플릿 7종 기동 16–29초(의존성 캐시 후), 깨뜨린 사본 5종 분류 일치.
 
 ### 장기 로드맵 (2026-11 ~ 2027, v1.12 이후)
 

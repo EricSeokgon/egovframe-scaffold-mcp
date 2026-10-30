@@ -1,6 +1,6 @@
 {
-  "version": "1.10.0",
-  "base": "1.9.0",
+  "version": "1.11.0",
+  "base": "1.10.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -7657,6 +7657,257 @@
           }
         },
         "deprecated": {}
+      },
+      "verify_egovframe_startup": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^\\/[\\w\\-./]*$"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 30000,
+              "maximum": 1800000
+            },
+            "tomcatHome": {
+              "type": "string"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "buildTool",
+            "chain",
+            "command",
+            "durationMs",
+            "logTail",
+            "notes",
+            "port",
+            "projectDir",
+            "runtime",
+            "started",
+            "success",
+            "url"
+          ],
+          "properties": {
+            "build": {
+              "type": "object",
+              "required": [
+                "errors",
+                "ran",
+                "success"
+              ],
+              "properties": {
+                "command": {
+                  "type": "string"
+                },
+                "durationMs": {
+                  "type": "number"
+                },
+                "errors": {
+                  "type": "integer"
+                },
+                "failureHint": {
+                  "type": "string"
+                },
+                "failureKind": {
+                  "type": "string"
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "success": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "buildTool": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "gradle",
+                    "maven"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cause": {
+              "type": "object",
+              "required": [
+                "hint",
+                "kind",
+                "summary"
+              ],
+              "properties": {
+                "bean": {
+                  "type": "string"
+                },
+                "driver": {
+                  "type": "string"
+                },
+                "hint": {
+                  "type": "string"
+                },
+                "jdbcUrl": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "bean-creation",
+                    "build",
+                    "config-missing",
+                    "db-connection",
+                    "db-schema",
+                    "driver-missing",
+                    "http-error",
+                    "javax-namespace",
+                    "mapper-xml",
+                    "other",
+                    "port-in-use",
+                    "repository-unavailable",
+                    "timeout"
+                  ]
+                },
+                "line": {
+                  "type": "integer"
+                },
+                "resource": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                }
+              }
+            },
+            "chain": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "command": {
+              "type": "string"
+            },
+            "durationMs": {
+              "type": "number"
+            },
+            "http": {
+              "type": "object",
+              "required": [
+                "ok",
+                "status",
+                "url"
+              ],
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            },
+            "logTail": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "port": {
+              "type": "integer"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "runtime": {
+              "type": "string",
+              "enum": [
+                "boot",
+                "tomcat",
+                "unknown"
+              ]
+            },
+            "started": {
+              "type": "boolean"
+            },
+            "startedInMs": {
+              "type": "number"
+            },
+            "success": {
+              "type": "boolean"
+            },
+            "tomcat": {
+              "type": "object",
+              "required": [
+                "downloaded",
+                "home",
+                "version"
+              ],
+              "properties": {
+                "downloaded": {
+                  "type": "boolean"
+                },
+                "home": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              }
+            },
+            "url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "deprecated": {}
       }
     },
     "cli": {
@@ -7675,6 +7926,7 @@
         "sbom": "generate_egovframe_sbom",
         "sbom-check": "check_egovframe_sbom",
         "secure": "check_egovframe_secure_coding",
+        "startup": "verify_egovframe_startup",
         "validate": "validate_egovframe_project"
       },
       "exitCodes": {

@@ -144,5 +144,23 @@
       "note": "인증 없음(로컬 실행용)",
       "note_en": "No authentication (for local runs)"
     }
+  },
+  "startup": {
+    "note": "verify_egovframe_startup 이 Classic war 를 띄우는 내장 Tomcat(프로젝트를 바꾸지 않고 캐시에 풀어 CATALINA_BASE 를 따로 둠). sha256 은 Apache 배포 zip(archive.apache.org·Maven Central org.apache.tomcat:tomcat 같은 파일).",
+    "note_en": "Embedded Tomcat that verify_egovframe_startup uses to start a Classic war (unpacked into the cache with a separate CATALINA_BASE; the project is not changed). sha256 is of the Apache distribution zip (the same file on archive.apache.org and Maven Central org.apache.tomcat:tomcat).",
+    "tomcat": {
+      "10.1": {
+        "version": "10.1.61",
+        "sha256": "4fe3a757001f3f591a3036cb4a43e34038351deee6403e0eb14bc39b228c9116",
+        "maven": "org/apache/tomcat/tomcat/10.1.61/tomcat-10.1.61.zip",
+        "archive": "https://archive.apache.org/dist/tomcat/tomcat-10/v10.1.61/bin/apache-tomcat-10.1.61.zip"
+      },
+      "11.0": {
+        "version": "11.0.27",
+        "sha256": "b958a9144c7686421ffda9b1de8aaf0a883cd3c72d543195a8ff92e46e9e9171",
+        "maven": "org/apache/tomcat/tomcat/11.0.27/tomcat-11.0.27.zip",
+        "archive": "https://archive.apache.org/dist/tomcat/tomcat-11/v11.0.27/bin/apache-tomcat-11.0.27.zip"
+      }
+    }
   }
 }

@@ -344,6 +344,27 @@ export const DatabaseOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.11: verify_egovframe_startup
+export const StartupOutput = loose({
+  projectDir: z.string(),
+  runtime: z.enum(["boot", "tomcat", "unknown"]),
+  buildTool: z.enum(["maven", "gradle"]).nullable(),
+  command: z.string(),
+  port: z.number().int(),
+  url: z.string().nullable(),
+  success: z.boolean(),
+  started: z.boolean(),
+  startedInMs: z.number().optional(),
+  durationMs: z.number(),
+  http: loose({ url: z.string(), status: z.number().int().nullable(), ok: z.boolean() }).optional(),
+  cause: loose({ kind: z.enum(["build", "repository-unavailable", "port-in-use", "driver-missing", "db-connection", "db-schema", "mapper-xml", "config-missing", "javax-namespace", "bean-creation", "http-error", "timeout", "other"]), summary: z.string(), bean: z.string().optional(), resource: z.string().optional(), line: z.number().int().optional(), jdbcUrl: z.string().optional(), driver: z.string().optional(), hint: z.string() }).optional(),
+  chain: z.array(z.string()),
+  tomcat: loose({ version: z.string(), home: z.string(), downloaded: z.boolean() }).optional(),
+  build: loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), errors: z.number().int(), failureKind: z.string().optional(), failureHint: z.string().optional() }).optional(),
+  logTail: z.string(),
+  notes: z.array(z.string()),
+});
+
 // v0.44: check_egovframe_secure_coding
 const SecureSeverity = z.enum(["high", "medium", "low"]);
 export const SecureCodingOutput = loose({
@@ -417,6 +438,7 @@ export const OUTPUT_SCHEMAS = {
   fix_egovframe_secure_coding: SecureFixOutput,
   fix_egovframe_dependencies: DepsFixOutput,
   prepare_egovframe_database: DatabaseOutput,
+  verify_egovframe_startup: StartupOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,
