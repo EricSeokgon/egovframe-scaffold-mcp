@@ -11,6 +11,13 @@
 # stdout·stderr 는 마지막 시도의 것만 그대로(분리해서) 내보낸다 — 테스트가 stdout 을 파싱하는 경우가 있다.
 set -u
 real="${REAL_MVN:?REAL_MVN 에 실제 mvn 경로가 있어야 합니다}"
+# v1.11: 서버를 띄워 두는 goal(spring-boot:run 등)은 끝나지 않으므로 출력을 모아 두면 호출자가 기동 완료 문구를 영영 못 본다
+#   (verify_egovframe_startup 이 CI 에서 10분 제한까지 기다렸다). 그런 호출은 재시도 없이 실제 mvn 을 그대로 실행한다.
+for arg in "$@"; do
+  case "$arg" in
+    spring-boot:run|*:spring-boot-maven-plugin:*:run|spring-boot:start|jetty:run|tomcat*:run|cargo:run) exec "$real" "$@" ;;
+  esac
+done
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 transient='HTTP Status: 5[0-9][0-9]|status code:? 5[0-9][0-9]|status: 5[0-9][0-9]|Connection reset|Read timed out|Connect timed out|Remote host terminated the handshake'

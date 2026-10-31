@@ -18,6 +18,10 @@
   - 기동은 됐는데 health 가 503 이면 기동 뒤 로그(헬스 체크의 DB 연결)에서 다시 원인을 찾습니다.
 - **끝내기**: 판정이 나면 build-runner 의 `signal` 로 프로세스 트리를 끝냅니다(Windows taskkill /T, POSIX 프로세스 그룹). 임시 `CATALINA_BASE` 는 지웁니다.
 
+## 출력을 모아 두는 래퍼와의 상호작용
+
+기동 판정은 **실행 중인 프로세스의 출력을 흘려 받는 것**에 기대므로, `mvn` 을 감싸 출력을 파일에 모았다가 끝난 뒤 내보내는 래퍼(이 저장소 CI 의 `scripts/mvn-retry.sh` 같은 재시도 스크립트)가 PATH 앞에 있으면 Boot 의 `spring-boot:run` 은 끝나지 않아 완료 문구가 영영 오지 않습니다 — CI 첫 실행에서 Boot 템플릿 2종이 10분 제한까지 기다렸습니다(Tomcat 경로는 `package` 가 끝난 뒤 `java` 를 직접 띄우므로 영향 없음). `mvn-retry.sh` 는 서버를 띄워 두는 goal(`spring-boot:run`·`jetty:run` 등)이면 재시도 없이 실제 `mvn` 을 `exec` 합니다. 사내 CI 에 비슷한 래퍼가 있으면 같은 예외가 필요합니다.
+
 ## 기획에서 미룬 것
 
 - `database="compose"`(v1.10 의 compose DB 를 먼저 띄워 접속 정보 주입): Classic 템플릿은 접속 정보를 `globals.properties` 에서만 읽어 환경 변수로 덮을 수 없고, 파일을 바꾸면 "프로젝트를 바꾸지 않는다"가 깨집니다. 지금은 DB 접속 실패의 처방으로 `prepare_egovframe_database(run=true, keep=true)` 를 안내합니다. v1.13(설정 외부화)에서 자리표시자가 생기면 다시 다룹니다.
