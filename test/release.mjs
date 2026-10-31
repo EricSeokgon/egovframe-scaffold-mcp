@@ -96,6 +96,7 @@ assert(![...files].some((f) => /^catalog\/[^/]*-mapping\.json$/.test(f)), "tarba
 assert(!files.has("docs/planning.md") && files.has("docs/design-i18n.md"), "tarball 제외: docs/planning.md(설계 문서는 포함)");
 // v0.46: 풀린 크기 상한 2MB → 2.5MB. 0.46.0 이 2.09MB(README 0.29MB·카탈로그 0.6MB·dist)로 여유가 10KB 뿐이었다. 압축 상한(600KB)은 그대로 둔다
 // v1.3: 상한 압축 600KB → 700KB, 풀린 크기 2.5MB → 3MB. parent 버전별 의존성 기준(dependency-baseline-5.1.json, 205KB)이 더해져 1.3.0 이 압축 593KB 로 여유가 없었다
-assert(info && info.unpackedSize <= 3 * 1024 * 1024 && info.size <= 700 * 1024, `tarball 크기 상한 (압축 ${info?.size} ≤ 700KB, 풀면 ${info?.unpackedSize} ≤ 3MB)`);
+// v1.11: 상한 압축 700KB → 800KB, 풀린 크기 3MB → 3.5MB. v1.9–v1.11 의 도구 3종(의존성 조치·DB 준비·기동 검증)과 문서로 1.11.0 이 압축 약 725KB·풀면 2.9MB
+assert(info && info.unpackedSize <= 3.5 * 1024 * 1024 && info.size <= 800 * 1024, `tarball 크기 상한 (압축 ${info?.size} ≤ 800KB, 풀면 ${info?.unpackedSize} ≤ 3.5MB)`);
 
 if (process.exitCode) console.error(`release FAIL (${n} assertions)`); else console.log(`release OK (${n} assertions)`);

@@ -1,0 +1,108 @@
+[INFO] Error stacktraces are turned on.
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< egovframework.example:s-web >---------------------
+[INFO] Building s-web 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ s-web ---
+[INFO] Copying 14 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ s-web ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ s-web ---
+[INFO] skip non existing resourceDirectory /work/project/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ s-web ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ s-web ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- war:3.4.0:war (default-war) @ s-web ---
+[INFO] Packaging webapp
+[INFO] Assembling webapp [s-web] in [/work/project/target/s-web-1.0.0]
+[INFO] Processing war project
+[INFO] Copying webapp resources [/work/project/src/main/webapp]
+[INFO] Building war: /work/project/target/s-web-1.0.0.war
+[INFO] 
+[INFO] --- javadoc:3.11.2:jar (attach-sources) @ s-web ---
+[INFO] Skipping javadoc generation, everything is up to date.
+[INFO] Building jar: /work/project/target/s-web-1.0.0-javadoc.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.598 s
+[INFO] Finished at: 2026-10-30T09:06:01+09:00
+[INFO] ------------------------------------------------------------------------
+30-Oct-2026 09:06:01.426 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version name:   Apache Tomcat/10.1.61
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Oct 6 2026 22:56:25 UTC
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version number: 10.1.61.0
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Name:               Linux
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Version:            6.18.44-fc-v185
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Architecture:          amd64
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Java Home:             /usr/lib/jvm/java-21-openjdk-amd64
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Version:           21.0.12.1+1-1-24.04.4-Ubuntu
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Vendor:            Ubuntu
+30-Oct-2026 09:06:01.430 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_BASE:         /work/egov-startup
+30-Oct-2026 09:06:01.431 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_HOME:         /root/.cache/egovframe-scaffold-mcp/tomcat/apache-tomcat-10.1.61
+30-Oct-2026 09:06:01.442 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts
+30-Oct-2026 09:06:01.442 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djavax.net.ssl.trustStoreType=JKS
+30-Oct-2026 09:06:01.443 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dhttps.proxyHost=127.0.0.1
+30-Oct-2026 09:06:01.443 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dhttps.proxyPort=0
+30-Oct-2026 09:06:01.443 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local
+30-Oct-2026 09:06:01.443 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.http.auth.tunneling.disabledSchemes=
+30-Oct-2026 09:06:01.443 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.http.auth.proxying.disabledSchemes=
+30-Oct-2026 09:06:01.443 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.home=/root/.cache/egovframe-scaffold-mcp/tomcat/apache-tomcat-10.1.61
+30-Oct-2026 09:06:01.444 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.base=/work/egov-startup
+30-Oct-2026 09:06:01.444 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.io.tmpdir=/work/egov-startup/temp
+30-Oct-2026 09:06:01.444 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+30-Oct-2026 09:06:01.444 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.config.file=/work/egov-startup/conf/logging.properties
+30-Oct-2026 09:06:01.447 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent The Apache Tomcat Native library which allows using OpenSSL was not found on the java.library.path: [/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib]
+30-Oct-2026 09:06:01.787 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-127.0.0.1-42929"]
+30-Oct-2026 09:06:01.807 INFO [main] org.apache.catalina.startup.Catalina.load Server initialization in [529] milliseconds
+30-Oct-2026 09:06:01.853 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service [Catalina]
+30-Oct-2026 09:06:01.853 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet engine: [Apache Tomcat/10.1.61]
+30-Oct-2026 09:06:01.875 INFO [main] org.apache.catalina.startup.HostConfig.deployWAR Deploying web application archive [/work/egov-startup/webapps/ROOT.war]
+30-Oct-2026 09:06:03.884 INFO [main] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+2026-10-30 09:06:04,257  INFO [org.springframework.web.context.ContextLoader] Root WebApplicationContext: initialization started
+2026-10-30 09:06:04,823  WARN [org.springframework.context.annotation.AnnotationBeanNameGenerator] Support for convention-based @Component names is deprecated and will be removed in a future version of the framework. Please annotate the 'value' attribute in @org.egovframe.rte.psl.dataaccess.mapper.EgovMapper with @AliasFor(annotation=Component.class) to declare an explicit alias for @Component's 'value' attribute.
+2026-10-30 09:06:05,041 DEBUG [org.egovframe.rte.fdl.cmmn.aspect.ExceptionTransfer] count of ExceptionHandlerServices = 2
+2026-10-30 09:06:05,113  INFO [org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseFactory] Starting embedded database: url='jdbc:hsqldb:mem:dataSource', username='sa'
+2026-10-30 09:06:05,471  WARN [org.springframework.web.context.support.XmlWebApplicationContext] Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sampleService': Injection of resource dependencies failed
+2026-10-30 09:06:05,472  INFO [org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseFactory] Shutting down embedded database: url='jdbc:hsqldb:mem:dataSource'
+2026-10-30 09:06:05,479 ERROR [org.springframework.web.context.ContextLoader] Context initialization failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sampleService': Injection of resource dependencies failed
+	at org.springframework.context.annotation.CommonAnnotationBeanPostProcessor.postProcessProperties(CommonAnnotationBeanPostProcessor.java:372)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606)
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sampleMapper' defined in file [/work/egov-startup/webapps/ROOT/WEB-INF/classes/egovframework/example/sample/service/impl/SampleMapper.class]: Cannot resolve reference to bean 'sqlSession' while setting bean property 'sqlSessionFactory'
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:377)
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1725)
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sqlSession' defined in file [/work/egov-startup/webapps/ROOT/WEB-INF/classes/egovframework/spring/context-mapper.xml]: Failed to parse mapping resource: 'file [/work/egov-startup/webapps/ROOT/WEB-INF/classes/egovframework/sqlmap/example/mappers/EgovSample_Sample_SQL.xml]'
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1826)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+Caused by: java.io.IOException: Failed to parse mapping resource: 'file [/work/egov-startup/webapps/ROOT/WEB-INF/classes/egovframework/sqlmap/example/mappers/EgovSample_Sample_SQL.xml]'
+	at org.mybatis.spring.SqlSessionFactoryBean.buildSqlSessionFactory(SqlSessionFactoryBean.java:695)
+	at org.mybatis.spring.SqlSessionFactoryBean.afterPropertiesSet(SqlSessionFactoryBean.java:572)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1873)
+Caused by: org.apache.ibatis.builder.BuilderException: Error creating document instance.  Cause: org.xml.sax.SAXParseException; lineNumber: 54; columnNumber: 10; The end-tag for element type "select" must end with a '>' delimiter.
+	at org.apache.ibatis.parsing.XPathParser.createDocument(XPathParser.java:262)
+	at org.apache.ibatis.parsing.XPathParser.<init>(XPathParser.java:127)
+	at org.apache.ibatis.builder.xml.XMLMapperBuilder.<init>(XMLMapperBuilder.java:83)
+Caused by: org.xml.sax.SAXParseException: The end-tag for element type "select" must end with a '>' delimiter.
+	at java.xml/com.sun.org.apache.xerces.internal.util.ErrorHandlerWrapper.createSAXParseException(ErrorHandlerWrapper.java:204)
+	at java.xml/com.sun.org.apache.xerces.internal.util.ErrorHandlerWrapper.fatalError(ErrorHandlerWrapper.java:178)
+	at java.xml/com.sun.org.apache.xerces.internal.impl.XMLErrorReporter.reportError(XMLErrorReporter.java:400)
+30-Oct-2026 09:06:05.482 SEVERE [main] org.apache.catalina.core.StandardContext.startInternal One or more listeners failed to start. Full details will be found in the appropriate container log file
+30-Oct-2026 09:06:05.489 SEVERE [main] org.apache.catalina.core.StandardContext.startInternal Context [] startup failed due to previous errors
+30-Oct-2026 09:06:05.496 WARNING [main] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesJdbc The web application [ROOT] registered the JDBC driver [org.hsqldb.jdbc.JDBCDriver] but failed to unregister it when the web application was stopped. To prevent a memory leak, the JDBC Driver has been forcibly unregistered.
+30-Oct-2026 09:06:05.497 WARNING [main] org.apache.catalina.loader.WebappClassLoaderBase.checkThreadLocalsForLeaks You need to add "--add-opens=java.base/java.lang=ALL-UNNAMED" to the JVM command line arguments to enable ThreadLocal memory leak detection. Alternatively, you can suppress this warning by disabling ThreadLocal memory leak detection.
+30-Oct-2026 09:06:05.498 WARNING [main] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesRmiTargets You need to add "--add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED" to the JVM command line arguments to enable RMI Target memory leak detection. Alternatively, you can suppress this warning by disabling RMI Target memory leak detection.
+30-Oct-2026 09:06:05.503 INFO [main] org.apache.catalina.startup.HostConfig.deployWAR Deployment of web application archive [/work/egov-startup/webapps/ROOT.war] has finished in [3,628] ms
+30-Oct-2026 09:06:05.506 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-127.0.0.1-42929"]
+30-Oct-2026 09:06:05.517 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [3708] milliseconds

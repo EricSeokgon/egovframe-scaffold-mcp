@@ -24,6 +24,8 @@ export interface DeployRules {
   unsupported: { id: string; reason: string; reason_en?: string }[];
   /** v0.47: 멀티 모듈 작업공간이 localhost 로 참조하는 메시지 브로커·캐시 */
   infra?: Record<string, { image: string; port: number; healthcheck: string; user?: string; env?: { user: string; password: string }; note: string }>;
+  /** v1.10: verify_egovframe_startup 이 Classic war 를 띄우는 Tomcat(버전·sha256·내려받을 곳) */
+  startup?: { note: string; tomcat: Record<"10.1" | "11.0", { version: string; sha256: string; maven: string; archive: string }> };
 }
 const RULES_URL = new URL("../catalog/deploy-rules.json", import.meta.url);
 let cached: DeployRules | null = null;

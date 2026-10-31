@@ -94,6 +94,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => { const r = rec(s.run); return { tables: num(s.tables), statements: num(rec(s.statements).schema) + num(rec(s.statements).data), supplemented: Array.isArray(s.supplemented) ? s.supplemented.length : 0, failed: s.run && r.ran && r.ok === false ? 1 : 0, errors: Array.isArray(r.errors) ? r.errors.length : 0 }; },
     line: (s) => { const r = s.run ? rec(s.run) : null; return L(`DB ${s.database} ${s.dryRun ? "준비 계획" : "준비"} — 테이블 ${num(s.tables)} · 문장 ${num(rec(s.statements).schema) + num(rec(s.statements).data)}${r ? ` · 적재 ${r.ran ? (r.ok ? "통과" : "실패") : "건너뜀"}` : ""}`, `DB ${s.database} ${s.dryRun ? "preparation plan" : "prepared"} — tables ${num(s.tables)} · statements ${num(rec(s.statements).schema) + num(rec(s.statements).data)}${r ? ` · load ${r.ran ? (r.ok ? "passed" : "failed") : "skipped"}` : ""}`); },
   },
+  startup: {
+    tool: "verify_egovframe_startup", summary: "기동 검증(실제로 띄워 원인 분류, 프로젝트 불변)", summaryEn: "Startup check (starts the app and classifies the cause; project unchanged)",
+    metrics: (s) => ({ failed: s.success === false ? 1 : 0, started: s.started === true ? 1 : 0, seconds: Math.round(num(s.durationMs) / 1000) }),
+    line: (s) => { const c = s.cause ? rec(s.cause) : null; return L(`기동 ${s.success ? "성공" : "실패"}${c ? ` — ${c.kind}: ${String(c.summary ?? "").slice(0, 120)}` : ""} · ${Math.round(num(s.durationMs) / 1000)}초`, `Startup ${s.success ? "succeeded" : "failed"}${c ? ` — ${c.kind}: ${String(c.summary ?? "").slice(0, 120)}` : ""} · ${Math.round(num(s.durationMs) / 1000)}s`); },
+  },
   rehearse: {
     tool: "rehearse_egovframe_migration", summary: "전환 리허설(사본에서 재조립·적용·컴파일, 원본 불변)", summaryEn: "Migration rehearsal (reassemble, apply, compile on a copy; original untouched)",
     metrics: (s) => {

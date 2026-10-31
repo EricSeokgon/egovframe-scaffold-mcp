@@ -27,7 +27,7 @@ for (const [bad, re] of [["nope", /알 수 없는 지표/], ["supplyChain", /등
   let msg = ""; try { parseFailOn(bad, ["supplyChain", "manual"], ["supplyChain"]); } catch (e) { msg = e.message; }
   assert(re.test(msg), `parseFailOn 거부: ${bad}`);
 }
-assert(Object.keys(CLI_COMMANDS).join(",") === "assess,check,sbom,sbom-check,secure,fix,fix-deps,db,rehearse,bundle,deliver,migrate,validate,diagnose,network" && cliUsage().includes("종료 코드: 0 통과 · 2 --fail-on 기준 초과 · 3 실행 실패 · 64 사용법 오류") && cliUsage().includes("sbom-check SBOM 점검"), "명령 15종(v1.10 db·v1.9 fix-deps·v0.40 sbom-check·v0.41 rehearse·v0.42 bundle·v0.44 secure·v1.1 deliver)·사용법");
+assert(Object.keys(CLI_COMMANDS).join(",") === "assess,check,sbom,sbom-check,secure,fix,fix-deps,db,startup,rehearse,bundle,deliver,migrate,validate,diagnose,network" && cliUsage().includes("종료 코드: 0 통과 · 2 --fail-on 기준 초과 · 3 실행 실패 · 64 사용법 오류") && cliUsage().includes("sbom-check SBOM 점검"), "명령 16종(v1.11 startup·v1.10 db·v1.9 fix-deps·v0.40 sbom-check·v0.41 rehearse·v0.42 bundle·v0.44 secure·v1.1 deliver)·사용법");
 
 // ── runCli (같은 프로세스) ────────────────────────────────
 const proj = mkdtempSync(path.join(tmpdir(), "egovcli-"));

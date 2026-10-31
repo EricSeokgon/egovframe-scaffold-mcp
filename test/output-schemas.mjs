@@ -13,7 +13,7 @@ const check = (name, value) => { const r = OUTPUT_SCHEMAS[name].safeParse(value)
 // ── 메타데이터 정합 ───────────────────────────────────
 const server = buildServer();
 const names = Object.keys(server._registeredTools);
-assert(names.length === 38 && names.every((nm) => TOOL_META[nm]) && Object.keys(TOOL_META).every((nm) => names.includes(nm)), "TOOL_META 와 등록 도구 38종 일치");
+assert(names.length === 39 && names.every((nm) => TOOL_META[nm]) && Object.keys(TOOL_META).every((nm) => names.includes(nm)), "TOOL_META 와 등록 도구 39종 일치");
 assert(names.every((nm) => { const t = server._registeredTools[nm]; return typeof t.title === "string" && t.title.length > 0 && t.annotations && typeof t.annotations.readOnlyHint === "boolean"; }), "모든 도구에 title·annotations");
 // v0.37: generate_egovframe_report 는 outputPath 로 새 파일을 만들 수 있어 읽기 전용 힌트를 뗐다(14 → 13)
 assert(READ_ONLY_TOOLS.length === 13 && DESTRUCTIVE_TOOLS.length === 7, `readOnly 13 · destructive 7 (got ${READ_ONLY_TOOLS.length}/${DESTRUCTIVE_TOOLS.length})`);
@@ -23,14 +23,14 @@ for (const nm of ["list_egovframe_templates", "diagnose_egovframe_project", "val
 assert(!READ_ONLY_TOOLS.includes("generate_egovframe_report") && TOOL_META.generate_egovframe_report.annotations.destructiveHint === false && TOOL_META.generate_egovframe_report.annotations.openWorldHint === true, "generate_egovframe_report: 비읽기(outputPath)·비파괴(새 파일만)·openWorld(resolve·OSV)");
 for (const nm of ["create_egovframe_project", "add_egovframe_components", "get_egovframe_guide", "diagnose_egovframe_network", "build_egovframe_project"]) assert(TOOL_META[nm].annotations.openWorldHint, `openWorldHint: ${nm}`);
 for (const nm of ["generate_egovframe_config", "generate_egovframe_crud", "list_egovframe_components", "remove_egovframe_components"]) assert(!TOOL_META[nm].annotations.openWorldHint, `오프라인 도구는 openWorldHint 아님: ${nm}`);
-assert(Object.keys(OUTPUT_SCHEMAS).length === 17 && Object.keys(OUTPUT_SCHEMAS).every((nm) => server._registeredTools[nm].outputSchema), "구조화 출력 17종이 등록에 outputSchema 로 반영");
-assert(names.filter((nm) => server._registeredTools[nm].outputSchema).length === 17, "outputSchema 는 17종에만");
+assert(Object.keys(OUTPUT_SCHEMAS).length === 18 && Object.keys(OUTPUT_SCHEMAS).every((nm) => server._registeredTools[nm].outputSchema), "구조화 출력 18종이 등록에 outputSchema 로 반영");
+assert(names.filter((nm) => server._registeredTools[nm].outputSchema).length === 18, "outputSchema 는 18종에만");
 assert(TOOL_META.generate_egovframe_sbom.annotations.readOnlyHint === false && TOOL_META.generate_egovframe_sbom.annotations.destructiveHint === false && TOOL_META.generate_egovframe_sbom.annotations.openWorldHint === true, "generate_egovframe_sbom: 비읽기·비파괴·openWorld");
 assert(!READ_ONLY_TOOLS.includes("check_egovframe_sbom") && !DESTRUCTIVE_TOOLS.includes("check_egovframe_sbom") && TOOL_META.check_egovframe_sbom.annotations.openWorldHint === true, "check_egovframe_sbom: 비읽기(vex 파일)·비파괴(판단 보존)·openWorld(OSV)");
 assert(!READ_ONLY_TOOLS.includes("rehearse_egovframe_migration") && !DESTRUCTIVE_TOOLS.includes("rehearse_egovframe_migration") && TOOL_META.rehearse_egovframe_migration.annotations.openWorldHint && TOOL_META.rehearse_egovframe_migration.annotations.idempotentHint, "rehearse_egovframe_migration: 비읽기(캐시 사본·빌드)·비파괴(프로젝트 불변)·멱등·openWorld");
 assert(!READ_ONLY_TOOLS.includes("prepare_egovframe_offline_bundle") && !DESTRUCTIVE_TOOLS.includes("prepare_egovframe_offline_bundle") && TOOL_META.prepare_egovframe_offline_bundle.annotations.openWorldHint, "prepare_egovframe_offline_bundle: 비읽기(새 디렉터리)·비파괴(비어 있지 않으면 거부)·openWorld");
 const en = buildServer({ lang: "en" });
-assert(names.every((nm) => en._registeredTools[nm].title !== server._registeredTools[nm].title && /^[\x20-\x7E]+$/.test(en._registeredTools[nm].title)), "영문 title 38종(ASCII, 한국어와 다름)");
+assert(names.every((nm) => en._registeredTools[nm].title !== server._registeredTools[nm].title && /^[\x20-\x7E]+$/.test(en._registeredTools[nm].title)), "영문 title 39종(ASCII, 한국어와 다름)");
 
 // ── 실제 결과 ↔ 스키마 ────────────────────────────────
 const legacy = mkdtempSync(path.join(tmpdir(), "egovschema-"));

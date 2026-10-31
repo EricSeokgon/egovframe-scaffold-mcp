@@ -52,6 +52,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   check_egovframe_secure_coding: { title: { ko: "보안약점 점검 (개발보안 가이드)", en: "Check secure coding weaknesses" }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
   // v1.7: 프로젝트 소스를 고친다(dryRun 기본, 백업·트랜잭션)
   fix_egovframe_secure_coding: { title: { ko: "보안약점 자동 조치", en: "Fix secure coding weaknesses" }, annotations: destructive() },
+  verify_egovframe_startup: { title: { ko: "기동 검증", en: "Verify startup" }, annotations: create(true) },
   prepare_egovframe_database: { title: { ko: "DB 준비·적재 확인", en: "Prepare and check the database" }, annotations: create(true) },
   fix_egovframe_dependencies: { title: { ko: "취약 의존성 자동 조치", en: "Fix vulnerable dependencies" }, annotations: destructive(true) },
   check_egovframe_sbom: { title: { ko: "SBOM 점검 (최소 요소·비교·VEX)", en: "Check SBOM (minimum elements, diff, VEX)" }, annotations: create(true) },

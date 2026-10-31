@@ -496,12 +496,19 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
       fs.writeFileSync(pomPath, pom);
     }
 
+    // v1.11: HSQL 인메모리로 바꾸면 스키마·기초데이터 자동 적재(Globals.Hsql.AutoInit)도 켠다 — 포털·업무 템플릿은 false 가 기본이라
+    //        DbType 만 hsql 로 바꾸면 빈 DB 로 떠서 보안 설정(LETTNROLES_HIERARCHY 조회)에서 기동이 실패한다(verify_egovframe_startup 실측)
+    const applyDbType = (props: string, sep: string): string => {
+      let out = props.replace(sep === "=" ? /^Globals\.DbType=.*$/m : /^Globals\.DbType\s*=.*$/m, sep === "=" ? `Globals.DbType=${opts.database}` : `Globals.DbType = ${opts.database}`);
+      if (opts.database === "hsql" && /^Globals\.Hsql\.AutoInit\s*=\s*false\s*$/m.test(out)) { out = out.replace(/^(Globals\.Hsql\.AutoInit\s*=\s*)false\s*$/m, "$1true"); customized.push("Globals.Hsql.AutoInit=true (HSQL 인메모리 스키마·기초데이터 자동 적재)"); }
+      return out;
+    };
     // 5) application.properties: DB 타입 적용
     const appProps = path.join(stagingPath, "src/main/resources/application.properties");
     if (!tpl.multiProject && fs.existsSync(appProps)) {
       let props = fs.readFileSync(appProps, "utf-8");
       if (/^Globals\.DbType=.*$/m.test(props)) {
-        props = props.replace(/^Globals\.DbType=.*$/m, `Globals.DbType=${opts.database}`);
+        props = applyDbType(props, "=");
         fs.writeFileSync(appProps, props);
         customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database})`);
       }
@@ -512,7 +519,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     if (!tpl.multiProject && fs.existsSync(globalsProps)) {
       let props = fs.readFileSync(globalsProps, "utf-8");
       if (/^Globals\.DbType\s*=.*$/m.test(props)) {
-        props = props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`);
+        props = applyDbType(props, " = ");
         fs.writeFileSync(globalsProps, props);
         customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database})`);
       }
@@ -528,7 +535,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
         if (!target.startsWith(stagingPath + path.sep) || !fs.existsSync(target)) continue;
         const props = fs.readFileSync(target, "utf-8");
         if (!/^Globals\.DbType\s*=.*$/m.test(props)) continue;
-        fs.writeFileSync(target, props.replace(/^Globals\.DbType\s*=.*$/m, `Globals.DbType = ${opts.database}`));
+        fs.writeFileSync(target, applyDbType(props, " = "));
         customized.push(`${r} (Globals.DbType=${opts.database})`);
       }
     }

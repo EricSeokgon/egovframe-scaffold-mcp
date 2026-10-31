@@ -1,0 +1,105 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------< egovframework.example:s-simple-backend >---------------
+[INFO] Building s-simple-backend 5.0.2
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.6:run (default-cli) > test-compile @ s-simple-backend >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ s-simple-backend ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 67 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ s-simple-backend ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ s-simple-backend ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ s-simple-backend ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.5.6:run (default-cli) < test-compile @ s-simple-backend <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.6:run (default-cli) @ s-simple-backend ---
+[INFO] Attaching agents: []
+[INFO ] 2026-10-30 09:04:31.488 [,] : hibernate.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.3.Final
+[INFO ] 2026-10-30 09:04:31.520 [,] : egovframework.EgovBootApplication - Starting EgovBootApplication using Java 21.0.12.1 with PID 1950 (/work/project/target/classes started by root in /work/project)
+[INFO ] 2026-10-30 09:04:31.525 [,] : egovframework.EgovBootApplication - The following 1 profile is active: "dev"
+[INFO ] 2026-10-30 09:04:31.594 [,] : springframework.boot.devtools.env.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+[INFO ] 2026-10-30 09:04:31.594 [,] : springframework.boot.devtools.env.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+[WARN ] 2026-10-30 09:04:33.060 [,] : org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'egovConfigAppDatasource' of type [egovframework.com.config.EgovConfigAppDatasource$$SpringCGLIB$$0] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [healthEndpointGroupsBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+[WARN ] 2026-10-30 09:04:33.073 [,] : org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'dataSource' of type [com.zaxxer.hikari.HikariDataSource] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [healthEndpointGroupsBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+[WARN ] 2026-10-30 09:04:33.088 [,] : org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'egovConfigAppTransaction' of type [egovframework.com.config.EgovConfigAppTransaction$$SpringCGLIB$$0] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [healthEndpointGroupsBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+[WARN ] 2026-10-30 09:04:33.093 [,] : org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'txManager' of type [org.springframework.jdbc.datasource.DataSourceTransactionManager] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [healthEndpointGroupsBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+[WARN ] 2026-10-30 09:04:33.106 [,] : org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'txAdvice' of type [org.springframework.transaction.interceptor.TransactionInterceptor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [healthEndpointGroupsBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+[WARN ] 2026-10-30 09:04:33.107 [,] : org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'txAdvisor' of type [org.springframework.aop.support.DefaultPointcutAdvisor] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [healthEndpointGroupsBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+[INFO ] 2026-10-30 09:04:33.431 [,] : boot.web.embedded.tomcat.TomcatWebServer - Tomcat initialized with port 40925 (http)
+Oct 30, 2026 9:04:33 AM org.apache.coyote.AbstractProtocol init
+INFO: Initializing ProtocolHandler ["http-nio-40925"]
+Oct 30, 2026 9:04:33 AM org.apache.catalina.core.StandardService startInternal
+INFO: Starting service [Tomcat]
+Oct 30, 2026 9:04:33 AM org.apache.catalina.core.StandardEngine startInternal
+INFO: Starting Servlet engine: [Apache Tomcat/10.1.59]
+Oct 30, 2026 9:04:33 AM org.apache.jasper.servlet.TldScanner scanJars
+INFO: At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+Oct 30, 2026 9:04:33 AM org.apache.catalina.core.ApplicationContext log
+INFO: Initializing Spring embedded WebApplicationContext
+[INFO ] 2026-10-30 09:04:33.578 [,] : boot.web.servlet.context.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1982 ms
+[WARN ] 2026-10-30 09:04:34.051 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.094 [,] : egovframework.com.jwt.EgovJwtTokenUtil - [SECURITY] Default JWT secret placeholder detected. Set EGOV_JWT_SECRET env var before production deployment.
+[WARN ] 2026-10-30 09:04:34.190 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.201 [,] : egovframework.com.cmm.web.EgovFileDownloadController - [SECURITY] Globals.crypto.algoritm is null or shorter than 16 characters. Set EGOV_CRYPTO_KEY env var before production deployment.
+[WARN ] 2026-10-30 09:04:34.208 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.223 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.309 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.328 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.334 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.341 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.350 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.366 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.384 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[WARN ] 2026-10-30 09:04:34.394 [,] : org.springframework.aop.framework.CglibAopProxy - Unable to proxy interface-implementing method [public final void org.springframework.dao.support.DaoSupport.afterPropertiesSet() throws java.lang.IllegalArgumentException,org.springframework.beans.factory.BeanInitializationException] because it is marked as final, consider using interface-based JDK proxies instead.
+[INFO ] 2026-10-30 09:04:34.637 [,] : boot.autoconfigure.web.servlet.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+[INFO ] 2026-10-30 09:04:34.890 [,] : boot.actuate.endpoint.web.EndpointLinksResolver - Exposing 1 endpoint beneath base path '/actuator'
+[WARN ] 2026-10-30 09:04:34.937 [,] : boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: a676f291-1f89-43db-9144-6e9783d3c20b
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+[INFO ] 2026-10-30 09:04:34.944 [,] : config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+[INFO ] 2026-10-30 09:04:35.487 [,] : springframework.boot.devtools.autoconfigure.OptionalLiveReloadServer - LiveReload server is running on port 35729
+Oct 30, 2026 9:04:35 AM org.apache.coyote.AbstractProtocol start
+INFO: Starting ProtocolHandler ["http-nio-40925"]
+[INFO ] 2026-10-30 09:04:35.547 [,] : boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 40925 (http) with context path '/'
+[INFO ] 2026-10-30 09:04:35.561 [,] : egovframework.EgovBootApplication - Started EgovBootApplication in 4.418 seconds (process running for 4.946)
+Oct 30, 2026 9:04:35 AM org.apache.catalina.core.ApplicationContext log
+INFO: Initializing Spring DispatcherServlet 'dispatcherServlet'
+[INFO ] 2026-10-30 09:04:35.753 [,] : org.springframework.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+[INFO ] 2026-10-30 09:04:35.755 [,] : org.springframework.web.servlet.DispatcherServlet - Completed initialization in 2 ms
+[INFO ] 2026-10-30 09:04:35.836 [bce3142d1c96eb64e8136cc8f3d79c9f,f83dc6bae4ab6067] : com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+[WARN ] 2026-10-30 09:04:36.918 [bce3142d1c96eb64e8136cc8f3d79c9f,f83dc6bae4ab6067] : springframework.boot.actuate.jdbc.DataSourceHealthIndicator - DataSource health check failed
+org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection
+	at org.springframework.jdbc.datasource.DataSourceUtils.getConnection(DataSourceUtils.java:84)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:342)
+	at org.springframework.boot.actuate.jdbc.DataSourceHealthIndicator.getProduct(DataSourceHealthIndicator.java:122)
+Caused by: com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+
+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55)
+	at com.mysql.cj.jdbc.ConnectionImpl.createNewIO(ConnectionImpl.java:839)
+Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+Caused by: java.net.ConnectException: Connection refused
+	at java.base/sun.nio.ch.Net.pollConnect(Native Method)
+	at java.base/sun.nio.ch.Net.pollConnectNow(Net.java:694)
+	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542)

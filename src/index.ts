@@ -162,6 +162,8 @@ export type { DepsFixKind, DepsFixOptions, DepsFixResult, DepsFixAction, DepsFix
 export { queryOsvIndexDetails, bundleOsvDetails } from "./offline-bundle.js";
 export { readFixHistory } from "./fix-history.js";
 export { DATABASE_TYPES, CONTAINER_DBS, MYSQL_CHARSET, DB_OUTPUT_DIR, normalizeDbType, splitSql, classifyStatement, orderByReferences, buildScripts, parseInsert, hangulProbe, missingReferences, supplementFrom, renderDbCompose, loadCommands, prepareDatabase, databaseReadiness, renderDatabaseMarkdown, defaultDocker } from "./database.js";
+export { analyzeStartupLog, normalizeResource, ensureTomcat, prepareCatalinaBase, freePort, verifyStartup, renderStartupMarkdown, startupKindLabel } from "./startup.js";
+export type { StartupFailureKind, StartupCause, StartupLogAnalysis, StartupOptions, StartupResult, HttpProbe, Download } from "./startup.js";
 export type { DbType, SqlStatement, PreparedScripts, DbSourceFile, DbConnection, DockerExec, DbRunResult, PrepareDatabaseOptions, PrepareDatabaseResult } from "./database.js";
 export type { FixHistoryEntry } from "./fix-history.js";
 export { analyzeJavaFlows, findMethods, blankJavaLiterals } from "./java-flow.js";

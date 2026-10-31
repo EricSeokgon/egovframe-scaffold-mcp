@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 38종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 39종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -40,6 +40,7 @@
 | `check_egovframe_secure_coding` | **보안약점 점검** — 행안부·KISA 개발보안 가이드(2021) 구현단계 보안약점 중 정적 패턴 14개 항목(규칙 20종: SQL 삽입·XSS·경로 조작·URL 자동접속·OS 명령·XXE·약한 암호·난수·하드코드 정보·쿠키·오류 노출·빈 catch·역직렬화·디버그 코드)을 파일·라인·CWE·등급·조치·출처(공통컴포넌트 원본/수정본/매니페스트 없음·프로젝트·테스트)로. 예외 파일(사유·검토자), `baselinePath` 비교(새 항목), SARIF 2.1.0(`format=sarif`·`sarifPath`). 진단 보조이며 공인 진단을 대체하지 않음 |
 | `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
+| `verify_egovframe_startup` | **기동 검증**(v1.11) — 프로젝트를 바꾸지 않고 실제로 띄움: Boot 는 `spring-boot:run`·`bootRun`(빈 포트), Classic war 는 캐시의 고정 Tomcat 10.1/11.0(sha256 검증, `tomcatHome`)에 ROOT 로. 완료 문구 + HTTP(5xx 아님)로 판정, 실패면 원인 종류(포트·드라이버·DB 접속·테이블 없음·매퍼 XML 파일·줄·설정 누락·javax·실제로 실패한 빈과 정의 파일·GUI 빈·시간 초과·빌드)와 처방. [자세히](#기동-검증-verify_egovframe_startup-v111) |
 | `prepare_egovframe_database` | **DB 준비·적재 확인**(v1.10) — 조립 선별본·공통컴포넌트 전체·지정 스크립트를 문장 단위로 나눠 외래키·뷰 순서로 정렬하고 중복을 지우며, 선별본이 빠뜨린 참조 테이블을 통합 스크립트에서 보완. MySQL·MariaDB 는 테이블 문자셋 `utf8mb4_unicode_ci`·`SET NAMES utf8mb4`(upstream #1386·#1387). `scripts/egovframe-db/<db>/01-schema.sql·02-data.sql`·`docker-compose.db.yml`·적재 명령, `run=true` 면 Docker 로 적재해 테이블 수·필수 행·한글 왕복 확인. [자세히](#db-준비적재-확인-prepare_egovframe_database-v110) |
 | `generate_egovframe_deploy` | **컨테이너·배포 산출물** — Dockerfile(멀티 스테이지·Classic war → Tomcat 10.1(Servlet 6.1+ 는 11.0) ROOT, Boot jar → Temurin JRE, 비루트·HEALTHCHECK, `buildInImage=false` 면 미리 빌드한 산출물)·`.dockerignore`·`deploy/docker-compose.yml`(DbType 별 DB 컨테이너·초기화 SQL)·`deploy/k8s/<app>.yaml`(Deployment·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 환경 변수·Classic 설정 파일 덮어쓰기, `imageRegistry`(폐쇄망), `dockerfilePath`(템플릿 자체 Dockerfile 과 공존). 새 파일만, `dryRun` 기본 |
 | `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
@@ -224,6 +225,24 @@ check_egovframe_sbom(projectDir, baselinePath="sbom/bom-2026Q3.cdx.json", offlin
 규칙은 `catalog/sbom-rules.json` 데이터입니다(출처: NTIA 최소 요소 2021, SW 공급망 보안 가이드라인 1.0) — 국내 지침이 요소를 더하면 데이터로 추가합니다. CI 에서는 `npx -y egovframe-scaffold-mcp sbom-check --offline=false --fail-on "minimum,newVulns"` 로 제출 전 점검을 게이트로 걸 수 있습니다.
 
 제출처가 SPDX 를 요구하면(가이드라인 1.0 은 SPDX·CycloneDX 를 모두 언급) `bomFormat="spdx-json"` 으로 같은 내용을 SPDX 2.3 JSON 으로 냅니다. 체크섬·선언 라이선스(이름만 있는 라이선스는 `LicenseRef-` + `hasExtractedLicensingInfos`)·OSV 권고(`SECURITY`/`advisory` externalRefs)·기준 판정(`egovframe:*` annotations)도 옮기므로, SPDX 로 낸 뒤 `check_egovframe_sbom(sbomPath="sbom/bom.spdx.json")` 의 재판정·비교가 CycloneDX 와 같은 결과를 냅니다. SPDX 3.0, 취약점 판단 자동화(VEX 상태는 사람의 결정), 중앙 저장소 제출 API 는 범위 밖입니다.
+
+## 기동 검증 (`verify_egovframe_startup`, v1.11)
+
+전환·갱신·조립 뒤 "컴파일은 되는데 뜨지 않는다"를 확인합니다. 빈 생성 실패·설정 파일 경로·DB 접속·JDBC 드라이버·MyBatis 매퍼 XML 오류는 컴파일로 잡히지 않습니다.
+
+```text
+verify_egovframe_startup(projectDir)                                      # 띄워 보고 원인 분류(프로젝트 불변)
+verify_egovframe_startup(projectDir, path="/login.do")                    # 기동 뒤 확인할 화면
+verify_egovframe_startup(projectDir, tomcatHome="/opt/tomcat-10.1")        # 폐쇄망: 설치된 Tomcat 사용
+npx -y egovframe-scaffold-mcp startup --project . [--fail-on failed]
+```
+
+- **실행**: Spring Boot 는 `mvn -B spring-boot:run`(Gradle `bootRun`)에 빈 포트를 `--server.port` 로. Classic war 는 패키징한 war 를 캐시(`EGOVFRAME_CACHE_DIR/tomcat`)의 고정 버전 Tomcat 10.1.61(Servlet 6.1 이상이면 11.0.27)에 `ROOT` 로 두고 임시 `CATALINA_BASE` 로 띄웁니다(`127.0.0.1` 에만, 셧다운·AJP 포트 끔). Tomcat 은 사내 미러(`EGOVFRAME_MAVEN_MIRROR`) → Maven Central → archive.apache.org 에서 받아 sha256 을 확인합니다.
+- **판정**: 로그의 기동 완료 문구(`Started …`·`Server startup in`) 뒤 HTTP(기본 `/`, Boot 에 actuator 가 있으면 `/actuator/health`) — 5xx·무응답이 아니면 기동(302 로그인 이동 포함). 웹이 아니면 완료 문구만.
+- **원인 종류와 처방**(`cause`): `port-in-use` · `driver-missing`(드라이버 → 좌표, 예: `com.oracle.database.jdbc:ojdbc11`) · `db-connection`(JDBC URL, `prepare_egovframe_database`) · `db-schema`(접속은 됐는데 테이블 없음) · `mapper-xml`(파일·줄) · `config-missing`(없는 XML import·placeholder) · `javax-namespace`(`migrate_egovframe_project`) · `bean-creation`(실제로 실패한 안쪽 빈과 정의 파일, GUI 를 띄우는 빈) · `http-error` · `timeout` · `build` · `repository-unavailable`. 경로는 배포 사본(`…/WEB-INF/classes/…`)이 아니라 프로젝트 원본(`src/main/resources/…`)으로 보여줍니다. 예외 사슬(`chain`)과 로그 끝 60줄(`logTail`)도 함께.
+- 끝나면 프로세스 트리를 끝내고 임시 디렉터리를 지웁니다. 프로젝트에 남는 것은 빌드 결과(`target/`)뿐입니다.
+- 실측(2026-10-30): 공식 템플릿 7종(web·simple-homepage·portal-site·enterprise-business·mobile-web·boot-web·simple-backend)이 내장 HSQL 로 16–29초에 기동. 포털·업무 템플릿은 `create_egovframe_project(database="hsql")` 가 `Globals.Hsql.AutoInit` 을 켜도록 고친 뒤 뜹니다(전에는 빈 DB 로 떠서 `LETTNROLES_HIERARCHY` 조회 실패 — 이 도구가 찾은 것). batch-db-web 은 `hsqlManager` 빈이 GUI 창을 띄워 화면 없는 환경에서 실패합니다(템플릿 특성).
+- 하지 않는 것: 화면 기능 테스트(URL 응답까지), 성능, 운영 WAS(JEUS·WebLogic) 기동, DB 컨테이너 자동 연결([설계](design-startup.md#기획에서-미룬-것)).
 
 ## DB 준비·적재 확인 (`prepare_egovframe_database`, v1.10)
 
@@ -460,7 +479,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 7종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 17종(진단·검증·전환·의존성·의존성 조치·DB 준비·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 7종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 18종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 
