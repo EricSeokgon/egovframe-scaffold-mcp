@@ -1,0 +1,57 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< egovframework.example:s-boot-web >------------------
+[INFO] Building s-boot-web 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.6:run (default-cli) > test-compile @ s-boot-web >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ s-boot-web ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 598 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ s-boot-web ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ s-boot-web ---
+[INFO] skip non existing resourceDirectory /work/project/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ s-boot-web ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot:3.5.6:run (default-cli) < test-compile @ s-boot-web <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.6:run (default-cli) @ s-boot-web ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.6)
+
+2026-10-30 09:05:39,943  INFO [org.hibernate.validator.internal.util.Version] HV000001: Hibernate Validator 8.0.3.Final
+2026-10-30 09:05:39,995  INFO [egovframework.example.EgovBootApplication] Starting EgovBootApplication using Java 21.0.12.1 with PID 2250 (/work/project/target/classes started by root in /work/project)
+2026-10-30 09:05:39,996  INFO [egovframework.example.EgovBootApplication] No active profile set, falling back to 1 default profile: "default"
+2026-10-30 09:05:40,042  INFO [org.springframework.boot.devtools.env.DevToolsPropertyDefaultsPostProcessor] Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2026-10-30 09:05:40,042  INFO [org.springframework.boot.devtools.env.DevToolsPropertyDefaultsPostProcessor] For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2026-10-30 09:05:40,670  WARN [org.springframework.context.annotation.AnnotationBeanNameGenerator] Support for convention-based @Component names is deprecated and will be removed in a future version of the framework. Please annotate the 'value' attribute in @org.egovframe.rte.psl.dataaccess.mapper.EgovMapper with @AliasFor(annotation=Component.class) to declare an explicit alias for @Component's 'value' attribute.
+2026-10-30 09:05:40,953  INFO [org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseFactory] Starting embedded database: url='jdbc:hsqldb:mem:testdb', username='sa'
+2026-10-30 09:05:41,493  INFO [org.springframework.boot.web.embedded.tomcat.TomcatWebServer] Tomcat initialized with port 35961 (http)
+2026-10-30 09:05:41,505  INFO [org.apache.coyote.http11.Http11NioProtocol] Initializing ProtocolHandler ["http-nio-35961"]
+2026-10-30 09:05:41,507  INFO [org.apache.catalina.core.StandardService] Starting service [Tomcat]
+2026-10-30 09:05:41,508  INFO [org.apache.catalina.core.StandardEngine] Starting Servlet engine: [Apache Tomcat/10.1.46]
+2026-10-30 09:05:41,539  INFO [org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/]] Initializing Spring embedded WebApplicationContext
+2026-10-30 09:05:41,540  INFO [org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext] Root WebApplicationContext: initialization completed in 1496 ms
+2026-10-30 09:05:42,315  INFO [org.springframework.boot.devtools.autoconfigure.OptionalLiveReloadServer] LiveReload server is running on port 35729
+2026-10-30 09:05:42,327  INFO [org.apache.coyote.http11.Http11NioProtocol] Starting ProtocolHandler ["http-nio-35961"]
+2026-10-30 09:05:42,336  INFO [org.springframework.boot.web.embedded.tomcat.TomcatWebServer] Tomcat started on port 35961 (http) with context path '/'
+2026-10-30 09:05:42,342  INFO [egovframework.example.EgovBootApplication] Started EgovBootApplication in 2.67 seconds (process running for 3.238)
+2026-10-30 09:05:42,618  INFO [org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/]] Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-30 09:05:42,619  INFO [org.springframework.web.servlet.DispatcherServlet] Initializing Servlet 'dispatcherServlet'
+2026-10-30 09:05:42,619  INFO [org.springframework.web.servlet.DispatcherServlet] Completed initialization in 0 ms

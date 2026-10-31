@@ -12,7 +12,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 let n = 0;
 function assert(c, msg) { n++; if (!c) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
 const m = await import("../dist/index.js");
-const fx = (f) => readFileSync(new URL(`./fixtures/startup/${f}.log`, import.meta.url), "utf8");
+const fx = (f) => readFileSync(new URL(`./fixtures/startup/${f}.txt`, import.meta.url), "utf8");
 const root = mkdtempSync(path.join(tmpdir(), "egov-startup-test-"));
 
 // ── 로그 분석(실측 고정물) ────────────────────────────

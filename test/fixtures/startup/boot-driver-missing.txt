@@ -1,0 +1,77 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------< egovframework.example:s-simple-backend >---------------
+[INFO] Building s-simple-backend 5.0.2
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.6:run (default-cli) > test-compile @ s-simple-backend >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ s-simple-backend ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 67 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ s-simple-backend ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 142 source files with javac [debug parameters release 17] to target/classes
+[INFO] /work/project/src/main/java/egovframework/com/config/EgovConfigAppMapper.java: /work/project/src/main/java/egovframework/com/config/EgovConfigAppMapper.java uses or overrides a deprecated API.
+[INFO] /work/project/src/main/java/egovframework/com/config/EgovConfigAppMapper.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ s-simple-backend ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ s-simple-backend ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 57 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] /work/project/src/test/java/egovframework/let/cop/bbs/controller/EgovBBSReplyDetailIntegrationTest.java: /work/project/src/test/java/egovframework/let/cop/bbs/controller/EgovBBSReplyDetailIntegrationTest.java uses or overrides a deprecated API.
+[INFO] /work/project/src/test/java/egovframework/let/cop/bbs/controller/EgovBBSReplyDetailIntegrationTest.java: Recompile with -Xlint:deprecation for details.
+[INFO] /work/project/src/test/java/egovframework/let/uat/uia/web/EgovLoginApiControllerTest.java: Some input files use unchecked or unsafe operations.
+[INFO] /work/project/src/test/java/egovframework/let/uat/uia/web/EgovLoginApiControllerTest.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] <<< spring-boot:3.5.6:run (default-cli) < test-compile @ s-simple-backend <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.6:run (default-cli) @ s-simple-backend ---
+[INFO] Attaching agents: []
+[INFO ] 2026-10-30 09:06:28.364 [,] : hibernate.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.3.Final
+[INFO ] 2026-10-30 09:06:28.377 [,] : egovframework.EgovBootApplication - Starting EgovBootApplication using Java 21.0.12.1 with PID 2729 (/work/project/target/classes started by root in /work/project)
+[INFO ] 2026-10-30 09:06:28.380 [,] : egovframework.EgovBootApplication - The following 1 profile is active: "dev"
+[INFO ] 2026-10-30 09:06:28.425 [,] : springframework.boot.devtools.env.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+[INFO ] 2026-10-30 09:06:28.425 [,] : springframework.boot.devtools.env.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+[WARN ] 2026-10-30 09:06:29.906 [,] : org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'egovConfigAppDatasource' of type [egovframework.com.config.EgovConfigAppDatasource$$SpringCGLIB$$0] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). Is this bean getting eagerly injected/applied to a currently created BeanPostProcessor [healthEndpointGroupsBeanPostProcessor]? Check the corresponding BeanPostProcessor declaration and its dependencies/advisors. If this bean does not have to be post-processed, declare it with ROLE_INFRASTRUCTURE.
+[ERROR] 2026-10-30 09:06:29.911 [,] : com.zaxxer.hikari.HikariConfig - Failed to load driver class oracle.jdbc.driver.OracleDriver from HikariConfig class classloader jdk.internal.loader.ClassLoaders$AppClassLoader@639fee48
+[WARN ] 2026-10-30 09:06:29.913 [,] : boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'healthEndpointGroupsBeanPostProcessor' defined in class path resource [org/springframework/boot/actuate/autoconfigure/health/HealthEndpointConfiguration.class]: BeanPostProcessor before instantiation of bean failed
+[INFO ] 2026-10-30 09:06:29.926 [,] : springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger - 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+[ERROR] 2026-10-30 09:06:29.939 [,] : org.springframework.boot.SpringApplication - Application run failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'healthEndpointGroupsBeanPostProcessor' defined in class path resource [org/springframework/boot/actuate/autoconfigure/health/HealthEndpointConfiguration.class]: BeanPostProcessor before instantiation of bean failed
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:524)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'egovConfigAppTransaction' defined in file [/work/project/target/classes/egovframework/com/config/EgovConfigAppTransaction.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'dataSource' defined in class path resource [egovframework/com/config/EgovConfigAppDatasource.class]: Failed to instantiate [javax.sql.DataSource]: Factory method 'dataSource' threw exception with message: DB 설정 오류: Globals.oracle.DriverClassName의 드라이버를 로딩하거나 생성할 수 없습니다. 클래스명과 JDBC 드라이버 의존성을 확인하세요.
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804)
+	at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:240)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1395)
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'dataSource' defined in class path resource [egovframework/com/config/EgovConfigAppDatasource.class]: Failed to instantiate [javax.sql.DataSource]: Factory method 'dataSource' threw exception with message: DB 설정 오류: Globals.oracle.DriverClassName의 드라이버를 로딩하거나 생성할 수 없습니다. 클래스명과 JDBC 드라이버 의존성을 확인하세요.
+	at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:657)
+	at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [javax.sql.DataSource]: Factory method 'dataSource' threw exception with message: DB 설정 오류: Globals.oracle.DriverClassName의 드라이버를 로딩하거나 생성할 수 없습니다. 클래스명과 JDBC 드라이버 의존성을 확인하세요.
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:200)
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+Caused by: java.lang.IllegalStateException: DB 설정 오류: Globals.oracle.DriverClassName의 드라이버를 로딩하거나 생성할 수 없습니다. 클래스명과 JDBC 드라이버 의존성을 확인하세요.
+	at egovframework.com.config.EgovConfigAppDatasource.hikariDataSource(EgovConfigAppDatasource.java:125)
+	at egovframework.com.config.EgovConfigAppDatasource.dataSource(EgovConfigAppDatasource.java:143)
+	at egovframework.com.config.EgovConfigAppDatasource$$SpringCGLIB$$0.CGLIB$dataSource$1(<generated>)
+Caused by: java.lang.RuntimeException: Failed to load driver class oracle.jdbc.driver.OracleDriver in either of HikariConfig class loader or Thread context classloader
+	at com.zaxxer.hikari.HikariConfig.setDriverClassName(HikariConfig.java:514)
+	at egovframework.com.config.EgovConfigAppDatasource.hikariDataSource(EgovConfigAppDatasource.java:118)
+	... 66 more
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.353 s
+[INFO] Finished at: 2026-10-30T09:06:29+09:00
+[INFO] ------------------------------------------------------------------------

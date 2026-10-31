@@ -1,0 +1,91 @@
+[INFO] Error stacktraces are turned on.
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< egovframework.example:s-web >---------------------
+[INFO] Building s-web 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ s-web ---
+[INFO] Copying 14 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ s-web ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ s-web ---
+[INFO] skip non existing resourceDirectory /work/project/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ s-web ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ s-web ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- war:3.4.0:war (default-war) @ s-web ---
+[INFO] Packaging webapp
+[INFO] Assembling webapp [s-web] in [/work/project/target/s-web-1.0.0]
+[INFO] Processing war project
+[INFO] Copying webapp resources [/work/project/src/main/webapp]
+[INFO] Building war: /work/project/target/s-web-1.0.0.war
+[INFO] 
+[INFO] --- javadoc:3.11.2:jar (attach-sources) @ s-web ---
+[INFO] Skipping javadoc generation, everything is up to date.
+[INFO] Building jar: /work/project/target/s-web-1.0.0-javadoc.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.512 s
+[INFO] Finished at: 2026-10-30T09:06:12+09:00
+[INFO] ------------------------------------------------------------------------
+30-Oct-2026 09:06:12.605 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version name:   Apache Tomcat/10.1.61
+30-Oct-2026 09:06:12.610 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Oct 6 2026 22:56:25 UTC
+30-Oct-2026 09:06:12.610 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version number: 10.1.61.0
+30-Oct-2026 09:06:12.610 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Name:               Linux
+30-Oct-2026 09:06:12.610 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Version:            6.18.44-fc-v185
+30-Oct-2026 09:06:12.610 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Architecture:          amd64
+30-Oct-2026 09:06:12.610 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Java Home:             /usr/lib/jvm/java-21-openjdk-amd64
+30-Oct-2026 09:06:12.610 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Version:           21.0.12.1+1-1-24.04.4-Ubuntu
+30-Oct-2026 09:06:12.611 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Vendor:            Ubuntu
+30-Oct-2026 09:06:12.611 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_BASE:         /work/egov-startup
+30-Oct-2026 09:06:12.611 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_HOME:         /root/.cache/egovframe-scaffold-mcp/tomcat/apache-tomcat-10.1.61
+30-Oct-2026 09:06:12.621 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts
+30-Oct-2026 09:06:12.621 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djavax.net.ssl.trustStoreType=JKS
+30-Oct-2026 09:06:12.621 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dhttps.proxyHost=127.0.0.1
+30-Oct-2026 09:06:12.621 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dhttps.proxyPort=0
+30-Oct-2026 09:06:12.621 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local
+30-Oct-2026 09:06:12.621 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.http.auth.tunneling.disabledSchemes=
+30-Oct-2026 09:06:12.621 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.http.auth.proxying.disabledSchemes=
+30-Oct-2026 09:06:12.622 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.home=/root/.cache/egovframe-scaffold-mcp/tomcat/apache-tomcat-10.1.61
+30-Oct-2026 09:06:12.622 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.base=/work/egov-startup
+30-Oct-2026 09:06:12.622 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.io.tmpdir=/work/egov-startup/temp
+30-Oct-2026 09:06:12.622 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+30-Oct-2026 09:06:12.622 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.config.file=/work/egov-startup/conf/logging.properties
+30-Oct-2026 09:06:12.623 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent The Apache Tomcat Native library which allows using OpenSSL was not found on the java.library.path: [/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib]
+30-Oct-2026 09:06:12.994 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-127.0.0.1-45487"]
+30-Oct-2026 09:06:13.015 INFO [main] org.apache.catalina.startup.Catalina.load Server initialization in [565] milliseconds
+30-Oct-2026 09:06:13.078 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service [Catalina]
+30-Oct-2026 09:06:13.078 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet engine: [Apache Tomcat/10.1.61]
+30-Oct-2026 09:06:13.102 INFO [main] org.apache.catalina.startup.HostConfig.deployWAR Deploying web application archive [/work/egov-startup/webapps/ROOT.war]
+30-Oct-2026 09:06:15.070 INFO [main] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+2026-10-30 09:06:15,411  INFO [org.springframework.web.context.ContextLoader] Root WebApplicationContext: initialization started
+2026-10-30 09:06:15,713 ERROR [org.springframework.web.context.ContextLoader] Context initialization failed
+org.springframework.beans.factory.parsing.BeanDefinitionParsingException: Configuration problem: Failed to import bean definitions from URL location [classpath:/egovframework/spring/missing/context-nothing.xml]
+Offending resource: file [/work/egov-startup/webapps/ROOT/WEB-INF/classes/egovframework/spring/context-common.xml]
+	at org.springframework.beans.factory.parsing.FailFastProblemReporter.error(FailFastProblemReporter.java:72)
+	at org.springframework.beans.factory.parsing.ReaderContext.error(ReaderContext.java:119)
+	at org.springframework.beans.factory.parsing.ReaderContext.error(ReaderContext.java:104)
+Caused by: org.springframework.beans.factory.BeanDefinitionStoreException: IOException parsing XML document from class path resource [egovframework/spring/missing/context-nothing.xml]
+	at org.springframework.beans.factory.xml.XmlBeanDefinitionReader.loadBeanDefinitions(XmlBeanDefinitionReader.java:351)
+	at org.springframework.beans.factory.xml.XmlBeanDefinitionReader.loadBeanDefinitions(XmlBeanDefinitionReader.java:319)
+	at org.springframework.beans.factory.support.AbstractBeanDefinitionReader.loadBeanDefinitions(AbstractBeanDefinitionReader.java:184)
+Caused by: java.io.FileNotFoundException: class path resource [egovframework/spring/missing/context-nothing.xml] cannot be opened because it does not exist
+	at org.springframework.core.io.ClassPathResource.getInputStream(ClassPathResource.java:215)
+	at org.springframework.beans.factory.xml.XmlBeanDefinitionReader.loadBeanDefinitions(XmlBeanDefinitionReader.java:342)
+	... 62 more
+30-Oct-2026 09:06:15.717 SEVERE [main] org.apache.catalina.core.StandardContext.startInternal One or more listeners failed to start. Full details will be found in the appropriate container log file
+30-Oct-2026 09:06:15.722 SEVERE [main] org.apache.catalina.core.StandardContext.startInternal Context [] startup failed due to previous errors
+30-Oct-2026 09:06:15.738 WARNING [main] org.apache.catalina.loader.WebappClassLoaderBase.checkThreadLocalsForLeaks You need to add "--add-opens=java.base/java.lang=ALL-UNNAMED" to the JVM command line arguments to enable ThreadLocal memory leak detection. Alternatively, you can suppress this warning by disabling ThreadLocal memory leak detection.
+30-Oct-2026 09:06:15.740 WARNING [main] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesRmiTargets You need to add "--add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED" to the JVM command line arguments to enable RMI Target memory leak detection. Alternatively, you can suppress this warning by disabling RMI Target memory leak detection.
+30-Oct-2026 09:06:15.743 INFO [main] org.apache.catalina.startup.HostConfig.deployWAR Deployment of web application archive [/work/egov-startup/webapps/ROOT.war] has finished in [2,642] ms
+30-Oct-2026 09:06:15.748 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-127.0.0.1-45487"]
+30-Oct-2026 09:06:15.767 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [2745] milliseconds
