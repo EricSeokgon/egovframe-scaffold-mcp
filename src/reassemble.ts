@@ -18,6 +18,7 @@ import { MANIFEST_FILE, readManifest, type Manifest } from "./manifest.js";
 import { migrateProject, type SourceEra } from "./migrate.js";
 import { runBuild, type BuildError, type Runner } from "./build-runner.js";
 import { isAbortError, stepper, subProgress, throwIfAborted, type Progress } from "./progress.js";
+import { emptyReapply, mergeThreeWay, tallyReapply, type ReapplySummary } from "./reapply.js";
 
 export type ReassembleState =
   | "identical" // 현재 = 목표 → 그대로
@@ -43,6 +44,8 @@ export interface ReassembleFile {
   action: ReassembleAction;
   /** 사용자 변경 패치(원본 → 현재)의 프로젝트 상대 경로 — 적용 시에만 */
   patch?: string;
+  /** v1.12: reapply=true 로 사용자 변경을 목표본에 3-way 로 합쳐 썼으면 그 결과 */
+  reapply?: "clean" | "absorbed" | "conflict" | "binary" | "error";
 }
 export interface ReassembleWorkItem {
   componentId: string;
@@ -63,6 +66,8 @@ export interface ReassembleOptions {
   /** 기본 true — 분류·계획만(파일 내용은 내려받지 않음) */
   dryRun?: boolean;
   verify?: boolean;
+  /** v1.12: 사용자 수정 파일을 원본·현재·목표 3-way 로 합쳐 충돌 없는 것만 자동 적용(기본 false — 패치만 남김). verify=true 면 합친 파일에서 컴파일 오류가 나면 목표본으로 되돌린다 */
+  reapply?: boolean;
   timeoutMs?: number;
   /** 테스트용 주입 */
   origin?: OriginSource;
@@ -90,6 +95,8 @@ export interface ReassembleResult {
   backupDir?: string;
   planPath?: string;
   verify?: { ran: boolean; success: boolean | null; command?: string; durationMs?: number; errors: number; inReassembled: number; reason?: string };
+  /** v1.12: reapply=true 의 결과 */
+  reapply?: ReapplySummary;
   notes: string[];
 }
 
@@ -287,6 +294,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   result.files = files;
   if (dryRun) {
     notes.push(`dryRun — 파일을 쓰지 않았습니다. dryRun=false 로 ${result.actions.replace + result.actions.add}개 파일을 ${targetTag} 로 쓰고 ${result.actions.delete}개를 백업 후 지웁니다.`);
+    if (opts.reapply) notes.push(`reapply=true — 적용 때 사용자 수정 ${result.summary["user-modified"]}개 파일을 원본·현재·${targetTag} 3-way 로 합쳐 충돌 없는 것만 자동 반영합니다(계획 단계에서는 목표 파일 내용을 받지 않아 병합하지 않음).`);
     prog.finish("reassemble: plan ready");
     return result;
   }
@@ -329,6 +337,32 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
     const w = result.worklist.find((x) => x.path === f.path);
     if (w) w.patch = rel;
   }
+  // v1.12: 사용자 수정 파일을 3-way 로 합친다 — 충돌 없는 것만 그 결과를 쓰고, 충돌은 지금처럼 목표본 + 패치
+  const mergedFor = new Map<string, Buffer>();
+  if (opts.reapply) {
+    result.reapply = emptyReapply();
+    for (const f of files) {
+      if (f.state !== "user-modified") continue;
+      const o = originBlobs.get(f.path), t = targetContent.get(f.path);
+      if (!o || !t) continue;
+      throwIfAborted(prog.signal);
+      const m = await mergeThreeWay(await origin.readBlob(o), readCurrent(f.path), t);
+      f.reapply = m.status;
+      result.reapply.entries.push({ path: f.path, componentId: f.componentId, status: m.status, conflicts: m.conflicts });
+      const w = result.worklist.find((x) => x.path === f.path);
+      if ((m.status === "clean" || m.status === "absorbed") && m.merged) {
+        mergedFor.set(f.path, m.merged);
+        if (f.action === "keep-reference") { f.action = "replace"; result.actions["keep-reference"]--; result.actions.replace++; }
+        if (w) result.worklist.splice(result.worklist.indexOf(w), 1);
+      } else if (w) {
+        w.detail = m.status === "conflict"
+          ? `${w.detail} — 3-way 병합 충돌 ${m.conflicts}곳(같은 곳을 양쪽이 고침)이라 자동 적용하지 않음`
+          : m.status === "binary" ? `${w.detail} — 이진 파일이라 병합하지 않음` : `${w.detail} — 병합 실패: ${m.error ?? ""}`;
+      }
+    }
+    tallyReapply(result.reapply);
+    notes.push(`사용자 수정 재적용: 자동 ${result.reapply.reapplied} · upstream 에 이미 반영 ${result.reapply.absorbed} · 충돌 ${result.reapply.conflicts}${result.reapply.binary ? ` · 이진 ${result.reapply.binary}` : ""}${result.reapply.errors ? ` · 오류 ${result.reapply.errors}` : ""} — 충돌 파일은 ${targetTag} 본으로 두고 패치를 남겼습니다.`);
+  }
   const hashOf = (b: Buffer) => "sha256:" + createHash("sha256").update(b).digest("hex");
   prog.step(stepNo++);
   // 적용 중 취소되면 transaction 이 롤백하고 AbortError 를 그대로 전달한다(withFileTransaction)
@@ -343,7 +377,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
         if (!ids.some((id) => currentIds.get(f.path)?.includes(id))) throw new Error(`분류 이후 파일이 바뀌어 중단합니다: ${f.path}`);
         if (f.action !== "keep-reference") tx.writeFile(`${backupRel}/originals/${f.path}`, current, { mustNotExist: true });
       }
-      if (f.action === "replace" || f.action === "add") tx.writeFile(f.path, targetContent.get(f.path)!);
+      if (f.action === "replace" || f.action === "add") tx.writeFile(f.path, mergedFor.get(f.path) ?? targetContent.get(f.path)!);
       else if (f.action === "delete") tx.removeFile(f.path);
       else if (f.action === "keep-reference") tx.writeFile(`${backupRel}/reference/${f.path}`, targetContent.get(f.path)!, { mustNotExist: true });
       const patch = patchFor.get(f.path);
@@ -365,7 +399,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
       const hashes: Record<string, { hash: string; srcHash: string }> = {};
       for (const f of mine) {
         const t = targetContent.get(f.path)!;
-        const written = f.action === "keep-reference" ? readCurrent(f.path) : t;
+        const written = f.action === "keep-reference" ? readCurrent(f.path) : (mergedFor.get(f.path) ?? t);
         hashes[f.path] = { hash: hashOf(written), srcHash: hashOf(t) };
       }
       m.components[c.id] = { installedAt: now, files: mine.map((f) => f.path), hashes, sqlScripts: result.sql.filter((s) => sqlPlan.find((x) => x.relPath === s)?.componentId === c.id) };
@@ -374,7 +408,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
     tx.writeFile(MANIFEST_FILE, JSON.stringify(m, null, 2) + "\n");
     const planDoc = {
       createdAt: now, tool: "reassemble_egovframe_components", target, origin: result.origin, sourceEra,
-      summary: result.summary, actions: result.actions, worklist: result.worklist, files: files.map(({ componentId, path: p, asset, state, action, patch }) => ({ componentId, path: p, asset, state, action, ...(patch ? { patch } : {}) })),
+      summary: result.summary, actions: result.actions, worklist: result.worklist, ...(result.reapply ? { reapply: result.reapply } : {}), files: files.map(({ componentId, path: p, asset, state, action, patch, reapply }) => ({ componentId, path: p, asset, state, action, ...(patch ? { patch } : {}), ...(reapply ? { reapply } : {}) })),
     };
     tx.writeFile(`${backupRel}/reassemble-plan.json`, JSON.stringify(planDoc, null, 2) + "\n", { mustNotExist: true });
   });
@@ -382,6 +416,7 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   result.backupDir = path.join(projectDir, backupRel);
   result.planPath = path.join(projectDir, backupRel, "reassemble-plan.json");
 
+  let lastErrorsByFile = new Map<string, number>();
   if (opts.verify) {
     prog.step(stepNo++);
     const sub = subFor(stepNo - 1);
@@ -390,11 +425,33 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
     const relOf = (f: string) => { const r = path.isAbsolute(f) ? path.relative(projectDir, f) : f; return r.split(path.sep).join("/").replace(/^\.\//, ""); };
     const inFiles = new Map<string, number>();
     for (const e of errs) { const r = relOf(e.file); inFiles.set(r, (inFiles.get(r) ?? 0) + 1); }
+    lastErrorsByFile = inFiles;
     for (const w of result.worklist) { const n = inFiles.get(w.path); if (n) w.errors = n; }
     const reassembled = new Set(files.map((f) => f.path));
     result.verify = (b as { command?: string }).command
       ? { ran: true, success: (b as { success?: boolean }).success ?? null, command: (b as { command?: string }).command, durationMs: (b as { durationMs?: number }).durationMs, errors: errs.length, inReassembled: errs.filter((e) => reassembled.has(relOf(e.file))).length }
       : { ran: false, success: null, errors: 0, inReassembled: 0, reason: (b as { error?: string }).error ?? "빌드를 실행하지 못했습니다" };
+  }
+  // v1.12: 합쳐 쓴 파일에서 컴파일 오류가 나면 그 파일만 목표본으로 되돌린다(패치는 남아 있음) — "조용한 오동작" 대신 작업 목록으로
+  if (opts.verify && result.reapply && mergedFor.size && result.verify?.ran && result.verify.errors > 0) {
+    const bad = result.reapply.entries.filter((e) => e.status === "clean" && (lastErrorsByFile.get(e.path) ?? 0) > 0);
+    if (bad.length) {
+      await withFileTransaction(projectDir, "재적용 파일 되돌리기", (tx) => {
+        for (const e of bad) {
+          const cur = tx.readFile(e.path);
+          if (!cur || !cur.equals(mergedFor.get(e.path)!)) throw new Error(`검증 이후 파일이 바뀌어 되돌리지 않습니다: ${e.path}`);
+          tx.writeFile(e.path, targetContent.get(e.path)!);
+          e.reverted = true; e.errors = lastErrorsByFile.get(e.path);
+          const f = files.find((x) => x.path === e.path);
+          if (f) { f.reapply = "conflict"; result.worklist.push({ componentId: e.componentId, path: e.path, kind: "reapply-patch", detail: `3-way 로 합친 결과가 컴파일되지 않아(오류 ${e.errors}건) ${targetTag} 본으로 되돌림 — 패치를 보고 직접 반영`, patch: f.patch }); }
+        }
+        const m2 = readManifest(projectDir);
+        if (m2) { for (const e of bad) { const entry = m2.components[e.componentId]; if (entry?.hashes?.[e.path]) entry.hashes[e.path] = { hash: hashOf(targetContent.get(e.path)!), srcHash: hashOf(targetContent.get(e.path)!) }; } tx.writeFile(MANIFEST_FILE, JSON.stringify(m2, null, 2) + "\n"); }
+      });
+      result.worklist.sort((a, b) => kindOrder(a.kind) - kindOrder(b.kind) || a.path.localeCompare(b.path));
+      tallyReapply(result.reapply);
+      notes.push(`합친 파일 ${bad.length}개에서 컴파일 오류가 나 ${targetTag} 본으로 되돌렸습니다(패치는 남아 있음).`);
+    }
   }
   prog.finish("reassemble: done");
   return result;
@@ -415,6 +472,7 @@ export function renderReassembleMarkdown(r: ReassembleResult): string {
   if (r.backupDir) L.push(`- 백업·패치·계획: ${r.backupDir}`);
   if (r.sql.length) L.push(`- DB 스크립트 ${r.sql.length}개: ${r.sql.slice(0, 4).join(", ")}${r.sql.length > 4 ? " …" : ""}`);
   if (r.verify) L.push(`- 컴파일 검증: ${r.verify.ran ? `${r.verify.success ? "성공" : "실패"} · 오류 ${r.verify.errors}건(재조립 파일 ${r.verify.inReassembled}건)` : `건너뜀 — ${r.verify.reason}`}`);
+  if (r.reapply) L.push(`- 사용자 수정 재적용: 자동 ${r.reapply.reapplied} · upstream 에 이미 반영 ${r.reapply.absorbed} · 충돌 ${r.reapply.conflicts}${r.reapply.binary ? ` · 이진 ${r.reapply.binary}` : ""}${r.reapply.reverted ? ` · 컴파일 오류로 되돌림 ${r.reapply.reverted}` : ""}`);
   for (const n of r.notes) L.push(`- ${n}`);
   if (r.components.length) {
     L.push(``, `## 컴포넌트별`, ``, `| id | 이름 | 파일 | 같음 | 교체 | 사용자 수정 | 신규 | 5.x 제거 | 원본 미확인 |`, `|---|---|---|---|---|---|---|---|---|`);

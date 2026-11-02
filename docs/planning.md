@@ -42,8 +42,9 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
+- **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.12 사용자 수정 자동 재적용 → v1.13 설정·비밀값 외부화 → v1.14 프로젝트 구조 지도·변경 영향([다음 버전 기획](#다음-버전-기획-v112v114)). 그 뒤 운영 전환·조직 단위(v1.15–v1.17) → 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v115-이후)).
+- **다음 계획**: v1.13 설정·비밀값 외부화 → v1.14 프로젝트 구조 지도·변경 영향([다음 버전 기획](#다음-버전-기획-v112v114)). 그 뒤 운영 전환·조직 단위(v1.15–v1.17) → 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v115-이후)).
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -125,6 +126,13 @@ v1.11.0 까지 끝난 상태(2026-11-02, 도구 39종 + CLI 명령 16종)에서 
 - `test:rehearse-live` 에 reapply 결과 수치 추가
 
 **완료 정의**: 파라미터 3곳(upgrade·reassemble·rehearse), `docs/design-migration.md` 「사용자 수정 재적용」절, 평가서 2절 한 줄, api-contract minor, CHANGELOG
+
+#### v1.12.0 결과 (2026-11-02)
+
+- 파라미터 3곳(`reassemble_egovframe_components`·`upgrade_egovframe_project`·`rehearse_egovframe_migration` 의 `reapply`, 기본 false) + `upgrade_egovframe_project` 에 `verify`·`timeoutMs`. 도구 39종 그대로, api-contract minor. 설계: [design-migration.md 7단계](design-migration.md#7단계v1120-사용자-수정-자동-재적용-reapply).
+- 실자산(`test:reassemble-live`): 공식 v3.10.0 `cmm`·`bbs` 에 알려진 수정 4건 → 5.0.7 재조립+재적용 자동 3·충돌 1(3.5초). 충돌은 5.0.7 이 같은 자리에 Lombok 과 공백 정리를 넣은 `BoardVO` — 기획의 "같은 곳을 양쪽이 고치면 사람이 정한다" 그대로.
+- 기획과 달라진 점: (1) "세 확인 통과해야 쓴다"를 **파일 단위**로 — 충돌 0 이면 쓰고, `verify=true` 의 compile 오류가 합친 파일에서 난 것만 목표본으로 되돌립니다(`reverted`). 전체를 무기록으로 돌리면 깨끗한 파일까지 버리게 됩니다. (2) 기동(v1.11)까지는 묶지 않았습니다 — 리허설 사본은 기동할 DB 가 없고, `verify_egovframe_startup` 을 따로 부르면 됩니다. (3) 실자산 기대값은 "v4.3.2 수정 10건"이 아니라 이미 있는 v3.10.0 코퍼스에 4건 — 같은 저장소 캐시를 쓰고 CI 시간을 늘리지 않습니다.
+- 함께 고친 것: `upgrade_egovframe_project` 가 목표 아카이브를 매니페스트의 태그(= 지금 설치된 태그)로 받아 **새 태그로 올라가지 못하던** 잠복 결함. 이제 목표는 카탈로그 태그, 기준은 매니페스트 태그이고 결과에 `base`·`target` 을 둘 다 적습니다.
 
 ### v1.13.0 — 설정·비밀값 외부화 (`externalize_egovframe_config`)
 

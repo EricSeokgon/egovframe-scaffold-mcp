@@ -129,7 +129,7 @@ migrate_egovframe_project(projectDir, target="5.x", format="markdown"|"json")
 | 5.x 에서 제거 | O 있음, T 없음 | 백업 후 삭제(사용자 수정이면 패치도) | — |
 | 사용자 추가 | O·T 없음 | 유지 | — |
 
-모든 변경은 하나의 transaction 이다(새로 추가한 `ProjectFileTransaction.removeFile` 로 삭제도 rollback 대상). `migration-backup/<시각>-reassemble-*/` 에 `originals/`(교체·삭제 전 원본), `patches/<컴포넌트>/<경로>.patch`(`git diff --no-index` 결과, 원문 바이트 보존 — EUC-KR 소스 대응), `reference/`(유지한 설정·자산의 목표본), `reassemble-plan.json` 을 남기고 매니페스트(`.egovframe-components.json`, 파일별 hash·srcHash)를 기록해 이후 `upgrade_egovframe_project`·`validate_egovframe_project`·`remove_egovframe_components` 가 그대로 동작하게 한다. 사용자 패치는 자동으로 다시 적용하지 않는다 — 5.x 소스가 크게 바뀌어 fuzz 적용은 조용한 오동작을 만들 수 있다. 대신 작업 목록(`reapply-patch`·`removed-in-5x`·`unverified-replaced`·`review-config`)을 돌려주고, `verify=true` 면 compile 오류 수를 그 파일에 붙인다.
+모든 변경은 하나의 transaction 이다(새로 추가한 `ProjectFileTransaction.removeFile` 로 삭제도 rollback 대상). `migration-backup/<시각>-reassemble-*/` 에 `originals/`(교체·삭제 전 원본), `patches/<컴포넌트>/<경로>.patch`(`git diff --no-index` 결과, 원문 바이트 보존 — EUC-KR 소스 대응), `reference/`(유지한 설정·자산의 목표본), `reassemble-plan.json` 을 남기고 매니페스트(`.egovframe-components.json`, 파일별 hash·srcHash)를 기록해 이후 `upgrade_egovframe_project`·`validate_egovframe_project`·`remove_egovframe_components` 가 그대로 동작하게 한다. 사용자 패치는 자동으로 다시 적용하지 않는다 — 5.x 소스가 크게 바뀌어 fuzz 적용은 조용한 오동작을 만들 수 있다(v1.12 부터 `reapply=true` 가 fuzz 가 아닌 3-way 병합으로 충돌 없는 파일만 합친다, [7단계](#7단계v1120-사용자-수정-자동-재적용-reapply)). 대신 작업 목록(`reapply-patch`·`removed-in-5x`·`unverified-replaced`·`review-config`)을 돌려주고, `verify=true` 면 compile 오류 수를 그 파일에 붙인다.
 
 검증: `test:reassemble`(메모리 원본 저장소, 46단언), `test:reassemble-live`(공식 v3.10.0 트리의 `cmm`·`bbs` + 수정 2파일 → 원본 v3.10.0 99%, 교체·추가 780개 파일 = v5.0.7 tree blob, 패치 2, `validate` 누락 0, `upgrade` 미리보기 변경 0), `test:migrate-corpus`(공식 3.10.0·4.3.2 트리 자체의 재조립 미리보기 — 원본 100%·사용자 수정 0). 단독 `mvn compile` 은 넣지 않았다: `cmm`·`bbs` 만으로는 5.0.7 의 다른 컴포넌트 참조 때문에 컴파일이 성립하지 않으며, 쓴 파일이 공식 tree 와 바이트 단위로 같다는 단언이 더 강한 근거다.
 
@@ -213,3 +213,32 @@ CI 통합(`test:rehearse-live`)은 이 값을 `catalog/migration-corpus.json` �
 - CI 통합(`test:update-live`): 위 실측표의 web·boot-web 값을 기대값으로 고정하고, 적용 → compile, alignParent 생성 → compile 을 확인합니다.
 
 범위 밖: 5.1 같은 마이너 이상 갱신(미출시), parent 를 쓰지 않는 프로젝트의 Spring·Boot 버전 맞춤(→ `check_egovframe_dependencies`), 바뀐 동작의 자동 수정.
+
+## 7단계(v1.12.0): 사용자 수정 자동 재적용 (`reapply`)
+
+### 문제
+
+4단계의 결정("사용자 패치는 자동으로 다시 적용하지 않는다")은 fuzz 적용의 조용한 오동작을 피하려는 것이었지만, 그 대가로 재조립·업그레이드 뒤 사람이 `patches/` 를 하나씩 다시 붙인다. 공통컴포넌트는 연 1회 이상 올라오고 포털·업무 템플릿을 쓰는 사업은 로그인·메뉴·게시판을 거의 반드시 고친다. 실측(공식 이력으로 사용자 수정을 흉내, 4.2.4→4.3.0 폭의 수정 114 파일을 5.0.7 에 3-way): 42 파일(37%)은 충돌 없이 자동, 72 파일은 충돌. 같은 5.x 안의 갱신은 변경 폭이 작아 비율이 더 높다.
+
+### 결정
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 방식 | fuzz 패치가 아니라 **3-way 병합**(`git merge-file -p`, `src/reapply.ts`) — 원본(설치 때 기준 태그의 파일)·현재(사용자 수정본)·목표(새 태그의 파일) | 문맥이 바뀐 곳은 충돌로 드러나 조용히 틀린 결과가 나오지 않는다. 재조립이 이미 git 을 요구한다 |
+| 쓰는 조건 | **충돌 0 인 파일만** 합친 결과로 쓴다. 충돌 파일은 `<<<<<<<` 표식 없이 목표본을 두고 작업 목록에 "충돌 hunk 수(= `merge-file` 종료 코드)·패치 경로" | 어느 쪽을 택할지는 사람이 정한다. 표식이 남은 파일은 컴파일이 깨져 다른 오류를 가린다 |
+| 상태 | `clean`(합침) · `absorbed`(합친 결과 = 목표본, upstream 이 이미 담음) · `conflict` · `binary`(병합 안 함) · `error`(git 실패) | 결과 수치로 "자동 N · 이미 반영 M · 충돌 K" 를 평가서·리허설에 그대로 쓴다 |
+| 바이트 보존 | 임시 파일로 git 을 부르고 결과를 Buffer 로 읽는다(`core.autocrlf=false`) | EUC-KR 소스·CRLF 가 그대로 남는다(4단계의 패치와 같은 원칙) |
+| 패치 | 깨끗이 합쳐진 파일도 `patches/<파일>.patch` 는 그대로 남긴다 | 합친 결과를 의심할 때 원본 대비 변경을 바로 볼 수 있다 |
+| 매니페스트 | `hash` = 합친 파일, `srcHash` = 목표본 | 다음 업그레이드가 합친 파일을 "사용자 수정"으로 보존하고(hash 일치), 변경 없는 upstream 은 `unchanged` 로 지나간다 — 멱등 |
+| 설정·자산 | `review-config` 로 "사용자본 유지 + 목표본 참고" 하던 메시지·설정 조각·웹 자산도 텍스트면 같은 병합으로 **교체** | 번들 키 추가 같은 흔한 수정이 자동으로 끝난다. 이진은 그대로 사용자본 유지 |
+| verify | `verify=true` 면 compile 오류가 **합친 파일**에서 난 것만 목표본으로 되돌린다(`reverted`, 두 번째 transaction, 매니페스트 해시도 목표본으로) | 기획의 "세 확인 통과해야 쓴다"를 파일 단위로 — 깨끗한 다른 파일까지 버리지 않는다 |
+| 업그레이드 | `upgrade_egovframe_project(reapply=true)`: 기준 아카이브(매니페스트 태그)·목표 아카이브(카탈로그 태그)로 `conflict` 파일을 병합, 기준 파일이 매니페스트 `srcHash` 와 다르면 `error`(병합 안 함). 합치지 못한 것만 `force` 가 필요 | 기준이 틀리면 3-way 자체가 틀린다. 함께 고친 것: 목표 아카이브가 매니페스트 태그(= 지금 설치된 태그)로 고정돼 있어 upgrade 가 새 태그로 가지 못하던 문제 — 이제 목표는 카탈로그, 기준은 매니페스트 |
+| 기본값 | `reapply=false`(지금과 같음) | 파괴적 도구의 기본 동작을 바꾸지 않는다 |
+
+범위 밖(기획대로): 충돌 자동 해소(LLM 포함), 이동·이름 바뀐 파일 따라가기(충돌로), CRUD 생성물 재생성.
+
+### 검증
+
+- 게이트 `test:reapply`(41단언, 오프라인): 병합 다섯 상태·떨어진 두 곳의 hunk 수·CRLF·EUC-KR 바이트, 재조립(소스·설정 병합, 충돌은 표식 없는 목표본, 매니페스트 hash/srcHash, dryRun 안내, 멱등 = 같은 태그 upgrade 미리보기 변경 0, verify 되돌림, reapply 없이 v0.38 동작), 업그레이드(기준·목표 태그, 합치지 못한 것만 거부, force, 기준 불일치 error, verify 되돌림, 매니페스트 source 갱신), 리허설 수치, MCP 입력.
+- CI 통합 `test:reassemble-live`: 공식 v3.10.0 트리 `cmm`·`bbs` 에 알려진 수정 4건(파일 끝 주석 2·5.x 가 손댄 줄의 기본값 1·메시지 번들 키 1) → 5.0.7 재조립+재적용 **자동 3·충돌 1**(BoardVO: 5.0.7 이 같은 자리에 Lombok·공백 변경), 합친 파일 = v5.0.7 blob + 사용자 줄, 충돌 파일 = v5.0.7 blob(표식 없음), 이후 upgrade 미리보기 변경 0.
+
