@@ -21,9 +21,9 @@
 | `diagnose_egovframe_project` | 기존/레거시 프로젝트를 스캔해 빌드시스템·RTE 버전·DbType·설치 공통컴포넌트(pathPrefixes 지문)·설정 문제 진단 (읽기 전용) |
 | `search_egovframe_docs` | 공식 가이드 문서(egovframe-docs) 인덱스를 키워드로 검색 — 제목·경로·연계 컴포넌트, 문서 URL·조립용 id 반환 (오프라인) |
 | `generate_egovframe_report` | 프로젝트 리포트 — `sections=["components"]`(기본) 설치 컴포넌트·참조 테이블·가이드 링크·이슈, `sections=["assessment"]` 5.x 전환 준비도 평가서(개요·전환 범위·의존성 조치·보안·SBOM·A–D 등급과 산식). Markdown/json, `outputPath` 로 새 파일 저장(선택) |
-| `reassemble_egovframe_components` | 3.x/4.x 프로젝트에 복사된 공통컴포넌트 소스를 v5.0.7 로 재조립 — 원본 태그 식별(git blob id 대조), 원본·현재·목표 3-way 판정, 사용자 수정은 패치·작업 목록으로 보존, 5.x 에서 없어진 파일은 백업 후 삭제, 매니페스트 생성, dryRun 기본·transaction·verify(compile) |
+| `reassemble_egovframe_components` | 3.x/4.x 프로젝트에 복사된 공통컴포넌트 소스를 v5.0.7 로 재조립 — 원본 태그 식별(git blob id 대조), 원본·현재·목표 3-way 판정, 사용자 수정은 패치·작업 목록으로 보존(`reapply=true` 면 충돌 없는 파일은 3-way 병합으로 자동 재적용), 5.x 에서 없어진 파일은 백업 후 삭제, 매니페스트 생성, dryRun 기본·transaction·verify(compile) |
 | `rehearse_egovframe_migration` | **전환 리허설** — 프로젝트 사본에서 재조립 → 전환 적용 → 컴파일 → pom 맞춤(공식 공통컴포넌트 v5.0.7 기준 parent·좌표·버전·scope) → 컴파일. 두 시점의 오류 수(javac 상한 없이), 누락 패키지·후보 좌표·연쇄 오류, 남는 수동 항목·파일, 사라지는 오류 순 작업 목록, 사본 pom 패치. 원본 불변(지문 비교), 최근 결과는 평가서에 실측으로 |
-| `upgrade_egovframe_project` | 설치 컴포넌트를 upstream과 3-way 비교해 갱신 — 사용자 수정 보존, dryRun 기본, 적용 직전 재검증, 파일·백업·매니페스트 단일 transaction (파괴적, 게이트) |
+| `upgrade_egovframe_project` | 설치 컴포넌트를 upstream과 3-way 비교해 갱신 — 사용자 수정 보존(`reapply=true` 면 충돌 파일을 기준 태그·목표 태그로 3-way 병합, 합치지 못한 것만 거부), dryRun 기본, 적용 직전 재검증, 파일·백업·매니페스트 단일 transaction (파괴적, 게이트) |
 | `explain_egovframe_component` | 컴포넌트 하나의 상세(설명·직접/전이 의존성·역의존·참조 테이블·가이드 링크·설치 명령)를 한 번에 반환 (읽기 전용) |
 | `generate_egovframe_ci` | CI 설정 생성 — `platform` 으로 GitHub Actions(기본)·GitLab CI(`.gitlab-ci.yml`)·Jenkins(`Jenkinsfile`, Declarative), maven/gradle 자동 감지, dryRun, 기존 파일 보호. `supplyChain=true` 면 SBOM → 최소 요소 점검 → 전환 준비도 평가서 게이트(`failOn` 기준 초과 시 실패, 보고서·SBOM 보관), `npmRegistry`·`offlineBundle` 환경 변수. Maven 빌드 단계는 원격 저장소 일시 장애(5xx·연결 끊김)일 때만 `-U` 로 최대 3회 다시 실행하고, `mavenMirror` 로 사내 미러를 씁니다(v1.6) |
 | `build_egovframe_project` | 생성한 프로젝트를 실제로 빌드(compile·test·package) — maven/gradle·mvnw/gradlew 자동 감지, 타임아웃·로그 상한, 컴파일 오류 파일/라인 구조화, 원격 저장소 일시 장애 구분(`failureKind: "repository-unavailable"`·`repository`·`failureHint`)과 다시 실행(`retryTransient`, v1.6), dryRun |
@@ -410,15 +410,16 @@ generate_egovframe_report(projectDir="/work/legacy-app", sections=["assessment"]
 - `sourceTag` — 원본 태그(기본 `auto`: 프로젝트 파일의 git blob id 를 좌표 세대에 맞는 공식 태그와 대조해 일치가 가장 많은 태그), 예: `v3.10.0`
 - `database` — 지정 시 컴포넌트별 DDL·DML 을 `scripts/egovframe-components/<db>/` 에 함께 생성
 - `dryRun` — `true`(기본) 분류·계획만(파일 내용을 내려받지 않음) | `false` 적용, `verify` — 적용 뒤 compile 해 오류를 작업 목록 파일에 붙임
+- `reapply` — `true` 면 사용자 수정 파일을 원본(원본 태그)·현재·목표(v5.0.7) 3-way 로 `git merge-file` 병합해 **충돌 없는 파일만** 합친 결과로 씁니다(기본 `false`: 목표본 + 패치). 충돌 파일은 표식 없이 목표본을 두고 작업 목록에 충돌 hunk 수·패치 경로를 적습니다. 설정·메시지·웹 자산도 텍스트면 같은 병합(이진은 사용자본 유지). `verify=true` 와 함께면 합친 파일에서 compile 오류가 난 것만 목표본으로 되돌립니다
 - `format` — `markdown`(기본) | `json`(`outputSchema`)
 
-파일마다 판정은 목표와 같음(유지)·원본 그대로(교체)·사용자 수정(소스는 교체 + 원본 대비 패치 보존, 메시지·설정 조각·웹 자산은 사용자본 유지 + 목표본 참고 저장)·5.x 신규(추가)·5.x 에서 제거(백업 후 삭제, 사용자 수정이면 패치도)·원본 미확인(백업 후 교체)·사용자 추가(유지)입니다. 백업·패치·`reassemble-plan.json` 은 `migration-backup/<시각>-reassemble-*/` 에, 매니페스트는 `.egovframe-components.json` 에 남습니다. 원본 태그 비교에는 git 이 필요하고, blob 없는 bare 미러를 `EGOVFRAME_CACHE_DIR`(기본 `~/.cache/egovframe-scaffold-mcp`)에 태그당 수백 KB 로 캐시합니다. 사용자 패치를 자동으로 다시 적용하지는 않습니다(5.x 소스가 많이 바뀌어 fuzz 적용이 오히려 위험).
+파일마다 판정은 목표와 같음(유지)·원본 그대로(교체)·사용자 수정(소스는 교체 + 원본 대비 패치 보존, 메시지·설정 조각·웹 자산은 사용자본 유지 + 목표본 참고 저장)·5.x 신규(추가)·5.x 에서 제거(백업 후 삭제, 사용자 수정이면 패치도)·원본 미확인(백업 후 교체)·사용자 추가(유지)입니다. 백업·패치·`reassemble-plan.json` 은 `migration-backup/<시각>-reassemble-*/` 에, 매니페스트는 `.egovframe-components.json` 에 남습니다. 원본 태그 비교에는 git 이 필요하고, blob 없는 bare 미러를 `EGOVFRAME_CACHE_DIR`(기본 `~/.cache/egovframe-scaffold-mcp`)에 태그당 수백 KB 로 캐시합니다. `reapply` 를 켜지 않으면 사용자 패치를 자동으로 다시 적용하지 않습니다(fuzz 적용 대신 v1.12 의 3-way 병합만 — 충돌이면 손대지 않음).
 
 ## rehearse_egovframe_migration 파라미터 (전환 리허설)
 
 - `projectDir` — 대상 프로젝트(읽기만 함, 허용 root 적용)
 - `steps` — 기본 `["reassemble","migrate","verify","align-pom"]`(순서 고정, 일부만 고를 수 있음)
-- `components`·`sourceTag` — 재조립 단계에 그대로 전달
+- `components`·`sourceTag`·`reapply` — 재조립 단계에 그대로 전달(`reapply=true` 면 사본에서 재적용까지 해 보고 자동 N·충돌 M 을 수치로)
 - `keepWorkspace` — `true` 면 사본(`EGOVFRAME_CACHE_DIR/rehearsal/<이름>-*`)을 남기고 경로를 돌려줌(기본: 끝나면 삭제), `timeoutMs` — 컴파일 1회(기본 900000), `topN` — 작업 목록 수
 
 사본은 빌드 산출물·VCS·백업 디렉터리를 빼고 만듭니다. 재조립을 전환 적용보다 먼저 하는 이유는 적용이 컴포넌트 소스를 바꾸면 원본 태그 지문이 깨지기 때문입니다(공식 4.3.2 트리를 거꾸로 돌리면 v5.0.1 로 오인되고 1,489개 파일이 "사용자 수정"이 됩니다). Maven 은 `-Dmaven.compiler.fork=true` 와 `JDK_JAVAC_OPTIONS=-Xmaxerrs 100000` 으로 javac 의 오류 100개 상한 없이 셉니다. pom 맞춤은 사본에만 적용하고 패치로 돌려주므로, 검토해서 실제 pom 에 반영하면 됩니다. 실측(공식 공통컴포넌트 v4.3.2 전체): 자동 단계 후 6,003건(JDK 17)·6,335건(JDK 21) → pom 맞춤 후 1건. javac 판본마다 같은 원인을 다른 모양으로 보고하므로(JDK 17 은 없는 패키지의 import 대신 쓰는 곳마다 "cannot find symbol") 분석은 파일의 import 문·타입 선언 파일·Lombok 사용 여부로 원인을 묶습니다. pom 에 소스 인코딩이 없으면 UTF-8 로 컴파일합니다(JDK 18+ 기본값).
@@ -430,6 +431,7 @@ generate_egovframe_report(projectDir, sections=["assessment"])        # 평가�
 rehearse_egovframe_migration(projectDir)                               # 사본에서 전 과정 실측: 남는 컴파일 오류·pom 변경안(원본 불변)
 reassemble_egovframe_components(projectDir)                            # 미리보기: 원본 태그·파일별 판정
 reassemble_egovframe_components(projectDir, dryRun=false)              # 공통컴포넌트 v5.0.7 재조립 + 패치·작업 목록
+reassemble_egovframe_components(projectDir, dryRun=false, reapply=true, verify=true)  # + 사용자 수정 3-way 자동 재적용(충돌은 작업 목록)
 migrate_egovframe_project(projectDir, apply=true, dryRun=false)        # 나머지 좌표·패키지·Jakarta 자동 치환
 migrate_egovframe_project(projectDir, verify=true)                     # compile 오류 ↔ 수동 항목 작업 목록
 ```

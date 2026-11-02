@@ -76,7 +76,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 
 1. `migrate_egovframe_project(projectDir)` — 읽기 전용 진단. 자동 치환 가능한 항목과 사람이 봐야 할 항목을 나눕니다.
 2. `rehearse_egovframe_migration(projectDir)` — 프로젝트 사본에서 재조립 → 전환 적용 → JDK 17 컴파일 → pom 맞춤 → 컴파일을 실제로 돌려 남는 오류 수를 알려 줍니다. 원본은 건드리지 않습니다.
-3. `reassemble_egovframe_components(projectDir, apply=true)` — 복사해 둔 공통컴포넌트 소스를 v5.0.7 로 바꾸고, 직접 수정한 부분은 패치로 남깁니다.
+3. `reassemble_egovframe_components(projectDir, apply=true)` — 복사해 둔 공통컴포넌트 소스를 v5.0.7 로 바꾸고, 직접 수정한 부분은 패치로 남깁니다. `reapply=true` 면 충돌 없는 수정은 3-way 병합으로 자동으로 다시 붙이고 충돌만 작업 목록에 남깁니다.
 4. `migrate_egovframe_project(projectDir, apply=true, verify=true)` — 적용하고 컴파일해 오류를 수동 항목과 연결합니다. 백업과 작업 목록이 남습니다.
 
 이미 5.x 라면 `migrate_egovframe_project(target="5.0.2")` 가 parent·RTE 버전을 최신 5.0.x 로 맞춥니다. 공식 Initializr 템플릿도 parent 가 5.0.0·5.0.1 로 나오므로 새 프로젝트에도 `create_egovframe_project(alignParent=true)` 로 같은 갱신을 적용할 수 있습니다.

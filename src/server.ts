@@ -647,19 +647,20 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 공통컴포넌트 재조립 (v0.38.0) ─────────────────────
   server.registerTool(
     "reassemble_egovframe_components",
-    { title: t("reassemble_egovframe_components"), description: d("reassemble_egovframe_components", "3.x/4.x(또는 이전 5.x) 프로젝트에 복사돼 있는 공통컴포넌트 소스를 카탈로그 고정 버전(현재 v5.0.7)으로 다시 조립합니다. (1) 프로젝트 파일의 git blob id 를 공식 egovframe-common-components 후보 태그(좌표 세대별)와 대조해 원본 태그를 식별하고(파일 내용을 내려받지 않음, sourceTag 로 지정 가능) (2) 원본·현재·목표로 파일마다 목표와 같음/원본 그대로(교체)/사용자 수정/5.x 신규/5.x 에서 제거/원본 미확인/사용자 추가를 판정한 뒤 (3) dryRun=false 면 하나의 transaction 으로 목표 파일을 쓰고(아카이브 sha256 검증), 5.x 에 없는 원본 파일은 백업 후 지우고, 사용자 수정 소스는 교체하되 원본 대비 변경을 unified diff 패치로 보존하며(설정·자산 파일은 사용자본을 유지하고 목표본을 참고로 저장) 매니페스트를 기록해 이후 upgrade·validate·remove 도구가 적용되게 합니다. 백업·패치·reassemble-plan.json 은 migration-backup/<시각>-reassemble-*/ 에 남고, 작업 목록(패치 다시 반영·5.x 제거 파일·설정 비교)을 돌려줍니다. verify=true 면 적용 뒤 compile 을 실행해 오류를 작업 목록 파일에 붙입니다. 원본 태그 비교에 git 이 필요하며 캐시는 EGOVFRAME_CACHE_DIR(기본 ~/.cache/egovframe-scaffold-mcp)에 둡니다. 패치를 자동으로 다시 적용하지는 않습니다."), inputSchema: {
+    { title: t("reassemble_egovframe_components"), description: d("reassemble_egovframe_components", "3.x/4.x(또는 이전 5.x) 프로젝트에 복사돼 있는 공통컴포넌트 소스를 카탈로그 고정 버전(현재 v5.0.7)으로 다시 조립합니다. (1) 프로젝트 파일의 git blob id 를 공식 egovframe-common-components 후보 태그(좌표 세대별)와 대조해 원본 태그를 식별하고(파일 내용을 내려받지 않음, sourceTag 로 지정 가능) (2) 원본·현재·목표로 파일마다 목표와 같음/원본 그대로(교체)/사용자 수정/5.x 신규/5.x 에서 제거/원본 미확인/사용자 추가를 판정한 뒤 (3) dryRun=false 면 하나의 transaction 으로 목표 파일을 쓰고(아카이브 sha256 검증), 5.x 에 없는 원본 파일은 백업 후 지우고, 사용자 수정 소스는 교체하되 원본 대비 변경을 unified diff 패치로 보존하며(설정·자산 파일은 사용자본을 유지하고 목표본을 참고로 저장) 매니페스트를 기록해 이후 upgrade·validate·remove 도구가 적용되게 합니다. 백업·패치·reassemble-plan.json 은 migration-backup/<시각>-reassemble-*/ 에 남고, 작업 목록(패치 다시 반영·5.x 제거 파일·설정 비교)을 돌려줍니다. verify=true 면 적용 뒤 compile 을 실행해 오류를 작업 목록 파일에 붙입니다. 원본 태그 비교에 git 이 필요하며 캐시는 EGOVFRAME_CACHE_DIR(기본 ~/.cache/egovframe-scaffold-mcp)에 둡니다. v1.12: reapply=true 면 사용자 수정 파일(소스·설정)을 원본·현재·목표 3-way(git merge-file)로 합쳐 충돌 없는 것만 그 결과로 쓰고, 충돌·이진은 지금처럼 목표본 + 패치 + 작업 목록(충돌 hunk 수)으로 남깁니다 — 파일에 충돌 표식을 넣지 않습니다. verify=true 와 함께 쓰면 합친 파일에서 컴파일 오류가 나는 것은 목표본으로 되돌립니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장)"),
       components: z.array(z.string()).optional().describe("재조립할 컴포넌트 id(그룹 id 는 하위 컴포넌트로 펼침). 미지정 시 감지된 컴포넌트 전부"),
       sourceTag: z.string().regex(/^(auto|[A-Za-z0-9._-]+)$/).default("auto").describe("원본 태그(예: v3.10.0). auto(기본)면 파일 대조로 식별"),
       database: z.enum(ECC_DB_TYPES).optional().describe("지정 시 컴포넌트별 DDL·DML 을 scripts/egovframe-components/<db>/ 에 함께 생성"),
       dryRun: z.boolean().default(true).describe("true(기본)면 분류·계획만, false 면 적용(transaction)"),
-      verify: z.boolean().default(false).describe("적용 뒤 compile 실행해 오류를 작업 목록에 연결"),
+      verify: z.boolean().default(false).describe("적용 뒤 compile 실행해 오류를 작업 목록에 연결(reapply=true 면 합친 파일에 오류가 있으면 목표본으로 되돌림)"),
+      reapply: z.boolean().default(false).describe("사용자 수정 파일을 원본·현재·목표 3-way 로 합쳐 충돌 없는 것만 자동 반영(충돌은 파일에 표식을 남기지 않고 작업 목록으로)"),
       timeoutMs: z.number().int().min(10_000).max(1_800_000).default(300_000).describe("verify 컴파일 타임아웃(ms)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("출력 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.reassemble_egovframe_components.shape, annotations: toolAnnotations("reassemble_egovframe_components") },
     async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await reassembleComponents({ progress: progressFromExtra(extra), projectDir: args.projectDir, components: args.components, sourceTag: args.sourceTag, database: args.database, dryRun: args.dryRun, verify: args.verify, timeoutMs: args.timeoutMs });
+      const r = await reassembleComponents({ progress: progressFromExtra(extra), projectDir: args.projectDir, components: args.components, sourceTag: args.sourceTag, database: args.database, dryRun: args.dryRun, verify: args.verify, reapply: args.reapply, timeoutMs: args.timeoutMs });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderReassembleMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -778,13 +779,14 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       components: z.array(z.string()).optional().describe("재조립 대상 컴포넌트 id(기본: 감지된 전부)"),
       sourceTag: z.string().default("auto").describe("재조립 원본 태그(기본 auto = 식별)"),
       keepWorkspace: z.boolean().default(false).describe("true 면 사본을 지우지 않고 경로를 돌려줌"),
+      reapply: z.boolean().default(false).describe("재조립 때 사용자 수정을 3-way 로 다시 적용해 봄(사본에서, 자동·충돌 수를 결과에)"),
       timeoutMs: z.number().int().min(30_000).max(3_600_000).default(900_000).describe("컴파일 1회 타임아웃(ms)"),
       topN: z.number().int().min(1).max(100).default(20).describe("작업 목록 수"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.rehearse_egovframe_migration.shape, annotations: toolAnnotations("rehearse_egovframe_migration") },
     async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await rehearseMigration({ progress: progressFromExtra(extra), projectDir: args.projectDir, steps: args.steps, components: args.components, sourceTag: args.sourceTag === "auto" ? undefined : args.sourceTag, keepWorkspace: args.keepWorkspace, timeoutMs: args.timeoutMs, topN: args.topN });
+      const r = await rehearseMigration({ progress: progressFromExtra(extra), projectDir: args.projectDir, steps: args.steps, components: args.components, sourceTag: args.sourceTag === "auto" ? undefined : args.sourceTag, keepWorkspace: args.keepWorkspace, reapply: args.reapply, timeoutMs: args.timeoutMs, topN: args.topN });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderRehearsalMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -1004,15 +1006,18 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
   // ── 업그레이드 도구 (v0.17.0) ──────────────────────────
   server.registerTool(
     "upgrade_egovframe_project",
-    { title: t("upgrade_egovframe_project"), description: d("upgrade_egovframe_project", "매니페스트에 기록된 설치 공통컴포넌트를 upstream 최신본과 비교해 갱신합니다. 사용자가 수정한 파일은 force 없이는 보존하며, dryRun(기본)으로 변경 계획을 먼저 확인합니다. 덮어쓰기 전 upgrade-backup/에 백업하고, 하드 충돌 시 아무것도 쓰지 않고 거부합니다."), inputSchema: {
+    { title: t("upgrade_egovframe_project"), description: d("upgrade_egovframe_project", "매니페스트에 기록된 설치 공통컴포넌트를 카탈로그 고정 태그(이 도구 버전이 아는 최신)로 3-way 갱신합니다 — 기준은 매니페스트에 적힌 설치 태그, 파일마다 불변/갱신/추가/사용자수정(보존)/충돌/upstream삭제 로 분류. 사용자가 수정한 파일은 force 없이는 보존하며, dryRun(기본)으로 변경 계획을 먼저 확인합니다. 덮어쓰기 전 upgrade-backup/에 백업하고, 하드 충돌 시 아무것도 쓰지 않고 거부합니다. v1.12: reapply=true 면 충돌 파일(사용자 수정 + upstream 변경)을 기준·현재·목표 3-way(git merge-file)로 합쳐 충돌 없는 것만 적용하고, 합치지 못한 파일만 거부(force 로 덮어쓰기)합니다 — 파일에 충돌 표식을 넣지 않습니다. verify=true 면 적용 뒤 compile 해 합친 파일에서 오류가 나면 그 파일을 upstream 본으로 되돌립니다."), inputSchema: {
       projectDir: z.string().describe("업그레이드할 프로젝트 디렉터리(절대경로 권장)"),
       components: z.array(z.string()).optional().describe("대상 컴포넌트 id (미지정 시 매니페스트 전체)"),
       dryRun: z.boolean().default(true).describe("true(기본)면 계획만 미리보기, 디스크 변경 없음"),
       force: z.boolean().default(false).describe("사용자 수정 파일(충돌)도 백업 후 덮어쓸지"),
+      reapply: z.boolean().default(false).describe("충돌 파일을 3-way 로 합쳐 충돌 없는 것만 자동 적용"),
+      verify: z.boolean().default(false).describe("적용 뒤 compile — 합친 파일에 오류가 있으면 upstream 본으로 되돌림"),
+      timeoutMs: z.number().int().min(10_000).max(1_800_000).default(300_000).describe("verify 컴파일 타임아웃(ms)"),
     }, annotations: toolAnnotations("upgrade_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
-      const r = await upgradeProject(args);
+      const r = await upgradeProject({ projectDir: args.projectDir, components: args.components, dryRun: args.dryRun, force: args.force, reapply: args.reapply, verify: args.verify, timeoutMs: args.timeoutMs });
       const s = r.summary;
       const head = r.dryRun ? `🔍 업그레이드 미리보기(dryRun): ${r.projectDir}` : `✅ 업그레이드 적용: ${r.projectDir}`;
       const lines = [
@@ -1024,9 +1029,13 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         if (changing.length) lines.push(``, `변경 예정:`, ...changing.map((i) => ` · [${i.cls}] ${i.relPath}`));
         lines.push(``, s.conflict ? `⚠️ 충돌 ${s.conflict}건 — force=true라야 덮어씁니다.` : `적용하려면 dryRun=false로 다시 호출하세요.`);
       } else {
-        lines.push(`- 적용: 갱신 ${r.applied?.updated} · 추가 ${r.applied?.added} · 강제 ${r.applied?.forced}`);
+        lines.push(`- 적용: 갱신 ${r.applied?.updated} · 추가 ${r.applied?.added} · 강제 ${r.applied?.forced}${r.applied?.reapplied !== undefined ? ` · 사용자 수정 합침 ${r.applied.reapplied}` : ""}`);
         if (r.backupDir) lines.push(`- 백업: ${r.backupDir}`);
+        if (r.verify) lines.push(`- 컴파일: ${r.verify.ran ? (r.verify.success ? "성공" : `실패(오류 ${r.verify.errors})`) : r.verify.reason}`);
       }
+      if (r.target?.tag || r.base?.tag) lines.push(`- 기준 ${r.base?.tag ?? "?"} → 목표 ${r.target?.tag ?? "?"}`);
+      for (const n of r.notes) lines.push(`- ${n}`);
+      if (r.reapply?.entries.some((e) => e.status === "conflict" || e.reverted)) lines.push(``, `3-way 로 합치지 못한 파일:`, ...r.reapply.entries.filter((e) => e.status === "conflict" || e.reverted).slice(0, 20).map((e) => ` · ${e.path} — ${e.reverted ? `컴파일 오류 ${e.errors}건으로 되돌림` : `충돌 ${e.conflicts}곳`}`));
       return { content: [{ type: "text", text: lines.join("\n") }] };
     },
   );

@@ -1,6 +1,6 @@
 {
-  "version": "1.11.0",
-  "base": "1.10.0",
+  "version": "1.12.0",
+  "base": "1.11.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -4443,6 +4443,25 @@
                     },
                     "projectUnchanged": {
                       "type": "boolean"
+                    },
+                    "reapply": {
+                      "type": "object",
+                      "required": [
+                        "absorbed",
+                        "conflicts",
+                        "reapplied"
+                      ],
+                      "properties": {
+                        "absorbed": {
+                          "type": "integer"
+                        },
+                        "conflicts": {
+                          "type": "integer"
+                        },
+                        "reapplied": {
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 },
@@ -6383,6 +6402,10 @@
             "projectDir": {
               "type": "string"
             },
+            "reapply": {
+              "type": "boolean",
+              "default": false
+            },
             "sourceTag": {
               "type": "string",
               "default": "auto",
@@ -6567,6 +6590,77 @@
             "projectDir": {
               "type": "string"
             },
+            "reapply": {
+              "type": "object",
+              "required": [
+                "absorbed",
+                "binary",
+                "conflicts",
+                "entries",
+                "errors",
+                "reapplied",
+                "reverted"
+              ],
+              "properties": {
+                "absorbed": {
+                  "type": "integer"
+                },
+                "binary": {
+                  "type": "integer"
+                },
+                "conflicts": {
+                  "type": "integer"
+                },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "componentId",
+                      "conflicts",
+                      "path",
+                      "status"
+                    ],
+                    "properties": {
+                      "componentId": {
+                        "type": "string"
+                      },
+                      "conflicts": {
+                        "type": "integer"
+                      },
+                      "errors": {
+                        "type": "integer"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "reverted": {
+                        "type": "boolean"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "absorbed",
+                          "binary",
+                          "clean",
+                          "conflict",
+                          "error"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "errors": {
+                  "type": "integer"
+                },
+                "reapplied": {
+                  "type": "integer"
+                },
+                "reverted": {
+                  "type": "integer"
+                }
+              }
+            },
             "sourceEra": {
               "type": "string",
               "enum": [
@@ -6707,6 +6801,10 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "reapply": {
+              "type": "boolean",
+              "default": false
             },
             "sourceTag": {
               "type": "string",
@@ -7256,6 +7354,33 @@
                     "null"
                   ]
                 },
+                "reapply": {
+                  "type": "object",
+                  "required": [
+                    "absorbed",
+                    "binary",
+                    "conflicts",
+                    "reapplied",
+                    "reverted"
+                  ],
+                  "properties": {
+                    "absorbed": {
+                      "type": "integer"
+                    },
+                    "binary": {
+                      "type": "integer"
+                    },
+                    "conflicts": {
+                      "type": "integer"
+                    },
+                    "reapplied": {
+                      "type": "integer"
+                    },
+                    "reverted": {
+                      "type": "integer"
+                    }
+                  }
+                },
                 "worklist": {
                   "type": "integer"
                 }
@@ -7541,6 +7666,20 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "reapply": {
+              "type": "boolean",
+              "default": false
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 10000,
+              "maximum": 1800000
+            },
+            "verify": {
+              "type": "boolean",
+              "default": false
             }
           }
         },

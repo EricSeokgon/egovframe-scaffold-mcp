@@ -328,6 +328,8 @@ export interface RehearseOptions {
   components?: string[];
   sourceTag?: string;
   keepWorkspace?: boolean;
+  /** v1.12: 재조립 때 사용자 수정을 3-way 로 다시 적용해 본다(사본에서) */
+  reapply?: boolean;
   /** 사본을 만들 곳(기본 EGOVFRAME_CACHE_DIR/rehearsal) — 프로젝트 안이면 거부 */
   workspaceRoot?: string;
   /** 컴파일 1회 타임아웃(기본 900000) */
@@ -365,7 +367,7 @@ export interface RehearseResult {
   workspace: { path: string | null; kept: boolean; files: number; bytes: number; copyMs: number };
   original: { files: number; bytes: number; sha256: string; unchanged: boolean };
   steps: RehearsalStepResult[];
-  reassemble?: { origin: string | null; components: number; actions: Record<string, number>; worklist: number };
+  reassemble?: { origin: string | null; components: number; actions: Record<string, number>; worklist: number; /** v1.12 */ reapply?: { reapplied: number; absorbed: number; conflicts: number; binary: number; reverted: number } };
   migrate?: { applied: { items: number; edits: number; files: number }; manualRemaining: number; byKind: Record<string, number> };
   /** 자동 단계(재조립·전환 적용) 직후 컴파일 */
   afterAutomation?: RehearsalPhase;
@@ -469,9 +471,10 @@ export async function rehearseMigration(opts: RehearseOptions): Promise<Rehearse
 
     await step("reassemble", async () => {
       const sub = subFor();
-      const r = await reassembleComponents({ projectDir: ws, dryRun: false, components: opts.components, sourceTag: opts.sourceTag, origin: opts.origin, readTarget: opts.readTarget, runner: opts.runner, platform: opts.platform, ...(sub ? { progress: sub } : {}) });
-      result.reassemble = { origin: r.origin.tag, components: r.components.length, actions: { ...r.actions }, worklist: r.worklist.length };
-      return r.components.length ? L(`원본 ${r.origin.tag ?? "미확인"} → ${r.target.tag}: 컴포넌트 ${r.components.length}종, 교체 ${r.actions.replace}·추가 ${r.actions.add}·삭제 ${r.actions.delete}·유지 ${r.actions.keep}, 작업 목록 ${r.worklist.length}`, `origin ${r.origin.tag ?? "unknown"} → ${r.target.tag}: ${r.components.length} component(s), replace ${r.actions.replace}·add ${r.actions.add}·delete ${r.actions.delete}·keep ${r.actions.keep}, worklist ${r.worklist.length}`) : L("재조립할 공통컴포넌트 없음", "no common components to reassemble");
+      const r = await reassembleComponents({ projectDir: ws, dryRun: false, components: opts.components, sourceTag: opts.sourceTag, reapply: opts.reapply, origin: opts.origin, readTarget: opts.readTarget, runner: opts.runner, platform: opts.platform, ...(sub ? { progress: sub } : {}) });
+      result.reassemble = { origin: r.origin.tag, components: r.components.length, actions: { ...r.actions }, worklist: r.worklist.length, ...(r.reapply ? { reapply: { reapplied: r.reapply.reapplied, absorbed: r.reapply.absorbed, conflicts: r.reapply.conflicts, binary: r.reapply.binary, reverted: r.reapply.reverted } } : {}) };
+      const re = r.reapply ? L(`, 사용자 수정 재적용 자동 ${r.reapply.reapplied}·충돌 ${r.reapply.conflicts}`, `, reapplied ${r.reapply.reapplied}·conflicts ${r.reapply.conflicts}`) : "";
+      return r.components.length ? L(`원본 ${r.origin.tag ?? "미확인"} → ${r.target.tag}: 컴포넌트 ${r.components.length}종, 교체 ${r.actions.replace}·추가 ${r.actions.add}·삭제 ${r.actions.delete}·유지 ${r.actions.keep}, 작업 목록 ${r.worklist.length}${re}`, `origin ${r.origin.tag ?? "unknown"} → ${r.target.tag}: ${r.components.length} component(s), replace ${r.actions.replace}·add ${r.actions.add}·delete ${r.actions.delete}·keep ${r.actions.keep}, worklist ${r.worklist.length}${re}`) : L("재조립할 공통컴포넌트 없음", "no common components to reassemble");
     });
     await step("migrate", async () => {
       const a = await applyMigration({ projectDir: ws, dryRun: false });

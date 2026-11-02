@@ -155,7 +155,7 @@ export interface AssessmentResult {
   /** v0.47: 멀티 모듈 작업공간이면 모듈별 요약(등급은 전체 합산) */
   modules?: { name: string; dir: string; buildTool: string; dependencies: number; outdated: number; legacyReplace: number; updateAuto: number; updateManual: number; secure: number }[];
   /** v0.41: 최근 리허설(rehearse_egovframe_migration) 실측 — 등급 산식에는 넣지 않는다 */
-  rehearsal?: { at: string; afterAutomation: number | null; afterPomAlignment: number | null; projectUnchanged: boolean; origin: string | null };
+  rehearsal?: { at: string; afterAutomation: number | null; afterPomAlignment: number | null; projectUnchanged: boolean; origin: string | null; /** v1.12 reapply=true 리허설의 재적용 수치 */ reapply?: { reapplied: number; absorbed: number; conflicts: number } };
   notes: string[];
 }
 
@@ -310,7 +310,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       const rec = readRehearsalRecord(projectDir);
       if (!rec) return {};
       const cnt = (p?: { ran: boolean; success: boolean | null; analysis?: { errors: number } }) => (p?.ran ? (p.success ? 0 : p.analysis?.errors ?? null) : null);
-      return { rehearsal: { at: rec.startedAt, afterAutomation: cnt(rec.afterAutomation), afterPomAlignment: cnt(rec.afterPomAlignment), projectUnchanged: rec.original.unchanged, origin: rec.reassemble?.origin ?? null } };
+      return { rehearsal: { at: rec.startedAt, afterAutomation: cnt(rec.afterAutomation), afterPomAlignment: cnt(rec.afterPomAlignment), projectUnchanged: rec.original.unchanged, origin: rec.reassemble?.origin ?? null, ...(rec.reassemble?.reapply ? { reapply: { reapplied: rec.reassemble.reapply.reapplied, absorbed: rec.reassemble.reapply.absorbed, conflicts: rec.reassemble.reapply.conflicts } } : {}) } };
     })(),
     notes,
   };
@@ -432,7 +432,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
   out.push(``, L(`## 6. 등급과 근거`, `## 6. Grades and evidence`), ``);
   renderGrade(out, L("전환 난이도", "Migration difficulty"), r.grades.migration);
   renderGrade(out, L("공급망 상태", "Supply-chain status"), r.grades.supplyChain);
-  if (r.rehearsal) out.push(L(`**실측(리허설 ${r.rehearsal.at})**: 재조립·전환 적용 후 컴파일 오류 ${r.rehearsal.afterAutomation ?? "—"}건 → pom 맞춤 후 ${r.rehearsal.afterPomAlignment ?? "—"}건${r.rehearsal.origin ? ` · 원본 태그 ${r.rehearsal.origin}` : ""} — 등급 산식과 별개로 rehearse_egovframe_migration 이 프로젝트 사본에서 잰 값입니다.`, `**Measured (rehearsal ${r.rehearsal.at})**: compile errors after reassembly and migration ${r.rehearsal.afterAutomation ?? "—"} → after pom alignment ${r.rehearsal.afterPomAlignment ?? "—"}${r.rehearsal.origin ? ` · origin tag ${r.rehearsal.origin}` : ""} — measured by rehearse_egovframe_migration on a copy of the project, independent of the grade formula.`), ``);
+  if (r.rehearsal) out.push(L(`**실측(리허설 ${r.rehearsal.at})**: 재조립·전환 적용 후 컴파일 오류 ${r.rehearsal.afterAutomation ?? "—"}건 → pom 맞춤 후 ${r.rehearsal.afterPomAlignment ?? "—"}건${r.rehearsal.origin ? ` · 원본 태그 ${r.rehearsal.origin}` : ""}${r.rehearsal.reapply ? ` · 사용자 수정 재적용 자동 ${r.rehearsal.reapply.reapplied}·upstream 에 이미 반영 ${r.rehearsal.reapply.absorbed}·충돌 ${r.rehearsal.reapply.conflicts}` : ""} — 등급 산식과 별개로 rehearse_egovframe_migration 이 프로젝트 사본에서 잰 값입니다.`, `**Measured (rehearsal ${r.rehearsal.at})**: compile errors after reassembly and migration ${r.rehearsal.afterAutomation ?? "—"} → after pom alignment ${r.rehearsal.afterPomAlignment ?? "—"}${r.rehearsal.origin ? ` · origin tag ${r.rehearsal.origin}` : ""}${r.rehearsal.reapply ? ` · reapplied user changes: automatic ${r.rehearsal.reapply.reapplied}·already upstream ${r.rehearsal.reapply.absorbed}·conflicts ${r.rehearsal.reapply.conflicts}` : ""} — measured by rehearse_egovframe_migration on a copy of the project, independent of the grade formula.`), ``);
   else out.push(L(`실측 없음 — \`rehearse_egovframe_migration\` 으로 프로젝트 사본에서 자동 단계 후 남는 컴파일 오류를 잴 수 있습니다.`, `No measurement — \`rehearse_egovframe_migration\` can measure the compile errors remaining after the automated steps on a copy of the project.`), ``);
   renderFormula(out, MIGRATION_RUBRIC);
   renderFormula(out, SUPPLY_CHAIN_RUBRIC);

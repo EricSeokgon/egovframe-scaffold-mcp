@@ -204,7 +204,7 @@ export const AssessmentOutput = loose({
   security: loose({ ok: z.number().int(), missing: z.number().int(), na: z.number().int(), checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })) }),
   sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.string(), z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
-  rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable() }).optional(),
+  rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable(), reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int() }).optional() }).optional(),
   notes: z.array(z.string()),
 });
 export const ReportOutput = loose({
@@ -237,6 +237,7 @@ export const ReassembleOutput = loose({
   backupDir: z.string().optional(),
   planPath: z.string().optional(),
   verify: loose({ ran: z.boolean(), success: z.boolean().nullable(), command: z.string().optional(), durationMs: z.number().optional(), errors: z.number().int(), inReassembled: z.number().int(), reason: z.string().optional() }).optional(),
+  reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int(), binary: z.number().int(), errors: z.number().int(), reverted: z.number().int(), entries: z.array(loose({ path: z.string(), componentId: z.string(), status: z.enum(["clean", "absorbed", "conflict", "binary", "error"]), conflicts: z.number().int(), reverted: z.boolean().optional(), errors: z.number().int().optional() })) }).optional(),
   notes: z.array(z.string()),
 });
 
@@ -257,7 +258,7 @@ export const RehearseOutput = loose({
   workspace: loose({ path: z.string().nullable(), kept: z.boolean(), files: z.number().int(), bytes: z.number().int(), copyMs: z.number() }),
   original: loose({ files: z.number().int(), bytes: z.number().int(), sha256: z.string(), unchanged: z.boolean() }),
   steps: z.array(loose({ step: z.enum(["reassemble", "migrate", "verify", "align-pom"]), ran: z.boolean(), ok: z.boolean(), durationMs: z.number(), summary: z.string(), error: z.string().optional() })),
-  reassemble: loose({ origin: z.string().nullable(), components: z.number().int(), actions: z.record(z.string(), z.number().int()), worklist: z.number().int() }).optional(),
+  reassemble: loose({ origin: z.string().nullable(), components: z.number().int(), actions: z.record(z.string(), z.number().int()), worklist: z.number().int(), reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int(), binary: z.number().int(), reverted: z.number().int() }).optional() }).optional(),
   migrate: loose({ applied: loose({ items: z.number().int(), edits: z.number().int(), files: z.number().int() }), manualRemaining: z.number().int(), byKind: z.record(z.string(), z.number().int()) }).optional(),
   afterAutomation: RehearsalPhaseSchema.optional(),
   afterPomAlignment: RehearsalPhaseSchema.extend({ reference: z.string().optional(), parent: z.string().nullable().optional(), added: z.array(z.string()).optional(), versionsChanged: z.array(z.string()).optional(), scopesChanged: z.array(z.string()).optional(), propertiesSet: z.array(z.string()).optional(), propertiesRemoved: z.array(z.string()).optional(), patch: z.string().optional() }).optional(),
