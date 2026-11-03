@@ -42,9 +42,10 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
+- **v1.13.0 완료**: 설정·비밀값 외부화 `externalize_egovframe_config`(도구 40종·CLI `externalize`) — 공식 portal-site 자리표시자+암호화 키 외부 파일로 실제 기동, 4.x 는 암호화 값 유지·키 수동([결과](#v1130-결과-2026-11-03)).
 - **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.13 설정·비밀값 외부화 → v1.14 프로젝트 구조 지도·변경 영향([다음 버전 기획](#다음-버전-기획-v112v114)). 그 뒤 운영 전환·조직 단위(v1.15–v1.17) → 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v115-이후)).
+- **다음 계획**: v1.14 프로젝트 구조 지도·변경 영향([다음 버전 기획](#다음-버전-기획-v112v114)). 그 뒤 운영 전환·조직 단위(v1.15–v1.17) → 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v115-이후)).
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -157,6 +158,14 @@ v1.11.0 까지 끝난 상태(2026-11-02, 도구 39종 + CLI 명령 16종)에서 
 - 공통컴포넌트 코퍼스 4.3.2 의 18건 중 자동으로 옮기는 수를 기대값으로
 
 **완료 정의**: 도구 40종, `docs/design-secure-coding.md` 「비밀값 외부화」절(또는 새 문서), 배포 설계 갱신, api-contract minor, CHANGELOG
+
+#### v1.13.0 결과 (2026-11-03)
+
+- 도구 40종·CLI 명령 17종(`externalize`)·구조화 출력 19종, api-contract minor. 설계: [design-externalize.md](design-externalize.md), 사용법: [tools.md](tools.md#설정비밀값-외부화-externalize_egovframe_config-v113).
+- 선행 조사가 바꾼 것: (1) runtime 5.x `EgovCryptoConfiguration` 이 `@Value("${Globals.CryptoConfigPath:}")` 로 외부 키 파일 경로를 받습니다 — Jasypt 없이 "값은 암호화, 키만 외부"가 됩니다. (2) 4.x `egov-crypto` 네임스페이스는 `globals.properties` 를 직접 읽어 자리표시자도 외부 키 파일도 안 됩니다 — 4.x 는 값을 그대로 두고 키를 수동 항목으로, 5.x 전환 뒤 다시 실행. (3) `EgovProperties.getProperty` 로 직접 읽는 키(`Globals.File.algorithmKey`)는 읽는 Java 파일을 적어 수동으로.
+- 실측: 공식 portal-site — `Globals.Password` 자리표시자 1·암호화 키 2줄 외부 파일·수동 1, `EGOV_PASSWORD`·`EGOV_CRYPTO_CONFIG` 를 주고 내장 HSQL 로 26초 기동, 규칙 수 감소. web·boot-web 오탐 0(주석 안 리터럴). 코퍼스 4.3.2 암호화 8 유지·자동 0, 3.10.0 SNS 비밀 2 자리표시자.
+- 기획과 달라진 점: "세 확인 통과해야 쓴다" 대신 적용 → 기동 → 설정 해석 실패(`config-missing`)만 되돌림(DB 없음 같은 종전 실패는 유지). 코퍼스 기대값은 "18건 중 자동 N" 이 아니라 4.x 자동 0 — 대신 5.x 템플릿에서 실제 기동으로 확인. 암호화 값의 재암호화는 안내만(ARIA 구현 또는 프로젝트 classpath Java 실행이 필요).
+- 함께 바뀐 것: `verify_egovframe_startup` 에 내부 `env` 옵션(앱 프로세스 환경 변수), `generate_egovframe_deploy` 가 설정의 비밀 자리표시자를 Secret 자리로(`DeployProfile.secretEnv`), 보안약점 규칙 `hardcoded-config-password` 에 YAML 따옴표 값.
 
 ### v1.14.0 — 프로젝트 구조 지도·변경 영향 (`map_egovframe_project`)
 

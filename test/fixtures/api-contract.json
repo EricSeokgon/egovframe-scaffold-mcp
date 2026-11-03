@@ -1,6 +1,6 @@
 {
-  "version": "1.12.0",
-  "base": "1.11.0",
+  "version": "1.13.0",
+  "base": "1.12.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -2162,6 +2162,420 @@
           }
         },
         "output": null,
+        "deprecated": {}
+      },
+      "externalize_egovframe_config": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "dryRun": {
+              "type": "boolean",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "crypto",
+                "env"
+              ],
+              "default": "auto"
+            },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 30000,
+              "maximum": 1800000
+            },
+            "tomcatHome": {
+              "type": "string"
+            },
+            "verify": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "deployUpdated",
+            "dryRun",
+            "env",
+            "files",
+            "findings",
+            "generated",
+            "manual",
+            "mode",
+            "notes",
+            "projectDir",
+            "runtime",
+            "secureCoding",
+            "summary"
+          ],
+          "properties": {
+            "backupDir": {
+              "type": "string"
+            },
+            "deployUpdated": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "env": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "example",
+                  "keys",
+                  "name"
+                ],
+                "properties": {
+                  "example": {
+                    "type": "string"
+                  },
+                  "keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "changes",
+                  "path"
+                ],
+                "properties": {
+                  "changes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "after",
+                        "before",
+                        "line"
+                      ],
+                      "properties": {
+                        "after": {
+                          "type": "string"
+                        },
+                        "before": {
+                          "type": "string"
+                        },
+                        "line": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "findings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "directReaders",
+                  "file",
+                  "format",
+                  "key",
+                  "kind",
+                  "line",
+                  "masked"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "crypto-path",
+                      "encrypted",
+                      "env",
+                      "manual"
+                    ]
+                  },
+                  "directReaders": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "envName": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": [
+                      "properties",
+                      "xml",
+                      "yaml"
+                    ]
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "crypto-key",
+                      "db-password",
+                      "file-crypto-key",
+                      "secret"
+                    ]
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "masked": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "generated": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "manual": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "key",
+                  "line",
+                  "reason"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "crypto",
+                "env"
+              ]
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "planPath": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rolledBack": {
+              "type": "boolean"
+            },
+            "runtime": {
+              "type": "string",
+              "enum": [
+                "boot",
+                "tomcat",
+                "unknown"
+              ]
+            },
+            "secureCoding": {
+              "type": "object",
+              "required": [
+                "after",
+                "before",
+                "rule"
+              ],
+              "properties": {
+                "after": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "before": {
+                  "type": "integer"
+                },
+                "rule": {
+                  "type": "string"
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "cryptoPath",
+                "encrypted",
+                "env",
+                "files",
+                "found",
+                "manual"
+              ],
+              "properties": {
+                "cryptoPath": {
+                  "type": "integer"
+                },
+                "encrypted": {
+                  "type": "integer"
+                },
+                "env": {
+                  "type": "integer"
+                },
+                "files": {
+                  "type": "integer"
+                },
+                "found": {
+                  "type": "integer"
+                },
+                "manual": {
+                  "type": "integer"
+                }
+              }
+            },
+            "verify": {
+              "type": "object",
+              "required": [
+                "durationMs",
+                "env",
+                "ran",
+                "success"
+              ],
+              "properties": {
+                "cause": {
+                  "type": "object",
+                  "required": [
+                    "hint",
+                    "kind",
+                    "summary"
+                  ],
+                  "properties": {
+                    "bean": {
+                      "type": "string"
+                    },
+                    "driver": {
+                      "type": "string"
+                    },
+                    "hint": {
+                      "type": "string"
+                    },
+                    "jdbcUrl": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "bean-creation",
+                        "build",
+                        "config-missing",
+                        "db-connection",
+                        "db-schema",
+                        "driver-missing",
+                        "http-error",
+                        "javax-namespace",
+                        "mapper-xml",
+                        "other",
+                        "port-in-use",
+                        "repository-unavailable",
+                        "timeout"
+                      ]
+                    },
+                    "line": {
+                      "type": "integer"
+                    },
+                    "resource": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "durationMs": {
+                  "type": "integer"
+                },
+                "env": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "ran": {
+                  "type": "boolean"
+                },
+                "success": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
         "deprecated": {}
       },
       "fix_egovframe_dependencies": {
@@ -8057,6 +8471,7 @@
         "db": "prepare_egovframe_database",
         "deliver": "prepare_egovframe_delivery",
         "diagnose": "diagnose_egovframe_project",
+        "externalize": "externalize_egovframe_config",
         "fix": "fix_egovframe_secure_coding",
         "fix-deps": "fix_egovframe_dependencies",
         "migrate": "migrate_egovframe_project",

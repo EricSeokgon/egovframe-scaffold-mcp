@@ -99,6 +99,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => ({ failed: s.success === false ? 1 : 0, started: s.started === true ? 1 : 0, seconds: Math.round(num(s.durationMs) / 1000) }),
     line: (s) => { const c = s.cause ? rec(s.cause) : null; return L(`기동 ${s.success ? "성공" : "실패"}${c ? ` — ${c.kind}: ${String(c.summary ?? "").slice(0, 120)}` : ""} · ${Math.round(num(s.durationMs) / 1000)}초`, `Startup ${s.success ? "succeeded" : "failed"}${c ? ` — ${c.kind}: ${String(c.summary ?? "").slice(0, 120)}` : ""} · ${Math.round(num(s.durationMs) / 1000)}s`); },
   },
+  externalize: {
+    tool: "externalize_egovframe_config", summary: "설정·비밀값 외부화(--write 없으면 계획만, --verify 로 기동 확인)", summaryEn: "Externalize configuration secrets (plan only without --write; --verify starts the app)", defaults: { dryRun: true }, blocked: ["dryRun"],
+    metrics: (s) => { const sm = rec(s.summary); return { found: num(sm.found), env: num(sm.env), cryptoPath: num(sm.cryptoPath), manual: num(sm.manual), files: num(sm.files), rolledBack: s.rolledBack === true ? 1 : 0 }; },
+    line: (s) => { const sm = rec(s.summary), sc = rec(s.secureCoding); return L(`설정 외부화 ${s.dryRun ? "계획" : s.rolledBack ? "되돌림" : "적용"} — 자리표시자 ${num(sm.env)} · 암호화 키 ${num(sm.cryptoPath)} · 수동 ${num(sm.manual)} · 파일 ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · 보안약점 ${num(sc.before)} → ${num(sc.after)}` : ""}`, `Config externalization ${s.dryRun ? "plan" : s.rolledBack ? "rolled back" : "applied"} — placeholders ${num(sm.env)} · crypto key ${num(sm.cryptoPath)} · manual ${num(sm.manual)} · files ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · secure-coding ${num(sc.before)} → ${num(sc.after)}` : ""}`); },
+  },
   rehearse: {
     tool: "rehearse_egovframe_migration", summary: "전환 리허설(사본에서 재조립·적용·컴파일, 원본 불변)", summaryEn: "Migration rehearsal (reassemble, apply, compile on a copy; original untouched)",
     metrics: (s) => {
