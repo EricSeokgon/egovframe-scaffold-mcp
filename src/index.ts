@@ -166,6 +166,9 @@ export type { MergeStatus, MergeResult, ReapplyEntry, ReapplySummary } from "./r
 export { DATABASE_TYPES, CONTAINER_DBS, MYSQL_CHARSET, DB_OUTPUT_DIR, normalizeDbType, splitSql, classifyStatement, orderByReferences, buildScripts, parseInsert, hangulProbe, missingReferences, supplementFrom, renderDbCompose, loadCommands, prepareDatabase, databaseReadiness, renderDatabaseMarkdown, defaultDocker } from "./database.js";
 export { analyzeStartupLog, normalizeResource, ensureTomcat, prepareCatalinaBase, freePort, verifyStartup, renderStartupMarkdown, startupKindLabel } from "./startup.js";
 export type { StartupFailureKind, StartupCause, StartupLogAnalysis, StartupOptions, StartupResult, HttpProbe, Download } from "./startup.js";
+export { scanSecrets, externalizeConfig, renderExternalizeMarkdown, envNameForKey, maskSecret, looksEgovEncrypted, algorithmKeyHash, CONFIG_PASSWORD_RULE, CRYPTO_CONFIG_FILE, CRYPTO_PATH_KEY, CRYPTO_ENV } from "./externalize.js";
+export type { SecretKind, SecretFormat, SecretAction, SecretFinding, ExternalizeOptions, ExternalizeResult, ExternalizeChange } from "./externalize.js";
+export { findSecretPlaceholders } from "./deploy.js";
 export type { DbType, SqlStatement, PreparedScripts, DbSourceFile, DbConnection, DockerExec, DbRunResult, PrepareDatabaseOptions, PrepareDatabaseResult } from "./database.js";
 export type { FixHistoryEntry } from "./fix-history.js";
 export { analyzeJavaFlows, findMethods, blankJavaLiterals } from "./java-flow.js";

@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 39종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 40종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -41,6 +41,7 @@
 | `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `verify_egovframe_startup` | **기동 검증**(v1.11) — 프로젝트를 바꾸지 않고 실제로 띄움: Boot 는 `spring-boot:run`·`bootRun`(빈 포트), Classic war 는 캐시의 고정 Tomcat 10.1/11.0(sha256 검증, `tomcatHome`)에 ROOT 로. 완료 문구 + HTTP(5xx 아님)로 판정, 실패면 원인 종류(포트·드라이버·DB 접속·테이블 없음·매퍼 XML 파일·줄·설정 누락·javax·실제로 실패한 빈과 정의 파일·GUI 빈·시간 초과·빌드)와 처방. [자세히](#기동-검증-verify_egovframe_startup-v111) |
+| `externalize_egovframe_config` | **설정·비밀값 외부화**(v1.13) — 설정 파일의 DB 비밀번호·비밀 값을 저장소 밖으로: 판정은 보안약점 점검의 `hardcoded-config-password` 규칙·화이트리스트 그대로(+ XML `<property name="password" value="리터럴"/>`, 주석 제외). Spring 자리표시자로 읽는 키는 `${EGOV_…_PASSWORD}` 로(env), 표준프레임워크 암호화 값은 그대로 두고 복호화 키를 `egov-crypto-config.properties` 에서 빼 `Globals.CryptoConfigPath=${EGOV_CRYPTO_CONFIG:}` 로 외부 파일에서(crypto-path, runtime 5.x), 파일을 직접 읽는 키(`EgovProperties.getProperty`)·4.x `context-crypto.xml` 의 키는 수동 항목. `deploy/` 산출물 갱신, dryRun 기본, 트랜잭션(원본은 `migration-backup/`), 보안약점 전·후, `verify=true` 면 원래 값을 환경 변수로 주고 기동해 `config-missing` 이면 되돌림. CLI `externalize` (파괴적, 게이트) |
 | `prepare_egovframe_database` | **DB 준비·적재 확인**(v1.10) — 조립 선별본·공통컴포넌트 전체·지정 스크립트를 문장 단위로 나눠 외래키·뷰 순서로 정렬하고 중복을 지우며, 선별본이 빠뜨린 참조 테이블을 통합 스크립트에서 보완. MySQL·MariaDB 는 테이블 문자셋 `utf8mb4_unicode_ci`·`SET NAMES utf8mb4`(upstream #1386·#1387). `scripts/egovframe-db/<db>/01-schema.sql·02-data.sql`·`docker-compose.db.yml`·적재 명령, `run=true` 면 Docker 로 적재해 테이블 수·필수 행·한글 왕복 확인. [자세히](#db-준비적재-확인-prepare_egovframe_database-v110) |
 | `generate_egovframe_deploy` | **컨테이너·배포 산출물** — Dockerfile(멀티 스테이지·Classic war → Tomcat 10.1(Servlet 6.1+ 는 11.0) ROOT, Boot jar → Temurin JRE, 비루트·HEALTHCHECK, `buildInImage=false` 면 미리 빌드한 산출물)·`.dockerignore`·`deploy/docker-compose.yml`(DbType 별 DB 컨테이너·초기화 SQL)·`deploy/k8s/<app>.yaml`(Deployment·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 환경 변수·Classic 설정 파일 덮어쓰기, `imageRegistry`(폐쇄망), `dockerfilePath`(템플릿 자체 Dockerfile 과 공존). 새 파일만, `dryRun` 기본 |
 | `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
@@ -243,6 +244,26 @@ npx -y egovframe-scaffold-mcp startup --project . [--fail-on failed]
 - 끝나면 프로세스 트리를 끝내고 임시 디렉터리를 지웁니다. 프로젝트에 남는 것은 빌드 결과(`target/`)뿐입니다.
 - 실측(2026-10-30): 공식 템플릿 7종(web·simple-homepage·portal-site·enterprise-business·mobile-web·boot-web·simple-backend)이 내장 HSQL 로 16–29초에 기동. 포털·업무 템플릿은 `create_egovframe_project(database="hsql")` 가 `Globals.Hsql.AutoInit` 을 켜도록 고친 뒤 뜹니다(전에는 빈 DB 로 떠서 `LETTNROLES_HIERARCHY` 조회 실패 — 이 도구가 찾은 것). batch-db-web 은 `hsqlManager` 빈이 GUI 창을 띄워 화면 없는 환경에서 실패합니다(템플릿 특성).
 - 하지 않는 것: 화면 기능 테스트(URL 응답까지), 성능, 운영 WAS(JEUS·WebLogic) 기동, DB 컨테이너 자동 연결([설계](design-startup.md#기획에서-미룬-것)).
+
+## 설정·비밀값 외부화 (`externalize_egovframe_config`, v1.13)
+
+설정 파일의 DB 비밀번호 하드코딩은 보안 점검의 단골 지적입니다(공식 portal-site 는 `Globals.Password = pst01` 평문, 공통컴포넌트는 암호화 값이지만 복호화 키 `algorithmKey = egovframe` 가 같은 저장소에). 이 도구는 값을 저장소 밖으로 옮기고, 옮긴 뒤 실제로 뜨는지까지 확인합니다.
+
+```text
+externalize_egovframe_config(projectDir)                                  # 계획(dryRun): 찾은 값(가림)·바뀔 줄·환경 변수·수동 항목
+externalize_egovframe_config(projectDir, dryRun=false)                    # 적용 — 원본은 migration-backup/ 에만(비밀 값 포함)
+externalize_egovframe_config(projectDir, dryRun=false, verify=true)       # 적용 뒤 원래 값을 환경 변수로 주고 기동 확인(설정 해석 실패면 되돌림)
+externalize_egovframe_config(projectDir, mode="crypto")                   # 암호화 키 파일 외부화만
+npx -y egovframe-scaffold-mcp externalize --project . [--write] [--verify]
+```
+
+- **찾는 것**: `check_egovframe_secure_coding` 의 `hardcoded-config-password` 규칙과 화이트리스트(`.egovframe-secure-ignore.json`)를 그대로 — properties·yml 의 `*.password`·`*.secret` 류(빈 값·`******`·`${…}` 제외). 추가로 XML 의 `<property name="password" value="리터럴"/>`(주석 안 제외), `egov-crypto-config.properties` 의 `algorithmKey`·`algorithmKeyHash`, 4.x `context-crypto.xml` 의 `algorithmKey`, `Globals.File.algorithmKey`.
+- **읽는 방식에 따라**(`action`): `env` — Spring 자리표시자(PropertyPlaceholderConfigurer)·Boot Environment 로 읽는 키는 값을 지우고 `${EGOV_MYSQL_PASSWORD}` 처럼(이름은 키에서: `Globals.` 를 떼고 대문자, Boot 키는 `SPRING_DATASOURCE_PASSWORD`). `crypto-path` — 표준프레임워크 암호화 값은 그대로 두고 키 줄을 주석으로 바꾼 뒤 `globals.properties` 에 `Globals.CryptoConfigPath=${EGOV_CRYPTO_CONFIG:}` 를 넣습니다(runtime 5.x `EgovCryptoConfiguration` 이 `@Value("${Globals.CryptoConfigPath:}")` 로 `file:` 경로를 받음). `deploy/secrets/egov-crypto-config.properties.example`(키·해시 `CHANGE_ME`, 해시 = base64(sha256(키)))을 만듭니다. `encrypted` — 암호화 값은 키 외부화로 보호. `manual` — `EgovProperties.getProperty("…")` 로 파일을 직접 읽는 키(자리표시자가 풀리지 않음), 4.x 네임스페이스 키, 배포 정의 파일(compose·k8s)의 값.
+- **배포 산출물**: `generate_egovframe_deploy` 가 만든 `deploy/.env.example`·`docker-compose.yml`(app `environment`, 암호화 설정 파일 볼륨)·k8s `Secret`(`stringData`)에 변수 자리를 추가하고, 이후 `generate_egovframe_deploy` 는 설정의 `${EGOV_…}` 자리표시자를 읽어 같은 자리를 만듭니다.
+- **확인**: 적용 뒤 보안약점 규칙 전·후 수(`secureCoding`). `verify=true` 면 `verify_egovframe_startup` 을 원래 값을 환경 변수로 준 채 돌려 전과 같이 뜨는지 보고, 설정 해석 단계에서 실패(`config-missing`, 자리표시자 미해결)면 파일을 되돌립니다(백업은 남김). DB 접속 실패처럼 외부화와 무관한 실패는 유지합니다.
+- 결과·로그·`externalize-plan.json` 에 원래 값은 적지 않습니다(앞 2자 + `***`). 원본은 `migration-backup/<시각>-externalize-*/` 에만 — 저장소에 넣지 마세요.
+- 실측(2026-11-03): 공식 portal-site — `Globals.Password` 1건 자리표시자, 암호화 키 2줄 외부 파일, `Globals.File.algorithmKey` 수동; `EGOV_PASSWORD`·`EGOV_CRYPTO_CONFIG` 를 주고 내장 HSQL 로 26초에 기동. 공식 공통컴포넌트 4.3.2 는 암호화 값 8건 그대로(4.x 는 `egov-crypto` 가 파일을 직접 읽어 자리표시자 불가) + 키 수동 1 — 5.x 전환 뒤 다시 실행하면 키가 외부 파일로 갑니다.
+- 하지 않는 것: Vault·KMS 연동, 소스 코드 안의 하드코드 비밀(`hardcoded-secret` 규칙 — 코드 수정은 사람이), 암호화 값의 재암호화(새 키로 바꾸면 공통컴포넌트 `EgovCryptoInfo` 화면이나 `EgovEnvCryptoService.encrypt` 로), 운영 서버의 환경 변수 설정 자체. 설계: [design-externalize.md](design-externalize.md).
 
 ## DB 준비·적재 확인 (`prepare_egovframe_database`, v1.10)
 
@@ -481,7 +502,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 7종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 18종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 19종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 

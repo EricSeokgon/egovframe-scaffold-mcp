@@ -58,6 +58,8 @@ export interface DeployProfile {
   port: number; contextPath: string;
   liveness: string; readiness: string;
   db: DeployDb | null;
+  /** v1.13: 설정 파일의 비밀 자리표시자(${EGOV_…_PASSWORD} 등, externalize_egovframe_config 가 만든 것) — compose·.env.example·Secret 에 자리를 만든다 */
+  secretEnv: string[];
 }
 export interface DeployAnalysis { profile: DeployProfile | null; unsupported: { id: string; reason: string } | null; notes: string[] }
 
@@ -201,7 +203,7 @@ export function analyzeDeploy(projectDir: string): DeployAnalysis {
     db = { type, inject: "env", file: appConfig!, keys: { url: "spring.datasource.url", user: props.has("spring.datasource.username") ? "spring.datasource.username" : undefined, password: "spring.datasource.password", driver: props.has("spring.datasource.driver-class-name") ? "spring.datasource.driver-class-name" : undefined }, url, user: props.get("spring.datasource.username")?.value ?? null, host: parsed?.host ?? null, port: parsed?.port ?? null, database: parsed?.database ?? null, service: rules.databases[type] ? "container" : "external", initScripts: [] };
   }
   const appName = slug(artifactId);
-  return { profile: { appName, version, buildTool: isMaven ? "maven" : "gradle", wrapper, packaging, runtime, web, actuator, tomcat, port, contextPath, liveness, readiness, db }, unsupported: null, notes };
+  return { profile: { appName, version, buildTool: isMaven ? "maven" : "gradle", wrapper, packaging, runtime, web, actuator, tomcat, port, contextPath, liveness, readiness, db, secretEnv: findSecretPlaceholders(projectDir) }, unsupported: null, notes };
 }
 
 // ── 렌더러 ───────────────────────────────────────────────
@@ -269,7 +271,25 @@ export function renderDockerignore(p: DeployProfile, o: DeployRenderOptions): st
   return [".git", ".gitignore", ".idea", ".vscode", ".settings", ".project", ".classpath", "*.iml", "target", "build", ".gradle", "node_modules", "deploy", "migration-backup", ".egov*", "*.log", "logs", "Dockerfile", ".dockerignore", ""].join("\n");
 }
 
+/** v1.13: src/main/resources 설정 파일의 `${이름}` 자리표시자 중 비밀로 보이는 이름(…PASSWORD·…SECRET·…_KEY·EGOV_CRYPTO_CONFIG 등) */
+export function findSecretPlaceholders(projectDir: string): string[] {
+  const out = new Set<string>();
+  const files: string[] = [];
+  walkFiles(path.join(projectDir, "src", "main", "resources"), "", files, 0);
+  for (const f of files) {
+    if (!/\.(properties|ya?ml|xml)$/.test(f)) continue;
+    const text = read(path.join(projectDir, "src", "main", "resources", f));
+    const re = /\$\{([A-Z][A-Z0-9_]{2,})(?::[^}]*)?\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) if (/PASSWORD|PASSWD|SECRET|_KEY$|TOKEN|CRYPTO/.test(m[1])) out.add(m[1]);
+  }
+  return [...out].sort();
+}
 interface DbEnv { name: string; key: string; value: string; secret: boolean }
+/** 자리표시자 비밀 값의 환경 변수 항목(DB 비밀번호와 이름이 겹치면 DB 쪽이 이김) */
+function secretEnvFor(p: DeployProfile, taken: Set<string>): DbEnv[] {
+  return (p.secretEnv ?? []).filter((n) => !taken.has(n)).map((n) => ({ name: n, key: n, value: n === "EGOV_CRYPTO_CONFIG" ? "file:/run/egov/egov-crypto-config.properties" : "CHANGE_ME", secret: true }));
+}
 /** 앱 쪽 DB 설정 덮어쓰기 목록(Boot env). host 는 compose 서비스 이름 또는 Kubernetes 자리표시자. */
 function dbEnvFor(p: DeployProfile, host: string): DbEnv[] {
   const db = p.db;
@@ -314,10 +334,13 @@ export function renderCompose(p: DeployProfile, o: DeployRenderOptions): string 
     `    image: ${o.image}`,
   ];
   if (p.web) out.push("    ports:", `      - "\${APP_PORT:-${p.port}}:${p.port}"`);
-  const env = dbEnvFor(p, svc ? "db" : (db?.host ?? "db"));
+  const dbEnv = dbEnvFor(p, svc ? "db" : (db?.host ?? "db"));
+  const extraSecrets = secretEnvFor(p, new Set(dbEnv.map((e) => e.name)));
+  const env = [...dbEnv, ...extraSecrets];
   if (env.length) {
     out.push("    environment:");
-    for (const e of env) out.push(`      ${e.name}: ${e.secret ? '"${DB_PASSWORD:-CHANGE_ME}"' : q(e.value)}`);
+    for (const e of dbEnv) out.push(`      ${e.name}: ${e.secret ? '"${DB_PASSWORD:-CHANGE_ME}"' : q(e.value)}`);
+    for (const e of extraSecrets) out.push(`      ${e.name}: "\${${e.name}:-${e.value}}"`);
   }
   if (db?.inject === "file") out.push("    volumes:", `      - ./config/${path.posix.basename(db.file)}:${classicTarget(p)}:ro`);
   if (svc) out.push("    depends_on:", "      db:", "        condition: service_healthy");
@@ -349,6 +372,7 @@ export function renderEnvExample(p: DeployProfile, o: DeployRenderOptions): stri
     `BASE_REGISTRY=${o.imageRegistry}`,
     ...(p.web ? [`APP_PORT=${p.port}`] : []),
     ...(p.db && p.db.inject !== "none" ? ["DB_PASSWORD=CHANGE_ME"] : []),
+    ...secretEnvFor(p, new Set(dbEnvFor(p, "db").map((e) => e.name))).map((e) => `${e.name}=${e.value}`),
     "",
   ].join("\n");
 }
@@ -361,7 +385,8 @@ export function renderKubernetes(projectDir: string, p: DeployProfile, o: Deploy
   const labels = [`app.kubernetes.io/name: ${name}`, `app.kubernetes.io/version: ${q(p.version)}`, "app.kubernetes.io/managed-by: egovframe-scaffold-mcp"];
   const docs: string[][] = [];
   // 같은 이름은 뒤(extra — 작업공간의 localhost 참조 치환)가 이긴다
-  const env = [...new Map([...dbEnvFor(p, "CHANGE_ME_DB_HOST"), ...(extra.env ?? []).map((e) => ({ ...e, key: e.name }))].map((e) => [e.name, e] as const)).values()];
+  const dbEnv = dbEnvFor(p, "CHANGE_ME_DB_HOST");
+  const env = [...new Map([...dbEnv, ...secretEnvFor(p, new Set(dbEnv.map((e) => e.name))), ...(extra.env ?? []).map((e) => ({ ...e, key: e.name }))].map((e) => [e.name, e] as const)).values()];
   const plain = env.filter((e) => !e.secret);
   const secret = env.filter((e) => e.secret);
   docs.push(["apiVersion: v1", "kind: ConfigMap", "metadata:", `  name: ${name}-config`, "  labels:", ...labels.map((l) => `    ${l}`), "data:", `  TZ: ${q(r.timezone)}`, `  JAVA_OPTS: ${q(`-Dfile.encoding=UTF-8 -Duser.timezone=${r.timezone} -XX:MaxRAMPercentage=75`)}`, ...plain.map((e) => `  ${e.name}: ${q(e.value)}`)]);

@@ -60,6 +60,7 @@
 | Classic | `globals.properties` 사본(DB 호스트·비밀번호만 바꿈)을 compose 는 읽기 전용 볼륨, Kubernetes 는 Secret 의 `subPath` 로 `WEB-INF/classes/…` 위에 마운트 | Classic 템플릿은 `EgovProperties` 가 파일을 직접 읽어 환경 변수로 덮을 수 없음 |
 
 - 비밀번호 기본값은 `CHANGE_ME` 입니다. compose 는 `.env` 의 `DB_PASSWORD`, Kubernetes 는 Secret 으로 넣습니다. 보안약점 점검의 자리표시자 예외와 맞물려 지적되지 않습니다.
+- v1.13: 설정 파일에 `${EGOV_…_PASSWORD}`·`${EGOV_CRYPTO_CONFIG}` 같은 비밀 자리표시자가 있으면(`externalize_egovframe_config` 가 만든 것, `DeployProfile.secretEnv`) compose 의 app `environment`(`"${이름:-CHANGE_ME}"`)·`.env.example`·Kubernetes `Secret` 에 같은 이름의 자리를 만듭니다(ConfigMap 에는 넣지 않음). `EGOV_CRYPTO_CONFIG` 의 예시 값은 `file:/run/egov/egov-crypto-config.properties` 입니다. 반대로 외부화 도구는 이미 있는 `deploy/` 산출물에 변수를 덧붙입니다 — 어느 쪽을 먼저 돌려도 같은 결과.
 - Kubernetes 의 DB 호스트는 `CHANGE_ME_DB_HOST` 입니다. 운영 DB 는 클러스터 밖(기관 DB)이 일반적이라 DB 를 클러스터에 띄우지 않습니다.
 
 ## 5. docker-compose

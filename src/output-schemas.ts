@@ -427,6 +427,27 @@ export const DeliveryOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.13: externalize_egovframe_config
+export const ExternalizeOutput = loose({
+  projectDir: z.string(),
+  dryRun: z.boolean(),
+  mode: z.enum(["auto", "env", "crypto"]),
+  runtime: z.enum(["boot", "tomcat", "unknown"]),
+  findings: z.array(loose({ file: z.string(), line: z.number().int(), key: z.string(), kind: z.enum(["db-password", "crypto-key", "file-crypto-key", "secret"]), format: z.enum(["properties", "yaml", "xml"]), masked: z.string(), action: z.enum(["env", "crypto-path", "manual", "encrypted"]), envName: z.string().optional(), reason: z.string().optional(), directReaders: z.array(z.string()) })),
+  summary: loose({ found: z.number().int(), env: z.number().int(), cryptoPath: z.number().int(), encrypted: z.number().int(), manual: z.number().int(), files: z.number().int() }),
+  files: z.array(loose({ path: z.string(), changes: z.array(loose({ line: z.number().int(), before: z.string(), after: z.string() })) })),
+  env: z.array(loose({ name: z.string(), keys: z.array(z.string()), example: z.string() })),
+  generated: z.array(z.string()),
+  deployUpdated: z.array(z.string()),
+  manual: z.array(loose({ file: z.string(), line: z.number().int(), key: z.string(), reason: z.string() })),
+  secureCoding: loose({ rule: z.string(), before: z.number().int(), after: z.number().int().nullable() }),
+  verify: loose({ ran: z.boolean(), success: z.boolean().nullable(), cause: StartupOutput.shape.cause, durationMs: z.number().int(), env: z.array(z.string()) }).optional(),
+  rolledBack: z.boolean().optional(),
+  backupDir: z.string().optional(),
+  planPath: z.string().optional(),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -440,6 +461,7 @@ export const OUTPUT_SCHEMAS = {
   fix_egovframe_dependencies: DepsFixOutput,
   prepare_egovframe_database: DatabaseOutput,
   verify_egovframe_startup: StartupOutput,
+  externalize_egovframe_config: ExternalizeOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,

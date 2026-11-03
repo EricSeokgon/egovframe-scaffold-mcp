@@ -326,7 +326,7 @@
       "targets": [
         "config"
       ],
-      "pattern": "(?i)^\\s*[\\w.\\-]*(password|passwd|pwd|secret)[\\w.\\-]*\\s*[=:]\\s*[^\\s$#{\"'][^\\s]*\\s*$",
+      "pattern": "(?i)^\\s*[\\w.\\-]*(password|passwd|pwd|secret)[\\w.\\-]*\\s*[=:]\\s*(?:[^\\s$#{\"'][^\\s]*|\"[^\"$#{][^\"]*\"|'[^'$#{][^']*')\\s*$",
       "unless": "(?i)ENC\\(|algorithm|\\$\\{|[가-힣]|[=:]\\s*(\\*+|x{3,}|pw|password|changeme|your[_\\w-]*|example|sample|dummy|todo|change_me|secret|null|none|<[^>]+>)\\s*$|[=:]\\s*\\d+\\s*$",
       "message": "설정 파일에 비밀번호·비밀 값이 평문(또는 고정 값)으로 있습니다",
       "message_en": "A password or secret is stored in a configuration file in plain text (or as a fixed value)",

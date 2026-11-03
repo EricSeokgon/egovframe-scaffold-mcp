@@ -35,6 +35,7 @@ import { FIXABLE_RULES, fixSecureCoding, renderSecureFixMarkdown } from "./secur
 import { DEPS_FIX_KINDS, fixDependencies, renderDepsFixMarkdown } from "./deps-fix.js";
 import { DATABASE_TYPES, prepareDatabase, renderDatabaseMarkdown } from "./database.js";
 import { verifyStartup, renderStartupMarkdown } from "./startup.js";
+import { externalizeConfig, renderExternalizeMarkdown } from "./externalize.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -921,6 +922,26 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       enforceAllowedRoots(args);
       const r = await verifyStartup({ progress: progressFromExtra(extra), projectDir: args.projectDir, path: args.path, port: args.port, timeoutMs: args.timeoutMs, tomcatHome: args.tomcatHome });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderStartupMarkdown(r);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 설정·비밀값 외부화 (v1.13) ─────────────────────────
+  server.registerTool(
+    "externalize_egovframe_config",
+    { title: t("externalize_egovframe_config"), description: d("externalize_egovframe_config", "설정 파일(globals.properties·application.properties/yml·context-*.xml)의 DB 비밀번호·비밀 값을 저장소 밖으로 옮깁니다. 판정은 check_egovframe_secure_coding 의 hardcoded-config-password 규칙과 화이트리스트(.egovframe-secure-ignore.json)를 그대로 써서 두 도구의 결과가 같습니다(XML 의 <property name=\"password\" value=\"리터럴\"/> 은 주석을 뺀 채 추가로 찾음). 키를 읽는 방식에 따라 — Spring 자리표시자·Boot Environment 로 읽는 키는 값을 지우고 ${EGOV_…_PASSWORD} 자리표시자로(env), 표준프레임워크 암호화 값(Globals.*.Password)은 그대로 두고 복호화 키가 든 egov-crypto-config.properties 의 algorithmKey·algorithmKeyHash 를 지운 뒤 globals.properties 에 Globals.CryptoConfigPath=${EGOV_CRYPTO_CONFIG:} 를 넣어 외부 파일에서 읽게 하며(crypto-path, runtime 5.x), deploy/secrets/egov-crypto-config.properties.example 을 만듭니다. EgovProperties.getProperty(\"…\") 처럼 파일을 직접 읽는 키(Globals.File.algorithmKey 등)와 4.x context-crypto.xml 의 키는 자리표시자가 풀리지 않으므로 사유와 함께 수동 항목으로 냅니다. generate_egovframe_deploy 산출물(deploy/.env.example·docker-compose.yml·k8s Secret)이 있으면 환경 변수 자리를 추가합니다. 기본 dryRun(바뀔 줄은 가린 값으로), 적용은 파일 트랜잭션(원본은 migration-backup/ — 비밀 값이 들어 있으니 저장소에 넣지 마세요)이고 적용 뒤 보안약점 규칙 전·후 수를 보고합니다. verify=true 면 원래 값을 환경 변수로 주고 verify_egovframe_startup 으로 띄워 설정 해석에 실패하면(config-missing) 되돌립니다. 결과·로그에 원래 값은 적지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      mode: z.enum(["auto", "env", "crypto"]).default("auto").describe("auto(기본): 읽는 방식대로 env·crypto-path | env: 자리표시자 교체만 | crypto: 암호화 키 파일 외부화만"),
+      paths: z.array(z.string()).optional().describe("프로젝트 상대 경로 접두어로 좁히기"),
+      dryRun: z.boolean().default(true).describe("true(기본)면 파일을 쓰지 않고 계획만"),
+      verify: z.boolean().default(false).describe("적용 뒤 원래 값을 환경 변수로 주고 기동 검증 — 설정 해석 실패(config-missing)면 되돌림"),
+      timeoutMs: z.number().int().min(30_000).max(1_800_000).default(300_000).describe("기동 검증 제한(ms)"),
+      tomcatHome: z.string().optional().describe("기동 검증에 쓸 설치된 Tomcat(기본: 캐시)"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.externalize_egovframe_config.shape, annotations: toolAnnotations("externalize_egovframe_config") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await externalizeConfig({ projectDir: args.projectDir, mode: args.mode, paths: args.paths, dryRun: args.dryRun, verify: args.verify, timeoutMs: args.timeoutMs, tomcatHome: args.tomcatHome });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderExternalizeMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );

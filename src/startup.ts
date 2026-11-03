@@ -185,6 +185,8 @@ export interface StartupOptions {
   timeoutMs?: number;
   /** Classic war 를 띄울 설치된 Tomcat(기본: 캐시에 고정 버전을 내려받음) */
   tomcatHome?: string;
+  /** v1.13: 앱 프로세스에 줄 환경 변수(외부화한 설정 값 등) — 로그·결과에 값은 적지 않는다 */
+  env?: Record<string, string>;
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   httpProbe?: HttpProbe;
@@ -268,6 +270,7 @@ export async function verifyStartup(opts: StartupOptions): Promise<StartupResult
     cmd = { command: q(java), args: ["-cp", q([path.join(tc.home, "bin", "bootstrap.jar"), path.join(tc.home, "bin", "tomcat-juli.jar")].join(platform === "win32" ? ";" : ":")), `-Dcatalina.home=${q(tc.home)}`, `-Dcatalina.base=${q(baseDir)}`, `-Djava.io.tmpdir=${q(path.join(baseDir, "temp"))}`, "-Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager", `-Djava.util.logging.config.file=${q(path.join(baseDir, "conf", "logging.properties"))}`, "-Djava.awt.headless=true", "org.apache.catalina.startup.Bootstrap", "start"], cwd: baseDir, usedWrapper: false };
     notes.push(L(`Classic war 를 Tomcat ${tc.version} 에 ROOT 로 올립니다(프로젝트는 바꾸지 않음, CATALINA_BASE 는 임시 디렉터리).`, `The Classic war is deployed as ROOT on Tomcat ${tc.version} (the project is not changed; CATALINA_BASE is a temporary directory).`));
   }
+  if (opts.env && Object.keys(opts.env).length) cmd = { ...cmd, env: { ...(cmd.env ?? {}), ...opts.env } };
   const command = [cmd.command, ...cmd.args].join(" ");
 
   // 실행 — 완료 문구·실패 문구를 보면 HTTP 확인 뒤 끝낸다

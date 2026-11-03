@@ -99,6 +99,10 @@ v0.43 까지 이 서버는 의존성(기준·OSV)과 보안 설정(`sec.security
 
 표준프레임워크 공통컴포넌트와 공식 템플릿 대부분은 `HTMLTagFilter` 를 등록합니다(web.xml `filter-class`, `WebApplicationInitializer` 의 `addFilter`, Spring Security 설정). 이 필터는 요청 값을 엔티티(`&lt;` 등, `<p>`·`<br />` 만 허용)로 바꿔 저장하므로 화면의 `<c:out escapeXml="false">` 는 두 번 escape 를 피하려는 설계입니다. 등록돼 있으면 `xss-cout-unescaped` 를 **낮음**으로 보고 사유(필터가 덮지 않는 경로 — URL 패턴 밖·REST·배치·DB 직접 입력 — 로 들어온 값만 위험)를 적습니다. 테스트 코드와 주석은 등록으로 보지 않습니다. 공통컴포넌트 v3.10.0·v4.3.2 코퍼스의 중간 330·314건 중 302·304건이 낮음으로 바뀌었습니다.
 
+## 7-1. 비밀값 외부화 (v1.13)
+
+`hardcoded-config-password` 가 찾은 설정 파일의 값은 `externalize_egovframe_config` 가 저장소 밖으로 옮깁니다. 두 도구는 같은 규칙·같은 화이트리스트를 쓰므로 판정이 어긋나지 않고, 외부화 결과에 규칙의 전·후 수가 붙습니다. v1.13 에서 규칙의 값 패턴에 따옴표 값(`password: "…"`, YAML)을 더했습니다 — 이전에는 따옴표로 시작하는 값을 지나쳤습니다. 자리표시자(`${…}`)·`ENC(…)`·암호화 알고리즘 키 줄(`algorithm…`)은 여전히 제외합니다. 설계: [design-externalize.md](design-externalize.md).
+
 ## 8. 범위 밖
 
 - 설계단계 20개
