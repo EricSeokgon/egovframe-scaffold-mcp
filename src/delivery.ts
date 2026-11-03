@@ -3,6 +3,7 @@
 //   새 디렉터리에만 쓴다(오프라인 번들과 같은 방식: 비어 있지 않으면 거부, 스테이징 → rename). 프로젝트는 읽기만 한다(SBOM 도 프로젝트에 쓰지 않음).
 //   verify: 받은 쪽이 manifest 의 지문을 다시 계산해 변조·누락을 본다.
 import { readFixHistory } from "./fix-history.js";
+import { buildProjectMap, handoverTables, renderProjectMapMarkdown } from "./project-map.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
@@ -24,12 +25,12 @@ export const DELIVERY_MANIFEST = "delivery-manifest.json";
 export const DELIVERY_INDEX = "index.md";
 export const DELIVERY_SCHEMA_VERSION = 1;
 
-export type DeliveryItemId = "assessment" | "dependencies" | "sbom" | "sbom-check" | "secure-coding" | "deploy" | "build";
-export const DELIVERY_ITEMS: DeliveryItemId[] = ["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "build"];
+export type DeliveryItemId = "assessment" | "dependencies" | "sbom" | "sbom-check" | "secure-coding" | "deploy" | "map" | "build";
+export const DELIVERY_ITEMS: DeliveryItemId[] = ["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "build"];
 /** 기본 포함(빌드는 시간이 걸리고 환경 의존이라 지정할 때만) */
 export const DELIVERY_DEFAULT_INCLUDE: DeliveryItemId[] = ["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy"];
 export const DELIVERY_ITEM_LABEL: Record<DeliveryItemId, string> = {
-  get assessment() { return L("전환 준비도 평가서", "Migration readiness assessment"); }, get dependencies() { return L("의존성 조치 목록", "Dependency action list"); }, get sbom() { return "SBOM(CycloneDX·SPDX)"; }, get "sbom-check"() { return L("SBOM 점검·VEX 초안", "SBOM check and VEX draft"); }, get "secure-coding"() { return L("보안약점 점검(SARIF)", "Secure coding check (SARIF)"); }, get deploy() { return L("컨테이너·배포 산출물", "Container and deployment artifacts"); }, get build() { return L("빌드 결과", "Build result"); },
+  get assessment() { return L("전환 준비도 평가서", "Migration readiness assessment"); }, get dependencies() { return L("의존성 조치 목록", "Dependency action list"); }, get sbom() { return "SBOM(CycloneDX·SPDX)"; }, get "sbom-check"() { return L("SBOM 점검·VEX 초안", "SBOM check and VEX draft"); }, get "secure-coding"() { return L("보안약점 점검(SARIF)", "Secure coding check (SARIF)"); }, get deploy() { return L("컨테이너·배포 산출물", "Container and deployment artifacts"); }, get map() { return L("프로젝트 구조 지도(인수인계 표)", "Project structure map (handover tables)"); }, get build() { return L("빌드 결과", "Build result"); },
 };
 
 export interface DeliveryFile { path: string; sha256: string; bytes: number }
@@ -287,7 +288,7 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   const prevData = previousDir ? readDeliveryData(previousDir) : null;
 
   // v1.2: 진행 단계 — 실행 순서대로의 항목 + 패키지 기록. 취소는 항목 경계에서 확인하고 AbortError 를 그대로 전달한다(아무것도 쓰지 않음)
-  const RUN_ORDER: DeliveryItemId[] = ["sbom", "sbom-check", "dependencies", "secure-coding", "assessment", "deploy", "build"];
+  const RUN_ORDER: DeliveryItemId[] = ["sbom", "sbom-check", "dependencies", "secure-coding", "assessment", "deploy", "map", "build"];
   const planned = RUN_ORDER.filter((id) => include.includes(id));
   const steps = [...planned, "write package"];
   const prog = stepper(opts.progress, steps);
@@ -377,6 +378,16 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
     for (const f of r.files) if (f.content !== undefined) item.files.push(put(`deploy/${f.path}`, f.content));
     item.files.push(put("deploy/deploy.md", `${renderDeployMarkdown(r)}\n`));
     item.summary = { files: r.files.length, runtime: r.profile?.runtime ?? r.workspace?.kind ?? null, ...(r.workspace ? { services: r.workspace.services.length } : {}) };
+  });
+  if (include.includes("map")) await run("map", async (item) => {
+    const r = buildProjectMap({ projectDir });
+    const h = handoverTables(r);
+    item.files.push(put("map/project-map.md", `${renderProjectMapMarkdown(r, 1000)}\n`), put("map/project-map.json", json({ ...r, handover: h })));
+    const csv = (rows: string[][]) => rows.map((row) => row.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n") + "\n";
+    item.files.push(put("map/screens.csv", csv([["url", "method", "controller", "views", "component"], ...h.screens.map((s) => [s.url, s.method, s.controller, s.views.join(" "), s.component ?? ""])])));
+    item.files.push(put("map/programs.csv", csv([["controller", "services", "daos", "mappers", "component"], ...h.programs.map((s) => [s.controller, s.services.join(" "), s.daos.join(" "), s.mappers.join(" "), s.component ?? ""])])));
+    item.files.push(put("map/db-access.csv", csv([["table", "C", "R", "U", "D"], ...h.dbAccess.map((s) => [s.table, s.C.join(" "), s.R.join(" "), s.U.join(" "), s.D.join(" ")])])));
+    item.summary = { tables: r.summary.tables, mappers: r.summary.mappers, urls: r.summary.urls, views: r.summary.views, orphanMappers: r.summary.orphanMappers, unresolvedRate: r.summary.unresolvedRate };
   });
   if (include.includes("build")) await run("build", async (item) => {
     const sub = subFor("build");

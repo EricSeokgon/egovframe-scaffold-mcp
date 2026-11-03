@@ -55,6 +55,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   verify_egovframe_startup: { title: { ko: "기동 검증", en: "Verify startup" }, annotations: create(true) },
   // v1.13: 설정 파일을 고친다(dryRun 기본, 백업·트랜잭션)
   externalize_egovframe_config: { title: { ko: "설정·비밀값 외부화", en: "Externalize configuration secrets" }, annotations: destructive() },
+  // v1.14: 읽기 전용 정적 해석
+  map_egovframe_project: { title: { ko: "프로젝트 구조 지도·변경 영향", en: "Project structure map and change impact" }, annotations: ro() },
   prepare_egovframe_database: { title: { ko: "DB 준비·적재 확인", en: "Prepare and check the database" }, annotations: create(true) },
   fix_egovframe_dependencies: { title: { ko: "취약 의존성 자동 조치", en: "Fix vulnerable dependencies" }, annotations: destructive(true) },
   check_egovframe_sbom: { title: { ko: "SBOM 점검 (최소 요소·비교·VEX)", en: "Check SBOM (minimum elements, diff, VEX)" }, annotations: create(true) },

@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 40종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 41종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -41,10 +41,11 @@
 | `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `verify_egovframe_startup` | **기동 검증**(v1.11) — 프로젝트를 바꾸지 않고 실제로 띄움: Boot 는 `spring-boot:run`·`bootRun`(빈 포트), Classic war 는 캐시의 고정 Tomcat 10.1/11.0(sha256 검증, `tomcatHome`)에 ROOT 로. 완료 문구 + HTTP(5xx 아님)로 판정, 실패면 원인 종류(포트·드라이버·DB 접속·테이블 없음·매퍼 XML 파일·줄·설정 누락·javax·실제로 실패한 빈과 정의 파일·GUI 빈·시간 초과·빌드)와 처방. [자세히](#기동-검증-verify_egovframe_startup-v111) |
+| `map_egovframe_project` | **프로젝트 구조 지도·변경 영향**(v1.14, 읽기 전용) — 테이블 → 매퍼 XML(네임스페이스) → DAO/Mapper → Service → Controller → URL → 화면의 그래프를 정적 해석으로. `impactTable`·`impactUrl`·`impactClass`·`impactView` 로 영향 노드를 거리순으로, 인수인계 표 3종(화면 목록·프로그램 목록·DB 접근 표), 고아(호출 없는 매퍼·문장, URL 없는 Controller, 미참조 컴포넌트 테이블), 해석 실패율. `format` markdown·json(전체 그래프)·mermaid(범위 한정). CLI `map` |
 | `externalize_egovframe_config` | **설정·비밀값 외부화**(v1.13) — 설정 파일의 DB 비밀번호·비밀 값을 저장소 밖으로: 판정은 보안약점 점검의 `hardcoded-config-password` 규칙·화이트리스트 그대로(+ XML `<property name="password" value="리터럴"/>`, 주석 제외). Spring 자리표시자로 읽는 키는 `${EGOV_…_PASSWORD}` 로(env), 표준프레임워크 암호화 값은 그대로 두고 복호화 키를 `egov-crypto-config.properties` 에서 빼 `Globals.CryptoConfigPath=${EGOV_CRYPTO_CONFIG:}` 로 외부 파일에서(crypto-path, runtime 5.x), 파일을 직접 읽는 키(`EgovProperties.getProperty`)·4.x `context-crypto.xml` 의 키는 수동 항목. `deploy/` 산출물 갱신, dryRun 기본, 트랜잭션(원본은 `migration-backup/`), 보안약점 전·후, `verify=true` 면 원래 값을 환경 변수로 주고 기동해 `config-missing` 이면 되돌림. CLI `externalize` (파괴적, 게이트) |
 | `prepare_egovframe_database` | **DB 준비·적재 확인**(v1.10) — 조립 선별본·공통컴포넌트 전체·지정 스크립트를 문장 단위로 나눠 외래키·뷰 순서로 정렬하고 중복을 지우며, 선별본이 빠뜨린 참조 테이블을 통합 스크립트에서 보완. MySQL·MariaDB 는 테이블 문자셋 `utf8mb4_unicode_ci`·`SET NAMES utf8mb4`(upstream #1386·#1387). `scripts/egovframe-db/<db>/01-schema.sql·02-data.sql`·`docker-compose.db.yml`·적재 명령, `run=true` 면 Docker 로 적재해 테이블 수·필수 행·한글 왕복 확인. [자세히](#db-준비적재-확인-prepare_egovframe_database-v110) |
 | `generate_egovframe_deploy` | **컨테이너·배포 산출물** — Dockerfile(멀티 스테이지·Classic war → Tomcat 10.1(Servlet 6.1+ 는 11.0) ROOT, Boot jar → Temurin JRE, 비루트·HEALTHCHECK, `buildInImage=false` 면 미리 빌드한 산출물)·`.dockerignore`·`deploy/docker-compose.yml`(DbType 별 DB 컨테이너·초기화 SQL)·`deploy/k8s/<app>.yaml`(Deployment·Service·ConfigMap·Secret·선택 Ingress). DB 설정은 Boot 환경 변수·Classic 설정 파일 덮어쓰기, `imageRegistry`(폐쇄망), `dockerfilePath`(템플릿 자체 Dockerfile 과 공존). 새 파일만, `dryRun` 기본 |
-| `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
+| `prepare_egovframe_delivery` | **납품 패키지**(v1.1) — 평가서·의존성 조치 목록·SBOM(CycloneDX·SPDX)·SBOM 점검과 VEX 초안·보안약점(SARIF)·배포 산출물(·구조 지도·빌드)을 새 디렉터리 하나에 모으고 `delivery-manifest.json`(파일별 sha256·입력 지문·rootHash)과 목차 `index.md` 를 씀. 실패 항목은 이유와 함께 목차에 남김. `previousDelivery` 로 이전 차수 비교(diff.md)와 VEX 판단 보존, `verify=true` 로 받은 패키지 재검증, `zip`, dryRun 기본. 프로젝트는 읽기만 |
 | `generate_agents_md` | 프로젝트 진단 결과로 AI 코딩 도구용 `AGENTS.md` 생성 — 빌드·테스트 명령(래퍼 감지), RTE·5.x 전환 상태, DbType, 기본 패키지·설정 디렉터리, 설치 컴포넌트(매니페스트 여부), 규칙(좌표·백업 디렉터리·비밀 정보·의존성 기준), MCP 도구 목록. 기존 파일은 `overwrite` 없이는 거부, `dryRun`, ko/en, 파일명 변경(`CLAUDE.md` 등) |
 
 ## create_egovframe_project 파라미터
@@ -244,6 +245,28 @@ npx -y egovframe-scaffold-mcp startup --project . [--fail-on failed]
 - 끝나면 프로세스 트리를 끝내고 임시 디렉터리를 지웁니다. 프로젝트에 남는 것은 빌드 결과(`target/`)뿐입니다.
 - 실측(2026-10-30): 공식 템플릿 7종(web·simple-homepage·portal-site·enterprise-business·mobile-web·boot-web·simple-backend)이 내장 HSQL 로 16–29초에 기동. 포털·업무 템플릿은 `create_egovframe_project(database="hsql")` 가 `Globals.Hsql.AutoInit` 을 켜도록 고친 뒤 뜹니다(전에는 빈 DB 로 떠서 `LETTNROLES_HIERARCHY` 조회 실패 — 이 도구가 찾은 것). batch-db-web 은 `hsqlManager` 빈이 GUI 창을 띄워 화면 없는 환경에서 실패합니다(템플릿 특성).
 - 하지 않는 것: 화면 기능 테스트(URL 응답까지), 성능, 운영 WAS(JEUS·WebLogic) 기동, DB 컨테이너 자동 연결([설계](design-startup.md#기획에서-미룬-것)).
+
+## 프로젝트 구조 지도·변경 영향 (`map_egovframe_project`, v1.14)
+
+인수인계·유지보수 투입 때 "이 테이블을 바꾸면 어디가 영향받나", "이 화면은 어느 서비스·매퍼를 타나"를 코드 검색 대신 지도로 봅니다. 읽기 전용이며 정적 해석(파일·정규식·심볼 테이블)입니다.
+
+```text
+map_egovframe_project(projectDir)                                         # 요약 + 인수인계 표 3종(topN 행씩)
+map_egovframe_project(projectDir, impactTable="COMTNBBS")                 # 이 테이블을 쓰는 매퍼·DAO·Service·Controller·URL·화면(거리순)
+map_egovframe_project(projectDir, impactUrl="/cop/bbs/selectArticleList.do")  # 이 URL 이 타는 Controller·Service·DAO·매퍼·테이블 + 링크하는 화면
+map_egovframe_project(projectDir, impactClass="EgovArticleServiceImpl")   # 클래스는 양쪽
+map_egovframe_project(projectDir, components=["bbs"], format="mermaid")   # 범위를 좁힌 그림(200 노드 이하)
+map_egovframe_project(projectDir, format="json")                          # nodes·edges·statements·handover 전체
+npx -y egovframe-scaffold-mcp map --project . [--impact-table COMTNBBS] [--json]
+```
+
+- **노드**: `table` · `mapper`(XML 네임스페이스 — `_SQL_mysql`·`_SQL_oracle` 같은 DB 별 사본은 하나로, 문장은 id 로 합침) · `class`(역할 `controller`·`service`·`service-impl`·`dao`·`mapper-interface`) · `url` · `view`(JSP·Thymeleaf 파일, 못 찾으면 뷰 이름 그대로). 공통컴포넌트 경로 아래면 `component`, 멀티 모듈이면 `module`.
+- **간선**: 매퍼 → 테이블 `reads`/`writes`(문장 id), 클래스 → 매퍼 `calls`(`EgovComAbstractDAO` 의 `"네임스페이스.id"` 문자열 또는 `@Mapper` 인터페이스 ↔ 네임스페이스 FQN), 클래스 → 클래스 `injects`(`@Resource(name)` 는 빈 이름으로 구현체에, 인터페이스 타입은 구현체가 하나면 구현체로)·`implements`, URL → Controller `maps`(HTTP 메서드), Controller → 화면 `renders`(`return "…"`·`ModelAndView`), 화면·Controller → URL `links`(`c:url`·`form action`·`th:href`·`forward:`·`redirect:`). 주석(Java·XML·JSP)과 `src/test` 는 제외.
+- **영향**(`impact`): 테이블은 위로(그 테이블을 읽고 쓰는 **문장을 부르는** 클래스만 — 매퍼 전체가 아니라), URL·화면은 아래로 테이블까지(부른 문장의 테이블만) + 링크하는 화면·렌더링하는 Controller 한 단계, 클래스는 양쪽. 인터페이스 ↔ 구현체는 같은 층(거리 +1). 테이블은 끝점이라 다른 매퍼로 번지지 않습니다.
+- **인수인계 표**: 화면 목록(URL·메서드·Controller·화면·컴포넌트), 프로그램 목록(Controller → Service → DAO/Mapper → 매퍼 네임스페이스), DB 접근 표(테이블 × C·R·U·D × 매퍼). `prepare_egovframe_delivery(include=[…,"map"])` 가 `map/` 에 Markdown·JSON·CSV 3종으로 담습니다. `diagnose_egovframe_project` 는 요약 한 줄(테이블·URL·화면·고아 매퍼)을 냅니다.
+- **고아·해석 실패**: 호출하는 Java 가 없는 매퍼 네임스페이스, 부르는 곳 없는 문장(인터페이스 매핑 네임스페이스는 제외), URL 없는 Controller, 카탈로그는 아는데 매퍼가 참조하지 않는 컴포넌트 테이블. 해석 실패율 = (동적 SQL `${…}` 테이블 문장 + 찾지 못한 뷰) / (문장 + 뷰 참조).
+- 실측(2026-11-03): 공식 공통컴포넌트 v5.0.7 전체(Java 1,097·매퍼 XML 1,224·화면 788) — 0.7초, 테이블 173(카탈로그 170 전부 참조)·매퍼 149(문장 1,260)·Controller 164·URL 1,188·화면 735, 해석 실패율 0.9%(동적 SQL 0·못 찾은 뷰 20), 고아 매퍼 2(`PrntngOutptDA`·`egovOnepassDAO`)·문장 18. `impact(COMTNBBS)` = 매퍼 3·클래스 21·URL 91·화면 50. 4.3.2 → 5.0.7 은 URL +42 −36.
+- 하지 않는 것: 런타임 호출 추적, 동적 SQL(`${}` 테이블 이름)의 완전한 해석(미해석으로 표시), 프런트(React) 라우팅, 리플렉션, 코드 수정. 설계: [design-project-map.md](design-project-map.md).
 
 ## 설정·비밀값 외부화 (`externalize_egovframe_config`, v1.13)
 
@@ -488,7 +511,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/2차", dryRun=false, previ
 prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)                               # 받은 패키지 재검증
 ```
 
-- `include` — 기본 `assessment`·`dependencies`·`sbom`·`sbom-check`·`secure-coding`·`deploy`. `build` 는 로컬 JDK·Maven/Gradle 로 `package` 를 실제 실행하므로 지정할 때만. `sbom-check` 는 `sbom` 이 있어야 합니다.
+- `include` — 기본 `assessment`·`dependencies`·`sbom`·`sbom-check`·`secure-coding`·`deploy`. `map`(v1.14, 구조 지도 Markdown·JSON + 화면 목록·프로그램 목록·DB 접근 표 CSV)은 인수인계 패키지일 때, `build` 는 로컬 JDK·Maven/Gradle 로 `package` 를 실제 실행하므로 지정할 때만. `sbom-check` 는 `sbom` 이 있어야 합니다.
 - `outputDir` — 없거나 비어 있어야 하고 프로젝트 밖을 권합니다(CI 는 작업 디렉터리 안 `egovframe-delivery/`). 스테이징 뒤 rename 하므로 중간 실패는 흔적이 없습니다.
 - `previousDelivery` — 이전 패키지 디렉터리. 등급·SBOM(추가·제거·버전·새/해소 취약점)·OSV ID·보안약점 지문을 비교하고, 이전 `sbom/vex.cdx.json` 의 사람 판단을 이어 씁니다. 같은 입력이면 "달라진 점 없음"입니다.
 - `verify` — `delivery-manifest.json` 의 파일별 sha256·크기와 rootHash 를 다시 계산해 일치·불일치·누락·manifest 밖 파일을 보고합니다.
@@ -502,7 +525,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 13종(목록·검색·진단·검증·점검·upstream 대조), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 19종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 14종(목록·검색·진단·검증·점검·upstream 대조·구조 지도), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 20종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·구조 지도·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 

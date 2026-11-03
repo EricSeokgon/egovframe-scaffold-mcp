@@ -36,6 +36,7 @@ import { DEPS_FIX_KINDS, fixDependencies, renderDepsFixMarkdown } from "./deps-f
 import { DATABASE_TYPES, prepareDatabase, renderDatabaseMarkdown } from "./database.js";
 import { verifyStartup, renderStartupMarkdown } from "./startup.js";
 import { externalizeConfig, renderExternalizeMarkdown } from "./externalize.js";
+import { buildProjectMap, handoverTables, renderMermaid, renderProjectMapMarkdown } from "./project-map.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -575,6 +576,9 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     async (args) => {
       enforceAllowedRoots(args);
       const r = diagnoseProject({ projectDir: args.projectDir });
+      // v1.14: 지도 요약 한 줄(정적 해석, 실패해도 진단은 그대로)
+      let mapLine = "";
+      try { const pm = buildProjectMap({ projectDir: args.projectDir }); (r as unknown as Record<string, unknown>).projectMap = { tables: pm.summary.tables, urls: pm.summary.urls, views: pm.summary.views, orphanMappers: pm.summary.orphanMappers, unresolvedRate: pm.summary.unresolvedRate, durationMs: pm.durationMs }; mapLine = `- 구조 지도: 테이블 ${pm.summary.tables} · URL ${pm.summary.urls} · 화면 ${pm.summary.views} · 고아 매퍼 ${pm.summary.orphanMappers} (map_egovframe_project)`; } catch { /* 지도는 부가 정보 */ }
       const lines = [
         `📋 진단: ${r.projectDir}`,
         `- 빌드: ${r.buildSystem}${r.isEgovProject ? " · egovframe 좌표 감지" : ""}`,
@@ -583,6 +587,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         `- 감지 컴포넌트(${r.detectedComponents.length}): ${r.detectedComponents.map((c) => c.id).join(", ") || "없음"}`,
         `- AI 계층: ${r.aiLayer ? "있음" : "없음"} / 매니페스트: ${r.hasManifest ? "있음" : "없음"}`,
         `- DB 준비: 조립 스크립트 ${r.dbScripts.componentScripts}개 · 적재용 준비본 ${r.dbScripts.prepared.join(", ") || "없음"} · compose ${r.dbScripts.compose ? "있음" : "없음"}`,
+        ...(mapLine ? [mapLine] : []),
       ];
       if (r.issues.length) lines.push(``, `⚠️ 이슈:`, ...r.issues.map((i) => ` · ${i}`));
       if (r.suggestions.length) lines.push(``, `💡 제안:`, ...r.suggestions.map((s) => ` · ${s}`));
@@ -943,6 +948,28 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const r = await externalizeConfig({ projectDir: args.projectDir, mode: args.mode, paths: args.paths, dryRun: args.dryRun, verify: args.verify, timeoutMs: args.timeoutMs, tomcatHome: args.tomcatHome });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderExternalizeMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 프로젝트 구조 지도·변경 영향 (v1.14) ────────────────
+  server.registerTool(
+    "map_egovframe_project",
+    { title: t("map_egovframe_project"), description: d("map_egovframe_project", "프로젝트를 읽어 테이블 → 매퍼 XML(네임스페이스, DB 별 사본은 하나로) → DAO/Mapper 인터페이스 → Service → Controller → URL → 화면(JSP·Thymeleaf)의 구조 지도를 만듭니다(읽기 전용, 정적 해석 — 파일·정규식·심볼 테이블, 런타임 추적 없음). 표준프레임워크 규약(EgovComAbstractDAO 의 \"네임스페이스.문장id\" 문자열, @Resource(name=…) 빈 이름, *ServiceImpl)과 Spring 어노테이션(@Mapper·@Autowired·@GetMapping 등)을 둘 다 읽고, 공통컴포넌트 파일은 카탈로그 경로 접두어로 컴포넌트를 표시합니다. impact 로 한 노드의 영향을 거리순으로 — table(COMTNBBS) 은 사용하는 매퍼·서비스·컨트롤러·URL·화면(위로), url(/cop/bbs/selectArticleList.do)·view 는 거꾸로 테이블까지(아래로) + 링크하는 화면 한 단계, class 는 양쪽. 인수인계 표 3종(화면 목록: URL·Controller·화면 / 프로그램 목록: Controller·Service·DAO·매퍼 / DB 접근 표: 테이블 × C·R·U·D × 매퍼)과 고아(호출 없는 매퍼·문장, URL 없는 Controller, 미참조 컴포넌트 테이블), 해석 실패율(동적 SQL ${…} 테이블·찾지 못한 뷰)을 함께 냅니다. format=json 은 전체 그래프(nodes·edges·statements·handover), mermaid 는 components 또는 impact 로 좁힌 200 노드 이하만. 동적 SQL 의 테이블 이름·프런트(React) 라우팅·리플렉션은 보지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장, 멀티 모듈이면 루트 — 노드에 module 표시)"),
+      components: z.array(z.string()).optional().describe("공통컴포넌트 id 로 범위를 좁힘(그 경로 아래 파일 + 거기에 닿는 화면)"),
+      impactTable: z.string().optional().describe("영향 조회: 테이블 이름(예 COMTNBBS) — 사용하는 매퍼·서비스·컨트롤러·URL·화면"),
+      impactUrl: z.string().optional().describe("영향 조회: URL(예 /cop/bbs/selectArticleList.do) — 거꾸로 테이블까지 + 링크하는 화면"),
+      impactClass: z.string().optional().describe("영향 조회: 클래스(FQN 또는 단순명) — 양쪽"),
+      impactView: z.string().optional().describe("영향 조회: 화면(뷰 이름 또는 파일 경로)"),
+      topN: z.number().int().min(1).max(1000).default(30).describe("Markdown 표마다 보일 행 수"),
+      format: z.enum(["markdown", "json", "mermaid"]).default("markdown").describe("응답 형식(mermaid 는 components 또는 impact 로 좁힌 범위만)"),
+    }, outputSchema: OUTPUT_SCHEMAS.map_egovframe_project.shape, annotations: toolAnnotations("map_egovframe_project") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const impact = { ...(args.impactTable ? { table: args.impactTable } : {}), ...(args.impactUrl ? { url: args.impactUrl } : {}), ...(args.impactClass ? { class: args.impactClass } : {}), ...(args.impactView ? { view: args.impactView } : {}) };
+      const r = buildProjectMap({ projectDir: args.projectDir, components: args.components, ...(Object.keys(impact).length ? { impact } : {}) });
+      const full = { ...r, handover: handoverTables(r) };
+      const text = args.format === "json" ? JSON.stringify(full, null, 2) : args.format === "mermaid" ? renderMermaid(r) : renderProjectMapMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: full as unknown as Record<string, unknown> };
     },
   );
   // ── SBOM 운영 (v0.40) ─────────────────────────────────

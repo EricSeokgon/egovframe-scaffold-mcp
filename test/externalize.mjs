@@ -165,7 +165,7 @@ assert(m.looksEgovEncrypted(ENC) && m.looksEgovEncrypted("xz4fmrSdr1vGGl6UtwPLwA
   await server.connect(st); await client.connect(ct);
   const tools = (await client.listTools()).tools;
   const t = tools.find((x) => x.name === "externalize_egovframe_config");
-  assert(t && t.annotations.destructiveHint === true && t.annotations.openWorldHint === false && t.inputSchema.properties.dryRun.default === true && t.inputSchema.properties.mode.enum.join() === "auto,env,crypto" && t.outputSchema && tools.length === 40, `MCP: 40종, 파괴적, dryRun 기본, outputSchema`);
+  assert(t && t.annotations.destructiveHint === true && t.annotations.openWorldHint === false && t.inputSchema.properties.dryRun.default === true && t.inputSchema.properties.mode.enum.join() === "auto,env,crypto" && t.outputSchema && tools.length >= 40, `MCP: 등록됨, 파괴적, dryRun 기본, outputSchema`);
   const d = classic();
   const res = await client.callTool({ name: "externalize_egovframe_config", arguments: { projectDir: d, format: "json" } });
   assert(!res.isError && res.structuredContent.summary.found === 8 && !JSON.stringify(res).includes("pst01"), "MCP 호출: 구조화 출력, 값 없음");

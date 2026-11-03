@@ -1,6 +1,6 @@
 {
-  "version": "1.13.0",
-  "base": "1.12.0",
+  "version": "1.14.0",
+  "base": "1.13.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -2138,6 +2138,37 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "projectMap": {
+              "type": "object",
+              "required": [
+                "durationMs",
+                "orphanMappers",
+                "tables",
+                "unresolvedRate",
+                "urls",
+                "views"
+              ],
+              "properties": {
+                "durationMs": {
+                  "type": "integer"
+                },
+                "orphanMappers": {
+                  "type": "integer"
+                },
+                "tables": {
+                  "type": "integer"
+                },
+                "unresolvedRate": {
+                  "type": "number"
+                },
+                "urls": {
+                  "type": "integer"
+                },
+                "views": {
+                  "type": "integer"
+                }
+              }
             },
             "suggestions": {
               "type": "array",
@@ -5361,6 +5392,641 @@
         "output": null,
         "deprecated": {}
       },
+      "map_egovframe_project": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown",
+                "mermaid"
+              ],
+              "default": "markdown"
+            },
+            "impactClass": {
+              "type": "string"
+            },
+            "impactTable": {
+              "type": "string"
+            },
+            "impactUrl": {
+              "type": "string"
+            },
+            "impactView": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "topN": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 1,
+              "maximum": 1000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "componentTables",
+            "durationMs",
+            "edges",
+            "generatedAt",
+            "nodes",
+            "notes",
+            "orphans",
+            "projectDir",
+            "statements",
+            "summary"
+          ],
+          "properties": {
+            "componentTables": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "component",
+                  "referenced",
+                  "tables"
+                ],
+                "properties": {
+                  "component": {
+                    "type": "string"
+                  },
+                  "referenced": {
+                    "type": "integer"
+                  },
+                  "tables": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "durationMs": {
+              "type": "integer"
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "from",
+                  "kind",
+                  "to"
+                ],
+                "properties": {
+                  "detail": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "calls",
+                      "implements",
+                      "injects",
+                      "links",
+                      "maps",
+                      "reads",
+                      "renders",
+                      "writes"
+                    ]
+                  },
+                  "to": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "generatedAt": {
+              "type": "string"
+            },
+            "handover": {
+              "type": "object",
+              "required": [
+                "dbAccess",
+                "programs",
+                "screens"
+              ],
+              "properties": {
+                "dbAccess": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "C",
+                      "D",
+                      "R",
+                      "U",
+                      "table"
+                    ],
+                    "properties": {
+                      "C": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "D": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "R": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "U": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "table": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "programs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "controller",
+                      "daos",
+                      "mappers",
+                      "services"
+                    ],
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "controller": {
+                        "type": "string"
+                      },
+                      "daos": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "mappers": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "services": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "screens": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "controller",
+                      "method",
+                      "url",
+                      "views"
+                    ],
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "controller": {
+                        "type": "string"
+                      },
+                      "method": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string"
+                      },
+                      "views": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "impact": {
+              "type": "object",
+              "required": [
+                "byType",
+                "direction",
+                "nodes",
+                "start"
+              ],
+              "properties": {
+                "byType": {
+                  "type": "object"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "both",
+                    "downstream",
+                    "upstream"
+                  ]
+                },
+                "nodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "distance",
+                      "node",
+                      "via"
+                    ],
+                    "properties": {
+                      "distance": {
+                        "type": "integer"
+                      },
+                      "node": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "type"
+                        ],
+                        "properties": {
+                          "component": {
+                            "type": "string"
+                          },
+                          "count": {
+                            "type": "integer"
+                          },
+                          "file": {
+                            "type": "string"
+                          },
+                          "files": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "module": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "controller",
+                              "dao",
+                              "mapper-interface",
+                              "other",
+                              "service",
+                              "service-impl"
+                            ]
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "class",
+                              "mapper",
+                              "table",
+                              "url",
+                              "view"
+                            ]
+                          }
+                        }
+                      },
+                      "via": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "start": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "type"
+                  ],
+                  "properties": {
+                    "component": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "module": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "controller",
+                        "dao",
+                        "mapper-interface",
+                        "other",
+                        "service",
+                        "service-impl"
+                      ]
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "class",
+                        "mapper",
+                        "table",
+                        "url",
+                        "view"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "name",
+                  "type"
+                ],
+                "properties": {
+                  "component": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "module": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "controller",
+                      "dao",
+                      "mapper-interface",
+                      "other",
+                      "service",
+                      "service-impl"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "class",
+                      "mapper",
+                      "table",
+                      "url",
+                      "view"
+                    ]
+                  }
+                }
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "orphans": {
+              "type": "object",
+              "required": [
+                "controllersWithoutUrl",
+                "mappers",
+                "statements",
+                "unreferencedTables"
+              ],
+              "properties": {
+                "controllersWithoutUrl": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "mappers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "statements": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "unreferencedTables": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "statements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "id",
+                  "kind",
+                  "line",
+                  "namespace",
+                  "tables",
+                  "unresolved"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "delete",
+                      "insert",
+                      "select",
+                      "update"
+                    ]
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "namespace": {
+                    "type": "string"
+                  },
+                  "tables": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "unresolved": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "classes",
+                "controllersWithoutUrl",
+                "files",
+                "mappers",
+                "modules",
+                "orphanMappers",
+                "orphanStatements",
+                "statements",
+                "tables",
+                "unreferencedTables",
+                "unresolvedRate",
+                "unresolvedStatements",
+                "unresolvedViews",
+                "urls",
+                "views"
+              ],
+              "properties": {
+                "classes": {
+                  "type": "object"
+                },
+                "controllersWithoutUrl": {
+                  "type": "integer"
+                },
+                "files": {
+                  "type": "object",
+                  "required": [
+                    "java",
+                    "mapperXml",
+                    "views"
+                  ],
+                  "properties": {
+                    "java": {
+                      "type": "integer"
+                    },
+                    "mapperXml": {
+                      "type": "integer"
+                    },
+                    "views": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "mappers": {
+                  "type": "integer"
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "orphanMappers": {
+                  "type": "integer"
+                },
+                "orphanStatements": {
+                  "type": "integer"
+                },
+                "statements": {
+                  "type": "integer"
+                },
+                "tables": {
+                  "type": "integer"
+                },
+                "unreferencedTables": {
+                  "type": "integer"
+                },
+                "unresolvedRate": {
+                  "type": "number"
+                },
+                "unresolvedStatements": {
+                  "type": "integer"
+                },
+                "unresolvedViews": {
+                  "type": "integer"
+                },
+                "urls": {
+                  "type": "integer"
+                },
+                "views": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
       "migrate_egovframe_project": {
         "input": {
           "type": "object",
@@ -6334,6 +7000,7 @@
                   "build",
                   "dependencies",
                   "deploy",
+                  "map",
                   "sbom",
                   "sbom-check",
                   "secure-coding"
@@ -6446,6 +7113,7 @@
                       "build",
                       "dependencies",
                       "deploy",
+                      "map",
                       "sbom",
                       "sbom-check",
                       "secure-coding"
@@ -8474,6 +9142,7 @@
         "externalize": "externalize_egovframe_config",
         "fix": "fix_egovframe_secure_coding",
         "fix-deps": "fix_egovframe_dependencies",
+        "map": "map_egovframe_project",
         "migrate": "migrate_egovframe_project",
         "network": "diagnose_egovframe_network",
         "rehearse": "rehearse_egovframe_migration",

@@ -104,6 +104,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => { const sm = rec(s.summary); return { found: num(sm.found), env: num(sm.env), cryptoPath: num(sm.cryptoPath), manual: num(sm.manual), files: num(sm.files), rolledBack: s.rolledBack === true ? 1 : 0 }; },
     line: (s) => { const sm = rec(s.summary), sc = rec(s.secureCoding); return L(`설정 외부화 ${s.dryRun ? "계획" : s.rolledBack ? "되돌림" : "적용"} — 자리표시자 ${num(sm.env)} · 암호화 키 ${num(sm.cryptoPath)} · 수동 ${num(sm.manual)} · 파일 ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · 보안약점 ${num(sc.before)} → ${num(sc.after)}` : ""}`, `Config externalization ${s.dryRun ? "plan" : s.rolledBack ? "rolled back" : "applied"} — placeholders ${num(sm.env)} · crypto key ${num(sm.cryptoPath)} · manual ${num(sm.manual)} · files ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · secure-coding ${num(sc.before)} → ${num(sc.after)}` : ""}`); },
   },
+  map: {
+    tool: "map_egovframe_project", summary: "프로젝트 구조 지도·변경 영향(읽기 전용, --impact-table/--impact-url/--impact-class)", summaryEn: "Project structure map and change impact (read-only; --impact-table/--impact-url/--impact-class)",
+    metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), urls: num(sm.urls), views: num(sm.views), orphanMappers: num(sm.orphanMappers), unresolvedRate: Number(sm.unresolvedRate ?? 0) }; },
+    line: (s) => { const sm = rec(s.summary), i = s.impact ? rec(s.impact) : null; return L(`구조 지도 — 테이블 ${num(sm.tables)} · 매퍼 ${num(sm.mappers)} · URL ${num(sm.urls)} · 화면 ${num(sm.views)} · 고아 매퍼 ${num(sm.orphanMappers)} · 해석 실패율 ${(Number(sm.unresolvedRate ?? 0) * 100).toFixed(1)}%${i ? ` · 영향 ${Array.isArray(i.nodes) ? i.nodes.length : 0}개` : ""}`, `Structure map — tables ${num(sm.tables)} · mappers ${num(sm.mappers)} · URLs ${num(sm.urls)} · views ${num(sm.views)} · orphan mappers ${num(sm.orphanMappers)} · unresolved ${(Number(sm.unresolvedRate ?? 0) * 100).toFixed(1)}%${i ? ` · impact ${Array.isArray(i.nodes) ? i.nodes.length : 0}` : ""}`); },
+  },
   rehearse: {
     tool: "rehearse_egovframe_migration", summary: "전환 리허설(사본에서 재조립·적용·컴파일, 원본 불변)", summaryEn: "Migration rehearsal (reassemble, apply, compile on a copy; original untouched)",
     metrics: (s) => {

@@ -39,6 +39,7 @@
   sbom-check/sbom-check.{md,json}
   secure-coding/secure-coding.{md,json} · egovframe-secure.sarif
   deploy/Dockerfile · .dockerignore · deploy/docker-compose.yml · .env.example · k8s/*.yaml · deploy.md
+  map/project-map.{md,json} · screens.csv · programs.csv · db-access.csv   include 에 map 을 넣었을 때(v1.14 구조 지도·인수인계 표)
   build/build.json · build.log   include 에 build 를 넣었을 때(로컬 JDK·Maven/Gradle 로 package 실행)
 ```
 
