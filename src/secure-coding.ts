@@ -179,11 +179,13 @@ export const IGNORE_FILE = ".egovframe-secure-ignore.json";
 const SEV_ORDER: Record<SecureSeverity, number> = { high: 0, medium: 1, low: 2 };
 const globToRe = (g: string) => new RegExp(`^${g.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*\/?/g, "\u0000").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]").replace(/\u0000/g, ".*")}$`);
 
-function readIgnores(projectDir: string): { list: SecureIgnore[]; invalid: string[]; file: string | null } {
-  const p = path.join(projectDir, IGNORE_FILE);
+const readIgnores = (projectDir: string) => readIgnoreFile(projectDir, IGNORE_FILE);
+/** 예외 파일(.egovframe-secure-ignore.json 형식 — ignores[]: rule·path·line?·reason·reviewer)을 읽는다. v1.15 운영 점검도 같은 형식 */
+export function readIgnoreFile(projectDir: string, fileName: string): { list: SecureIgnore[]; invalid: string[]; file: string | null } {
+  const p = path.join(projectDir, fileName);
   if (!fs.existsSync(p)) return { list: [], invalid: [], file: null };
   let doc: { ignores?: unknown };
-  try { doc = JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { throw new Error(L(`${IGNORE_FILE} JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`, `${IGNORE_FILE}: failed to parse JSON: ${e instanceof Error ? e.message : String(e)}`)); }
+  try { doc = JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { throw new Error(L(`${fileName} JSON 해석 실패: ${e instanceof Error ? e.message : String(e)}`, `${fileName}: failed to parse JSON: ${e instanceof Error ? e.message : String(e)}`)); }
   const list: SecureIgnore[] = [], invalid: string[] = [];
   for (const [i, raw] of (Array.isArray(doc.ignores) ? doc.ignores : []).entries()) {
     const it = raw as Partial<SecureIgnore>;
@@ -192,7 +194,7 @@ function readIgnores(projectDir: string): { list: SecureIgnore[]; invalid: strin
     if (typeof it.reviewer !== "string" || !it.reviewer.trim()) { invalid.push(L(`#${i + 1} ${it.rule} ${it.path}: 검토자(reviewer)가 없어 적용하지 않음`, `#${i + 1} ${it.rule} ${it.path}: not applied — reviewer is missing`)); continue; }
     list.push({ rule: it.rule, path: it.path, ...(typeof it.line === "number" ? { line: it.line } : {}), reason: it.reason, reviewer: it.reviewer });
   }
-  return { list, invalid, file: IGNORE_FILE };
+  return { list, invalid, file: fileName };
 }
 
 /** 공용 경로 검증 오류의 'outputPath' 를 실제 파라미터 이름으로 바꾼다. */

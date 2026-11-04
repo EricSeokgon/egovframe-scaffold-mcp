@@ -113,7 +113,7 @@ try {
       walk(v, `${p}.${k}`, false);
     }
   };
-  for (const f of ["migration-mapping", "migration-rules", "update-mapping", "update-rules", "secure-coding-rules", "sbom-rules", "deploy-rules"]) walk(JSON.parse(readFileSync(path.join(here, `../catalog/${f}.json`), "utf8")), f, true);
+  for (const f of ["migration-mapping", "migration-rules", "update-mapping", "update-rules", "secure-coding-rules", "sbom-rules", "deploy-rules", "operations-rules"]) walk(JSON.parse(readFileSync(path.join(here, `../catalog/${f}.json`), "utf8")), f, true);
   assert(missingEn.length === 0, `규칙 데이터의 _en 누락 0${missingEn.length ? ` (${missingEn.length}건, 예: ${missingEn.slice(0, 3).join(", ")})` : ""}`);
 
   // 언어 전환 API

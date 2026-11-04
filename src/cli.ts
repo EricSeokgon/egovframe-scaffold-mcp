@@ -24,6 +24,8 @@ interface CommandDef {
   defaults?: Record<string, unknown>;
   /** CLI 에서 막는 도구 인자 */
   blocked?: string[];
+  /** --fail-on 에서 등급 조건(metric:C)을 쓸 수 있는 지표(v1.15) */
+  gradeMetrics?: string[];
   /** --fail-on 이 볼 지표 */
   metrics: (s: Record<string, unknown>) => Record<string, number>;
   /** stderr 한 줄 요약 */
@@ -103,6 +105,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     tool: "externalize_egovframe_config", summary: "설정·비밀값 외부화(--write 없으면 계획만, --verify 로 기동 확인)", summaryEn: "Externalize configuration secrets (plan only without --write; --verify starts the app)", defaults: { dryRun: true }, blocked: ["dryRun"],
     metrics: (s) => { const sm = rec(s.summary); return { found: num(sm.found), env: num(sm.env), cryptoPath: num(sm.cryptoPath), manual: num(sm.manual), files: num(sm.files), rolledBack: s.rolledBack === true ? 1 : 0 }; },
     line: (s) => { const sm = rec(s.summary), sc = rec(s.secureCoding); return L(`설정 외부화 ${s.dryRun ? "계획" : s.rolledBack ? "되돌림" : "적용"} — 자리표시자 ${num(sm.env)} · 암호화 키 ${num(sm.cryptoPath)} · 수동 ${num(sm.manual)} · 파일 ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · 보안약점 ${num(sc.before)} → ${num(sc.after)}` : ""}`, `Config externalization ${s.dryRun ? "plan" : s.rolledBack ? "rolled back" : "applied"} — placeholders ${num(sm.env)} · crypto key ${num(sm.cryptoPath)} · manual ${num(sm.manual)} · files ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · secure-coding ${num(sc.before)} → ${num(sc.after)}` : ""}`); },
+  },
+  ops: {
+    tool: "check_egovframe_operations", summary: "운영 준비 점검(설정 점검표·등급, --fail-on ops:C)", summaryEn: "Operations readiness check (configuration checklist and grade; --fail-on ops:C)", gradeMetrics: ["ops"],
+    metrics: (s) => { const sm = rec(s.summary), g = rec(s.grade); return { ops: GRADES.indexOf(String(g.grade)), high: num(sm.high), medium: num(sm.medium), low: num(sm.low), fail: num(sm.fail), total: num(sm.total) }; },
+    line: (s) => { const sm = rec(s.summary), g = rec(s.grade); return L(`운영 준비 ${g.grade} — 미달 규칙 ${num(sm.fail)} · 항목 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}`, `Operations readiness ${g.grade} — failed rules ${num(sm.fail)} · findings high ${num(sm.high)} · medium ${num(sm.medium)} · low ${num(sm.low)}`); },
   },
   map: {
     tool: "map_egovframe_project", summary: "프로젝트 구조 지도·변경 영향(읽기 전용, --impact-table/--impact-url/--impact-class)", summaryEn: "Project structure map and change impact (read-only; --impact-table/--impact-url/--impact-class)",
@@ -307,7 +314,7 @@ async function runCommand(command: string, def: CommandDef, options: Record<stri
     if (options["fail-on"] !== undefined) {
       if (typeof options["fail-on"] !== "string") { io.stderr(L(`--fail-on 에 식이 필요합니다\n`, `--fail-on requires an expression\n`)); return EXIT.usage; }
       const sample = def.metrics({});
-      try { conds = parseFailOn(options["fail-on"], Object.keys(sample), command === "assess" ? ["migration", "supplyChain"] : []); }
+      try { conds = parseFailOn(options["fail-on"], Object.keys(sample), command === "assess" ? ["migration", "supplyChain"] : (def.gradeMetrics ?? [])); }
       catch (e) { io.stderr(`${(e as Error).message}\n`); return EXIT.usage; }
     }
 

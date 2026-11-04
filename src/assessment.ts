@@ -13,6 +13,7 @@ import { checkDependencies, STATUS_LABEL, BASIS_LABEL, type CheckDependenciesRes
 import { DEFAULT_SBOM_PATH, type SbomDocument } from "./sbom.js";
 import { checkMinimumElements, DEFAULT_VEX_PATH, type VexDocument } from "./sbom-check.js";
 import { readRehearsalRecord } from "./rehearse.js";
+import { checkOperations } from "./operations.js";
 import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
@@ -143,6 +144,8 @@ export interface AssessmentResult {
   security: { ok: number; missing: number; na: number; checks: SecurityCheck[] };
   /** v0.44: 보안약점 점검(check_egovframe_secure_coding) 요약 — 등급 산식에는 넣지 않는다 */
   secureCoding: { total: number; high: number; medium: number; low: number; byOrigin: Record<string, number>; byRule: { rule: string; guideItem: string; severity: string; count: number }[]; suppressed: number; error?: string };
+  /** v1.15: 운영 준비 점검(등급 산식에는 넣지 않음) */
+  operations: { grade: string; total: number; high: number; medium: number; low: number; fail: number; pass: number; na: number; failed: { rule: string; title: string; severity: string; findings: number }[]; error?: string };
   sbom: {
     present: boolean; path: string; components?: number; specVersion?: string; timestamp?: string; vulnerabilities?: number;
     /** v0.40: 최소 요소 7종 */
@@ -267,6 +270,14 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   } catch (e) {
     secureCoding = { total: 0, high: 0, medium: 0, low: 0, byOrigin: {}, byRule: [], suppressed: 0, error: e instanceof Error ? e.message : String(e) };
   }
+  // v1.15: 운영 준비 점검
+  let operations: AssessmentResult["operations"];
+  try {
+    const op = await checkOperations({ projectDir, maxFiles: opts.maxFiles });
+    operations = { grade: op.grade.grade, total: op.summary.total, high: op.summary.high, medium: op.summary.medium, low: op.summary.low, fail: op.summary.fail, pass: op.summary.pass, na: op.summary.na, failed: op.rules.filter((r) => r.status === "fail").map((r) => ({ rule: r.rule, title: r.title, severity: r.severity, findings: r.findings })) };
+  } catch (e) {
+    operations = { grade: "?", total: 0, high: 0, medium: 0, low: 0, fail: 0, pass: 0, na: 0, failed: [], error: e instanceof Error ? e.message : String(e) };
+  }
   // SBOM
   const sbom = readSbom(projectDir, (opts.sbomPath ?? DEFAULT_SBOM_PATH).replace(/\\/g, "/"));
 
@@ -300,7 +311,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       notes: dep.notes,
       ...(fixHistory.length ? { fixHistory } : {}),
     },
-    security, secureCoding, sbom,
+    security, secureCoding, operations, sbom,
     grades: { migration, supplyChain },
     ...(dep.workspace ? { modules: dep.workspace.modules.map((m) => {
       const u = update?.modules?.find((x) => x.name === m.name);
@@ -423,6 +434,15 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     out.push(L(`- 높음 ${sc.high} · 중간 ${sc.medium} · 낮음 ${sc.low} (합계 ${sc.total}${sc.suppressed ? ` · 예외 처리 ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — 출처 ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`, `- High ${sc.high} · medium ${sc.medium} · low ${sc.low} (total ${sc.total}${sc.suppressed ? ` · suppressed ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — origin ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`));
     for (const b of sc.byRule.slice(0, 6)) out.push(L(`  - ${b.guideItem} \`${b.rule}\` ${b.count}건`, `  - ${b.guideItem} \`${b.rule}\` ${b.count}`));
     out.push(L(`- 등급 산식에는 넣지 않습니다(패턴 기반 진단 보조). 파일·라인·조치는 check_egovframe_secure_coding, CI 는 SARIF 로.`, `- Not part of the grade formula (pattern-based diagnostic aid). File/line/remediation via check_egovframe_secure_coding; SARIF for CI.`));
+  }
+
+  const op = r.operations;
+  out.push(``, L(`### 운영 준비 점검 (\`check_egovframe_operations\`)`, `### Operations readiness (\`check_egovframe_operations\`)`), ``);
+  if (op.error) out.push(L(`- 점검 실패: ${op.error}`, `- Check failed: ${op.error}`));
+  else {
+    out.push(L(`- 등급 **${op.grade}** — 미달 규칙 ${op.fail} · 통과 ${op.pass} · 해당 없음 ${op.na} (항목 높음 ${op.high} · 중간 ${op.medium} · 낮음 ${op.low})`, `- Grade **${op.grade}** — failed rules ${op.fail} · passed ${op.pass} · n/a ${op.na} (findings high ${op.high} · medium ${op.medium} · low ${op.low})`));
+    for (const f of op.failed.slice(0, 8)) out.push(`  - ${f.severity === "high" ? "⚠️" : "•"} ${f.title} \`${f.rule}\` ${f.findings}`);
+    out.push(L(`- 등급 산식에는 넣지 않습니다(운영 투입 전 체크리스트). 파일·줄·제안은 check_egovframe_operations 로.`, `- Not part of the grade formula (a pre-production checklist). Files, lines and suggestions: check_egovframe_operations.`));
   }
 
   out.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? L(` · vulnerabilities ${r.sbom.vulnerabilities}건`, ` · vulnerabilities ${r.sbom.vulnerabilities}`) : ""}` : `➖ ${r.sbom.note}`}`);

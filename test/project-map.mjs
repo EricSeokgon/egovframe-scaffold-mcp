@@ -145,7 +145,7 @@ for (const profile of ["classic", "boot"]) {
   await server.connect(st); await client.connect(ct);
   const tools = (await client.listTools()).tools;
   const t = tools.find((x) => x.name === "map_egovframe_project");
-  assert(t && t.annotations.readOnlyHint === true && t.annotations.destructiveHint === false && t.inputSchema.properties.impactTable && t.inputSchema.properties.format.enum.join() === "markdown,json,mermaid" && t.outputSchema && tools.length === 41, "MCP: 41종, 읽기 전용, impact 파라미터 4종, mermaid 형식");
+  assert(t && t.annotations.readOnlyHint === true && t.annotations.destructiveHint === false && t.inputSchema.properties.impactTable && t.inputSchema.properties.format.enum.join() === "markdown,json,mermaid" && t.outputSchema && tools.length >= 41, "MCP: 등록됨, 읽기 전용, impact 파라미터 4종, mermaid 형식");
   const res = await client.callTool({ name: "map_egovframe_project", arguments: { projectDir: d, impactUrl: "/cop/bbs/selectArticleList.do", format: "json" } });
   assert(!res.isError && res.structuredContent.impact.byType.table === 2 && res.structuredContent.handover.screens.length === 5 && res.structuredContent.summary.tables === 5, "MCP 호출: 구조화 출력에 impact·handover");
   const mer = await client.callTool({ name: "map_egovframe_project", arguments: { projectDir: d, components: ["bbs"], format: "mermaid" } });

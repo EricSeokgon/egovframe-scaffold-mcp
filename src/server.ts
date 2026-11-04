@@ -37,6 +37,7 @@ import { DATABASE_TYPES, prepareDatabase, renderDatabaseMarkdown } from "./datab
 import { verifyStartup, renderStartupMarkdown } from "./startup.js";
 import { externalizeConfig, renderExternalizeMarkdown } from "./externalize.js";
 import { buildProjectMap, handoverTables, renderMermaid, renderProjectMapMarkdown } from "./project-map.js";
+import { checkOperations, renderOperationsMarkdown, loadOperationsRules } from "./operations.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -970,6 +971,23 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const full = { ...r, handover: handoverTables(r) };
       const text = args.format === "json" ? JSON.stringify(full, null, 2) : args.format === "mermaid" ? renderMermaid(r) : renderProjectMapMarkdown(r, args.topN);
       return { content: [{ type: "text", text }], structuredContent: full as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 운영 준비 점검 (v1.15) ─────────────────────────────
+  server.registerTool(
+    "check_egovframe_operations",
+    { title: t("check_egovframe_operations"), description: d("check_egovframe_operations", "\"기동은 되는데 운영에서 터지는\" 설정을 운영 투입 전에 점검합니다(읽기 전용, 값을 고치지 않고 바뀔 줄을 제안). 운영 설정 세트 — Boot 는 application + application-prod(production·release·ops 중 있는 것, profile 로 지정).* 만 보고 dev·local·test 프로파일은 뺍니다, Classic 은 globals.properties·context-*.xml·web.xml·log4j2/logback.xml — 에서 규칙 데이터(catalog/operations-rules.json, 규칙마다 출처 명시) 17종을 평가합니다: SQL 로깅 프록시 드라이버(log4jdbc·P6Spy) 잔존, DEBUG/TRACE 로그 수준, 콘솔 전용 로그(로테이션 없음), spring-boot-devtools, 내장 DB(HSQL·H2) 잔존, 커넥션 풀 크기·타임아웃·수명·누수 감지 미설정, 세션 타임아웃 없음/60분 초과, 세션 쿠키 http-only·secure, 업로드 상한 없음/100MB 이상·허용 확장자 없음, 업로드 경로 상대·/tmp·웹 루트, 오류 상세 노출(include-stacktrace·show-sql·debug), error-page 없음, actuator 전체 노출, 표준프레임워크 개발 플래그(LocalIp 127.0.0.1·Hsql.AutoInit), 운영 프로파일 없음, 하드코드 비밀값(보안약점 규칙과 같은 판정, externalize_egovframe_config 참조). 결과는 점검표(규칙 × 통과/미달/해당 없음)·미달 항목(파일·줄·현재 값·제안·근거)·등급 A–D(규칙 단위: A 높음 0·중간 ≤1, B 높음 ≤1·중간 ≤3, C 높음 ≤3, D). 예외는 .egovframe-ops-ignore.json(rule·path·reason·reviewer). 공식 운영 기준 문서가 없어 근거는 공식 템플릿 기본값 실측·HikariCP/Spring Boot/Tomcat 문서입니다. 평가서(generate_egovframe_report)에도 「운영 준비」가 들어갑니다. 부하 시험·운영 WAS(JEUS 등)·OS/DB 서버 설정은 보지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      profile: z.string().optional().describe("운영 프로파일 이름(Boot, 기본: prod·production·release·ops 중 있는 것)"),
+      rules: z.array(z.enum(loadOperationsRules().rules.map((r) => r.id) as [string, ...string[]])).optional().describe("점검할 규칙 id(기본 전체)"),
+      topN: z.number().int().min(1).max(1000).default(50).describe("Markdown 에 보일 미달 항목 수"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_operations.shape, annotations: toolAnnotations("check_egovframe_operations") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = await checkOperations({ projectDir: args.projectDir, profile: args.profile, rules: args.rules });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderOperationsMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
   // ── SBOM 운영 (v0.40) ─────────────────────────────────

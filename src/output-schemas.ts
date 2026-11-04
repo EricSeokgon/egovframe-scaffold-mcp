@@ -206,6 +206,7 @@ export const AssessmentOutput = loose({
   security: loose({ ok: z.number().int(), missing: z.number().int(), na: z.number().int(), checks: z.array(loose({ id: z.string(), title: z.string(), status: z.enum(["ok", "missing", "n/a"]), evidence: z.array(loose({ file: z.string(), line: z.number().int(), text: z.string() })), hint: z.string() })) }),
   sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.string(), z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
+  operations: loose({ grade: z.string(), total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), fail: z.number().int(), pass: z.number().int(), na: z.number().int(), failed: z.array(loose({ rule: z.string(), title: z.string(), severity: z.string(), findings: z.number().int() })), error: z.string().optional() }).optional(),
   rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable(), reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int() }).optional() }).optional(),
   notes: z.array(z.string()),
 });
@@ -467,6 +468,23 @@ export const ProjectMapOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.15: check_egovframe_operations
+const OpsSev = z.enum(["high", "medium", "low"]);
+export const OperationsOutput = loose({
+  projectDir: z.string(),
+  rulesVersion: loose({ surveyedAt: z.string(), rules: z.number().int() }),
+  runtime: z.enum(["boot", "classic", "unknown"]),
+  configSet: loose({ properties: z.array(z.string()), profile: z.string().nullable(), excludedProfiles: z.array(z.string()) }),
+  filesScanned: z.number().int(),
+  findings: z.array(loose({ rule: z.string(), category: z.string(), severity: OpsSev, title: z.string(), file: z.string(), line: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), basis: z.string(), suggestion: z.string().optional() })),
+  rules: z.array(loose({ rule: z.string(), category: z.string(), severity: OpsSev, title: z.string(), status: z.enum(["pass", "fail", "n/a"]), findings: z.number().int() })),
+  summary: loose({ total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), suppressed: z.number().int(), pass: z.number().int(), fail: z.number().int(), na: z.number().int() }),
+  grade: loose({ grade: z.enum(["A", "B", "C", "D"]), formula: z.string() }),
+  ignoreFile: z.string().nullable(),
+  invalidIgnores: z.array(z.string()),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -482,6 +500,7 @@ export const OUTPUT_SCHEMAS = {
   verify_egovframe_startup: StartupOutput,
   externalize_egovframe_config: ExternalizeOutput,
   map_egovframe_project: ProjectMapOutput,
+  check_egovframe_operations: OperationsOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,

@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 41종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 42종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -41,6 +41,7 @@
 | `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `verify_egovframe_startup` | **기동 검증**(v1.11) — 프로젝트를 바꾸지 않고 실제로 띄움: Boot 는 `spring-boot:run`·`bootRun`(빈 포트), Classic war 는 캐시의 고정 Tomcat 10.1/11.0(sha256 검증, `tomcatHome`)에 ROOT 로. 완료 문구 + HTTP(5xx 아님)로 판정, 실패면 원인 종류(포트·드라이버·DB 접속·테이블 없음·매퍼 XML 파일·줄·설정 누락·javax·실제로 실패한 빈과 정의 파일·GUI 빈·시간 초과·빌드)와 처방. [자세히](#기동-검증-verify_egovframe_startup-v111) |
+| `check_egovframe_operations` | **운영 준비 점검**(v1.15, 읽기 전용) — "기동은 되는데 운영에서 터지는" 설정을 규칙 데이터 17종(`catalog/operations-rules.json`, 출처 명시)으로 점검: SQL 로깅 드라이버·DEBUG 로그·콘솔 전용 로그·devtools·내장 DB·풀 크기/타임아웃·세션/쿠키·업로드 상한/경로·오류 노출·error-page·actuator·개발 플래그·운영 프로파일·비밀값. 운영 설정 세트(Boot: application + prod 프로파일, Classic: globals·context-*.xml·web.xml·log4j2). 점검표·미달 항목(파일·줄·제안·근거)·등급 A–D, `.egovframe-ops-ignore.json`, 평가서 「운영 준비」절. CLI `ops`(`--fail-on ops:C`) |
 | `map_egovframe_project` | **프로젝트 구조 지도·변경 영향**(v1.14, 읽기 전용) — 테이블 → 매퍼 XML(네임스페이스) → DAO/Mapper → Service → Controller → URL → 화면의 그래프를 정적 해석으로. `impactTable`·`impactUrl`·`impactClass`·`impactView` 로 영향 노드를 거리순으로, 인수인계 표 3종(화면 목록·프로그램 목록·DB 접근 표), 고아(호출 없는 매퍼·문장, URL 없는 Controller, 미참조 컴포넌트 테이블), 해석 실패율. `format` markdown·json(전체 그래프)·mermaid(범위 한정). CLI `map` |
 | `externalize_egovframe_config` | **설정·비밀값 외부화**(v1.13) — 설정 파일의 DB 비밀번호·비밀 값을 저장소 밖으로: 판정은 보안약점 점검의 `hardcoded-config-password` 규칙·화이트리스트 그대로(+ XML `<property name="password" value="리터럴"/>`, 주석 제외). Spring 자리표시자로 읽는 키는 `${EGOV_…_PASSWORD}` 로(env), 표준프레임워크 암호화 값은 그대로 두고 복호화 키를 `egov-crypto-config.properties` 에서 빼 `Globals.CryptoConfigPath=${EGOV_CRYPTO_CONFIG:}` 로 외부 파일에서(crypto-path, runtime 5.x), 파일을 직접 읽는 키(`EgovProperties.getProperty`)·4.x `context-crypto.xml` 의 키는 수동 항목. `deploy/` 산출물 갱신, dryRun 기본, 트랜잭션(원본은 `migration-backup/`), 보안약점 전·후, `verify=true` 면 원래 값을 환경 변수로 주고 기동해 `config-missing` 이면 되돌림. CLI `externalize` (파괴적, 게이트) |
 | `prepare_egovframe_database` | **DB 준비·적재 확인**(v1.10) — 조립 선별본·공통컴포넌트 전체·지정 스크립트를 문장 단위로 나눠 외래키·뷰 순서로 정렬하고 중복을 지우며, 선별본이 빠뜨린 참조 테이블을 통합 스크립트에서 보완. MySQL·MariaDB 는 테이블 문자셋 `utf8mb4_unicode_ci`·`SET NAMES utf8mb4`(upstream #1386·#1387). `scripts/egovframe-db/<db>/01-schema.sql·02-data.sql`·`docker-compose.db.yml`·적재 명령, `run=true` 면 Docker 로 적재해 테이블 수·필수 행·한글 왕복 확인. [자세히](#db-준비적재-확인-prepare_egovframe_database-v110) |
@@ -245,6 +246,23 @@ npx -y egovframe-scaffold-mcp startup --project . [--fail-on failed]
 - 끝나면 프로세스 트리를 끝내고 임시 디렉터리를 지웁니다. 프로젝트에 남는 것은 빌드 결과(`target/`)뿐입니다.
 - 실측(2026-10-30): 공식 템플릿 7종(web·simple-homepage·portal-site·enterprise-business·mobile-web·boot-web·simple-backend)이 내장 HSQL 로 16–29초에 기동. 포털·업무 템플릿은 `create_egovframe_project(database="hsql")` 가 `Globals.Hsql.AutoInit` 을 켜도록 고친 뒤 뜹니다(전에는 빈 DB 로 떠서 `LETTNROLES_HIERARCHY` 조회 실패 — 이 도구가 찾은 것). batch-db-web 은 `hsqlManager` 빈이 GUI 창을 띄워 화면 없는 환경에서 실패합니다(템플릿 특성).
 - 하지 않는 것: 화면 기능 테스트(URL 응답까지), 성능, 운영 WAS(JEUS·WebLogic) 기동, DB 컨테이너 자동 연결([설계](design-startup.md#기획에서-미룬-것)).
+
+## 운영 준비 점검 (`check_egovframe_operations`, v1.15)
+
+"기동은 되는데 운영에서 터진다"는 설정은 코드 점검·기동 검증이 잡지 못합니다. 공식 템플릿으로 시작한 프로젝트는 SQL 로깅 프록시 드라이버(`log4jdbc`)·DEBUG 로그·콘솔 전용 로그·devtools·내장 HSQL·튜닝 없는 풀을 운영에 그대로 가져갑니다(2026-11-04 실측). 이 도구는 운영 투입 전 체크리스트를 규칙 데이터로 돌립니다 — 읽기 전용이고 값을 고치지 않습니다.
+
+```text
+check_egovframe_operations(projectDir)                                    # 점검표·미달 항목·등급
+check_egovframe_operations(projectDir, profile="prod")                    # Boot 운영 프로파일 지정(기본: prod·production·release·ops 중 있는 것)
+check_egovframe_operations(projectDir, rules=["session-timeout","cookie-flags"], format="json")
+npx -y egovframe-scaffold-mcp ops --project . [--fail-on ops:C] [--fail-on high>0]
+```
+
+- **운영 설정 세트**: Boot 는 `application.*` + 운영 프로파일 파일만(dev·local·test 프로파일 제외) — 운영 프로파일이 정한 키는 기본 파일의 값을 덮으므로 기본 파일의 그 줄은 보지 않습니다(properties). Classic 은 `globals.properties`·`context-*.xml`·`WEB-INF/web.xml`·`log4j2*.xml`/`logback*.xml`. 메시지 번들·매퍼 XML·`src/test` 제외.
+- **규칙 17종**(`catalog/operations-rules.json`, 규칙마다 출처·조치·근거): `sql-logging-driver`(high) · `debug-log-level`(high) · `console-only-logging` · `devtools-dependency` · `embedded-db-in-production`(high) · `pool-size-missing`(low) · `pool-timeouts-missing`(low) · `session-timeout`(없음/60분 초과) · `cookie-flags` · `upload-limits`(없음/100MB 이상/확장자 없음) · `upload-path`(상대·/tmp·웹 루트) · `error-exposure`(high: include-stacktrace·show-sql·debug) · `error-page-missing` · `actuator-exposure`(high) · `egov-dev-flags`(LocalIp 127.0.0.1·Hsql.AutoInit) · `no-production-profile` · `hardcoded-secret-config`(보안약점 규칙과 같은 판정 → `externalize_egovframe_config`). check 종류는 `line`(줄 패턴, 주석·자리표시자 제외)·`lacks`(해당 파일에 설정이 없음)·`pom`·`session-timeout`·`upload`·`profile`·`secrets`.
+- **결과**: 점검표(규칙 × ✅ pass / ⚠️ fail / ➖ n/a), 미달 항목(파일·줄·현재 값(비밀은 가림)·제안·근거), 등급 — 규칙 단위로 세어 A: 높음 0·중간 ≤1 / B: 높음 ≤1·중간 ≤3 / C: 높음 ≤3 / D. 예외는 `.egovframe-ops-ignore.json`(`ignores[]`: rule·path(디렉터리 접두어 가능)·line?·reason·reviewer — 보안약점 예외 파일과 같은 형식). 평가서(`generate_egovframe_report`)에 「운영 준비 점검」절(등급 산식에는 넣지 않음).
+- 실측(2026-11-04, 공식 템플릿 6종): web C(DEBUG·콘솔 전용·내장 DB·세션 없음·쿠키) · boot-web B(콘솔 전용·devtools·세션 없음·운영 프로파일 없음) · simple-backend C(log4jdbc·devtools·HSQL·풀·./files) · simple-homepage·portal-site·enterprise-business C(log4jdbc·DEBUG·HSQL·풀 타임아웃·업로드 100MB·LocalIp·비밀값). portal-site 에 제안을 적용한 사본(실제 드라이버·INFO·풀 타임아웃·세션 30·50MB)은 B 가 되고 내장 HSQL 로 여전히 기동합니다(`test:operations-live`).
+- 하지 않는 것: 자동 수정(운영 값은 부하·DB 정책에 따라 다름 — 제안만), 부하 시험·용량 산정, 운영 WAS(JEUS·WebLogic) 설정, OS·DB 서버 설정. 공식 운영 기준 문서가 없어 근거는 템플릿 기본값 실측·HikariCP/Spring Boot/Tomcat 문서입니다. 설계: [design-operations.md](design-operations.md).
 
 ## 프로젝트 구조 지도·변경 영향 (`map_egovframe_project`, v1.14)
 
@@ -525,7 +543,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 14종(목록·검색·진단·검증·점검·upstream 대조·구조 지도), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 20종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·구조 지도·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 15종(목록·검색·진단·검증·점검·upstream 대조·구조 지도·운영 점검), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 21종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·구조 지도·운영 점검·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 

@@ -157,6 +157,8 @@ jobs:
         run: npm run test:externalize-live
       - name: Project structure map on the full official common components (tables, URLs, impact, unresolved rate, v4.3.2 comparison)
         run: npm run test:project-map-live
+      - name: Operations readiness check (6 official templates against measured defaults, portal-site with suggestions applied still starts)
+        run: npm run test:operations-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)
