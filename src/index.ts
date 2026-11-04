@@ -169,6 +169,8 @@ export type { StartupFailureKind, StartupCause, StartupLogAnalysis, StartupOptio
 export { scanSecrets, externalizeConfig, renderExternalizeMarkdown, envNameForKey, maskSecret, looksEgovEncrypted, algorithmKeyHash, CONFIG_PASSWORD_RULE, CRYPTO_CONFIG_FILE, CRYPTO_PATH_KEY, CRYPTO_ENV } from "./externalize.js";
 export type { SecretKind, SecretFormat, SecretAction, SecretFinding, ExternalizeOptions, ExternalizeResult, ExternalizeChange } from "./externalize.js";
 export { findSecretPlaceholders } from "./deploy.js";
+export { buildProjectMap, impactOf, handoverTables, tablesInSql, renderMermaid, renderProjectMapMarkdown } from "./project-map.js";
+export type { MapNode, MapEdge, MapNodeType, ClassRole, EdgeKind, MapperStatement, ImpactResult, ProjectMap, MapOptions, HandoverTables } from "./project-map.js";
 export type { DbType, SqlStatement, PreparedScripts, DbSourceFile, DbConnection, DockerExec, DbRunResult, PrepareDatabaseOptions, PrepareDatabaseResult } from "./database.js";
 export type { FixHistoryEntry } from "./fix-history.js";
 export { analyzeJavaFlows, findMethods, blankJavaLiterals } from "./java-flow.js";

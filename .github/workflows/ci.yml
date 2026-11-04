@@ -155,6 +155,8 @@ jobs:
         run: npm run test:startup-live
       - name: Externalize configuration secrets (portal-site placeholders and crypto key file, started with the original values as env, corpus counts)
         run: npm run test:externalize-live
+      - name: Project structure map on the full official common components (tables, URLs, impact, unresolved rate, v4.3.2 comparison)
+        run: npm run test:project-map-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)

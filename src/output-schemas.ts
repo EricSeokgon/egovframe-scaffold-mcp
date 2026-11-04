@@ -17,6 +17,8 @@ export const DiagnoseOutput = loose({
   issues: z.array(z.string()),
   suggestions: z.array(z.string()),
   dbScripts: loose({ componentScripts: z.number().int(), prepared: z.array(z.string()), compose: z.boolean() }),
+  /** v1.14: 지도 요약(도구 응답에서만) */
+  projectMap: loose({ tables: z.number().int(), urls: z.number().int(), views: z.number().int(), orphanMappers: z.number().int(), unresolvedRate: z.number(), durationMs: z.number().int() }).optional(),
 });
 
 export const ValidateOutput = loose({
@@ -408,7 +410,7 @@ export const DeployOutput = loose({
 });
 
 // v1.1: prepare_egovframe_delivery (만들기·verify 두 모양을 한 스키마로 — mode 로 구분)
-const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.string(), z.unknown()), error: z.string().optional() });
+const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.string(), z.unknown()), error: z.string().optional() });
 export const DeliveryOutput = loose({
   mode: z.enum(["prepare", "verify"]),
   projectDir: z.string().optional(),
@@ -448,6 +450,23 @@ export const ExternalizeOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.14: map_egovframe_project
+const MapNodeSchema = loose({ id: z.string(), type: z.enum(["table", "mapper", "class", "url", "view"]), name: z.string(), file: z.string().optional(), files: z.array(z.string()).optional(), role: z.enum(["controller", "service", "service-impl", "dao", "mapper-interface", "other"]).optional(), component: z.string().optional(), module: z.string().optional(), count: z.number().int().optional() });
+export const ProjectMapOutput = loose({
+  projectDir: z.string(),
+  generatedAt: z.string(),
+  durationMs: z.number().int(),
+  nodes: z.array(MapNodeSchema),
+  edges: z.array(loose({ from: z.string(), to: z.string(), kind: z.enum(["reads", "writes", "calls", "injects", "implements", "maps", "renders", "links"]), detail: z.string().optional() })),
+  statements: z.array(loose({ namespace: z.string(), id: z.string(), kind: z.enum(["select", "insert", "update", "delete"]), tables: z.array(z.string()), unresolved: z.number().int(), file: z.string(), line: z.number().int() })),
+  summary: loose({ files: loose({ java: z.number().int(), mapperXml: z.number().int(), views: z.number().int() }), tables: z.number().int(), mappers: z.number().int(), statements: z.number().int(), classes: z.record(z.string(), z.number().int()), urls: z.number().int(), views: z.number().int(), unresolvedStatements: z.number().int(), unresolvedViews: z.number().int(), orphanMappers: z.number().int(), orphanStatements: z.number().int(), controllersWithoutUrl: z.number().int(), unreferencedTables: z.number().int(), unresolvedRate: z.number(), modules: z.array(z.string()) }),
+  orphans: loose({ mappers: z.array(z.string()), statements: z.array(z.string()), controllersWithoutUrl: z.array(z.string()), unreferencedTables: z.array(z.string()) }),
+  componentTables: z.array(loose({ component: z.string(), tables: z.number().int(), referenced: z.number().int() })),
+  impact: loose({ start: MapNodeSchema, direction: z.enum(["upstream", "downstream", "both"]), nodes: z.array(loose({ node: MapNodeSchema, distance: z.number().int(), via: z.string() })), byType: z.record(z.string(), z.number().int()) }).optional(),
+  handover: loose({ screens: z.array(loose({ url: z.string(), method: z.string(), controller: z.string(), views: z.array(z.string()), component: z.string().optional() })), programs: z.array(loose({ controller: z.string(), services: z.array(z.string()), daos: z.array(z.string()), mappers: z.array(z.string()), component: z.string().optional() })), dbAccess: z.array(loose({ table: z.string(), C: z.array(z.string()), R: z.array(z.string()), U: z.array(z.string()), D: z.array(z.string()) })) }).optional(),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -462,6 +481,7 @@ export const OUTPUT_SCHEMAS = {
   prepare_egovframe_database: DatabaseOutput,
   verify_egovframe_startup: StartupOutput,
   externalize_egovframe_config: ExternalizeOutput,
+  map_egovframe_project: ProjectMapOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,
