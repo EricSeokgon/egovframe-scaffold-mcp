@@ -15,7 +15,7 @@ export const BUNDLE_MANIFEST = "bundle-manifest.json";
 export const OSV_MAVEN_DUMP_URL = "https://osv-vulnerabilities.storage.googleapis.com/Maven/all.zip";
 export const BUNDLE_MAX_AGE_DAYS = 30;
 
-export type BundleKind = "osv" | "components" | "template" | "origin";
+export type BundleKind = "osv" | "components" | "template" | "origin" | "otel";
 export interface BundleFile { path: string; kind: BundleKind; url: string; sha256: string; bytes: number; fetchedAt: string; id?: string; lastModified?: string | null; records?: number }
 export interface BundleOrigin { path: string; repository: string; tags: string[]; fetchedAt: string; bytes: number }
 export interface BundleManifest {
@@ -204,7 +204,8 @@ export function osvProvenanceNote(now: () => number = Date.now, maxAgeDays = Num
 }
 
 // ── 만들기(인터넷 쪽) ─────────────────────────────────────
-export type BundleInclude = "osv" | "components" | "templates" | "origin";
+/** v1.16: otel — OpenTelemetry Java 에이전트 jar(generate_egovframe_deploy(observability="otel") 의 폐쇄망 빌드용, 기본 포함 아님) */
+export type BundleInclude = "osv" | "components" | "templates" | "origin" | "otel";
 export const BUNDLE_INCLUDES: BundleInclude[] = ["osv", "components", "templates", "origin"];
 export interface BundleSource { kind: BundleKind; id: string; url: string; path: string; expected?: { sha256: string; bytes: number } }
 export interface PrepareBundleOptions {
@@ -267,23 +268,24 @@ function git(args: string[], cwd?: string, signal?: AbortSignal): Promise<string
 const dirBytes = (d: string): number => { let n = 0; for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); n += e.isDirectory() ? dirBytes(p) : fs.statSync(p).size; } return n; };
 
 /** 번들에 담을 항목 목록(순수 계산). */
-export function bundleSources(catalog: { repository: string; commit: string | null; tag: string | null; archive?: { sha256: string; bytes: number } }, templates: { id: string; url: string; archive?: { sha256: string; bytes: number } }[], include: BundleInclude[]): BundleSource[] {
+export function bundleSources(catalog: { repository: string; commit: string | null; tag: string | null; archive?: { sha256: string; bytes: number } }, templates: { id: string; url: string; archive?: { sha256: string; bytes: number } }[], include: BundleInclude[], otelAgent?: { version: string; url: string; sha256: string; bytes: number }): BundleSource[] {
   const out: BundleSource[] = [];
   if (include.includes("osv")) out.push({ kind: "osv", id: "osv-maven", url: OSV_MAVEN_DUMP_URL, path: "osv/Maven-all.zip" });
   if (include.includes("components") && catalog.commit) out.push({ kind: "components", id: `${catalog.repository}@${catalog.tag ?? catalog.commit.slice(0, 7)}`, url: `https://codeload.github.com/${catalog.repository}/zip/${catalog.commit}`, path: `archives/${catalog.repository.replace(/\//g, "_")}-${catalog.commit.slice(0, 12)}.zip`, ...(catalog.archive ? { expected: catalog.archive } : {}) });
   if (include.includes("templates")) for (const t of templates) out.push({ kind: "template", id: t.id, url: t.url, path: `templates/${t.id}.zip`, ...(t.archive ? { expected: t.archive } : {}) });
+  if (include.includes("otel") && otelAgent) out.push({ kind: "otel", id: `opentelemetry-javaagent@${otelAgent.version}`, url: otelAgent.url, path: "otel/opentelemetry-javaagent.jar", expected: { sha256: otelAgent.sha256, bytes: otelAgent.bytes } });
   return out;
 }
 
 /** 번들을 만든다(인터넷 PC). dryRun(기본) 이면 받을 목록만. */
-export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalog: Parameters<typeof bundleSources>[0]; templateList: Parameters<typeof bundleSources>[1]; serverVersion: string }): Promise<PrepareBundleResult> {
+export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalog: Parameters<typeof bundleSources>[0]; templateList: Parameters<typeof bundleSources>[1]; serverVersion: string; otelAgent?: Parameters<typeof bundleSources>[3] }): Promise<PrepareBundleResult> {
   throwIfAborted(opts.progress?.signal);
   const outputDir = path.resolve(opts.outputDir);
   const include = opts.include ?? BUNDLE_INCLUDES;
   const dryRun = opts.dryRun !== false;
   const now = opts.now ?? Date.now;
   const notes: string[] = [];
-  const sources = bundleSources(opts.catalog, opts.templateList, include);
+  const sources = bundleSources(opts.catalog, opts.templateList, include, opts.otelAgent);
   const result: PrepareBundleResult = { outputDir, dryRun, written: false, items: sources.map((s) => ({ kind: s.kind, id: s.id, url: s.url, path: s.path, bytes: s.expected?.bytes ?? null, sha256: s.expected?.sha256 ?? null, verified: null })), totalBytes: 0, usage: [], notes };
   const originRel = `origin/${opts.catalog.repository.replace(/[^A-Za-z0-9._-]/g, "_")}.git`;
   if (include.includes("origin")) result.origin = { repository: opts.catalog.repository, tags: 0, bytes: 0, path: originRel };
@@ -291,6 +293,7 @@ export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalo
     `폐쇄망 PC 로 ${outputDir} 디렉터리를 통째로 옮긴 뒤 MCP 클라이언트 설정에 환경변수 ${BUNDLE_ENV}=<옮긴 경로> 를 추가합니다.`,
     "다운로드(공통컴포넌트 아카이브·Initializr zip 템플릿)는 번들에서 지문을 검증해 쓰고, offline=false 의 OSV 조회는 번들 덤프로 판정하며, 재조립 원본 태그는 번들 미러를 씁니다.",
     "Maven 의존성 jar 는 번들에 없습니다 — 기관 Nexus·Artifactory 미러를 settings.xml 에 지정하세요.",
+    ...(include.includes("otel") ? ["otel/opentelemetry-javaagent.jar 는 generate_egovframe_deploy(observability=\"otel\") 로 만든 프로젝트의 deploy/otel/ 에 복사하면 이미지 빌드가 인터넷 없이 그 파일을 씁니다(sha256 확인)."] : []),
   ];
   if (fs.existsSync(outputDir) && fs.readdirSync(outputDir).length) throw new Error(`outputDir 가 비어 있지 않습니다: ${outputDir} — 새 디렉터리를 지정하세요(기존 번들을 덮어쓰지 않습니다)`);
   if (dryRun) { notes.push(`dryRun — 받지 않았습니다. dryRun=false 로 ${sources.length}개 파일${include.includes("origin") ? " + 원본 태그 미러" : ""}를 받아 ${outputDir} 에 씁니다.`); result.totalBytes = result.items.reduce((s, i) => s + (i.bytes ?? 0), 0); return result; }

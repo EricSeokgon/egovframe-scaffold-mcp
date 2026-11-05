@@ -162,5 +162,32 @@
         "archive": "https://archive.apache.org/dist/tomcat/tomcat-11/v11.0.27/bin/apache-tomcat-11.0.27.zip"
       }
     }
+  },
+  "observability": {
+    "note": "generate_egovframe_deploy(observability=\"otel\") 가 쓰는 OpenTelemetry 구성(v1.16). 에이전트는 Maven Central 의 고정 버전 jar(sha256 검증, 빌드 컨텍스트 deploy/otel/ 에 같은 파일이 있으면 그것을 씀 — 폐쇄망), 수집기는 core 배포판(Apache-2.0)만. 저장·조회(Grafana·Loki·Tempo 등, AGPL)는 동봉하지 않습니다.",
+    "note_en": "OpenTelemetry setup used by generate_egovframe_deploy(observability=\"otel\") (v1.16). The agent is a pinned jar from Maven Central (sha256-verified; the same file under deploy/otel/ in the build context is used instead — air-gapped). The collector is the core distribution (Apache-2.0) only; storage and dashboards (Grafana, Loki, Tempo …, AGPL) are not bundled.",
+    "agent": {
+      "groupId": "io.opentelemetry.javaagent",
+      "artifactId": "opentelemetry-javaagent",
+      "version": "2.33.0",
+      "sha256": "5f9d1f10056ed2b246fbb19543519b8066cda23d6aff19022dbdb84402d6c3ab",
+      "bytes": 26507621,
+      "url": "https://repo1.maven.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/2.33.0/opentelemetry-javaagent-2.33.0.jar",
+      "releasedAt": "2026-10-23",
+      "license": "Apache-2.0",
+      "path": "/opt/otel/opentelemetry-javaagent.jar"
+    },
+    "collector": {
+      "image": "otel/opentelemetry-collector",
+      "version": "0.163.2",
+      "digest": "sha256:63e5e8eccf4268be02388ba9f2dc36b80b5e47721291293411c0e83152d75bda",
+      "createdAt": "2026-10-21",
+      "license": "Apache-2.0",
+      "configPath": "/etc/otelcol/config.yaml",
+      "ports": {
+        "grpc": 4317,
+        "http": 4318
+      }
+    }
   }
 }

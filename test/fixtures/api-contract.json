@@ -1,6 +1,6 @@
 {
-  "version": "1.15.0",
-  "base": "1.14.0",
+  "version": "1.16.0",
+  "base": "1.15.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -4045,6 +4045,14 @@
               },
               "maxItems": 50
             },
+            "observability": {
+              "type": "string",
+              "enum": [
+                "none",
+                "otel"
+              ],
+              "default": "none"
+            },
             "projectDir": {
               "type": "string"
             },
@@ -7682,6 +7690,7 @@
                   "components",
                   "origin",
                   "osv",
+                  "otel",
                   "templates"
                 ]
               },
@@ -7746,6 +7755,7 @@
                       "components",
                       "origin",
                       "osv",
+                      "otel",
                       "template"
                     ]
                   },

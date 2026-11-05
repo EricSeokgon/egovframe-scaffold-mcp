@@ -79,6 +79,20 @@
 - **리소스 요청·제한**: 250m/768Mi, 1/1536Mi.
 - **배치**: 웹이 아닌 Boot 앱은 포트·프로브·Service 없이 만들고, 커맨드라인 배치는 Job·CronJob 으로 바꾸라고 안내합니다.
 
+## 6-1. 관측 내보내기 (v1.16, `observability="otel"`)
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 범위 | 앱이 OTLP 로 **내보내기까지** — 에이전트·수집기·환경 변수. 저장·조회(Grafana·Loki·Tempo)는 동봉하지 않음 | upstream 운영환경 가이드(`egovframe-operating-environment-msa`, 별 3)가 쓰는 저장 스택이 AGPL-3.0 이고 가이드 자체가 소스 공개 의무를 경고한다. 공공기관은 대개 기존 APM·로그 수집 체계가 있다 |
+| 에이전트 | OpenTelemetry Java 에이전트 고정 버전(`catalog/deploy-rules.json` `observability.agent` — 버전·sha256·바이트·Maven Central URL). Dockerfile 의 `otel` 단계가 빌드 컨텍스트 `deploy/otel/opentelemetry-javaagent.jar` 를 먼저 쓰고, 없으면 `OTEL_AGENT_URL`(build-arg, compose `.env`)에서 받고, **어느 쪽이든 sha256 확인** 후 런타임 이미지의 `/opt/otel/` 에 복사 | 폐쇄망은 오프라인 번들(`include=["otel"]`)의 jar 를 두기만 하면 된다. 파이프 없는 `sha256sum -c` 로 hadolint DL4006 회피. `ADD --checksum` 은 Dockerfile 1.6 문법이 필요해 `# syntax` 지시어 없이(폐쇄망) 쓸 수 없다 |
+| 켜는 방법 | 이미지에는 에이전트만 두고 `JAVA_TOOL_OPTIONS=-javaagent:…` 를 compose·k8s 가 준다 | 같은 이미지를 관측 없이도 쓴다(끄기 = 환경 변수 삭제). `JAVA_TOOL_OPTIONS` 는 Boot(`java -jar`)·Tomcat(`catalina.sh`) 양쪽 JVM 이 읽는다 |
+| 환경 변수 | `OTEL_SERVICE_NAME`(=appName)·`OTEL_RESOURCE_ATTRIBUTES`(deployment.environment.name·service.version)·`OTEL_EXPORTER_OTLP_ENDPOINT`(http://otel-collector:4318)·`OTEL_EXPORTER_OTLP_PROTOCOL`(http/protobuf)·`OTEL_METRIC_EXPORT_INTERVAL`. k8s 는 앱 ConfigMap(비밀 아님) | 에이전트 2.x 기본값으로 trace·metric·log 를 모두 OTLP 로 보낸다(코드 수정 없음) |
+| 수집기 | `otel/opentelemetry-collector`(core 배포판, Apache-2.0) 고정 버전 — otlp 수신(4317·4318), `memory_limiter`·`batch`, 기본 `debug` 내보내기, 기관 백엔드(`otlp_http/backend`·`prometheus`)는 주석 예시. compose 는 `deploy/otel/collector.yaml` 볼륨, k8s 는 ConfigMap + Deployment(비루트·읽기 전용 루트) + Service | contrib 배포판은 크고 구성 요소가 많다. 0.163 의 exporter 이름(`otlp_http`)으로 예시를 쓴다 |
+| 기본값 | `observability="none"` — v1.15 와 바이트 동일한 산출물 | 기존 사용자의 산출물이 바뀌지 않게 |
+| 다중 서비스 | 이번 버전은 단일 프로젝트만(안내 출력) | 서비스마다 같은 수집기를 공유하는 배치는 다음에 |
+
+검증: 게이트 `test:observability`(33단언 — 산출물 구조·none 바이트 동일·Classic·미리 빌드·다중 서비스 안내·번들 항목·지문 불일치 거부·MCP), CI 통합 `test:observability-live`(공식 boot-web·web 을 compose 로 띄워 HTTP 1건 뒤 수집기에 span 120여·metric 30여·log 수십 도착, 같은 이미지를 `JAVA_TOOL_OPTIONS` 없이 띄우면 에이전트가 붙지 않음, 기동 시간 2배 이내 — 실측 boot-web 5.0s/4.5s·web 5.4s/4.2s, web 은 `deploy/otel/` jar 폐쇄망 경로·다운로드 주소는 닿지 않는 곳, hadolint·kubeconform 통과).
+
 ## 7. 검증
 
 - **게이트** (`test:deploy`)
@@ -94,4 +108,4 @@
 
 ## 8. 범위 밖
 
-Helm 차트·Kustomize 오버레이, 레지스트리 push·클러스터 배포 실행, 운영 DB 이관, 멀티 모듈.
+Helm 차트·Kustomize 오버레이, 레지스트리 push·클러스터 배포 실행, 운영 DB 이관, 멀티 모듈. 관측(v1.16)의 저장·대시보드(AGPL 스택)·Istio·수동 계측(span)·알림 규칙.
