@@ -4,6 +4,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 
 let n = 0;
 function assert(c, msg) { n++; if (!c) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
@@ -13,6 +14,8 @@ let k = 0;
 const project = (files) => { const d = path.join(root, `p${k++}`); for (const [rel, t] of Object.entries(files)) { mkdirSync(path.dirname(path.join(d, rel)), { recursive: true }); writeFileSync(path.join(d, rel), t); } return d; };
 const WAR_POM = "<project><parent><groupId>org.egovframe.web</groupId><artifactId>egovframe-web-config-parent</artifactId><version>5.0.2</version></parent><artifactId>w</artifactId><version>1</version><packaging>war</packaging></project>";
 const BOOT_POM = (extra = "") => `<project><parent><groupId>org.egovframe.boot</groupId><artifactId>egovframe-boot-starter-parent</artifactId><version>5.0.2</version></parent><artifactId>b</artifactId><version>1</version><dependencies><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>${extra}</dependencies></project>`;
+// 비밀번호 리터럴을 저장소에 두지 않도록 실행할 때 만든다(비밀 스캐너 오탐 방지)
+const PW = `t${randomBytes(6).toString("hex")}`;
 const status = (r, id) => r.rules.find((x) => x.rule === id).status;
 const find = (r, id) => r.findings.filter((f) => f.rule === id);
 
@@ -31,7 +34,7 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
   const G = "src/main/resources/egovframework/egovProps/globals.properties";
   const d = project({
     "pom.xml": WAR_POM,
-    [G]: "Globals.DbType = hsql\nGlobals.LocalIp = 127.0.0.1\nGlobals.DriverClassName = net.sf.log4jdbc.DriverSpy\nGlobals.Url = jdbc:log4jdbc:mysql://127.0.0.1:3306/pst\nGlobals.Password = pst01\nGlobals.fileUpload.maxRequestSize = 104857600\nGlobals.posblAtchFileSize = 10485760\nGlobals.fileStorePath = ./files\nGlobals.Hsql.AutoInit = true\n# Globals.Debug = true\n",
+    [G]: `Globals.DbType = hsql\nGlobals.LocalIp = 127.0.0.1\nGlobals.DriverClassName = net.sf.log4jdbc.DriverSpy\nGlobals.Url = jdbc:log4jdbc:mysql://127.0.0.1:3306/pst\nGlobals.Password = ${PW}\nGlobals.fileUpload.maxRequestSize = 104857600\nGlobals.posblAtchFileSize = 10485760\nGlobals.fileStorePath = ./files\nGlobals.Hsql.AutoInit = true\n# Globals.Debug = true\n`,
     "src/main/resources/egovframework/spring/com/context-datasource.xml": '<beans>\n  <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource">\n    <property name="jdbcUrl" value="${Globals.Url}"/>\n    <!-- <property name="driverClassName" value="net.sf.log4jdbc.DriverSpy"/> -->\n  </bean>\n</beans>\n',
     "src/main/resources/log4j2.xml": '<Configuration>\n  <Appenders>\n    <Console name="console"/>\n  </Appenders>\n  <Loggers>\n    <Logger name="egovframework" level="DEBUG"/>\n    <!-- <Logger name="x" level="TRACE"/> -->\n    <Root level="INFO"/>\n  </Loggers>\n</Configuration>\n',
     "src/main/webapp/WEB-INF/web.xml": '<web-app>\n  <session-config>\n    <session-timeout>120</session-timeout>\n  </session-config>\n</web-app>\n',
@@ -46,7 +49,7 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
   assert(find(r, "debug-log-level").length === 1 && find(r, "debug-log-level")[0].line === 6, "DEBUG 로거 1(주석 제외)");
   assert(find(r, "session-timeout")[0].code === "<session-timeout>120</session-timeout>" && find(r, "session-timeout")[0].suggestion === "<session-timeout>30</session-timeout>", "세션 120분 → 제안 30");
   assert(find(r, "upload-limits").length === 2 && find(r, "upload-limits").some((f) => /maxRequestSize = 104857600/.test(f.code) && f.suggestion.includes("52428800")) && find(r, "upload-limits").some((f) => /Extensions/.test(f.code)), "업로드: 100MB 상한 + 확장자 없음");
-  assert(find(r, "egov-dev-flags").length === 2 && find(r, "hardcoded-secret-config")[0].code.includes("ps***") && !JSON.stringify(r).includes("pst01"), "개발 플래그 2(주석 제외), 비밀값은 가림");
+  assert(find(r, "egov-dev-flags").length === 2 && find(r, "hardcoded-secret-config")[0].code.includes(`${PW.slice(0, 2)}***`) && !JSON.stringify(r).includes(PW), "개발 플래그 2(주석 제외), 비밀값은 가림");
   assert(find(r, "pool-timeouts-missing").length === 1 && find(r, "pool-timeouts-missing")[0].file.endsWith("context-datasource.xml"), "풀 타임아웃: XML 에서 1건(properties 중복 없음)");
   assert(r.grade.grade === "C" && r.summary.fail === 13 && r.summary.pass === 3 && r.summary.na === 1 && r.summary.high === 4, `등급 C(높음 규칙 3·항목 4) · 미달 13 (${r.grade.grade}, ${JSON.stringify(r.summary)})`);
   const md = m.renderOperationsMarkdown(r, 10);

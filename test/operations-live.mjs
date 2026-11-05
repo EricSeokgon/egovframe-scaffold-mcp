@@ -45,7 +45,7 @@ try {
     .replace(/^Globals\.hsql\.Url = jdbc:log4jdbc:/m, "Globals.hsql.Url = jdbc:")
     .replace(/^Globals\.LocalIp = .*$/m, "Globals.LocalIp = 10.0.0.10")
     .replace(/^Globals\.fileUpload\.maxRequestSize = .*$/m, "Globals.fileUpload.maxRequestSize = 52428800")
-    .replace(/^Globals\.Password = .*$/m, "Globals.Password = ${EGOV_PASSWORD:pst01}"));
+    .replace(/^(Globals\.Password = )(.*)$/m, (_m, k, v) => `${k}\${EGOV_PASSWORD:${v}}`)); // 템플릿의 원래 값을 기본값으로(리터럴을 테스트에 두지 않음)
   edit("src/main/resources/log4j2.xml", (t) => t.replace(/level="DEBUG"/g, 'level="INFO"'));
   edit("src/main/resources/egovframework/spring/com/context-datasource.xml", (t) => t.replace(/<property name="maximumPoolSize" value="10"\/>/g, '<property name="maximumPoolSize" value="10"/>\n        <property name="connectionTimeout" value="5000"/>\n        <property name="maxLifetime" value="1200000"/>'));
   edit("src/main/webapp/WEB-INF/web.xml", (t) => t.replace(/<session-timeout>60<\/session-timeout>/, "<session-timeout>30</session-timeout>"));
