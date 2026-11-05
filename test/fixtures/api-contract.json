@@ -1,6 +1,6 @@
 {
-  "version": "1.14.0",
-  "base": "1.13.0",
+  "version": "1.15.0",
+  "base": "1.14.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -669,6 +669,318 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
+      "check_egovframe_operations": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "profile": {
+              "type": "string"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "actuator-exposure",
+                  "console-only-logging",
+                  "cookie-flags",
+                  "debug-log-level",
+                  "devtools-dependency",
+                  "egov-dev-flags",
+                  "embedded-db-in-production",
+                  "error-exposure",
+                  "error-page-missing",
+                  "hardcoded-secret-config",
+                  "no-production-profile",
+                  "pool-size-missing",
+                  "pool-timeouts-missing",
+                  "session-timeout",
+                  "sql-logging-driver",
+                  "upload-limits",
+                  "upload-path"
+                ]
+              }
+            },
+            "topN": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 1000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "configSet",
+            "filesScanned",
+            "findings",
+            "grade",
+            "ignoreFile",
+            "invalidIgnores",
+            "notes",
+            "projectDir",
+            "rules",
+            "rulesVersion",
+            "runtime",
+            "summary"
+          ],
+          "properties": {
+            "configSet": {
+              "type": "object",
+              "required": [
+                "excludedProfiles",
+                "profile",
+                "properties"
+              ],
+              "properties": {
+                "excludedProfiles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "profile": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "properties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "filesScanned": {
+              "type": "integer"
+            },
+            "findings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "basis",
+                  "category",
+                  "code",
+                  "file",
+                  "fix",
+                  "line",
+                  "message",
+                  "rule",
+                  "severity",
+                  "title"
+                ],
+                "properties": {
+                  "basis": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "fix": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "rule": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "high",
+                      "low",
+                      "medium"
+                    ]
+                  },
+                  "suggestion": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "grade": {
+              "type": "object",
+              "required": [
+                "formula",
+                "grade"
+              ],
+              "properties": {
+                "formula": {
+                  "type": "string"
+                },
+                "grade": {
+                  "type": "string",
+                  "enum": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                  ]
+                }
+              }
+            },
+            "ignoreFile": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "invalidIgnores": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "category",
+                  "findings",
+                  "rule",
+                  "severity",
+                  "status",
+                  "title"
+                ],
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "findings": {
+                    "type": "integer"
+                  },
+                  "rule": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "high",
+                      "low",
+                      "medium"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "fail",
+                      "n/a",
+                      "pass"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "rulesVersion": {
+              "type": "object",
+              "required": [
+                "rules",
+                "surveyedAt"
+              ],
+              "properties": {
+                "rules": {
+                  "type": "integer"
+                },
+                "surveyedAt": {
+                  "type": "string"
+                }
+              }
+            },
+            "runtime": {
+              "type": "string",
+              "enum": [
+                "boot",
+                "classic",
+                "unknown"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "fail",
+                "high",
+                "low",
+                "medium",
+                "na",
+                "pass",
+                "suppressed",
+                "total"
+              ],
+              "properties": {
+                "fail": {
+                  "type": "integer"
+                },
+                "high": {
+                  "type": "integer"
+                },
+                "low": {
+                  "type": "integer"
+                },
+                "medium": {
+                  "type": "integer"
+                },
+                "na": {
+                  "type": "integer"
+                },
+                "pass": {
+                  "type": "integer"
+                },
+                "suppressed": {
+                  "type": "integer"
+                },
+                "total": {
+                  "type": "integer"
                 }
               }
             }
@@ -4695,6 +5007,75 @@
                   "type": "array",
                   "items": {
                     "type": "string"
+                  }
+                },
+                "operations": {
+                  "type": "object",
+                  "required": [
+                    "fail",
+                    "failed",
+                    "grade",
+                    "high",
+                    "low",
+                    "medium",
+                    "na",
+                    "pass",
+                    "total"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "fail": {
+                      "type": "integer"
+                    },
+                    "failed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "findings",
+                          "rule",
+                          "severity",
+                          "title"
+                        ],
+                        "properties": {
+                          "findings": {
+                            "type": "integer"
+                          },
+                          "rule": {
+                            "type": "string"
+                          },
+                          "severity": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "grade": {
+                      "type": "string"
+                    },
+                    "high": {
+                      "type": "integer"
+                    },
+                    "low": {
+                      "type": "integer"
+                    },
+                    "medium": {
+                      "type": "integer"
+                    },
+                    "na": {
+                      "type": "integer"
+                    },
+                    "pass": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
                   }
                 },
                 "overview": {
@@ -9145,6 +9526,7 @@
         "map": "map_egovframe_project",
         "migrate": "migrate_egovframe_project",
         "network": "diagnose_egovframe_network",
+        "ops": "check_egovframe_operations",
         "rehearse": "rehearse_egovframe_migration",
         "sbom": "generate_egovframe_sbom",
         "sbom-check": "check_egovframe_sbom",

@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 1,
+  "surveyedAt": "2026-11-04",
+  "note": "운영 준비 점검 규칙(check_egovframe_operations, v1.15). 공식 운영 기준 문서가 없어 출처는 공식 템플릿 기본값 실측·HikariCP/Spring Boot/Tomcat 문서·우리 실측입니다. check 종류 — line: 대상 파일의 줄 패턴(unless 로 제외), lacks: 대상 파일이 requires 에 맞으면서 pattern 이 없을 때, property: 운영 설정 세트(properties·yml)의 키를 when(missing|matches|gt|lt) 으로, pom: 의존성 좌표.",
+  "sources": [
+    {
+      "name": "공식 템플릿 6종(web·boot-web·simple-backend·simple-homepage·portal-site·enterprise-business, Initializr v5.0.7 zip) 기본 설정 실측, 2026-11-04",
+      "name_en": "Measured defaults of the 6 official templates (web, boot-web, simple-backend, simple-homepage, portal-site, enterprise-business; Initializr v5.0.7 zips), 2026-11-04"
+    },
+    {
+      "name": "HikariCP 설정 문서(connectionTimeout 기본 30s, maxLifetime 기본 30m, 풀 크기 산정 'About Pool Sizing')",
+      "name_en": "HikariCP configuration docs (connectionTimeout default 30s, maxLifetime default 30m, 'About Pool Sizing')"
+    },
+    {
+      "name": "Spring Boot 레퍼런스(actuator 노출 기본 health 만, server.error.include-stacktrace 기본 never, devtools 는 운영 jar 에서 자동 비활성)",
+      "name_en": "Spring Boot reference (actuator exposes only health by default, server.error.include-stacktrace defaults to never, devtools disabled in production jars)"
+    },
+    {
+      "name": "Servlet 6.0 web.xml(session-config·cookie-config·error-page), Apache Tomcat 10.1 설정 문서",
+      "name_en": "Servlet 6.0 web.xml (session-config, cookie-config, error-page), Apache Tomcat 10.1 configuration docs"
+    }
+  ],
+  "categories": [
+    {
+      "id": "logging",
+      "label": "로그",
+      "labelEn": "Logging"
+    },
+    {
+      "id": "database",
+      "label": "DB·커넥션 풀",
+      "labelEn": "Database and connection pool"
+    },
+    {
+      "id": "session",
+      "label": "세션·쿠키",
+      "labelEn": "Session and cookies"
+    },
+    {
+      "id": "upload",
+      "label": "파일 업로드",
+      "labelEn": "File upload"
+    },
+    {
+      "id": "exposure",
+      "label": "정보 노출·개발 도구 잔존",
+      "labelEn": "Exposure and leftover development tooling"
+    },
+    {
+      "id": "egov",
+      "label": "표준프레임워크 운영 플래그",
+      "labelEn": "eGovFrame operating flags"
+    }
+  ],
+  "rules": [
+    {
+      "id": "sql-logging-driver",
+      "category": "database",
+      "severity": "high",
+      "title": "SQL 로깅 프록시 드라이버가 운영 설정에 남음",
+      "title_en": "SQL logging proxy driver left in production configuration",
+      "check": {
+        "kind": "line",
+        "targets": [
+          "properties",
+          "yaml",
+          "xml"
+        ],
+        "pattern": "(?i)jdbc:log4jdbc:|net\\.sf\\.log4jdbc|DriverSpy|jdbc:p6spy:|P6SpyDriver",
+        "unless": "(?i)^\\s*[#!]|<!--|\\$\\{"
+      },
+      "message": "log4jdbc·P6Spy 는 모든 SQL 과 결과를 로그로 흘려 운영 성능과 디스크를 잠식하고 개인정보가 로그에 남습니다.",
+      "message_en": "log4jdbc/P6Spy log every SQL statement and result set, costing production performance and disk and leaking personal data into logs.",
+      "fix": "운영 설정은 실제 드라이버(com.mysql.cj.jdbc.Driver 등)와 jdbc:mysql:// 류 URL 로. SQL 로그가 필요하면 개발 프로파일에만.",
+      "fix_en": "Use the real driver (e.g. com.mysql.cj.jdbc.Driver) and a jdbc:mysql:// style URL in production; keep SQL logging in a development profile only.",
+      "basis": "공식 템플릿 web·simple-backend·simple-homepage·portal-site·enterprise-business 가 jdbc:log4jdbc + DriverSpy 를 기본으로 둠(실측)",
+      "basis_en": "Official templates web, simple-backend, simple-homepage, portal-site and enterprise-business ship jdbc:log4jdbc + DriverSpy by default (measured)"
+    },
+    {
+      "id": "debug-log-level",
+      "category": "logging",
+      "severity": "high",
+      "title": "운영 로그 수준이 DEBUG/TRACE",
+      "title_en": "Production log level is DEBUG/TRACE",
+      "check": {
+        "kind": "line",
+        "targets": [
+          "log4j2",
+          "logback",
+          "properties",
+          "yaml"
+        ],
+        "pattern": "(?i)<(Root|Logger|root|logger)\\b[^>]*\\blevel\\s*=\\s*\"(DEBUG|TRACE|ALL)\"|^\\s*logging\\.level\\.(root|egovframework|org\\.egovframe|java\\.sql|jdbc)[\\w.]*\\s*[=:]\\s*(DEBUG|TRACE)\\b|^\\s*(root|egovframework|java\\.sql|jdbc[\\w.]*)\\s*:\\s*(DEBUG|TRACE)\\b|^\\s*log4j\\.(rootLogger|logger\\.[\\w.]+)\\s*=\\s*(DEBUG|TRACE)",
+        "unless": "(?i)^\\s*[#!]|<!--|\\$\\{"
+      },
+      "message": "DEBUG/TRACE 로그는 요청마다 수십 줄을 남겨 디스크·I/O 를 잠식하고 SQL 파라미터·세션 값이 로그에 남습니다.",
+      "message_en": "DEBUG/TRACE logging writes dozens of lines per request, eats disk and I/O and leaves SQL parameters and session values in logs.",
+      "fix": "운영은 INFO(또는 WARN) 로, 특정 패키지 DEBUG 는 개발 프로파일 설정 파일(log4j2-dev.xml 등)로 분리.",
+      "fix_en": "Use INFO (or WARN) in production; move package-level DEBUG to a development profile configuration (e.g. log4j2-dev.xml).",
+      "basis": "공식 템플릿 web·portal-site·enterprise-business 의 log4j2.xml 이 egovframework·org.egovframe 를 DEBUG 로 둠(실측)",
+      "basis_en": "log4j2.xml of the official web, portal-site and enterprise-business templates sets egovframework and org.egovframe to DEBUG (measured)"
+    },
+    {
+      "id": "console-only-logging",
+      "category": "logging",
+      "severity": "medium",
+      "title": "파일 appender·로테이션 없이 콘솔 로그만",
+      "title_en": "Console-only logging without a file appender or rotation",
+      "check": {
+        "kind": "lacks",
+        "targets": [
+          "log4j2",
+          "logback"
+        ],
+        "requires": "(?i)<(Console|ConsoleAppender)\\b|class\\s*=\\s*\"ch\\.qos\\.logback\\.core\\.ConsoleAppender\"",
+        "pattern": "(?i)<(RollingFile|RollingRandomAccessFile|File|RandomAccessFile)\\b|RollingFileAppender|FileAppender|<Syslog\\b|<Socket\\b|<Http\\b|<JDBC\\b|<Kafka\\b"
+      },
+      "message": "콘솔로만 남기는 로그는 WAS 표준 출력 파일(catalina.out)에 로테이션 없이 쌓이거나, 컨테이너 재시작과 함께 사라집니다.",
+      "message_en": "Console-only logs pile up without rotation in the server's stdout file (catalina.out) or vanish when a container restarts.",
+      "fix": "RollingFile(크기·일자 정책, 보관 개수) 또는 수집기(Syslog·OTel) appender 를 운영 설정에 추가. 컨테이너 표준 출력으로 모으는 구조라면 수집기가 있음을 예외 파일에 사유로.",
+      "fix_en": "Add a RollingFile appender (size/date policy, retention) or a collector appender (Syslog, OTel) to the production configuration. If stdout is collected by the platform, record that in the ignore file as the reason.",
+      "basis": "공식 템플릿 web·boot-web 의 log4j2.xml 은 Console appender 만(실측). 포털·업무 템플릿은 RollingFile 포함",
+      "basis_en": "log4j2.xml of the official web and boot-web templates has only a Console appender (measured); portal and enterprise templates include RollingFile"
+    },
+    {
+      "id": "devtools-dependency",
+      "category": "exposure",
+      "severity": "medium",
+      "title": "spring-boot-devtools 의존성",
+      "title_en": "spring-boot-devtools dependency",
+      "check": {
+        "kind": "pom",
+        "artifact": "spring-boot-devtools"
+      },
+      "message": "devtools 는 재시작 클래스로더·LiveReload 서버를 띄웁니다. 실행 jar 에서는 자동으로 꺼지지만 war 배포·java -cp 실행·IDE 에서 운영 설정으로 띄우면 켜지고, 의존성 트리와 SBOM 에 남습니다.",
+      "message_en": "devtools starts a restart classloader and a LiveReload server. It is disabled in executable jars, but stays active for war deployments, java -cp runs and IDE launches with production settings, and it remains in the dependency tree and SBOM.",
+      "fix": "운영 빌드 프로파일에서 제외(<optional>true</optional> + <scope>runtime</scope>, 또는 Maven 프로파일로 개발에만) 하고 -Dspring.devtools.restart.enabled=false 를 운영 JVM 옵션에.",
+      "fix_en": "Exclude it from the production build (<optional>true</optional> + runtime scope, or a Maven profile for development only) and set -Dspring.devtools.restart.enabled=false in production JVM options.",
+      "basis": "공식 boot-web·simple-backend 템플릿 pom 에 optional 로 포함(실측); Spring Boot 레퍼런스 'Developer Tools'",
+      "basis_en": "Included as optional in the official boot-web and simple-backend poms (measured); Spring Boot reference 'Developer Tools'"
+    },
+    {
+      "id": "embedded-db-in-production",
+      "category": "database",
+      "severity": "high",
+      "title": "내장 DB(HSQL·H2) 설정이 운영 설정에 남음",
+      "title_en": "Embedded database (HSQL/H2) left in production configuration",
+      "check": {
+        "kind": "line",
+        "targets": [
+          "properties",
+          "yaml",
+          "xml"
+        ],
+        "pattern": "(?i)^\\s*Globals\\.DbType\\s*[=:]\\s*hsql\\b|^\\s*spring\\.profiles\\.active\\s*[=:]\\s*hsql\\b|jdbc:hsqldb:(mem|hsql://localhost)|jdbc:h2:mem|<jdbc:embedded-database\\b|spring\\.h2\\.console\\.enabled\\s*[=:]\\s*true",
+        "unless": "(?i)^\\s*[#!]|<!--"
+      },
+      "message": "내장·메모리 DB 는 재시작하면 데이터가 사라지고 동시 접속·용량에 한계가 있습니다. 운영 프로파일에 남아 있으면 실제 DB 대신 내장 DB 로 뜰 수 있습니다.",
+      "message_en": "Embedded/in-memory databases lose data on restart and do not scale. Left in the production profile, the application may start on the embedded DB instead of the real one.",
+      "fix": "운영 프로파일의 Globals.DbType·spring.profiles.active 를 실제 DB(mysql·oracle·postgres…)로, context-datasource.xml 의 jdbc:embedded-database 는 개발 프로파일로 분리. H2 콘솔은 운영에서 끄기.",
+      "fix_en": "Set Globals.DbType / spring.profiles.active in the production profile to the real DB (mysql, oracle, postgres …), move jdbc:embedded-database in context-datasource.xml to a development profile, and disable the H2 console in production.",
+      "basis": "공식 템플릿 전부 Globals.DbType=hsql(또는 jdbc:embedded-database)로 시작(실측)",
+      "basis_en": "All official templates start with Globals.DbType=hsql (or jdbc:embedded-database) (measured)"
+    },
+    {
+      "id": "pool-size-missing",
+      "category": "database",
+      "severity": "low",
+      "title": "커넥션 풀 크기가 설정되지 않음",
+      "title_en": "Connection pool size not configured",
+      "check": {
+        "kind": "lacks",
+        "targets": [
+          "xml",
+          "properties",
+          "yaml"
+        ],
+        "requires": "(?i)HikariDataSource|BasicDataSource|spring\\.datasource\\.(url|hikari)|Globals\\.[\\w.]*\\.?Url\\s*[=:]\\s*jdbc:",
+        "pattern": "(?i)maximumPoolSize|maxTotal|maxActive|maximum-pool-size|max-active|max-total|initialSize|minimumIdle|minimum-idle|Globals\\.[\\w.]*[Pp]ool"
+      },
+      "message": "풀 크기를 정하지 않으면 라이브러리 기본값(HikariCP 10, DBCP 8)으로 뜹니다. 운영 동시 사용자·DB 의 max_connections 에 맞춰 정해야 하고, WAS 인스턴스 수 × 풀 크기가 DB 한도를 넘지 않아야 합니다.",
+      "message_en": "Without an explicit pool size the library default applies (HikariCP 10, DBCP 8). Size it for production concurrency and the DB's max_connections; instances × pool size must stay under the DB limit.",
+      "fix": "HikariCP: maximumPoolSize(코어 수·동시 트랜잭션 기준, 보통 10–20)·minimumIdle; DBCP2: maxTotal·maxIdle. 값은 부하 시험으로 정하고 WAS 인스턴스 수를 곱해 DB 한도와 비교.",
+      "fix_en": "HikariCP: maximumPoolSize (based on cores and concurrent transactions, typically 10–20) and minimumIdle; DBCP2: maxTotal and maxIdle. Decide by load test and compare instances × pool size with the DB limit.",
+      "basis": "HikariCP 'About Pool Sizing'; 공식 템플릿은 maximumPoolSize=10 만 명시(실측)",
+      "basis_en": "HikariCP 'About Pool Sizing'; official templates set only maximumPoolSize=10 (measured)"
+    },
+    {
+      "id": "pool-timeouts-missing",
+      "category": "database",
+      "severity": "low",
+      "title": "커넥션 풀 타임아웃·수명·누수 감지가 설정되지 않음",
+      "title_en": "Connection pool timeouts, max lifetime and leak detection not configured",
+      "check": {
+        "kind": "lacks",
+        "targets": [
+          "xml",
+          "properties",
+          "yaml"
+        ],
+        "requires": "(?i)HikariDataSource|BasicDataSource|spring\\.datasource\\.(url|hikari)|Globals\\.[\\w.]*\\.?Url\\s*[=:]\\s*jdbc:",
+        "pattern": "(?i)connectionTimeout|connection-timeout|maxLifetime|max-lifetime|validationTimeout|validation-timeout|idleTimeout|idle-timeout|leakDetectionThreshold|leak-detection-threshold|maxWaitMillis|removeAbandoned|validationQuery|testOnBorrow"
+      },
+      "message": "DB 방화벽·L4 가 유휴 연결을 끊는 운영망에서 maxLifetime·validation 없이 두면 '연결이 끊겼습니다'가 첫 요청에서 납니다. connectionTimeout 이 없으면 풀 고갈 때 요청이 30초(기본) 매달립니다.",
+      "message_en": "On production networks where firewalls or load balancers drop idle connections, missing maxLifetime/validation causes 'connection closed' on the first request; without connectionTimeout a starved pool holds requests for 30s (default).",
+      "fix": "HikariCP: connectionTimeout(예 3000–10000ms), maxLifetime 을 DB·방화벽 유휴 끊김보다 짧게(예 1800000 → 네트워크 정책에 맞춰), validationTimeout, leakDetectionThreshold(운영 초기 60000). DBCP2: maxWaitMillis·validationQuery·testOnBorrow.",
+      "fix_en": "HikariCP: connectionTimeout (e.g. 3000–10000ms), maxLifetime shorter than the DB/firewall idle cut-off (e.g. 1800000, per network policy), validationTimeout, leakDetectionThreshold (60000 early in production). DBCP2: maxWaitMillis, validationQuery, testOnBorrow.",
+      "basis": "HikariCP 설정 문서(기본 connectionTimeout 30s·maxLifetime 30m·leakDetectionThreshold 0); 공식 템플릿은 어느 것도 설정하지 않음(실측)",
+      "basis_en": "HikariCP configuration docs (defaults: connectionTimeout 30s, maxLifetime 30m, leakDetectionThreshold 0); official templates set none of them (measured)"
+    },
+    {
+      "id": "session-timeout",
+      "category": "session",
+      "severity": "medium",
+      "title": "세션 타임아웃이 없거나 60분을 넘음",
+      "title_en": "Session timeout missing or longer than 60 minutes",
+      "check": {
+        "kind": "session-timeout",
+        "maxMinutes": 60
+      },
+      "message": "세션 타임아웃이 없으면 WAS 기본값(Tomcat 30분)에 맡겨지고, 길면 공용 PC 에서 로그인 세션이 남고 서버 메모리에 세션이 쌓입니다. 공공 웹 보안 지침은 보통 10–30분을 권합니다.",
+      "message_en": "Without a session timeout the server default applies (Tomcat 30 min); a long timeout leaves sessions alive on shared PCs and accumulates sessions in server memory. Public-sector web security guidance usually recommends 10–30 minutes.",
+      "fix": "web.xml <session-config><session-timeout>30</session-timeout>(분) 또는 Boot server.servlet.session.timeout=30m 을 운영 설정에 명시. 공통컴포넌트의 로그인 정책(Globals.*)과 맞춤.",
+      "fix_en": "Set web.xml <session-config><session-timeout>30</session-timeout> (minutes) or Boot server.servlet.session.timeout=30m in production, aligned with the common-component login policy (Globals.*).",
+      "basis": "공식 템플릿 web.xml: portal-site·enterprise-business 60분, simple-homepage 30분, web 은 없음(실측); Tomcat 기본 30분",
+      "basis_en": "Official template web.xml: portal-site and enterprise-business 60 min, simple-homepage 30 min, web none (measured); Tomcat default 30 min"
+    },
+    {
+      "id": "cookie-flags",
+      "category": "session",
+      "severity": "medium",
+      "title": "세션 쿠키 http-only·secure 미설정",
+      "title_en": "Session cookie http-only/secure not configured",
+      "check": {
+        "kind": "lacks",
+        "targets": [
+          "web-xml"
+        ],
+        "requires": "(?i)<web-app\\b",
+        "pattern": "(?i)<cookie-config>[\\s\\S]*?<http-only>\\s*true\\s*</http-only>"
+      },
+      "message": "세션 쿠키에 HttpOnly 가 없으면 스크립트로 세션 ID 를 읽을 수 있고(XSS 와 결합), Secure 가 없으면 HTTP 로도 전송됩니다.",
+      "message_en": "Without HttpOnly the session ID is readable by script (combined with XSS); without Secure it is also sent over plain HTTP.",
+      "fix": "web.xml <session-config><cookie-config><http-only>true</http-only><secure>true</secure></cookie-config></session-config> (TLS 종단이 WAS 앞이면 secure 는 리버스 프록시 헤더 처리와 함께). Boot: server.servlet.session.cookie.http-only=true·secure=true.",
+      "fix_en": "web.xml <session-config><cookie-config><http-only>true</http-only><secure>true</secure></cookie-config></session-config> (with TLS terminated in front of the server, pair secure with reverse-proxy header handling). Boot: server.servlet.session.cookie.http-only=true and secure=true.",
+      "basis": "Servlet 3.0+ cookie-config; 공식 portal-site·enterprise-business·simple-homepage 는 설정, web 은 없음(실측)",
+      "basis_en": "Servlet 3.0+ cookie-config; official portal-site, enterprise-business and simple-homepage set it, web does not (measured)"
+    },
+    {
+      "id": "upload-limits",
+      "category": "upload",
+      "severity": "medium",
+      "title": "업로드 상한이 없거나 100MB 이상, 허용 확장자 미설정",
+      "title_en": "Upload limit missing or 100MB or more, allowed extensions not set",
+      "check": {
+        "kind": "upload",
+        "maxBytes": 104857600
+      },
+      "message": "업로드 상한이 없거나 너무 크면 디스크·메모리 고갈 공격에 열리고, 허용 확장자가 없으면 실행 파일·스크립트가 저장됩니다.",
+      "message_en": "Without an upload limit, or with a very large one, the server is open to disk/memory exhaustion; without an extension allowlist, executables and scripts can be stored.",
+      "fix": "Globals.fileUpload.maxRequestSize(요청 전체)·Globals.posblAtchFileSize(파일당)를 업무 기준으로(보통 10–50MB), Globals.fileUpload.Extensions 에 허용 확장자, Boot 는 spring.servlet.multipart.max-file-size·max-request-size.",
+      "fix_en": "Set Globals.fileUpload.maxRequestSize (whole request) and Globals.posblAtchFileSize (per file) to the business limit (typically 10–50MB), list allowed extensions in Globals.fileUpload.Extensions, and for Boot spring.servlet.multipart.max-file-size / max-request-size.",
+      "basis": "공식 템플릿 maxRequestSize=104857600(100MB)·posblAtchFileSize=10485760·Extensions 설정(실측); Spring Boot multipart 기본 1MB/10MB",
+      "basis_en": "Official templates: maxRequestSize=104857600 (100MB), posblAtchFileSize=10485760, Extensions set (measured); Spring Boot multipart defaults 1MB/10MB"
+    },
+    {
+      "id": "upload-path",
+      "category": "upload",
+      "severity": "medium",
+      "title": "업로드 저장 경로가 상대 경로·임시 디렉터리·웹 루트 아래",
+      "title_en": "Upload store path is relative, a temp directory or under the web root",
+      "check": {
+        "kind": "line",
+        "targets": [
+          "properties",
+          "yaml"
+        ],
+        "pattern": "(?i)^\\s*Globals\\.(fileStorePath|[\\w.]*StorePath|[\\w.]*UploadPath|fileUpload\\.path)\\s*[=:]\\s*(\\.{1,2}[/\\\\]|/tmp\\b|C:\\\\temp|\\$\\{java\\.io\\.tmpdir\\}|.*(webapp|WEB-INF|ROOT)[/\\\\])",
+        "unless": "^\\s*[#!]|\\$\\{EGOV|\\$\\{[A-Z_]+\\}"
+      },
+      "message": "상대 경로(./files)는 WAS 작업 디렉터리에 따라 달라지고, /tmp 는 OS 가 비우며, 웹 루트 아래는 업로드한 파일이 URL 로 직접 노출됩니다.",
+      "message_en": "A relative path (./files) depends on the server's working directory, /tmp is cleaned by the OS, and a path under the web root exposes uploaded files directly by URL.",
+      "fix": "운영은 전용 절대 경로(예 /data/egov/upload)로, 웹 루트 밖·실행 권한 없는 파일시스템·백업 대상에. 컨테이너는 볼륨으로 마운트(배포 산출물의 volumes).",
+      "fix_en": "Use a dedicated absolute path in production (e.g. /data/egov/upload) outside the web root, on a non-executable, backed-up filesystem; in containers mount it as a volume (see deployment artifacts).",
+      "basis": "공식 simple-backend Globals.fileStorePath=./files(상대), 포털·업무 /upload/pst(절대)(실측)",
+      "basis_en": "Official simple-backend Globals.fileStorePath=./files (relative), portal/enterprise /upload/pst (absolute) (measured)"
+    },
+    {
+      "id": "error-exposure",
+      "category": "exposure",
+      "severity": "high",
+      "title": "오류 상세(스택 트레이스·SQL·디버그)가 응답에 노출되는 설정",
+      "title_en": "Error details (stack trace, SQL, debug) exposed in responses",
+      "check": {
+        "kind": "line",
+        "targets": [
+          "properties",
+          "yaml"
+        ],
+        "pattern": "(?i)^\\s*(server\\.error\\.include-(stacktrace|message|binding-errors|exception)\\s*[=:]\\s*(always|true)|spring\\.jpa\\.show-sql\\s*[=:]\\s*true|spring\\.jpa\\.properties\\.hibernate\\.show_sql\\s*[=:]\\s*true|debug\\s*[=:]\\s*true|trace\\s*[=:]\\s*true|spring\\.mvc\\.log-request-details\\s*[=:]\\s*true|mybatis\\.configuration\\.log-impl\\s*[=:]\\s*org\\.apache\\.ibatis\\.logging\\.stdout)",
+        "unless": "^\\s*[#!]"
+      },
+      "message": "스택 트레이스·바인딩 오류·SQL 이 응답이나 표준 출력에 그대로 나가면 내부 구조와 데이터가 노출됩니다(개발보안 가이드 '오류 메시지 정보노출').",
+      "message_en": "Stack traces, binding errors and SQL in responses or stdout expose internal structure and data (Secure Coding Guide 'information exposure through error messages').",
+      "fix": "운영 프로파일에서 server.error.include-stacktrace=never·include-message=never, show-sql=false, debug/trace 제거. SQL 로그는 개발 프로파일에만.",
+      "fix_en": "In the production profile set server.error.include-stacktrace=never and include-message=never, show-sql=false, and remove debug/trace. Keep SQL logging in the development profile.",
+      "basis": "Spring Boot 레퍼런스 server.error.* 기본값(never); 개발보안 가이드 구현단계 '오류 메시지 정보노출'",
+      "basis_en": "Spring Boot reference server.error.* defaults (never); Secure Coding Guide implementation phase 'information exposure through error messages'"
+    },
+    {
+      "id": "error-page-missing",
+      "category": "exposure",
+      "severity": "medium",
+      "title": "web.xml 에 오류 페이지(error-page)가 없음",
+      "title_en": "No error-page in web.xml",
+      "check": {
+        "kind": "lacks",
+        "targets": [
+          "web-xml"
+        ],
+        "requires": "(?i)<web-app\\b",
+        "pattern": "(?i)<error-page>"
+      },
+      "message": "error-page 가 없으면 WAS 기본 오류 화면(Tomcat 버전·스택 트레이스 포함)이 사용자에게 보입니다.",
+      "message_en": "Without error-page the server's default error screen (with Tomcat version and stack trace) is shown to users.",
+      "fix": "web.xml 에 <error-page><error-code>404</error-code><location>/error/404.jsp</location></error-page>, 500, <exception-type>java.lang.Throwable</exception-type> 을 추가하고 오류 화면에는 내부 정보를 넣지 않음.",
+      "fix_en": "Add <error-page> entries for 404, 500 and <exception-type>java.lang.Throwable</exception-type> to web.xml, and keep internal details out of the error pages.",
+      "basis": "공식 포털·업무·홈페이지·web 템플릿은 error-page 3종 설정(실측) — 지우거나 새로 쓴 프로젝트에서 빠짐",
+      "basis_en": "Official portal, enterprise, homepage and web templates define 3 error-page entries (measured) — missing in projects that removed or rewrote web.xml"
+    },
+    {
+      "id": "actuator-exposure",
+      "category": "exposure",
+      "severity": "high",
+      "title": "actuator 엔드포인트 전체 노출",
+      "title_en": "All actuator endpoints exposed",
+      "check": {
+        "kind": "line",
+        "targets": [
+          "properties",
+          "yaml"
+        ],
+        "pattern": "(?i)^\\s*management\\.endpoints\\.web\\.exposure\\.include\\s*[=:]\\s*(\"?\\*\"?|.*\\b(env|heapdump|threaddump|shutdown|configprops|beans)\\b)|^\\s*include\\s*:\\s*\"?\\*\"?\\s*$|^\\s*management\\.endpoint\\.shutdown\\.enabled\\s*[=:]\\s*true|^\\s*management\\.endpoint\\.env\\.show-values\\s*[=:]\\s*always",
+        "unless": "^\\s*[#!]"
+      },
+      "message": "env·heapdump·threaddump·shutdown 이 열리면 설정 값(비밀 포함)·메모리 덤프가 내려가고 원격 종료가 됩니다.",
+      "message_en": "Exposing env, heapdump, threaddump or shutdown hands out configuration values (secrets included) and memory dumps, and allows remote shutdown.",
+      "fix": "운영은 management.endpoints.web.exposure.include=health,info(필요 시 prometheus) 로 좁히고, 관리 포트(management.server.port)를 분리하거나 인증을 붙임.",
+      "fix_en": "Limit production to management.endpoints.web.exposure.include=health,info (plus prometheus if needed), and put actuator on a separate management.server.port or behind authentication.",
+      "basis": "Spring Boot 레퍼런스 'Exposing Endpoints'(기본 health 만); 공식 simple-backend 는 health 만(실측)",
+      "basis_en": "Spring Boot reference 'Exposing Endpoints' (health only by default); official simple-backend exposes health only (measured)"
+    },
+    {
+      "id": "egov-dev-flags",
+      "category": "egov",
+      "severity": "low",
+      "title": "표준프레임워크 개발용 플래그·주소가 운영 설정에 남음",
+      "title_en": "eGovFrame development flags and addresses left in production configuration",
+      "check": {
+        "kind": "line",
+        "targets": [
+          "properties",
+          "yaml"
+        ],
+        "pattern": "(?i)^\\s*Globals\\.(LocalIp|ServerIp)\\s*[=:]\\s*(127\\.0\\.0\\.1|localhost)\\b|^\\s*Globals\\.Hsql\\.AutoInit\\s*[=:]\\s*true|^\\s*Globals\\.[\\w.]*(Dev|Debug|Test)[\\w.]*\\s*[=:]\\s*true|^\\s*Globals\\.MainPage\\s*[=:]\\s*/EgovPageLink\\.do\\?link=main/EgovMainView(Dev|Test)",
+        "unless": "^\\s*[#!]|\\$\\{"
+      },
+      "message": "localhost IP·HSQL 자동 적재·개발용 플래그는 개발 PC 기준 값입니다. 운영에 남으면 외부 연계·메일·DB 초기화가 개발 경로로 동작합니다.",
+      "message_en": "localhost IPs, HSQL auto-init and development flags are development-machine values; left in production they route integrations, mail and DB initialisation the development way.",
+      "fix": "운영 프로파일의 Globals.LocalIp·ServerIp 를 실제 주소로, Globals.Hsql.AutoInit=false(또는 키 제거), *.Dev/*.Debug/*.Test 플래그 false.",
+      "fix_en": "Set Globals.LocalIp/ServerIp to the real addresses in the production profile, Globals.Hsql.AutoInit=false (or remove the key), and *.Dev/*.Debug/*.Test flags to false.",
+      "basis": "공식 포털·업무 템플릿 globals.properties 기본값(Globals.LocalIp=127.0.0.1); v1.11 이 켠 Globals.Hsql.AutoInit=true 는 개발용",
+      "basis_en": "Official portal/enterprise template globals.properties defaults (Globals.LocalIp=127.0.0.1); Globals.Hsql.AutoInit=true, which v1.11 sets, is for development"
+    },
+    {
+      "id": "no-production-profile",
+      "category": "exposure",
+      "severity": "low",
+      "title": "운영 프로파일 설정 파일이 없음(Boot)",
+      "title_en": "No production profile configuration (Boot)",
+      "check": {
+        "kind": "profile"
+      },
+      "message": "application-prod(또는 운영 이름).properties/yml 이 없으면 개발 값과 운영 값을 한 파일에서 바꿔 쓰게 되고, 위 점검도 개발 파일을 운영 기준으로 봅니다.",
+      "message_en": "Without application-prod (or your production name).properties/yml, development and production values share one file, and these checks treat the development file as production.",
+      "fix": "application-prod.properties 를 두고 운영은 --spring.profiles.active=prod(또는 SPRING_PROFILES_ACTIVE)로 기동. Classic 은 globals.properties 를 배포 산출물이 덮어쓰는 구조(generate_egovframe_deploy).",
+      "fix_en": "Add application-prod.properties and start production with --spring.profiles.active=prod (or SPRING_PROFILES_ACTIVE). For Classic, let the deployment artifacts override globals.properties (generate_egovframe_deploy).",
+      "basis": "공식 simple-backend 는 application-dev·application-prod 를 둠, boot-web 은 application.properties 하나(실측)",
+      "basis_en": "Official simple-backend ships application-dev and application-prod; boot-web has a single application.properties (measured)"
+    },
+    {
+      "id": "hardcoded-secret-config",
+      "category": "exposure",
+      "severity": "medium",
+      "title": "설정 파일의 하드코드 비밀값(외부화 도구 참조)",
+      "title_en": "Hard-coded secrets in configuration (see the externalization tool)",
+      "check": {
+        "kind": "secrets"
+      },
+      "message": "DB 비밀번호·키가 설정 파일에 평문으로 있습니다. 판정은 check_egovframe_secure_coding 의 hardcoded-config-password 와 같습니다.",
+      "message_en": "DB passwords or keys are stored in plain text in configuration. The verdict is the same as hardcoded-config-password of check_egovframe_secure_coding.",
+      "fix": "externalize_egovframe_config 로 환경 변수 자리표시자·외부 키 파일로 옮기기.",
+      "fix_en": "Move them to environment-variable placeholders or an external key file with externalize_egovframe_config.",
+      "basis": "v1.13 선행 조사(공식 portal-site Globals.Password 평문, 공통컴포넌트 암호화 키 저장소 포함)",
+      "basis_en": "v1.13 pre-research (plain Globals.Password in official portal-site, common-component crypto key kept in the repository)"
+    }
+  ]
+}

@@ -107,3 +107,7 @@ Markdown 과 `format=json`(`outputSchema` 선언, `structuredContent` 에는 Mar
 ## 4. 릴리스 재개 (같은 PR 에 포함)
 
 v0.36.1 의 첫 자동 배포는 npm 게시 뒤 "전파 확인" 단계가 2분(20초 × 6) 안에 끝나지 않아 실패했고, 그 뒤 단계(태그·Release·Registry)가 건너뛰어졌으며, 재실행은 "npm 에 이미 있음"으로 멈췄습니다(태그·Release 는 수동으로 복구). `scripts/release-check.mjs` 가 이제 원격 상태(npm 게시 여부와 npm 이 기록한 `gitHead`, 태그, GitHub Release, MCP Registry 버전)를 보고 **남은 단계만** 고릅니다 — npm 만 있으면 태그를 `gitHead` 커밋(현재 `main` 의 조상이어야 함)에 만들어 npm 패키지와 태그가 항상 같은 코드를 가리키게 하고, 전파 확인은 10분까지 기다린 뒤 경고만 남기고 진행합니다. 판정표는 `test/release.mjs` 가 단언합니다.
+
+## 운영 준비 절 (v1.15)
+
+평가서 4절 아래에 「운영 준비 점검(`check_egovframe_operations`)」을 넣습니다 — 등급(A–D, 규칙 단위)·미달 규칙 상위 8개. 전환 난이도·공급망 등급 산식에는 넣지 않습니다(운영 투입 전 체크리스트이고, 기준이 공식 문서가 아니라 템플릿 기본값·라이브러리 문서라서). 구조화 출력은 `assessment.operations`(선택 필드).
