@@ -161,6 +161,8 @@ jobs:
         run: npm run test:project-map-live
       - name: Operations readiness check (6 official templates against measured defaults, portal-site with suggestions applied still starts)
         run: npm run test:operations-live
+      - name: Portfolio of 8 projects (6 official templates and the 3.10.0 / 4.3.2 corpus, same rows from project, delivery package and CI artifact inputs)
+        run: npm run test:portfolio-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)

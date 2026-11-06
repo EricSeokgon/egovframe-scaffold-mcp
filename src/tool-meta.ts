@@ -59,6 +59,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   map_egovframe_project: { title: { ko: "프로젝트 구조 지도·변경 영향", en: "Project structure map and change impact" }, annotations: ro() },
   // v1.15: 읽기 전용 설정 점검
   check_egovframe_operations: { title: { ko: "운영 준비 점검", en: "Operations readiness check" }, annotations: ro() },
+  // v1.17: 프로젝트는 읽기만, outputDir 를 주면 새 파일(portfolio.md·csv·json)만 씀
+  summarize_egovframe_portfolio: { title: { ko: "포트폴리오(기관 단위) 현황", en: "Portfolio (organisation-wide) status" }, annotations: create() },
   prepare_egovframe_database: { title: { ko: "DB 준비·적재 확인", en: "Prepare and check the database" }, annotations: create(true) },
   fix_egovframe_dependencies: { title: { ko: "취약 의존성 자동 조치", en: "Fix vulnerable dependencies" }, annotations: destructive(true) },
   check_egovframe_sbom: { title: { ko: "SBOM 점검 (최소 요소·비교·VEX)", en: "Check SBOM (minimum elements, diff, VEX)" }, annotations: create(true) },

@@ -106,6 +106,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => { const sm = rec(s.summary); return { found: num(sm.found), env: num(sm.env), cryptoPath: num(sm.cryptoPath), manual: num(sm.manual), files: num(sm.files), rolledBack: s.rolledBack === true ? 1 : 0 }; },
     line: (s) => { const sm = rec(s.summary), sc = rec(s.secureCoding); return L(`설정 외부화 ${s.dryRun ? "계획" : s.rolledBack ? "되돌림" : "적용"} — 자리표시자 ${num(sm.env)} · 암호화 키 ${num(sm.cryptoPath)} · 수동 ${num(sm.manual)} · 파일 ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · 보안약점 ${num(sc.before)} → ${num(sc.after)}` : ""}`, `Config externalization ${s.dryRun ? "plan" : s.rolledBack ? "rolled back" : "applied"} — placeholders ${num(sm.env)} · crypto key ${num(sm.cryptoPath)} · manual ${num(sm.manual)} · files ${num(sm.files)}${sc.after !== null && sc.after !== undefined ? ` · secure-coding ${num(sc.before)} → ${num(sc.after)}` : ""}`); },
   },
+  portfolio: {
+    tool: "summarize_egovframe_portfolio", summary: "포트폴리오 현황(여러 프로젝트·납품 패키지·CI 아티팩트를 한 표로, --inputs a,b 또는 dir/*)", summaryEn: "Portfolio status (many projects, delivery packages or CI artifacts in one table; --inputs a,b or dir/*)",
+    metrics: (s) => { const sm = rec(s.summary), mg = rec(sm.migration), sc = rec(sm.supplyChain), op = rec(sm.operations); return { projects: num(sm.projects), failed: num(sm.failed), migrationD: num(mg.D), supplyChainD: num(sc.D), operationsD: num(op.D), vulnerableProjects: num(sm.vulnerableProjects), secureHigh: num(sm.secureHigh) }; },
+    line: (s) => { const sm = rec(s.summary); const g = (x: unknown) => ["A", "B", "C", "D"].map((k) => `${k}${num(rec(x)[k])}`).join("/"); return L(`포트폴리오 ${num(sm.projects)}개(실패 ${num(sm.failed)}) — 전환 ${g(sm.migration)} · 공급망 ${g(sm.supplyChain)} · 운영 ${g(sm.operations)} · 취약 프로젝트 ${num(sm.vulnerableProjects)}`, `Portfolio ${num(sm.projects)} (failed ${num(sm.failed)}) — migration ${g(sm.migration)} · supply ${g(sm.supplyChain)} · ops ${g(sm.operations)} · vulnerable projects ${num(sm.vulnerableProjects)}`); },
+  },
   ops: {
     tool: "check_egovframe_operations", summary: "운영 준비 점검(설정 점검표·등급, --fail-on ops:C)", summaryEn: "Operations readiness check (configuration checklist and grade; --fail-on ops:C)", gradeMetrics: ["ops"],
     metrics: (s) => { const sm = rec(s.summary), g = rec(s.grade); return { ops: GRADES.indexOf(String(g.grade)), high: num(sm.high), medium: num(sm.medium), low: num(sm.low), fail: num(sm.fail), total: num(sm.total) }; },
@@ -161,7 +166,7 @@ export const COMMANDS: Record<string, CommandDef> = {
   },
 };
 
-const CLI_FLAGS = new Set(["project", "json", "out", "fail-on", "step-summary", "write", "lang", "help", "h"]);
+const CLI_FLAGS = new Set(["project", "json", "out", "json-out", "fail-on", "step-summary", "write", "lang", "help", "h"]);
 
 export interface ParsedArgs { command: string | null; options: Record<string, string | boolean>; positional: string[] }
 
@@ -246,6 +251,7 @@ export function usage(): string {
     L(`  --project <dir>       대상 프로젝트(기본 현재 디렉터리)`, `  --project <dir>       Target project (default: current directory)`),
     L(`  --json                structuredContent(JSON) 출력 — MCP 결과와 같은 객체`, `  --json                Print structuredContent (JSON) — the same object as the MCP result`),
     L(`  --out <file>          출력을 파일로도 저장`, `  --out <file>          Also save the output to a file`),
+    L(`  --json-out <file>     구조화 결과(JSON)를 파일로도 저장(v1.17 — 포트폴리오 입력)`, `  --json-out <file>     Also save the structured result (JSON) to a file (v1.17 — portfolio input)`),
     L(`  --step-summary        Markdown 을 $GITHUB_STEP_SUMMARY 에 덧붙임`, `  --step-summary        Append the Markdown to $GITHUB_STEP_SUMMARY`),
     L(`  --fail-on <식>        기준을 넘으면 종료 코드 2 — 예: supplyChain:C · migration:D · vulnerabilities · manual>20`, `  --fail-on <expr>      Exit code 2 when a threshold is exceeded — e.g. supplyChain:C · migration:D · vulnerabilities · manual>20`),
     L(`  --lang ko|en          응답 언어(기본 EGOVFRAME_LANG, 없으면 ko) — Markdown 본문과 문장 필드가 영문으로`, `  --lang ko|en          Response language (default EGOVFRAME_LANG, else ko) — Markdown body and sentence fields in English`),
@@ -309,6 +315,7 @@ async function runCommand(command: string, def: CommandDef, options: Record<stri
     if (command === "db" && options.write === true) finalArgs.dryRun = false;
     if (command === "deliver" && options.verify === true) finalArgs.verify = true;
     if (command === "deliver" && typeof finalArgs.outputDir === "string") finalArgs.outputDir = path.resolve(io.cwd, finalArgs.outputDir);
+    if (command === "portfolio") { if (Array.isArray(finalArgs.inputs)) finalArgs.inputs = (finalArgs.inputs as string[]).map((x) => path.resolve(io.cwd, x)); for (const k of ["previous", "ownerMap", "outputDir"]) if (typeof finalArgs[k] === "string") finalArgs[k] = path.resolve(io.cwd, finalArgs[k] as string); if (options.write !== true) delete finalArgs.outputDir; }
     if (command === "deliver" && typeof finalArgs.previousDelivery === "string") finalArgs.previousDelivery = path.resolve(io.cwd, finalArgs.previousDelivery);
     let conds: FailCondition[] = [];
     if (options["fail-on"] !== undefined) {
@@ -325,6 +332,7 @@ async function runCommand(command: string, def: CommandDef, options: Record<stri
     const body = options.json === true ? `${JSON.stringify(structured, null, 2)}\n` : `${text}\n`;
     io.stdout(body);
     if (typeof options.out === "string") { const p = path.resolve(io.cwd, options.out); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, body); }
+    if (typeof options["json-out"] === "string") { const p = path.resolve(io.cwd, options["json-out"]); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, `${JSON.stringify(structured, null, 2)}\n`); }
     if (options["step-summary"] === true && io.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(io.env.GITHUB_STEP_SUMMARY, `${text}\n\n`);
     const metrics = def.metrics(structured);
     const failed = evaluateFailOn(conds, metrics);

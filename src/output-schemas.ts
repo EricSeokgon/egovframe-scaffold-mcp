@@ -485,6 +485,20 @@ export const OperationsOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.17: summarize_egovframe_portfolio
+const PGrade = z.string().nullable();
+export const PortfolioOutput = loose({
+  org: z.string().nullable(),
+  generatedAt: z.string(),
+  rows: z.array(loose({ name: z.string(), input: z.string(), source: z.enum(["project", "delivery", "ci-artifact"]).nullable(), assessedAt: z.string().nullable(), owner: z.string().optional(), rteVersion: z.string().nullable(), era: z.string().nullable(), buildSystem: z.string().nullable(), migration: PGrade, supplyChain: PGrade, operations: PGrade, manual: z.number().int().nullable(), vulnerableDependencies: z.number().int().nullable(), vulnerabilityIds: z.number().int().nullable(), outdated: z.number().int().nullable(), secureHigh: z.number().int().nullable(), secureMedium: z.number().int().nullable(), components: z.number().int().nullable(), change: loose({ migration: z.string().optional(), supplyChain: z.string().optional(), operations: z.string().optional(), vulnerabilityIds: z.number().int().optional(), new: z.boolean().optional() }).optional(), error: z.string().optional() })),
+  summary: loose({ projects: z.number().int(), failed: z.number().int(), bySource: z.record(z.string(), z.number().int()), era: z.record(z.string(), z.number().int()), migration: z.record(z.string(), z.number().int()), supplyChain: z.record(z.string(), z.number().int()), operations: z.record(z.string(), z.number().int()), vulnerableProjects: z.number().int(), vulnerabilityIds: z.number().int(), secureHigh: z.number().int() }),
+  top: loose({ vulnerableCoordinates: z.array(loose({ dependency: z.string(), projects: z.number().int(), ids: z.array(z.string()) })), secureRules: z.array(loose({ rule: z.string(), guideItem: z.string(), projects: z.number().int(), findings: z.number().int() })), operationsRules: z.array(loose({ rule: z.string(), title: z.string(), projects: z.number().int() })) }),
+  filter: z.string().nullable(),
+  previous: loose({ path: z.string(), generatedAt: z.string().nullable(), removed: z.array(z.string()) }).nullable(),
+  written: z.array(z.string()).optional(),
+  notes: z.array(z.string()),
+});
+
 export const OUTPUT_SCHEMAS = {
   diagnose_egovframe_project: DiagnoseOutput,
   validate_egovframe_project: ValidateOutput,
@@ -501,6 +515,7 @@ export const OUTPUT_SCHEMAS = {
   externalize_egovframe_config: ExternalizeOutput,
   map_egovframe_project: ProjectMapOutput,
   check_egovframe_operations: OperationsOutput,
+  summarize_egovframe_portfolio: PortfolioOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
   prepare_egovframe_offline_bundle: OfflineBundleOutput,

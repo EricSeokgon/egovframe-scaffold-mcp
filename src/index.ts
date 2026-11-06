@@ -169,6 +169,8 @@ export type { StartupFailureKind, StartupCause, StartupLogAnalysis, StartupOptio
 export { scanSecrets, externalizeConfig, renderExternalizeMarkdown, envNameForKey, maskSecret, looksEgovEncrypted, algorithmKeyHash, CONFIG_PASSWORD_RULE, CRYPTO_CONFIG_FILE, CRYPTO_PATH_KEY, CRYPTO_ENV } from "./externalize.js";
 export type { SecretKind, SecretFormat, SecretAction, SecretFinding, ExternalizeOptions, ExternalizeResult, ExternalizeChange } from "./externalize.js";
 export { findSecretPlaceholders } from "./deploy.js";
+export { summarizePortfolio, classifyPortfolioInput, expandPortfolioInputs, parsePortfolioFilter, rowFromAssessment, renderPortfolioMarkdown, renderPortfolioCsv, GRADE_ORDER } from "./portfolio.js";
+export type { PortfolioSource, PortfolioRow, PortfolioOptions, PortfolioResult } from "./portfolio.js";
 export { loadOperationsRules, classifyOpsFile, checkOperations, renderOperationsMarkdown, OPS_IGNORE_FILE } from "./operations.js";
 export type { OpsSeverity, OpsTarget, OpsRule, OpsRules, OpsFinding, OpsRuleResult, OperationsOptions, OperationsResult } from "./operations.js";
 export { readIgnoreFile } from "./secure-coding.js";

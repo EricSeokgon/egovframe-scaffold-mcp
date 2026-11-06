@@ -139,12 +139,12 @@ export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary
     out.push({ id: "sbom-check", name: "SBOM minimum elements (7)", command: `${npx} sbom-check --project . --out egovframe-sbom-check.md${stepSummary ? " --step-summary" : ""} --fail-on minimum` });
   }
   if (opts.secureCoding) out.push({ id: "secure", name: "Secure coding weaknesses (SARIF)", command: `${npx} secure --project . --sarif-path ${SECURE_SARIF} --overwrite --out egovframe-secure.md${stepSummary ? " --step-summary" : ""} --fail-on high` });
-  out.push({ id: "assess", name: "Migration readiness and supply-chain grades", command: `${npx} assess --project .${offline} --out egovframe-assessment.md${stepSummary ? " --step-summary" : ""} --fail-on ${failOn}` });
+  out.push({ id: "assess", name: "Migration readiness and supply-chain grades", command: `${npx} assess --project .${offline} --out egovframe-assessment.md --json-out egovframe-assessment.json${stepSummary ? " --step-summary" : ""} --fail-on ${failOn}` });
   // v1.1: 납품 패키지 — 게이트가 통과한 뒤 같은 입력으로 묶는다(실패 항목은 패키지 목차에 남고 --fail-on failed 로 단계도 실패)
   if (opts.delivery) out.push({ id: "deliver", name: "Delivery package (manifest, SBOM, VEX, SARIF, assessment)", command: `${npx} deliver --project . --output-dir ${DELIVERY_DIR} --write${offline}${opts.supplier ? ` --supplier "${opts.supplier}"` : ""} --fail-on failed` });
   return out;
 }
-const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : []), ...(opts.delivery ? [`${DELIVERY_DIR}/**`] : [])];
+const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", "egovframe-assessment.json", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : []), ...(opts.delivery ? [`${DELIVERY_DIR}/**`] : [])];
 
 /** GitLab supply-chain job 준비: Node 22 이상 보장(v1.0, engines >=22) */
 export const NODE22_ENSURE = `node -e "process.exit(+process.versions.node.split('.')[0] >= 22 ? 0 : 1)" 2>/dev/null || ((command -v npm >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq nodejs npm)) && npm install -g -s node@22)`;
