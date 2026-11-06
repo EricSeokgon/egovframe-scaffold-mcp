@@ -94,7 +94,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 
 > "이 프로젝트를 컨테이너로 띄울 수 있게 Dockerfile 이랑 compose, 쿠버네티스 매니페스트 만들어 줘."
 
-`generate_egovframe_deploy(projectDir, dryRun=false)` — Classic war 는 Tomcat, Boot jar 는 Temurin JRE 기반의 비루트 이미지, DB 컨테이너가 붙은 compose, 프로브·리소스 제한이 있는 k8s 매니페스트를 만듭니다. 공식 MSA 템플릿 같은 멀티 모듈은 서비스마다 이미지를 만들고 `localhost` 참조를 서비스 이름으로 바꿉니다. 폐쇄망이면 `imageRegistry` 로 사내 레지스트리를 지정합니다.
+`generate_egovframe_deploy(projectDir, dryRun=false)` — Classic war 는 Tomcat, Boot jar 는 Temurin JRE 기반의 비루트 이미지, DB 컨테이너가 붙은 compose, 프로브·리소스 제한이 있는 k8s 매니페스트를 만듭니다. 공식 MSA 템플릿 같은 멀티 모듈은 서비스마다 이미지를 만들고 `localhost` 참조를 서비스 이름으로 바꿉니다. 폐쇄망이면 `imageRegistry` 로 사내 레지스트리를 지정합니다. `observability="otel"` 을 주면 OpenTelemetry 에이전트와 수집기도 함께 만들어 trace·metric·log 를 내보냅니다(v1.16).
 
 **기존 프로젝트 파악하기**
 
