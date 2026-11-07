@@ -141,7 +141,7 @@ try {
         const ran = stages.filter((s) => log.includes(`[Pipeline] { (${s})`));
         assert(ran.length === stages.length && !/skipped due to earlier failure/.test(log), `단계 실행: ${ran.join(" → ")}`);
         const arts = (info?.artifacts ?? []).map((a) => a.relativePath).sort();
-        assert(["egovframe-assessment.md", "egovframe-sbom-check.md", "sbom/bom.cdx.json"].every((a) => arts.includes(a)), `보관 산출물: ${arts.join(", ")}`);
+        assert(["egovframe-assessment.md", "egovframe-assessment.json", "egovframe-sbom-check.md", "sbom/bom.cdx.json"].every((a) => arts.includes(a)), `보관 산출물: ${arts.join(", ")}`);
         const bom = await (await fetch(`${base}/job/egov-ci/1/artifact/sbom/bom.cdx.json`)).json().catch(() => null);
         assert(bom?.bomFormat === "CycloneDX" && (bom.components ?? []).length > 20, `보관 SBOM: CycloneDX ${bom?.specVersion} · component ${(bom?.components ?? []).length}종`);
       }
@@ -177,7 +177,7 @@ try {
     assert(r.code === 0, `gitlab-ci-local(${GITLAB_CI_LOCAL.split("@")[1]}) 실행 ${Math.round((Date.now() - t0) / 1000)}초${r.code ? `\n${tail(out, 6000)}` : ""}`);
     // 끝의 요약 표: " PASS  build" · " FAIL  supply-chain"
     for (const job of ["build", "supply-chain"]) assert(new RegExp(`^\\s*PASS\\s+${job}\\s*$`, "m").test(out), `GitLab job ${job} 성공`);
-    const need = ["egovframe-assessment.md", "egovframe-sbom-check.md", "sbom/bom.cdx.json", "egovframe-secure.sarif"];
+    const need = ["egovframe-assessment.md", "egovframe-assessment.json", "egovframe-sbom-check.md", "sbom/bom.cdx.json", "egovframe-secure.sarif"];
     const found = need.filter((f) => existsSync(path.join(dir, f)));
     assert(found.length === need.length, `GitLab 산출물(artifacts → 작업 디렉터리): ${found.join(", ")}${found.length === need.length ? "" : ` · 없음 ${need.filter((f) => !found.includes(f)).join(", ")} · ${readdirSync(dir).join(" ")}`}`);
     if (found.length === need.length) {

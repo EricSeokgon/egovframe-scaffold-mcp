@@ -31,10 +31,11 @@ CLI 는 같은 프로세스에 서버(`buildServer()`)를 만들고 SDK 의 `InM
 | `validate` | `validate_egovframe_project` | — | `invalid`·`missing`·`warnings` |
 | `diagnose` | `diagnose_egovframe_project` | — | `issues`·`components` |
 | `network` | `diagnose_egovframe_network` | — | `failed`·`ok` |
+| `portfolio` | `summarize_egovframe_portfolio` | `--inputs` 경로는 현재 디렉터리 기준, `outputDir` 는 `--write` 가 있어야 씀(v1.17) | `projects`·`failed`·`migrationD`·`supplyChainD`·`operationsD`·`vulnerableProjects`·`secureHigh` |
 
 쓰기 도구(프로젝트 생성·조립·적용·재조립)는 노출하지 않습니다. 결과를 사람이 보고 판단해야 하는 일은 MCP 경로에 남깁니다.
 
-옵션은 도구 파라미터와 같은 이름입니다(kebab-case 가능: `--resolve-scope all`, `--top-n 10`). 형 변환은 `tools/list` 가 주는 JSON Schema 의 타입을 따릅니다(boolean: `--x`·`--no-x`·`--x=false`, 숫자, 배열은 쉼표). 모르는 옵션은 도구 파라미터 목록과 함께 거부합니다. 공통 옵션은 `--project`(기본 현재 디렉터리)·`--json`·`--out`·`--step-summary`(Markdown 을 `$GITHUB_STEP_SUMMARY` 에 덧붙임)·`--fail-on`·`--write` 입니다.
+옵션은 도구 파라미터와 같은 이름입니다(kebab-case 가능: `--resolve-scope all`, `--top-n 10`). 형 변환은 `tools/list` 가 주는 JSON Schema 의 타입을 따릅니다(boolean: `--x`·`--no-x`·`--x=false`, 숫자, 배열은 쉼표). 모르는 옵션은 도구 파라미터 목록과 함께 거부합니다. 공통 옵션은 `--project`(기본 현재 디렉터리)·`--json`·`--out`·`--step-summary`(Markdown 을 `$GITHUB_STEP_SUMMARY` 에 덧붙임)·`--fail-on`·`--write`·`--json-out`(구조화 JSON 을 파일로 — v1.17, 생성 CI 의 `egovframe-assessment.json`) 입니다.
 
 ## 5. `--fail-on` 과 종료 코드
 

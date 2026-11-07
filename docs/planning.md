@@ -42,13 +42,14 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
+- **v1.17.0 완료**: 포트폴리오(기관 단위) 현황 `summarize_egovframe_portfolio`(도구 43종·CLI `portfolio`) — 공식 템플릿 6종 + 코퍼스 2종 = 8 프로젝트 7초, 행 = 개별 평가서, 디렉터리·납품 패키지·CI 아티팩트 입력의 행 동일([결과](#v1170-결과-2026-11-07)). v1.15–v1.17 기획 완료.
 - **v1.16.0 완료**: 관측 내보내기 `generate_egovframe_deploy(observability="otel")` — OpenTelemetry 에이전트(sha256·폐쇄망 jar)·수집기(core), 공식 boot-web·web 에서 trace·metric·log 도착, 기동 오버헤드 1.1–1.3배([결과](#v1160-결과-2026-11-06)).
 - **v1.15.0 완료**: 운영 준비 점검 `check_egovframe_operations`(도구 42종·CLI `ops`) — 규칙 데이터 17종(출처 명시), 공식 템플릿 6종 등급·미달 = 실측, 제안 적용 사본 기동 확인([결과](#v1150-결과-2026-11-04)).
 - **v1.14.0 완료**: 프로젝트 구조 지도·변경 영향 `map_egovframe_project`(도구 41종·CLI `map`) — 공통컴포넌트 5.0.7 전체 0.7초·해석 실패율 0.9%·카탈로그 테이블 전부 참조, 인수인계 표 3종·납품 패키지 `map/`([결과](#v1140-결과-2026-11-03)). v1.12–v1.14 기획 완료.
 - **v1.13.0 완료**: 설정·비밀값 외부화 `externalize_egovframe_config`(도구 40종·CLI `externalize`) — 공식 portal-site 자리표시자+암호화 키 외부 파일로 실제 기동, 4.x 는 암호화 값 유지·키 수동([결과](#v1130-결과-2026-11-03)).
 - **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.17 포트폴리오([다음 버전 기획](#다음-버전-기획-v115v117), 2026-11-04 선행 조사 반영). 그 뒤 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v118-이후)).
+- **다음 계획**: v1.18 이후 세 버전 기획(선행 조사 뒤 작성) — 후보는 [장기 로드맵](#장기-로드맵-2027-v118-이후)의 3단계와 2.0 계약 정리, v1.17 에서 미룬 모아 보는 저장소용 CI 워크플로.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -192,6 +193,14 @@ v1.14.0 까지 끝난 상태(2026-11-04, 도구 41종 + CLI 명령 18종)에서 
 - CI 통합(실자산): 공식 템플릿 6종 + 코퍼스 3.10.0·4.3.2 = 8 프로젝트 포트폴리오 — 세대 분포(3.x 1·4.x 1·5.x 6), 등급 분포가 개별 평가서와 일치, 납품 패키지 입력과 디렉터리 입력의 표가 같음
 
 **완료 정의**: CLI 명령·도구 43종, `docs/design-portfolio.md`, 생성 CI 옵션, api-contract minor, CHANGELOG
+
+#### v1.17.0 결과 (2026-11-07)
+
+- 새 도구 `summarize_egovframe_portfolio`(도구 43종, 구조화 출력 22종, 읽기 전용 — `outputDir` 만 씀)와 CLI `portfolio`(명령 20종). api-contract minor. 설계: [design-portfolio.md](design-portfolio.md).
+- 입력 자동 판별: 프로젝트 디렉터리(평가서 실행, `jobs` 병렬 상한 8)·납품 패키지(`assessment/assessment.json`)·CI 아티팩트(`egovframe-assessment.json`·`egovframe-delivery/`). 평가서에 운영 준비(v1.15)가 이미 들어 있어 운영 점검을 따로 돌리지 않습니다.
+- 생성 CI(`generate_egovframe_ci(supplyChain=true)`)의 assess 단계가 `--json-out egovframe-assessment.json` 을 아티팩트에 더합니다(CLI 공통 옵션 `--json-out` 신설) — 모아 보는 쪽은 아티팩트 폴더를 그대로 입력으로.
+- 실측: 공식 템플릿 6종 + 코퍼스 3.10.0·4.3.2 = 8 프로젝트 7초(병렬 4, 오프라인). 세대 5.x 6·3.x 1·4.x 1, 행의 등급·수동 항목이 개별 평가서와 8/8 일치, 같은 프로젝트를 세 입력 방식으로 넣어도 같은 행.
+- 기획과 달라진 점: (1) **`generate_egovframe_ci(portfolio=true)` 는 미룸** — 여러 저장소의 아티팩트를 받는 방법(GitHub 조직 토큰·GitLab 그룹 토큰·Jenkins copyArtifact)과 권한이 기관마다 달라, 생성 워크플로가 대부분의 기관에서 그대로 돌지 않습니다. 대신 CI 아티팩트를 입력으로 받는 쪽을 완성하고, 아티팩트 내려받기 예시는 [design-portfolio.md](design-portfolio.md)에 둡니다. (2) 입력 옵션은 `--projects` 대신 `--inputs` 하나로 — 세 종류를 섞어 넣고 자동 판별. (3) 필터는 `--only` 한 옵션에 조건 여러 개(쉼표, 모두 만족).
 
 
 ### 장기 로드맵 (2027, v1.18 이후)
