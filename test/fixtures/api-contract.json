@@ -1,6 +1,6 @@
 {
-  "version": "1.16.0",
-  "base": "1.15.0",
+  "version": "1.17.0",
+  "base": "1.16.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -9046,6 +9046,471 @@
         "output": null,
         "deprecated": {}
       },
+      "summarize_egovframe_portfolio": {
+        "input": {
+          "type": "object",
+          "required": [
+            "inputs"
+          ],
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "maxItems": 500
+            },
+            "jobs": {
+              "type": "integer",
+              "default": 2,
+              "minimum": 1,
+              "maximum": 8
+            },
+            "offline": {
+              "type": "boolean",
+              "default": true
+            },
+            "only": {
+              "type": "string"
+            },
+            "org": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "outputDir": {
+              "type": "string"
+            },
+            "ownerMap": {
+              "type": "string"
+            },
+            "previous": {
+              "type": "string"
+            },
+            "run": {
+              "type": "boolean",
+              "default": true
+            },
+            "sort": {
+              "type": "string",
+              "enum": [
+                "migration",
+                "name",
+                "operations",
+                "supplyChain",
+                "vulnerabilities"
+              ],
+              "default": "name"
+            },
+            "topN": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "filter",
+            "generatedAt",
+            "notes",
+            "org",
+            "previous",
+            "rows",
+            "summary",
+            "top"
+          ],
+          "properties": {
+            "filter": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "generatedAt": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "org": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previous": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "generatedAt",
+                    "path",
+                    "removed"
+                  ],
+                  "properties": {
+                    "generatedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "removed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "assessedAt",
+                  "buildSystem",
+                  "components",
+                  "era",
+                  "input",
+                  "manual",
+                  "migration",
+                  "name",
+                  "operations",
+                  "outdated",
+                  "rteVersion",
+                  "secureHigh",
+                  "secureMedium",
+                  "source",
+                  "supplyChain",
+                  "vulnerabilityIds",
+                  "vulnerableDependencies"
+                ],
+                "properties": {
+                  "assessedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "buildSystem": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "change": {
+                    "type": "object",
+                    "properties": {
+                      "migration": {
+                        "type": "string"
+                      },
+                      "new": {
+                        "type": "boolean"
+                      },
+                      "operations": {
+                        "type": "string"
+                      },
+                      "supplyChain": {
+                        "type": "string"
+                      },
+                      "vulnerabilityIds": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "components": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "era": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "input": {
+                    "type": "string"
+                  },
+                  "manual": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "migration": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "operations": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "outdated": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner": {
+                    "type": "string"
+                  },
+                  "rteVersion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "secureHigh": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "secureMedium": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "ci-artifact",
+                          "delivery",
+                          "project"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "supplyChain": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "vulnerabilityIds": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "vulnerableDependencies": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "bySource",
+                "era",
+                "failed",
+                "migration",
+                "operations",
+                "projects",
+                "secureHigh",
+                "supplyChain",
+                "vulnerabilityIds",
+                "vulnerableProjects"
+              ],
+              "properties": {
+                "bySource": {
+                  "type": "object"
+                },
+                "era": {
+                  "type": "object"
+                },
+                "failed": {
+                  "type": "integer"
+                },
+                "migration": {
+                  "type": "object"
+                },
+                "operations": {
+                  "type": "object"
+                },
+                "projects": {
+                  "type": "integer"
+                },
+                "secureHigh": {
+                  "type": "integer"
+                },
+                "supplyChain": {
+                  "type": "object"
+                },
+                "vulnerabilityIds": {
+                  "type": "integer"
+                },
+                "vulnerableProjects": {
+                  "type": "integer"
+                }
+              }
+            },
+            "top": {
+              "type": "object",
+              "required": [
+                "operationsRules",
+                "secureRules",
+                "vulnerableCoordinates"
+              ],
+              "properties": {
+                "operationsRules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "projects",
+                      "rule",
+                      "title"
+                    ],
+                    "properties": {
+                      "projects": {
+                        "type": "integer"
+                      },
+                      "rule": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "secureRules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "findings",
+                      "guideItem",
+                      "projects",
+                      "rule"
+                    ],
+                    "properties": {
+                      "findings": {
+                        "type": "integer"
+                      },
+                      "guideItem": {
+                        "type": "string"
+                      },
+                      "projects": {
+                        "type": "integer"
+                      },
+                      "rule": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "vulnerableCoordinates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "dependency",
+                      "ids",
+                      "projects"
+                    ],
+                    "properties": {
+                      "dependency": {
+                        "type": "string"
+                      },
+                      "ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "projects": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "written": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "deprecated": {}
+      },
       "sync_egovframe_catalog": {
         "input": {
           "type": "object",
@@ -9537,6 +10002,7 @@
         "migrate": "migrate_egovframe_project",
         "network": "diagnose_egovframe_network",
         "ops": "check_egovframe_operations",
+        "portfolio": "summarize_egovframe_portfolio",
         "rehearse": "rehearse_egovframe_migration",
         "sbom": "generate_egovframe_sbom",
         "sbom-check": "check_egovframe_sbom",

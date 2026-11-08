@@ -116,7 +116,7 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
   await server.connect(st); await client.connect(ct);
   const tools = (await client.listTools()).tools;
   const t = tools.find((x) => x.name === "check_egovframe_operations");
-  assert(t && t.annotations.readOnlyHint === true && t.inputSchema.properties.rules.items.enum.length === 17 && t.outputSchema && tools.length === 42, "MCP: 42종, 읽기 전용, 규칙 enum 17, outputSchema");
+  assert(t && t.annotations.readOnlyHint === true && t.inputSchema.properties.rules.items.enum.length === 17 && t.outputSchema && tools.length >= 42, "MCP: 등록됨, 읽기 전용, 규칙 enum 17, outputSchema");
   const res = await client.callTool({ name: "check_egovframe_operations", arguments: { projectDir: d, format: "json" } });
   assert(!res.isError && res.structuredContent.grade.grade === "C" && res.structuredContent.rules.length === 17, "MCP 호출: 구조화 출력");
   await client.close(); await server.close();

@@ -2,6 +2,7 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
+import * as path from "node:path";
 import { CRUD_JAVA_TYPES, CRUD_PROFILES, generateCrud } from "./crud.js";
 import { enforceAllowedRoots } from "./allowed-roots.js";
 import { runBuild } from "./build-runner.js";
@@ -38,6 +39,7 @@ import { verifyStartup, renderStartupMarkdown } from "./startup.js";
 import { externalizeConfig, renderExternalizeMarkdown } from "./externalize.js";
 import { buildProjectMap, handoverTables, renderMermaid, renderProjectMapMarkdown } from "./project-map.js";
 import { checkOperations, renderOperationsMarkdown, loadOperationsRules } from "./operations.js";
+import { summarizePortfolio, renderPortfolioMarkdown, renderPortfolioCsv } from "./portfolio.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
 import { prepareEgovframeOfflineBundle } from "./offline-bundle-plan.js";
@@ -989,6 +991,39 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       const r = await checkOperations({ projectDir: args.projectDir, profile: args.profile, rules: args.rules });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderOperationsMarkdown(r, args.topN);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 포트폴리오(기관 단위) 현황 (v1.17) ─────────────────
+  server.registerTool(
+    "summarize_egovframe_portfolio",
+    { title: t("summarize_egovframe_portfolio"), description: d("summarize_egovframe_portfolio", "여러 전자정부 표준프레임워크 프로젝트의 전환 준비도·공급망·보안약점·운영 준비를 한 표로 모읍니다(새 분석 없이 평가서를 모으기·비교·표). 입력 inputs 는 디렉터리 목록(끝이 /* 면 그 아래 디렉터리 전부)이고 종류를 자동 판별합니다 — 프로젝트(pom.xml·build.gradle: generate_egovframe_report 평가서를 실행, jobs 로 병렬, offline 기본 true), 납품 패키지(delivery-manifest.json: assessment/assessment.json 을 읽기만), CI 아티팩트(egovframe-assessment.json 또는 egovframe-delivery/ — 생성 CI 의 egovframe-supply-chain 아티팩트를 내려받은 폴더). 행: RTE 버전·세대, 전환 난이도·공급망·운영 준비 등급, 수동 전환 항목, 취약 의존성(OSV 조회한 평가서만)·노후 의존성, 보안약점 높음/중간, 공통컴포넌트 수, 평가일, 담당(ownerMap CSV). 분포(세대·등급별)와 '먼저 손댈 것'(여러 프로젝트에 걸친 취약 좌표·보안약점 규칙·운영 미달 규칙 Top N). previous(이전 portfolio.json)를 주면 프로젝트별 등급·취약 ID 변화와 빠진 프로젝트, sort·only(migration:C·supplyChain:D·operations:C·vulnerabilities>0·secure>0·era:4.x·failed)로 정렬·필터. 실패한 입력은 행에 사유. outputDir 를 주면 portfolio.md·portfolio.csv(UTF-8 BOM, 엑셀)·portfolio.json 을 새 디렉터리에 씁니다(프로젝트는 바꾸지 않음)."), inputSchema: {
+      inputs: z.array(z.string()).min(1).max(500).describe("프로젝트·납품 패키지·CI 아티팩트 디렉터리(절대경로 권장, 끝이 /* 면 하위 디렉터리 전부)"),
+      run: z.boolean().default(true).describe("프로젝트 디렉터리면 평가서를 실행(false 면 납품 패키지·CI 아티팩트만 읽음)"),
+      offline: z.boolean().default(true).describe("프로젝트 평가 때 OSV 조회 안 함(false 면 조회 — 취약점 열이 채워짐)"),
+      jobs: z.number().int().min(1).max(8).default(2).describe("동시에 평가할 프로젝트 수"),
+      previous: z.string().optional().describe("비교할 이전 portfolio.json"),
+      sort: z.enum(["name", "migration", "supplyChain", "operations", "vulnerabilities"]).default("name").describe("정렬(등급은 나쁜 순, vulnerabilities 는 많은 순)"),
+      only: z.string().optional().describe("필터(쉼표로 여러 개, 모두 만족): migration:C · supplyChain:D · operations:C · vulnerabilities>0 · secure>0 · manual>=10 · era:4.x · failed"),
+      org: z.string().max(100).optional().describe("기관·사업 이름(제목)"),
+      ownerMap: z.string().optional().describe("프로젝트 → 담당 CSV(name,owner)"),
+      outputDir: z.string().optional().describe("portfolio.md·csv·json 을 쓸 새(비어 있는) 디렉터리"),
+      topN: z.number().int().min(1).max(100).default(10).describe("'먼저 손댈 것' 항목 수"),
+      format: z.enum(["markdown", "json", "csv"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.summarize_egovframe_portfolio.shape, annotations: toolAnnotations("summarize_egovframe_portfolio") },
+    async (args, extra) => {
+      for (const p of [...args.inputs.map((x) => x.replace(/[\\/]\*$/, "")), ...(args.previous ? [args.previous] : []), ...(args.ownerMap ? [args.ownerMap] : []), ...(args.outputDir ? [args.outputDir] : [])]) enforceAllowedRoots({ projectDir: p });
+      const r = await summarizePortfolio({ progress: progressFromExtra(extra), inputs: args.inputs, run: args.run, offline: args.offline, jobs: args.jobs, previous: args.previous, sort: args.sort, only: args.only, org: args.org, ownerMap: args.ownerMap, topN: args.topN });
+      const md = renderPortfolioMarkdown(r, args.topN), csv = renderPortfolioCsv(r);
+      let written: string[] | undefined;
+      if (args.outputDir) {
+        const out = path.resolve(args.outputDir);
+        if (fs.existsSync(out) && fs.readdirSync(out).length) throw new Error(`outputDir 가 비어 있지 않습니다(기존 파일을 덮어쓰지 않음): ${out}`);
+        fs.mkdirSync(out, { recursive: true });
+        written = [["portfolio.md", `${md}\n`], ["portfolio.csv", csv], ["portfolio.json", `${JSON.stringify(r, null, 2)}\n`]].map(([f, c]) => { fs.writeFileSync(path.join(out, f), c); return path.join(out, f); });
+      }
+      const full = { ...r, ...(written ? { written } : {}) };
+      const text = args.format === "json" ? JSON.stringify(full, null, 2) : args.format === "csv" ? csv : `${md}${written ? `\n\n- ${written.join("\n- ")}` : ""}`;
+      return { content: [{ type: "text", text }], structuredContent: full as unknown as Record<string, unknown> };
     },
   );
   // ── SBOM 운영 (v0.40) ─────────────────────────────────

@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 42종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 43종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -41,6 +41,7 @@
 | `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `verify_egovframe_startup` | **기동 검증**(v1.11) — 프로젝트를 바꾸지 않고 실제로 띄움: Boot 는 `spring-boot:run`·`bootRun`(빈 포트), Classic war 는 캐시의 고정 Tomcat 10.1/11.0(sha256 검증, `tomcatHome`)에 ROOT 로. 완료 문구 + HTTP(5xx 아님)로 판정, 실패면 원인 종류(포트·드라이버·DB 접속·테이블 없음·매퍼 XML 파일·줄·설정 누락·javax·실제로 실패한 빈과 정의 파일·GUI 빈·시간 초과·빌드)와 처방. [자세히](#기동-검증-verify_egovframe_startup-v111) |
+| `summarize_egovframe_portfolio` | **포트폴리오(기관 단위) 현황**(v1.17) — 여러 프로젝트의 평가서를 한 표로: 입력은 프로젝트 디렉터리(평가서 실행, 병렬)·납품 패키지(`assessment/assessment.json` 읽기)·CI 아티팩트(`assess --json-out` 의 `egovframe-assessment.json` 또는 `egovframe-delivery/`) 자동 판별, `dir/*` 펼치기. 행(RTE·세대·전환/공급망/운영 등급·수동 항목·취약/노후 의존성·보안약점·컴포넌트·담당)·분포·먼저 손댈 것·이전 대비 변화·정렬·필터, Markdown·CSV(엑셀)·JSON, `outputDir`(새 디렉터리). CLI `portfolio` |
 | `check_egovframe_operations` | **운영 준비 점검**(v1.15, 읽기 전용) — "기동은 되는데 운영에서 터지는" 설정을 규칙 데이터 17종(`catalog/operations-rules.json`, 출처 명시)으로 점검: SQL 로깅 드라이버·DEBUG 로그·콘솔 전용 로그·devtools·내장 DB·풀 크기/타임아웃·세션/쿠키·업로드 상한/경로·오류 노출·error-page·actuator·개발 플래그·운영 프로파일·비밀값. 운영 설정 세트(Boot: application + prod 프로파일, Classic: globals·context-*.xml·web.xml·log4j2). 점검표·미달 항목(파일·줄·제안·근거)·등급 A–D, `.egovframe-ops-ignore.json`, 평가서 「운영 준비」절. CLI `ops`(`--fail-on ops:C`) |
 | `map_egovframe_project` | **프로젝트 구조 지도·변경 영향**(v1.14, 읽기 전용) — 테이블 → 매퍼 XML(네임스페이스) → DAO/Mapper → Service → Controller → URL → 화면의 그래프를 정적 해석으로. `impactTable`·`impactUrl`·`impactClass`·`impactView` 로 영향 노드를 거리순으로, 인수인계 표 3종(화면 목록·프로그램 목록·DB 접근 표), 고아(호출 없는 매퍼·문장, URL 없는 Controller, 미참조 컴포넌트 테이블), 해석 실패율. `format` markdown·json(전체 그래프)·mermaid(범위 한정). CLI `map` |
 | `externalize_egovframe_config` | **설정·비밀값 외부화**(v1.13) — 설정 파일의 DB 비밀번호·비밀 값을 저장소 밖으로: 판정은 보안약점 점검의 `hardcoded-config-password` 규칙·화이트리스트 그대로(+ XML `<property name="password" value="리터럴"/>`, 주석 제외). Spring 자리표시자로 읽는 키는 `${EGOV_…_PASSWORD}` 로(env), 표준프레임워크 암호화 값은 그대로 두고 복호화 키를 `egov-crypto-config.properties` 에서 빼 `Globals.CryptoConfigPath=${EGOV_CRYPTO_CONFIG:}` 로 외부 파일에서(crypto-path, runtime 5.x), 파일을 직접 읽는 키(`EgovProperties.getProperty`)·4.x `context-crypto.xml` 의 키는 수동 항목. `deploy/` 산출물 갱신, dryRun 기본, 트랜잭션(원본은 `migration-backup/`), 보안약점 전·후, `verify=true` 면 원래 값을 환경 변수로 주고 기동해 `config-missing` 이면 되돌림. CLI `externalize` (파괴적, 게이트) |
@@ -246,6 +247,26 @@ npx -y egovframe-scaffold-mcp startup --project . [--fail-on failed]
 - 끝나면 프로세스 트리를 끝내고 임시 디렉터리를 지웁니다. 프로젝트에 남는 것은 빌드 결과(`target/`)뿐입니다.
 - 실측(2026-10-30): 공식 템플릿 7종(web·simple-homepage·portal-site·enterprise-business·mobile-web·boot-web·simple-backend)이 내장 HSQL 로 16–29초에 기동. 포털·업무 템플릿은 `create_egovframe_project(database="hsql")` 가 `Globals.Hsql.AutoInit` 을 켜도록 고친 뒤 뜹니다(전에는 빈 DB 로 떠서 `LETTNROLES_HIERARCHY` 조회 실패 — 이 도구가 찾은 것). batch-db-web 은 `hsqlManager` 빈이 GUI 창을 띄워 화면 없는 환경에서 실패합니다(템플릿 특성).
 - 하지 않는 것: 화면 기능 테스트(URL 응답까지), 성능, 운영 WAS(JEUS·WebLogic) 기동, DB 컨테이너 자동 연결([설계](design-startup.md#기획에서-미룬-것)).
+
+## 포트폴리오(기관 단위) 현황 (`summarize_egovframe_portfolio`, v1.17)
+
+기관·사업자는 프로젝트 수십 개의 전환 준비도·취약점·버전·운영 준비를 한 표로 봐야 합니다. 평가서·납품 패키지·생성 CI 아티팩트가 이미 구조화 JSON 이라, 새 분석 없이 모으기·비교·표로 끝납니다.
+
+```text
+summarize_egovframe_portfolio(inputs=["D:/projects/*"])                                   # 디렉터리 아래 프로젝트 전부 평가(병렬 2)
+summarize_egovframe_portfolio(inputs=["…/1차납품/*"], run=false, org="○○기관")            # 납품 패키지만 읽기
+summarize_egovframe_portfolio(inputs=[…], previous="…/2026-10/portfolio.json", sort="migration", only="migration:C")
+summarize_egovframe_portfolio(inputs=[…], ownerMap="owners.csv", outputDir="…/2026-11")  # portfolio.md·csv·json
+npx -y egovframe-scaffold-mcp portfolio --inputs "D:/projects/*,D:/delivery/b" [--offline=false] [--output-dir out --write] [--fail-on migrationD>0]
+```
+
+- **입력**(디렉터리, 자동 판별): 프로젝트(`pom.xml`·`build.gradle` — `generate_egovframe_report` 평가서를 실행, `jobs` 병렬·`offline` 기본 true) · 납품 패키지(`delivery-manifest.json` — `assessment/assessment.json` 을 읽기만) · CI 아티팩트(`egovframe-assessment.json` 또는 `egovframe-delivery/`). 생성 CI(`generate_egovframe_ci(supplyChain=true)`)는 v1.17 부터 `assess --json-out egovframe-assessment.json` 을 아티팩트에 넣습니다 — `egovframe-supply-chain` 아티팩트를 내려받은 폴더를 그대로 입력으로. 끝이 `/*` 면 그 아래 디렉터리 전부(셸이 펼치지 않게 따옴표로). 실패한 입력은 사유와 함께 행에 남습니다.
+- **행**: RTE 버전(없으면 parent)·세대, 전환 난이도·공급망·운영 준비 등급, 수동 전환 항목, 취약 의존성(OSV 를 조회한 평가서만 — 아니면 —)·노후 의존성, 보안약점 높음/중간, 공통컴포넌트 수, 평가일, 담당(`ownerMap` CSV `name,owner`).
+- **집계**: 세대·등급 분포, 취약 프로젝트 수·권고 ID 합계, **먼저 손댈 것** — 여러 프로젝트에 걸친 취약 좌표·보안약점 규칙·운영 미달 규칙 Top N(`topN`).
+- **비교·정렬·필터**: `previous`(이전 `portfolio.json`) → 프로젝트별 등급·권고 ID 변화, 신규, 빠진 프로젝트. `sort` name·migration·supplyChain·operations(나쁜 순)·vulnerabilities(많은 순). `only` — `migration:C`(C 이하)·`supplyChain:D`·`operations:C`·`vulnerabilities>0`·`secure>0`·`manual>=10`·`era:4.x`·`failed`, 쉼표로 여러 개(모두 만족).
+- **출력**: Markdown 한 장·CSV(UTF-8 BOM·CRLF — 엑셀)·JSON. `outputDir`(비어 있는 새 디렉터리)에 `portfolio.md`·`portfolio.csv`·`portfolio.json` — 다음 달 `previous` 로. CLI 는 `--write` 가 있어야 씁니다. `--fail-on` 지표: projects·failed·migrationD·supplyChainD·operationsD·vulnerableProjects·secureHigh.
+- 실측(2026-11-07): 공식 템플릿 6종 + 코퍼스 3.10.0·4.3.2 = 8 프로젝트 7초(병렬 4) — 세대 5.x 6·3.x 1·4.x 1, 전환 A2·B4·D2, 공급망 B5·C1·D2, 운영 B1·C7. 같은 프로젝트를 디렉터리·납품 패키지·CI 아티팩트로 넣어도 같은 행.
+- 하지 않는 것: 웹 대시보드·서버, 저장소 자동 탐색(기관 Git 서버가 다양), 프로젝트 사이 의존 그래프. 설계: [design-portfolio.md](design-portfolio.md).
 
 ## 운영 준비 점검 (`check_egovframe_operations`, v1.15)
 
@@ -546,7 +567,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 15종(목록·검색·진단·검증·점검·upstream 대조·구조 지도·운영 점검), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 21종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·구조 지도·운영 점검·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 15종(목록·검색·진단·검증·점검·upstream 대조·구조 지도·운영 점검), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 22종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·구조 지도·운영 점검·포트폴리오·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 
