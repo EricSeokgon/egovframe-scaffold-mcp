@@ -2,7 +2,7 @@
 
 버전별 기획 원문과 결과, 선행 조사를 그대로 남긴 기록입니다. 현재 사용법은 [README](../README.md), 변경 내용은 [CHANGELOG](../CHANGELOG.md)를 보세요.
 
-## 진행 현황 (버전별 요약) (2026-11-04)
+## 진행 현황 (버전별 요약) (2026-11-09)
 
 - **소스 기준**: v1.8.0(`package.json`), 도구 36종 + CLI 명령 13종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
@@ -49,7 +49,7 @@
 - **v1.13.0 완료**: 설정·비밀값 외부화 `externalize_egovframe_config`(도구 40종·CLI `externalize`) — 공식 portal-site 자리표시자+암호화 키 외부 파일로 실제 기동, 4.x 는 암호화 값 유지·키 수동([결과](#v1130-결과-2026-11-03)).
 - **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.18 이후 세 버전 기획(선행 조사 뒤 작성) — 후보는 [장기 로드맵](#장기-로드맵-2027-v118-이후)의 3단계와 2.0 계약 정리, v1.17 에서 미룬 모아 보는 저장소용 CI 워크플로.
+- **다음 계획**: v1.18 5.1.0 대응 2단계 → v1.19 매퍼·DAO 정합성 점검 → v1.20 AI 조립 5.1.0 모듈 기준([다음 버전 기획](#다음-버전-기획-v118v120), 2026-11-09 선행 조사 반영). 그 뒤 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v121-이후)).
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -103,10 +103,150 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.12 계획** | 사용자 수정 자동 재적용 | `upgrade_egovframe_project`·`reassemble_egovframe_components` 의 `reapply=true`: 남겨 둔 `patches/` 를 원본·현재·목표 3-way 로 자동 적용(충돌 없는 것만), 충돌은 표식 없이 작업 목록, 적용 뒤 사본에서 compile·기동 확인 |
 | **v1.13 계획** | 설정·비밀값 외부화 | 새 도구 `externalize_egovframe_config`(40종): `globals.properties`·`context-datasource.xml`·`application.properties` 의 비밀값을 환경 변수(Boot)·암호화 값+키 환경 변수(Classic)·k8s Secret 으로 옮기고 설정 파일은 자리표시자로, 기동(v1.11)으로 확인 |
 | **v1.14 계획** | 프로젝트 구조 지도·변경 영향 | 새 도구 `map_egovframe_project`(41종): 테이블 → 매퍼 XML → Mapper/DAO → Service → Controller → JSP/URL 그래프, `impact(table\|class\|url)` 조회, 인수인계용 Markdown(화면·URL·DB 접근 표) |
-| **v1.15–v1.17 계획** | 운영 전환·조직 단위 | 운영 준비 점검(`check_egovframe_operations`, 규칙 데이터), 관측 내보내기(`generate_egovframe_deploy(observability)` — OTel 에이전트·수집기까지), 포트폴리오(CLI `portfolio`) — [다음 버전 기획](#다음-버전-기획-v115v117) |
-| **2.0** | 계약 정리 | 폐기 제거, 도구 묶기, 기관별 규칙 팩, MCP tasks, 5.1 기본값 |
+| **v1.15–v1.17 완료** | 운영 전환·조직 단위 | 운영 준비 점검(`check_egovframe_operations`, 규칙 데이터), 관측 내보내기(`generate_egovframe_deploy(observability)` — OTel 에이전트·수집기까지), 포트폴리오(CLI `portfolio`) — [다음 버전 기획](#이전-기획-v115v117-완료) |
+| **v1.18–v1.20 계획** | 5.1.0 과 그 위에서 깨지는 것 | 5.1.0 대응 2단계(소스 브랜치 근거·MVC 예외 응답 상태 보존·`PathPatternRequestMatcher`·Boot 스타터 점검), 매퍼·DAO 정합성(`validate_egovframe_project` 의 `mapper` 검사 — 공통컴포넌트 5.0.7 에 없는 문장 10곳), AI 조립을 5.1.0 AI 모듈(HWP 추출·개인정보 마스킹·인젝션 가드) 기준으로 — [다음 버전 기획](#다음-버전-기획-v118v120) |
+| **2.0** | 계약 정리 | 폐기 제거, 도구 묶기, 기관별 규칙 팩, MCP tasks |
 
-## 다음 버전 기획 (v1.15–v1.17)
+## 다음 버전 기획 (v1.18–v1.20)
+
+v1.17.0 까지 끝난 상태(2026-11-09, 도구 43종 + CLI 명령 20종)에서 다음 세 릴리스를 아래 순서로 진행합니다. v1.15–v1.17 이 운영 전환과 기관 단위 관리를 다뤘다면, 이번 세 버전은 **곧 나올 5.1.0 과 그 위에서 실제로 깨지는 것**을 다룹니다. v1.18 은 5.1.0 이 바꾸는 동작과 새 Boot 스타터의 함정, v1.19 는 컴파일·기동으로는 잡히지 않는 매퍼·DAO 불일치, v1.20 은 5.1.0 의 AI 모듈 위에서 하는 AI 조립입니다. v1.20 이 v1.18 의 5.1.0 근거에 기대므로 이 순서이고, v1.19 는 독립이라 v1.18 이 늦어지면 앞당길 수 있습니다.
+
+### 선행 조사 결과 (2026-11-09)
+
+- **실행환경 5.1.0 Beta**: `egovframe-runtime` 에 `5.1.x` 브랜치가 생겼습니다(11-05 "Update to v5.1.0 Beta", README 배지 `5.1.0(Beta)`). 태그는 아직 없고 최신 태그는 `v5.0.2-Final` 입니다. 소스 pom 의 주요 버전(Spring 6.2.19·Spring Security 6.5.11-egov.1·Spring Batch 5.2.6·Boot parent 3.5.16·Spring AI 1.1.8·LangChain4j 1.18.1)은 v1.3 이 표준프레임워크 Maven 저장소 배포본으로 만든 `dependency-baseline-5.1.json`(10-27 조사)과 같습니다.
+- **5.1.0 에만 있는 모듈**: AI 3종(`egovframe-rte-ai-core`·`ai-springai`·`ai-langchain4j` — HWP·HWPX·DOCX·PDF 텍스트 추출과 추출 한도·zip 폭탄/XXE 차단, 한국어 문장 경계 청킹, 색인 단계 개인정보 마스킹(주민등록번호·카드번호), 프롬프트 인젝션 가드, 어휘 검색·RRF 융합, 감사)과 Boot 스타터 4종(`egovframe-boot-starter-security`·`access`·`crypto`·`logging`). `5.0.x` 브랜치에는 `Boot/` 디렉터리가 없습니다.
+- **Boot 보안 스타터의 함정(스타터 README)**: (1) `Globals.Auth=security` 가 아니면 eGov 보안 설정은 꺼지는데, 스타터가 classpath 에 있으므로 **Spring Boot 기본 보안(모든 URL 인증 요구)이 켜집니다**. (2) `request-matcher-type` 기본값이 `regex` 라 보호자원에 `/admin/**` 같은 PathPattern 이 있으면 **기동이 실패**합니다. README 는 "parent 5.1.0 을 쓰면 스타터 4종이 자동 포함"이라고 하지만 `egovframe-boot-starter-parent` 5.1.0 pom 은 `dependencyManagement` 로 버전만 관리합니다 — 스타터는 의존성을 직접 선언해야 들어옵니다(upstream 에 알릴 것).
+- **개발환경은 이미 5.1.0**: `egovframe-development` main 이 11-03 "5.1.0-templates-v01 기준"으로 예제 프로젝트·분류별 공통컴포넌트 zip·마법사 pom 을 바꿨고, 마법사의 `pom-boot-web.xml` parent 는 `egovframe-boot-starter-parent 5.1.0` 입니다. 즉 Eclipse 마법사로 새로 만든 프로젝트는 지금 5.1.0 입니다. 템플릿 저장소(simple-backend·portal-site 등 11개)에는 5.1 브랜치·태그가 없습니다.
+- **태그 전 동작 변경(5.0.x·5.1.x 둘 다, 09-30)**: `EgovRestExceptionHandler` 가 Spring 표준 예외를 500 으로 바꾸던 것을 상태·헤더 보존(파라미터 검증 400, 인증·인가 예외 위임)으로 고쳤고, WebFlux `EgovExceptionHandler` 도 같습니다(415 `E012`·413 `E013` 신설). 클라이언트·테스트가 500 을 기대하면 결과가 바뀝니다. WebFlux 쪽은 v1.3 규칙(`reactive-exception-response`)에 있고 MVC 쪽은 없습니다.
+- **Spring Security 6.5 폐기 예정**: `AntPathRequestMatcher`·`MvcRequestMatcher` 가 `@Deprecated(forRemoval = true)`(spring-security-web 6.5.5 소스로 확인, 대체는 `PathPatternRequestMatcher`). 공통컴포넌트 5.0.7 에서는 `AuthenticInterceptor` 1곳이 쓰고, main 이 10-27 에 `PathPatternRequestMatcher` 로 바꿨습니다(#1396).
+- **매퍼·DAO 불일치(공통컴포넌트)**: 5.0.7(10-07) 이후 main 에 "DAO 가 부르는 문장 ID 가 매퍼 XML 에 없음" 수정이 3건 들어왔습니다(10-26 — `AdministCodeRecptnDAO`·`InsttCodeRecptnDAO` 호출 4곳, `CnsltManageDAO` 1곳, `BndtManage` 목록 건수 문장이 DB 8종 매퍼 모두에 없음). 5.0.7 태그를 대상으로 간이 스크립트(문자열 ID 호출 1,293곳 ↔ 매퍼 문장 1,260개·namespace 149개)를 돌리면 이 6곳이 모두 나오고, 아직 고쳐지지 않은 `KnoManagementDAO`·`KnoAppraisalDAO` 의 insert·delete 4곳(매퍼에 문장 자체가 없음)이 더 나옵니다. `LoginUsr.updateLoginIncorrect` + 변수 같은 동적 ID 1곳은 접두가 같은 문장 3개가 있어 불일치가 아닙니다. DB 종류별 매퍼 사이에 문장 ID 집합이 다른 곳은 15개입니다. 이 결함은 MyBatis 가 호출할 때에만 실패하므로 컴파일·기동 검증(v1.11)으로는 잡히지 않고, 화면을 눌러야 드러납니다.
+- **그 밖의 upstream 변경**: 공통컴포넌트 업무별 MySQL 스크립트 `utf8mb4` 고정(10-30 — v1.10 이 프로젝트 쪽에서 하던 보정), 이력 ID 같은 밀리초 충돌 재시도(10-27), 개발환경 코드 생성 템플릿의 `javax` → `jakarta`(11-04). `egovframe-ai-rag` 는 9월 이후 문서 변경만 있고 아직 Spring AI 1.0.1 기준입니다 — 5.1.0 AI 모듈을 쓰지 않습니다.
+- **조회 제약**: 이 작업 환경에서 GitHub API(이슈 목록)와 codeload 는 403 이라, 위 내용은 `git` 으로 받은 브랜치·태그·커밋으로 확인했습니다.
+
+### v1.18.0 — 표준프레임워크 5.1.0 대응 2단계 (소스 근거·동작 변경·Boot 스타터)
+
+**왜 필요한가**: 개발환경 마법사가 이미 5.1.0 parent 로 프로젝트를 만들고 있고, 5.1.0 Beta 소스가 공개됐습니다. v1.3 은 태그가 없어 저장소 배포본(sources jar)만으로 5.1.0 규칙을 만들었는데, 그 뒤 들어온 동작 변경(MVC 예외 응답 상태 보존)과 5.1.0 에서 새로 생긴 Boot 스타터 4종은 규칙에 없습니다. 특히 보안 스타터는 넣는 순간 Spring Boot 기본 보안이 켜져 **기동은 되지만 모든 URL 이 401** 이 되는, 컴파일로도 기동 검증으로도 잡히지 않는 함정이 있습니다.
+
+**범위 (포함)**
+- **근거 이중화**: `update-rules.json` 의 5.1.0 근거에 `git-branch`(`5.1.x` 커밋 고정) 근거를 더해 sources jar 와 소스 브랜치를 대조합니다. 차이가 있으면 재배포(같은 번호의 다른 내용)로 보고 drift 알림을 냅니다. `v5.1.0-Final` 태그가 생기면 `git-tag` 로 바꿉니다(데이터만, 코드 변경 없음).
+- **5.0.x → 5.1.0 전환 규칙 추가**(`upgrade_egovframe_project`·`migrate_egovframe_project(target="5.1.0")`):
+  - MVC `EgovRestExceptionHandler` 상태 보존 — 이 클래스를 쓰거나 상속하는 곳과, 테스트에서 500 을 기대하는 단언(`status().isInternalServerError()`·`HttpStatus.INTERNAL_SERVER_ERROR`)을 함께 보고(수동). 5.0.x 다음 PATCH 에도 들어갈 수정이라 5.0.3 이 나오면 그 목표에도 적용.
+  - `AntPathRequestMatcher`·`MvcRequestMatcher` → `PathPatternRequestMatcher` — 리터럴 패턴 하나짜리 생성(`new AntPathRequestMatcher("/x/**")`, 메서드 지정 포함)은 auto, 그 외(변수 패턴·`caseSensitive`·서블릿 경로)는 manual.
+  - Boot 스타터 4종 안내 — Boot 프로젝트가 직접 만든 보안·접근·암호화·로깅 설정(`EgovSecurityConfiguration` 조합, `context-crypto`, 로깅 설정 Bean)을 스타터 속성으로 옮길 수 있는 곳을 보고(manual, 선택). 자동으로 스타터를 넣지는 않습니다.
+- **Boot 스타터 점검 규칙**(`check_egovframe_operations` 규칙 데이터에 추가, 스타터가 의존성에 있을 때만 적용): (1) `egovframe-boot-starter-security` 가 있는데 `Globals.Auth` 가 `security` 가 아니고 Spring Boot 보안 자동구성 제외도 없음 → 높음 (2) `request-matcher-type` 이 `regex`(기본)인데 보호자원 SQL·설정에 PathPattern(`/**`) 형식 → 높음(기동 실패) (3) 패스워드 인코더가 `md5`·`sha` → 중간.
+- **생성 기본값**: `create_egovframe_project` 의 Boot 템플릿 parent 기본값은 그대로 5.0.x 에 둡니다. 5.1.0 은 `rteVersion="5.1.0"`(가칭) 으로 고를 수 있게 하고, 기본값 전환은 `v5.1.0-Final` 태그와 공식 템플릿 저장소 1개 이상의 5.1 반영이 모두 생긴 뒤 MINOR 로 합니다.
+
+**범위 (제외)**: 5.1.0 Beta 를 전환 기본 목표로 삼기, 스타터 자동 삽입, 5.1.0 AI 모듈(→ v1.20), 템플릿 저장소에 없는 마법사 예제 zip 을 카탈로그 템플릿으로 들이기(마법사 전용 자산이라 출처·갱신 주기가 다름 — 태그가 생기면 재검토).
+
+**검증 기준**
+- 단위(게이트): 새 규칙 3종의 auto/manual 판정, 리터럴 matcher 치환 전후, 스타터 점검 규칙의 적용 조건(스타터 없으면 n/a), 근거 대조(같으면 통과·다르면 drift)
+- CI 통합(실자산): 공식 `boot-web`·`simple-backend` 를 `target="5.1.0"` 으로 올려 compile·기동(`verify_egovframe_startup`) 통과. `boot-web` 사본에 보안 스타터만 추가 → HTTP 401 재현과 점검 규칙 높음 1건, `Globals.Auth=security` 와 보호자원 테이블 적재 뒤 200. 공통컴포넌트 5.0.7 에서 matcher 규칙이 `AuthenticInterceptor` 1곳을 찾고 main 에서 0곳.
+
+**완료 정의**: 규칙 데이터(`update-rules.json`·`operations-rules.json`)와 근거 갱신 스크립트, `docs/design-migration.md` 「5.1.0 2단계」절, api-contract minor(파라미터 추가 시), CHANGELOG. 도구 수는 그대로(43종).
+
+### v1.19.0 — 매퍼·DAO 정합성 점검
+
+**왜 필요한가**: 공통컴포넌트처럼 문자열 ID(`selectList("NS.id")`)로 매퍼 문장을 부르는 코드는 ID 가 틀려도 컴파일·기동이 모두 통과하고, 그 화면을 누를 때 `Mapped Statements collection does not contain value` 로 실패합니다. upstream 이 10-26 에 고친 3건이 이 유형이고, 5.0.7 에는 아직 고쳐지지 않은 4곳이 더 있습니다. DB 8종 매퍼를 함께 두는 구조라 한 DB 에만 문장이 빠지는 일도 생깁니다(15곳). v1.14 의 구조 지도가 이미 매퍼 문장·DAO 호출을 읽으므로 그 다음 한 걸음입니다.
+
+**범위 (포함)**
+- `validate_egovframe_project` 에 `mapper` 검사 추가(도구 수 그대로, 구조화 출력 필드 추가 — v1.14 `project-map` 의 해석을 재사용):
+  1. **없는 문장**: DAO 의 문자열 ID 호출(`EgovAbstractMapper`·`SqlSession` 계열 메서드)과 `@Mapper` 인터페이스 메서드가 가리키는 `namespace.id` 가 매퍼 XML 에 없음 → 오류. 문자열 연결로 만든 ID 는 접두가 맞는 문장이 있으면 "동적"으로 따로 셈.
+  2. **DB 종류별 차이**: 같은 namespace 의 DB별 매퍼(`*_SQL_<db>.xml`) 사이 문장 ID 집합 차이 → 경고. `Globals.DbType` 이 정해져 있으면 그 DB 에서 빠진 것은 오류.
+  3. **XML 안 참조**: `<include refid>`·`resultMap` 대상 없음, 같은 namespace 안 ID 중복, 같은 namespace 를 둘 이상의 파일이 선언(DB별 매퍼 제외) → 오류. `parameterType`·`resultType`·`resultMap type` 의 클래스가 소스·의존성에 없음 → 경고(별칭 `egovMap` 등은 알려진 목록).
+- 평가서·납품 패키지(`assessment`) 에 건수 추가, CLI `validate --fail-on mapperMissing>0`.
+- 결과 항목에 호출 위치(파일·라인)와 비슷한 이름의 문장 후보(편집 거리)를 붙임 — upstream 수정 3건 중 2건은 이름이 비슷한 다른 문장이 정답이었습니다.
+
+**범위 (제외)**: 자동 수정(정답 문장을 기계가 정할 수 없음 — 후보만), SQL 문법·컬럼 존재 검사(DB 연결이 필요 — v1.10 의 적재 확인 영역), iBATIS `sqlMap`, 애노테이션 SQL(`@Select`) 본문 해석.
+
+**검증 기준**
+- 단위(게이트): 세 검사 각각의 양성·음성 고정 데이터, 동적 ID, 별칭 클래스, `Globals.DbType` 유무
+- CI 통합(실자산): 공통컴포넌트 5.0.7 태그 = 없는 문장 10곳(upstream 수정 6곳 + 미수정 4곳)·동적 1곳·DB별 차이 15곳(선행 조사 값, 구현 뒤 다시 셈), 같은 저장소 main(10-26 수정 반영) = upstream 수정 6곳이 빠짐, 공식 템플릿 6종 오류 0(오탐 0). 3초 이내(공통컴포넌트 전체).
+
+**완료 정의**: 검사·출력 필드, `docs/design-project-map.md` 「정합성」절, 미수정 4곳 upstream 이슈 제출, api-contract minor, CHANGELOG.
+
+### v1.20.0 — AI 조립을 5.1.0 AI 모듈 기준으로 (`add_ai_components`)
+
+**왜 필요한가**: v0.24 의 `add_ai_components` 는 공식 `egovframe-ai-rag` 샘플(Spring AI 1.0.1)을 복사합니다. 5.1.0 parent 는 Spring AI 1.1.8(`-egov.1` 재빌드)을 관리하므로 5.1.0 프로젝트에 이 샘플을 넣으면 버전이 섞입니다. 5.1.0 이 공공 문서에 필요한 부품(HWP·HWPX 추출, 주민등록번호 마스킹, 프롬프트 인젝션 가드, 감사)을 실행환경 모듈로 제공하므로, 샘플이 직접 구현한 부분을 공식 부품으로 바꾸는 것이 맞습니다.
+
+**범위 (포함)**
+- `add_ai_components` 가 프로젝트 parent 를 보고 고릅니다: 5.1.0 이상이면 `egovframe-rte-ai-springai`(Spring AI) 또는 `ai-langchain4j` 어댑터를 쓰는 조립, 그 아래면 지금과 같은 샘플 조립. 명시 파라미터 `base="sample"|"rte-ai"`.
+- 조립물(5.1.0): 문서 업로드 → `EgovTextExtractors`(HWP·HWPX·DOCX·PDF·Markdown, 추출 한도 기본값) → 문장 경계 청킹 → 색인 단계 개인정보 마스킹 → 임베딩·벡터 저장소(Redis Stack 또는 PGVector) → 질의 시 인젝션 가드 → 하이브리드 검색(RRF) → 응답 정리·감사 로그. 문서 파서 optional 의존(hwplib·hwpxlib·pdfbox·poi-ooxml·commons-compress)은 고른 형식만 pom 에 추가.
+- 모델 연결 설정은 `externalize_egovframe_config`(v1.13) 와 같은 방식으로 환경 변수(API 키·엔드포인트), OpenAI 호환 엔드포인트 기본(공공 폐쇄망의 사내 모델 서버 대응).
+- 보안약점 점검(`check_egovframe_secure_coding`) 에 AI 규칙 3종: 업로드 문서를 추출 한도 없이 파싱, 사용자 입력을 가드 없이 프롬프트에 연결, 모델 API 키 리터럴(기존 비밀값 규칙과 연결).
+
+**범위 (제외)**: 모델 서빙·파인튜닝, 에이전트·도구 호출(MCP 클라이언트) 조립, 화면(채팅 UI 는 샘플의 것을 그대로 — 새로 만들지 않음), 5.1.0 이 아닌 프로젝트에 rte-ai 강제.
+
+**검증 기준**
+- 단위(게이트): parent 판별, 형식별 optional 의존 추가, 가드·마스킹 Bean 연결, AI 규칙 3종 양성·음성
+- CI 통합(실자산): 공식 `boot-web` 을 5.1.0 으로 올린 사본에 두 스택 각각 조립 → compile·기동, OpenAI 호환 스텁 서버로 질의 1건 왕복, hwplib 로 만든 HWP·HWPX 샘플의 추출·색인, 주민등록번호가 든 문서가 색인에서 토큰으로 바뀌는지, 인젝션 문구 질의가 가드에서 막히는지
+
+**완료 정의**: `docs/design-ai-components.md` 「5.1.0 AI 모듈」절, 카탈로그 갱신, api-contract minor, CHANGELOG. 착수 조건: 5.1.0 배포본의 AI 모듈이 v1.18 근거 대조에서 소스 브랜치와 같을 것(다르면 v1.19 를 먼저 끝내고 기다림).
+
+### 장기 로드맵 (2027, v1.21 이후)
+
+v1.18–v1.20 다음의 방향입니다. 세 버전 단위 기획은 직전 버전이 끝날 때 선행 조사로 다시 확인하고 쓰므로, 여기서는 **왜·무엇·어디까지**만 적고 범위·검증은 그때 정합니다. 순서는 의존 관계와 수요 근거 순이며, 한 분기에 3 릴리스(MINOR) 정도의 속도를 유지합니다.
+
+**우선순위 기준** — 기획마다 이 네 가지를 묻고, 둘 이상 "아니오"면 뺍니다.
+1. 지금 사용자가 손으로 반복하는 일인가(포털 Q&A·upstream 이슈·우리 실측에 근거가 있는가)
+2. 결과를 기계적으로 검증할 수 있는가(실자산·CI 통합에서 수치로)
+3. 기존 도구의 다음 한 걸음인가(새 영역보다 끊긴 흐름 잇기)
+4. 표준프레임워크 자체가 아니라 **그것을 쓰는 프로젝트**의 문제인가(프레임워크 문제는 upstream 에 보고)
+
+#### 2단계 — 운영 전환과 조직 단위 운영 (v1.15–v1.17)
+
+[이전 기획](#이전-기획-v115v117-완료)으로 끝냈습니다(2026-11-07). 운영 준비 점검·관측 내보내기·포트폴리오.
+
+#### 2.5단계 — 5.1.0 과 그 위에서 깨지는 것 (v1.18–v1.20)
+
+[위 기획](#다음-버전-기획-v118v120)으로 구체화했습니다(2026-11-09). 5.1.0 Beta 공개와 개발환경 마법사의 5.1.0 전환으로 앞당긴 단계입니다.
+
+#### 3단계 — 2.0 (2027 하반기)
+
+1.x 가 쌓은 것을 정리하는 MAJOR 입니다. 기능보다 **계약 정리**가 목적이며, 1.x 마지막 버전과 같은 기능으로 시작합니다.
+
+- **폐기 제거**: 1.0 부터 deprecated 로 둔 파라미터(`top` 등)와 2.0 이전에 deprecated 될 것들 제거([버전 정책](versioning.md)의 절차대로 최소 2 MINOR 전에 예고).
+- **도구 묶기**: 43종 안팎의 도구를 역할별 입구로 정리(예: `check_*` 5종을 `check_egovframe_project(sections=…)` 하나로도 부를 수 있게 — 기존 이름은 2.x 동안 별칭 유지). AI 클라이언트의 도구 목록이 길어지는 문제에 대한 답.
+- **규칙 팩**: 보안약점·의존성 기준·운영 점검 규칙을 기관이 덮어쓰거나 추가할 수 있는 **규칙 팩 디렉터리**(`EGOVFRAME_RULE_PACKS`) — 기관별 금지 라이브러리, 사내 BOM, 추가 보안 규칙. 동봉 규칙은 그대로 두고 팩이 위에 얹힘.
+- **MCP 신기능**: `tasks` 가 안정되면 장시간 도구(리허설·적재·기동·번들)를 비동기 작업으로. 구조화 출력을 전 도구로.
+- **5.1 기본값**: v1.18 이 조건(`v5.1.0-Final` 태그 + 공식 템플릿 저장소 반영)을 정했습니다. 조건이 1.x 동안 채워지면 MINOR 로 먼저 하고, 2.0 은 그 결과를 이어받습니다.
+
+#### 계속하는 일 (버전과 무관)
+
+- **upstream 추적**: `sync_egovframe_templates` 의 drift 감시가 알리는 새 태그·parent·템플릿을 **분기마다** 반영(카탈로그·기준·규칙 재생성). 5.1.0 은 태그 전 재배포가 잦아 CI 가 알림만 내고 사람이 판단.
+- **외부 기여·보안 제보**: PR 은 기존 게이트 통과 뒤 다음 PATCH/MINOR 에 포함, 제보는 `SECURITY.md` 절차로 기획보다 먼저.
+- **upstream 에 돌려주기**: 우리 실측에서 찾은 프레임워크 자체의 문제(템플릿 parent 5.0.0, Initializr CRUD 결함, 5.1.0 parent 의 EE 9 혼재 등)는 이슈·PR 로 제출. 도구에 우회를 넣기보다 원인을 고치는 쪽.
+- **측정**: 분기마다 npm 다운로드·이슈 유형·도구별 호출 빈도(사용자 보고 기준)를 보고 다음 3 릴리스의 우선순위를 다시 매깁니다. 쓰이지 않는 도구는 2.0 에서 묶거나 뺍니다.
+
+### 검토했지만 뺀 후보
+
+"있으면 좋다"와 "꼭 필요하다"를 나누기 위해 적어 둡니다. 근거가 생기면 다시 올립니다.
+
+| 후보 | 뺀 이유 |
+|---|---|
+| React 프런트(`egovframe-template-simple-react`, 조직에서 가장 많은 별 261) 화면 생성 | 백엔드 REST(`generate_egovframe_crud(profile=boot)`)는 이미 있고, 화면 코드는 프로젝트마다 디자인·상태 관리가 달라 생성물이 곧 버려짐. 템플릿 자체는 카탈로그(`egov-boot-simple-frontend`)에 있음 |
+| 웹 접근성(KWCAG) 정적 점검 | 공공 사이트에 필수이지만 axe 류 전용 도구가 성숙해 있고, JSP 정적 패턴으로는 오탐이 많음. 생성 JSP 가 기본 규칙(label·scope·lang)을 지키는 것으로 충분 |
+| Istio·OpenTelemetry 운영환경 산출물 | 해당 upstream 저장소 별 2개 — 수요 근거 부족. 배포 산출물(v0.45)에 OTel 에이전트 옵션 정도면 됨(요청 시) |
+| iBATIS(sqlMap) → MyBatis 변환 | 공통컴포넌트는 3.10 부터 이미 MyBatis(코퍼스에 sqlMap 0개). 3.x 초기 프로젝트에 남아 있을 수 있으나 표본이 없어 규칙을 검증할 수 없음 — 표본이 들어오면 재검토 |
+| 감리 체크리스트 자동 매핑 | 평가서·납품 패키지가 이미 근거 자료를 묶음. 기관마다 다른 체크리스트 서식을 맞추는 일은 도구보다 문서 작업 |
+| 사용자 수정 재적용을 AI(LLM)에게 맡기기 | 충돌 해소를 모델에게 시키면 "조용한 오동작"을 검증할 수 없습니다. 3-way 로 기계적으로 되는 것만 자동, 나머지는 사람의 작업 목록 — 결과가 결정적이어야 감리 설명이 됩니다 |
+| 비밀값 외부화에서 HashiCorp Vault·클라우드 KMS 연동 | 공공 폐쇄망에 드물고 기관마다 제품이 달라 규칙화할 수 없음. 환경 변수·k8s Secret 까지 옮겨 두면 그다음 연결은 운영팀의 표준 절차 |
+| 구조 지도의 런타임 추적(실행 중 호출 그래프) | 정적 그래프(매퍼 XML·어노테이션)로 인수인계 표는 충분하고, 런타임 추적은 OTel(v1.16)의 영역 |
+| Grafana·Loki·Tempo 를 배포 산출물에 동봉 | upstream 운영환경 가이드가 쓰는 스택이지만 셋 다 AGPL-3.0(가이드 자체가 소스 공개 의무를 경고). 수집기(OTel Collector, Apache-2.0)까지만 만들고 그 뒤 저장소·대시보드는 기관 표준(기존 APM·ELK 등)에 붙이는 안내만 |
+| 운영 점검 결과의 자동 수정(`fix_egovframe_operations`) | 운영 값(풀 크기·타임아웃)은 부하·DB 정책에 따라 다르고 "맞는 값"이 하나가 아니다. 기준 미달과 근거를 보여 주고 사람이 정한다. 로그 레벨·devtools 같은 명백한 것은 v1.15 결과에 바뀔 줄을 제안으로 |
+| 포트폴리오를 웹 대시보드로 | 기관마다 게시 환경이 다르고 정적 Markdown·CSV·JSON 이면 기존 포털·위키·스프레드시트에 붙는다. 서버를 띄우는 제품은 범위 밖 |
+| 5.1.0 Boot 스타터 자동 삽입(`upgrade` 가 보안·접근 스타터를 넣고 기존 설정을 지움) | 스타터를 넣는 순간 인증 동작이 바뀌고(Boot 기본 보안·`Globals.Auth`), 보호자원 테이블·인코더 선택은 기관 보안 정책이다. 옮길 수 있는 곳과 함정만 보고(v1.18) |
+| 매퍼 불일치 자동 수정 | 틀린 ID 의 정답이 비슷한 이름의 문장일 수도, 빠진 문장을 새로 써야 할 수도 있다(upstream 3건 중 1건은 문장 자체가 없었음). 후보만 보이고(v1.19) 사람이 고른다 |
+| 모아 보는 저장소용 CI 워크플로(`generate_egovframe_ci(portfolio=true)`) | v1.17 에서 미룸 — 다른 저장소 아티팩트를 받는 방법·권한이 기관마다 다르다. 예시는 [design-portfolio.md](design-portfolio.md) |
+
+### 보류·운영 항목
+
+- **MCP `tasks`**: SDK 1.32.2 에서도 `experimental/tasks` 입니다. 안정 API 가 되면 장시간 도구(리허설·적재·기동·번들)에 적용합니다.
+- **5.1.0 공식화**: `egovframe-runtime` 에 `5.1.x` 브랜치와 Beta 소스(11-05)가 생겼지만 태그·포털 공지는 아직 없습니다. v1.18 은 Beta 소스를 근거로 더하고, 태그가 생기면 `git-tag` 로 바꿉니다.
+- **egovframe.go.kr 접근**: 포털이 이 작업 환경의 프록시에서 여전히 400 이고, GitHub API·codeload 도 403 입니다. 선행 조사는 `git` 으로 받은 브랜치·태그·커밋으로 합니다. 포털 Q&A 유형 통계는 다음 선행 조사에서 다시 시도합니다.
+- **upstream 에 돌려줄 것**: 지난 기획의 세 가지(`Globals.Hsql.AutoInit=false` 기본값, 템플릿의 `log4jdbc`·DEBUG 로그, `egov-crypto-config.properties` 기본 키)에 더해 — 공통컴포넌트 5.0.7·main 의 `KnoManagementDAO`·`KnoAppraisalDAO` insert·delete 문장 누락(v1.19 실측으로 확인 뒤 이슈), Boot 보안 스타터 README 의 "parent 사용 시 자동 포함" 문구(parent 는 버전 관리만).
+- **외부 기여·보안 제보**: `SECURITY.md` 절차대로 기획보다 먼저.
+
+## 이전 기획 (v1.15–v1.17, 완료)
 
 v1.14.0 까지 끝난 상태(2026-11-04, 도구 41종 + CLI 명령 18종)에서 다음 세 릴리스를 아래 순서로 진행합니다. v1.12–v1.14 가 "업그레이드할 때마다 다시 하는 일"을 없앴다면, 이번 세 버전은 **개발이 끝난 뒤 — 운영으로 넘기고, 운영 중에 보고, 기관 단위로 묶어 보는 일**입니다. 네 질문([우선순위 기준](#장기-로드맵-2027-v118-이후))으로 다시 걸렀고, 그 결과 v1.16 은 장기 로드맵의 "관측 산출물 전체"에서 **OTel 에이전트·수집기까지**로 줄였습니다(아래 선행 조사). 근거는 [선행 조사](#선행-조사-결과-2026-11-04)에, 뺀 후보는 [검토했지만 뺀 후보](#검토했지만-뺀-후보)에 있습니다.
 
@@ -203,64 +343,13 @@ v1.14.0 까지 끝난 상태(2026-11-04, 도구 41종 + CLI 명령 18종)에서 
 - 기획과 달라진 점: (1) **`generate_egovframe_ci(portfolio=true)` 는 미룸** — 여러 저장소의 아티팩트를 받는 방법(GitHub 조직 토큰·GitLab 그룹 토큰·Jenkins copyArtifact)과 권한이 기관마다 달라, 생성 워크플로가 대부분의 기관에서 그대로 돌지 않습니다. 대신 CI 아티팩트를 입력으로 받는 쪽을 완성하고, 아티팩트 내려받기 예시는 [design-portfolio.md](design-portfolio.md)에 둡니다. (2) 입력 옵션은 `--projects` 대신 `--inputs` 하나로 — 세 종류를 섞어 넣고 자동 판별. (3) 필터는 `--only` 한 옵션에 조건 여러 개(쉼표, 모두 만족).
 
 
-### 장기 로드맵 (2027, v1.18 이후)
-
-v1.15–v1.17 다음의 방향입니다. 세 버전 단위 기획은 직전 버전이 끝날 때 선행 조사로 다시 확인하고 쓰므로, 여기서는 **왜·무엇·어디까지**만 적고 범위·검증은 그때 정합니다. 순서는 의존 관계와 수요 근거 순이며, 한 분기에 3 릴리스(MINOR) 정도의 속도를 유지합니다.
-
-**우선순위 기준** — 기획마다 이 네 가지를 묻고, 둘 이상 "아니오"면 뺍니다.
-1. 지금 사용자가 손으로 반복하는 일인가(포털 Q&A·upstream 이슈·우리 실측에 근거가 있는가)
-2. 결과를 기계적으로 검증할 수 있는가(실자산·CI 통합에서 수치로)
-3. 기존 도구의 다음 한 걸음인가(새 영역보다 끊긴 흐름 잇기)
-4. 표준프레임워크 자체가 아니라 **그것을 쓰는 프로젝트**의 문제인가(프레임워크 문제는 upstream 에 보고)
-
-#### 2단계 — 운영 전환과 조직 단위 운영 (v1.15–v1.17)
-
-[위 기획](#다음-버전-기획-v115v117)으로 구체화했습니다(2026-11-04). 방향은 그대로 — 개발이 끝난 뒤 운영으로 넘기는 단계와, 한 기관이 여러 프로젝트를 다루는 상황.
-
-#### 3단계 — 2.0 (2027 하반기)
-
-1.x 가 쌓은 것을 정리하는 MAJOR 입니다. 기능보다 **계약 정리**가 목적이며, 1.x 마지막 버전과 같은 기능으로 시작합니다.
-
-- **폐기 제거**: 1.0 부터 deprecated 로 둔 파라미터(`top` 등)와 2.0 이전에 deprecated 될 것들 제거([버전 정책](versioning.md)의 절차대로 최소 2 MINOR 전에 예고).
-- **도구 묶기**: 39종 안팎의 도구를 역할별 입구로 정리(예: `check_*` 5종을 `check_egovframe_project(sections=…)` 하나로도 부를 수 있게 — 기존 이름은 2.x 동안 별칭 유지). AI 클라이언트의 도구 목록이 길어지는 문제에 대한 답.
-- **규칙 팩**: 보안약점·의존성 기준·운영 점검 규칙을 기관이 덮어쓰거나 추가할 수 있는 **규칙 팩 디렉터리**(`EGOVFRAME_RULE_PACKS`) — 기관별 금지 라이브러리, 사내 BOM, 추가 보안 규칙. 동봉 규칙은 그대로 두고 팩이 위에 얹힘.
-- **MCP 신기능**: `tasks` 가 안정되면 장시간 도구(리허설·적재·기동·번들)를 비동기 작업으로. 구조화 출력을 전 도구로.
-- **5.1 기본값**: 공식 태그·공지가 나오면 전환 목표·생성 기본 parent 를 5.1 로(1.x 에서 MINOR 로 먼저 할 수도 있음 — 태그 시점에 결정).
-
-#### 계속하는 일 (버전과 무관)
-
-- **upstream 추적**: `sync_egovframe_templates` 의 drift 감시가 알리는 새 태그·parent·템플릿을 **분기마다** 반영(카탈로그·기준·규칙 재생성). 5.1.0 은 태그 전 재배포가 잦아 CI 가 알림만 내고 사람이 판단.
-- **외부 기여·보안 제보**: PR 은 기존 게이트 통과 뒤 다음 PATCH/MINOR 에 포함, 제보는 `SECURITY.md` 절차로 기획보다 먼저.
-- **upstream 에 돌려주기**: 우리 실측에서 찾은 프레임워크 자체의 문제(템플릿 parent 5.0.0, Initializr CRUD 결함, 5.1.0 parent 의 EE 9 혼재 등)는 이슈·PR 로 제출. 도구에 우회를 넣기보다 원인을 고치는 쪽.
-- **측정**: 분기마다 npm 다운로드·이슈 유형·도구별 호출 빈도(사용자 보고 기준)를 보고 다음 3 릴리스의 우선순위를 다시 매깁니다. 쓰이지 않는 도구는 2.0 에서 묶거나 뺍니다.
-
-### 검토했지만 뺀 후보
-
-"있으면 좋다"와 "꼭 필요하다"를 나누기 위해 적어 둡니다. 근거가 생기면 다시 올립니다.
-
-| 후보 | 뺀 이유 |
-|---|---|
-| React 프런트(`egovframe-template-simple-react`, 조직에서 가장 많은 별 261) 화면 생성 | 백엔드 REST(`generate_egovframe_crud(profile=boot)`)는 이미 있고, 화면 코드는 프로젝트마다 디자인·상태 관리가 달라 생성물이 곧 버려짐. 템플릿 자체는 카탈로그(`egov-boot-simple-frontend`)에 있음 |
-| 웹 접근성(KWCAG) 정적 점검 | 공공 사이트에 필수이지만 axe 류 전용 도구가 성숙해 있고, JSP 정적 패턴으로는 오탐이 많음. 생성 JSP 가 기본 규칙(label·scope·lang)을 지키는 것으로 충분 |
-| Istio·OpenTelemetry 운영환경 산출물 | 해당 upstream 저장소 별 2개 — 수요 근거 부족. 배포 산출물(v0.45)에 OTel 에이전트 옵션 정도면 됨(요청 시) |
-| iBATIS(sqlMap) → MyBatis 변환 | 공통컴포넌트는 3.10 부터 이미 MyBatis(코퍼스에 sqlMap 0개). 3.x 초기 프로젝트에 남아 있을 수 있으나 표본이 없어 규칙을 검증할 수 없음 — 표본이 들어오면 재검토 |
-| 감리 체크리스트 자동 매핑 | 평가서·납품 패키지가 이미 근거 자료를 묶음. 기관마다 다른 체크리스트 서식을 맞추는 일은 도구보다 문서 작업 |
-
-| 사용자 수정 재적용을 AI(LLM)에게 맡기기 | 충돌 해소를 모델에게 시키면 "조용한 오동작"을 검증할 수 없습니다. 3-way 로 기계적으로 되는 것만 자동, 나머지는 사람의 작업 목록 — 결과가 결정적이어야 감리 설명이 됩니다 |
-| 비밀값 외부화에서 HashiCorp Vault·클라우드 KMS 연동 | 공공 폐쇄망에 드물고 기관마다 제품이 달라 규칙화할 수 없음. 환경 변수·k8s Secret 까지 옮겨 두면 그다음 연결은 운영팀의 표준 절차 |
-| 구조 지도의 런타임 추적(실행 중 호출 그래프) | 정적 그래프(매퍼 XML·어노테이션)로 인수인계 표는 충분하고, 런타임 추적은 OTel(v1.16)의 영역 |
-| Grafana·Loki·Tempo 를 배포 산출물에 동봉 | upstream 운영환경 가이드가 쓰는 스택이지만 셋 다 AGPL-3.0(가이드 자체가 소스 공개 의무를 경고). 수집기(OTel Collector, Apache-2.0)까지만 만들고 그 뒤 저장소·대시보드는 기관 표준(기존 APM·ELK 등)에 붙이는 안내만 |
-| 운영 점검 결과의 자동 수정(`fix_egovframe_operations`) | 운영 값(풀 크기·타임아웃)은 부하·DB 정책에 따라 다르고 "맞는 값"이 하나가 아니다. 기준 미달과 근거를 보여 주고 사람이 정한다. 로그 레벨·devtools 같은 명백한 것은 v1.15 결과에 바뀔 줄을 제안으로 |
-| 포트폴리오를 웹 대시보드로 | 기관마다 게시 환경이 다르고 정적 Markdown·CSV·JSON 이면 기존 포털·위키·스프레드시트에 붙는다. 서버를 띄우는 제품은 범위 밖 |
-
-### 보류·운영 항목
+### 보류·운영 항목 (당시)
 
 - **MCP `tasks`**: SDK 1.32.2 에서도 `experimental/tasks` 입니다. 안정 API 가 되면 장시간 도구(리허설·적재·기동·번들)에 적용합니다.
 - **5.1.0 공식화**: `egovframe-runtime` 에 아직 태그·공지가 없습니다. 태그가 생기면 v1.3 근거를 `git-tag` 로 다시 만들고 전환 기본 목표를 5.1.0 으로 올립니다(MINOR).
 - **egovframe.go.kr 접근**: 포털 위키(운영환경·실행환경 가이드)가 이 작업 환경의 프록시에서 400 을 돌려줘 2026-11-04 선행 조사는 GitHub `egovframe-docs`·`egovframe-operating-environment-msa` 와 템플릿 실측으로 했습니다. 포털 Q&A 유형 통계(`egovframe-mcp-search-upload-data` 는 README 만 있고 데이터는 릴리스 — 조회 불가)는 다음 선행 조사에서 다시 시도합니다.
 - **upstream 에 돌려줄 것**: 포털·업무 템플릿의 `Globals.Hsql.AutoInit=false` 기본값(v1.11), 공식 템플릿의 `log4jdbc`(`DriverSpy`) 기본 사용과 `egovframework` DEBUG 로그(v1.15 선행 조사 — 운영 템플릿 기본값으로는 부적절), `egov-crypto-config.properties` 의 기본 키 `egovframe`(v1.13).
 - **외부 기여·보안 제보**: `SECURITY.md` 절차대로 기획보다 먼저.
-
 
 ## 이전 기획 (v1.12–v1.14, 완료)
 
