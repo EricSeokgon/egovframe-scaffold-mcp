@@ -13,6 +13,11 @@
  *   공백만 다른 것을 빼고 내용이 바뀐 클래스와 새 클래스를 그 단계의 변경으로 본다(근거 evidence.kind = "maven-sources", jar 별 sha256 기록).
  *   태그가 생기면 mavenSteps 에서 그 버전을 빼고 다시 생성한다(git 태그 비교로 바뀜).
  *
+ *   v1.18: mavenSteps 에 branch(예: "5.1.x")가 있으면 그 브랜치 소스를 두 번째 근거로 더한다 — 직전 태그 → 브랜치 끝의 변경 클래스를
+ *   git 으로 구해 sources jar 비교와 맞춰 보고(브랜치에만 있는 변경·배포본에만 있는 변경), 큐레이션 검증은 둘의 합집합으로 한다.
+ *   Boot 스타터(org.egovframe.boot.*)처럼 RTE BOM 밖의 모듈 클래스는 브랜치 근거로만 검증된다.
+ *   --reuse-maven: 저장소에 닿지 못할 때 기존 update-rules.json 의 sources jar 근거(모듈별 sha256)와 그 버전의 parent 속성을 그대로 쓰고 브랜치 근거만 새로 만든다(대조는 생략, compared=false).
+ *
  * 사용법:
  *   node scripts/generate-update-rules.mjs --runtime-dir <egovframe-runtime clone> [--m2 ~/.m2/repository]
  *   node scripts/generate-update-rules.mjs            # 임시 디렉터리에 부분 클론, parent pom 은 mvn dependency:get 으로 받음
@@ -42,6 +47,8 @@ if (!runtimeDir) {
   runtimeDir = path.join(tmp, "runtime");
   execFileSync("git", ["clone", "-q", "--filter=blob:none", `https://github.com/${REPO}.git`, runtimeDir], { stdio: "inherit" });
 }
+const reuseMaven = process.argv.includes("--reuse-maven");
+const previous = fs.existsSync(OUT_JSON) ? JSON.parse(fs.readFileSync(OUT_JSON, "utf8")) : null;
 const m2 = arg("--m2") ?? path.join(os.homedir(), ".m2", "repository");
 const mapping = JSON.parse(fs.readFileSync(MAPPING_PATH, "utf8"));
 
@@ -72,9 +79,32 @@ try {
   const javaSources = (buf) => { const out = new Map(); for (const e of new AdmZip(buf).getEntries()) if (e.entryName.endsWith(".java") && !e.isDirectory) out.set(e.entryName.replace(/\.java$/, "").split("/").join("."), e.getData().toString("utf8").replace(/\s+/g, " ").trim()); return out; };
   const mavenSteps = [];
   let mavenLatestClasses = null;
+  const classOf = (f) => f.replace(/^.*\/src\/main\/java\//, "").replace(/\.java$/, "").split("/").join(".");
   for (const ms of mapping.mavenSteps ?? []) {
     if (versions.includes(ms.version)) throw new Error(`mavenSteps ${ms.version} 는 이미 태그가 있습니다 — update-mapping.json 의 mavenSteps 에서 빼세요`);
     const prev = versions[versions.length - 1];
+    // v1.18: 브랜치 근거
+    let branch = null, branchChanged = null, branchAll = null;
+    if (ms.branch) {
+      const ref = git(runtimeDir, ["rev-parse", "--verify", "-q", `origin/${ms.branch}`]).trim() || git(runtimeDir, ["rev-parse", "--verify", "-q", ms.branch]).trim();
+      if (!ref) throw new Error(`브랜치 ${ms.branch} 가 ${REPO} 클론에 없습니다`);
+      branchChanged = new Set(git(runtimeDir, ["diff", "--name-only", `v${prev}-Final`, ref, "--", "*src/main/java/*"]).split("\n").filter(Boolean).map(classOf));
+      branchAll = new Set(git(runtimeDir, ["ls-tree", "-r", "--name-only", ref]).split("\n").filter((f) => f.includes("/src/main/java/") && f.endsWith(".java")).map(classOf));
+      const pomVersion = git(runtimeDir, ["show", `${ref}:pom.xml`]).replace(/<parent>[\s\S]*?<\/parent>/, "").match(/<version>\s*([^<\s]+)\s*<\/version>/)?.[1] ?? null;
+      if (pomVersion !== ms.version) throw new Error(`브랜치 ${ms.branch} 의 pom 버전(${pomVersion})이 ${ms.version} 가 아닙니다`);
+      branch = { name: ms.branch, commit: ref, committedAt: git(runtimeDir, ["show", "-s", "--format=%cs", ref]).trim(), changed: branchChanged.size };
+    }
+    if (reuseMaven) {
+      const old = previous?.source?.mavenSteps?.find((x) => x.version === ms.version);
+      if (!old) throw new Error(`--reuse-maven: 기존 update-rules.json 에 ${ms.version} sources jar 근거가 없습니다`);
+      if (!branchChanged) throw new Error(`--reuse-maven 은 branch 근거가 있는 단계에만 씁니다(${ms.version})`);
+      steps[ms.version] = branchChanged;
+      mavenLatestClasses = branchAll;
+      mavenSteps.push({ ...old, reason: ms.reason, reason_en: ms.reason_en, branch: { ...branch, compared: false } });
+      versions.push(ms.version);
+      console.log(`mavenStep ${prev} → ${ms.version}: sources jar 근거 재사용, 브랜치 ${branch.name}@${branch.commit.slice(0, 7)} 변경 클래스 ${branchChanged.size}`);
+      continue;
+    }
     const bom = await fetchBuf(rteUrl("egovframe-rte-root", ms.version, ".pom"));
     if (!bom) throw new Error(`egovframe-rte-root ${ms.version} 가 저장소에 없습니다`);
     const dm = bom.toString("utf8").match(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/)?.[0] ?? "";
@@ -91,9 +121,19 @@ try {
       for (const [cls, text] of nb) { all.add(cls); if (ob.get(cls) !== text) { changed.add(cls); n++; } }
       evidence.push({ artifactId: a, from: before ? { version: prev, sha256: sha256(before) } : null, to: { version: ms.version, sha256: sha256(next) }, changed: n });
     }
-    steps[ms.version] = changed;
-    mavenLatestClasses = all;
-    mavenSteps.push({ version: ms.version, kind: "maven-sources", from: prev, reason: ms.reason, reason_en: ms.reason_en, bom: { url: rteUrl("egovframe-rte-root", ms.version, ".pom"), sha256: sha256(bom) }, modules: evidence });
+    if (branch) {
+      // RTE 모듈 클래스만 맞춰 본다(Boot 스타터는 sources jar 근거 밖). 공백만 다른 변경은 jar 비교가 빼므로 브랜치 쪽에만 남을 수 있다
+      const rteOnly = (s) => [...s].filter((c) => c.startsWith("org.egovframe.rte.") && all.has(c));
+      const onlyInBranch = rteOnly(branchChanged).filter((c) => !changed.has(c)).sort();
+      const onlyInMaven = [...changed].filter((c) => !branchChanged.has(c)).sort();
+      branch.compared = true;
+      branch.onlyInBranch = { count: onlyInBranch.length, sample: onlyInBranch.slice(0, 10) };
+      branch.onlyInMaven = { count: onlyInMaven.length, sample: onlyInMaven.slice(0, 10) };
+      if (onlyInMaven.length) console.warn(`경고: ${ms.version} 배포본에만 있는 변경 ${onlyInMaven.length}건 — 브랜치 ${ms.branch} 와 다릅니다(재배포 의심)`);
+    }
+    steps[ms.version] = branchChanged ? new Set([...changed, ...branchChanged]) : changed;
+    mavenLatestClasses = branchAll ? new Set([...all, ...branchAll]) : all;
+    mavenSteps.push({ version: ms.version, kind: "maven-sources", from: prev, reason: ms.reason, reason_en: ms.reason_en, bom: { url: rteUrl("egovframe-rte-root", ms.version, ".pom"), sha256: sha256(bom) }, modules: evidence, ...(branch ? { branch } : {}) });
     versions.push(ms.version);
     console.log(`mavenStep ${prev} → ${ms.version}: 모듈 ${modules.length}종, 변경·추가 클래스 ${changed.size}`);
   }
@@ -111,6 +151,9 @@ try {
   const parents = mapping.parents.map((p) => {
     const byVersion = {};
     for (const v of versions) {
+      // --reuse-maven: 태그 없는 버전의 parent 는 저장소에서 다시 받지 못하므로(로컬 캐시는 재배포 전 사본일 수 있음) 기존 근거를 쓴다
+      const reused = reuseMaven && mavenSteps.some((m) => m.version === v) ? previous?.parents?.find((x) => x.artifactId === p.artifactId)?.versions?.[v] : null;
+      if (reused) { byVersion[v] = reused; continue; }
       const text = readPom(p.groupId, p.artifactId, v);
       const props = {};
       const block = text.match(/<properties>([\s\S]*?)<\/properties>/)?.[1] ?? "";
@@ -132,8 +175,8 @@ try {
       if (!latestClassSet.has(cls)) throw new Error(`${c.id}: ${cls} 가 ${effectiveLatest} 에 없습니다`);
       if (!steps[c.since].has(cls)) throw new Error(`${c.id}: ${cls} 는 ${stepFrom} → ${c.since} 에서 바뀌지 않았습니다`);
     }
-    const viaMaven = mavenSteps.some((m) => m.version === c.since);
-    return { ...c, action: "manual", evidence: viaMaven ? { kind: "maven-sources", from: stepFrom, to: c.since } : { fromTag: `v${stepFrom}-Final`, toTag: `v${c.since}-Final` } };
+    const ms = mavenSteps.find((m) => m.version === c.since);
+    return { ...c, action: "manual", evidence: ms ? { kind: "maven-sources", from: stepFrom, to: c.since, ...(ms.branch ? { branch: ms.branch.name, commit: ms.branch.commit } : {}) } : { fromTag: `v${stepFrom}-Final`, toTag: `v${c.since}-Final` } };
   });
 
   const out = {
@@ -145,7 +188,7 @@ try {
     versions, latest: effectiveLatest,
     // v1.3: 기본 목표(생성 alignParent·target 생략 시). 태그 없는 버전은 명시 target 으로만 쓴다
     recommended: mapping.recommended ?? latest,
-    ...(mavenSteps.length ? { provisional: mavenSteps.map((m) => ({ version: m.version, kind: m.kind, reason: m.reason, reason_en: m.reason_en })) } : {}),
+    ...(mavenSteps.length ? { provisional: mavenSteps.map((m) => ({ version: m.version, kind: m.kind, reason: m.reason, reason_en: m.reason_en, ...(m.branch ? { branch: m.branch.name, commit: m.branch.commit } : {}) })) } : {}),
     rteVersionProperties: mapping.rteVersionProperties,
     parents,
     changes,

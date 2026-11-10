@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "surveyedAt": "2026-10-22",
+  "surveyedAt": "2026-11-10",
   "generatedBy": "scripts/generate-update-rules.mjs",
   "note": "5.x 안의 갱신(migrate_egovframe_project target=5.0.x) 규칙. parent·RTE 버전은 auto, 바뀐 API·동작은 프로젝트가 그 클래스를 참조할 때만 manual 로 보고한다.",
   "source": {
@@ -28,8 +28,8 @@
         "version": "5.1.0",
         "kind": "maven-sources",
         "from": "5.0.2",
-        "reason": "GitHub egovframe-runtime 에 v5.1.0-Final 태그가 없어(2026-10-22) 표준프레임워크 Maven 저장소의 5.0.2·5.1.0 sources jar 를 비교한다",
-        "reason_en": "egovframe-runtime has no v5.1.0-Final tag on GitHub (2026-10-22), so the 5.0.2 and 5.1.0 sources jars from the eGovFrame Maven repository are compared",
+        "reason": "GitHub egovframe-runtime 에 v5.1.0-Final 태그가 없어(2026-11-10) 표준프레임워크 Maven 저장소의 5.0.2·5.1.0 sources jar 비교에 5.1.x 브랜치(5.1.0 Beta 소스, 2026-11-05) 비교를 더한다",
+        "reason_en": "egovframe-runtime has no v5.1.0-Final tag on GitHub (2026-11-10), so the 5.0.2 and 5.1.0 sources jars from the eGovFrame Maven repository are compared, together with the 5.1.x branch (5.1.0 Beta sources, 2026-11-05)",
         "bom": {
           "url": "https://maven.egovframe.go.kr/maven/org/egovframe/rte/egovframe-rte-root/5.1.0/egovframe-rte-root-5.1.0.pom",
           "sha256": "8a6b085f849b4c32a6ef4cf372a61b76f2d7d2b3f96389191bf6bf19a7b76292"
@@ -350,7 +350,14 @@
             },
             "changed": 3
           }
-        ]
+        ],
+        "branch": {
+          "name": "5.1.x",
+          "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918",
+          "committedAt": "2026-11-05",
+          "changed": 678,
+          "compared": false
+        }
       }
     ]
   },
@@ -366,8 +373,10 @@
     {
       "version": "5.1.0",
       "kind": "maven-sources",
-      "reason": "GitHub egovframe-runtime 에 v5.1.0-Final 태그가 없어(2026-10-22) 표준프레임워크 Maven 저장소의 5.0.2·5.1.0 sources jar 를 비교한다",
-      "reason_en": "egovframe-runtime has no v5.1.0-Final tag on GitHub (2026-10-22), so the 5.0.2 and 5.1.0 sources jars from the eGovFrame Maven repository are compared"
+      "reason": "GitHub egovframe-runtime 에 v5.1.0-Final 태그가 없어(2026-11-10) 표준프레임워크 Maven 저장소의 5.0.2·5.1.0 sources jar 비교에 5.1.x 브랜치(5.1.0 Beta 소스, 2026-11-05) 비교를 더한다",
+      "reason_en": "egovframe-runtime has no v5.1.0-Final tag on GitHub (2026-11-10), so the 5.0.2 and 5.1.0 sources jars from the eGovFrame Maven repository are compared, together with the 5.1.x branch (5.1.0 Beta sources, 2026-11-05)",
+      "branch": "5.1.x",
+      "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918"
     }
   ],
   "rteVersionProperties": [
@@ -1072,7 +1081,9 @@
       "evidence": {
         "kind": "maven-sources",
         "from": "5.0.2",
-        "to": "5.1.0"
+        "to": "5.1.0",
+        "branch": "5.1.x",
+        "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918"
       }
     },
     {
@@ -1091,7 +1102,9 @@
       "evidence": {
         "kind": "maven-sources",
         "from": "5.0.2",
-        "to": "5.1.0"
+        "to": "5.1.0",
+        "branch": "5.1.x",
+        "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918"
       }
     },
     {
@@ -1110,7 +1123,9 @@
       "evidence": {
         "kind": "maven-sources",
         "from": "5.0.2",
-        "to": "5.1.0"
+        "to": "5.1.0",
+        "branch": "5.1.x",
+        "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918"
       }
     },
     {
@@ -1130,7 +1145,9 @@
       "evidence": {
         "kind": "maven-sources",
         "from": "5.0.2",
-        "to": "5.1.0"
+        "to": "5.1.0",
+        "branch": "5.1.x",
+        "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918"
       }
     },
     {
@@ -1148,14 +1165,43 @@
       "evidence": {
         "kind": "maven-sources",
         "from": "5.0.2",
-        "to": "5.1.0"
+        "to": "5.1.0",
+        "branch": "5.1.x",
+        "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918"
+      }
+    },
+    {
+      "id": "boot-starter-autoconfig",
+      "since": "5.1.0",
+      "kind": "behavior",
+      "classes": [
+        "org.egovframe.boot.security.EgovSecurityConfiguration",
+        "org.egovframe.boot.access.EgovAccessConfiguration",
+        "org.egovframe.boot.crypto.EgovCryptoConfiguration"
+      ],
+      "artifacts": [
+        "egovframe-boot-starter-security",
+        "egovframe-boot-starter-access",
+        "egovframe-boot-starter-crypto"
+      ],
+      "summary": "eGov Boot 스타터가 자동구성(@AutoConfiguration)으로 바뀜",
+      "summary_en": "eGov Boot starters became auto-configurations (@AutoConfiguration)",
+      "reason": "5.0.x 의 egovframe-boot-starter-security·access·crypto 는 일반 @Configuration 이라 org.egovframe.boot 패키지를 스캔해야 적용됐지만, 5.1.0 은 AutoConfiguration.imports 로 의존성만 있으면 적용된다(security 는 Globals.Auth=security, access 는 Globals.Auth=session 일 때, crypto 는 조건 없음). 예전에 스캔하지 않아 꺼져 있던 설정이 켜지며 보호자원 테이블(SECURED_RESOURCES 등)·암호화 속성을 찾는다. 스타터가 끌어오는 spring-boot-starter-security 때문에 Globals.Auth 가 security 가 아니면 Spring Boot 기본 보안(모든 URL 인증)이 켜진다 — check_egovframe_operations 의 egov-security-* 규칙으로 확인한다.",
+      "reason_en": "In 5.0.x egovframe-boot-starter-security, access and crypto were plain @Configuration classes that applied only if the org.egovframe.boot package was scanned; in 5.1.0 they are listed in AutoConfiguration.imports and apply as soon as the dependency is present (security when Globals.Auth=security, access when Globals.Auth=session, crypto unconditionally). Configuration that was off because it was never scanned turns on and looks for the secured-resource tables (SECURED_RESOURCES etc.) and crypto properties. Because the starter pulls in spring-boot-starter-security, Spring Boot's default security (every URL requires authentication) is active unless Globals.Auth=security — check with the egov-security-* rules of check_egovframe_operations.",
+      "action": "manual",
+      "evidence": {
+        "kind": "maven-sources",
+        "from": "5.0.2",
+        "to": "5.1.0",
+        "branch": "5.1.x",
+        "commit": "cd9938f5471a0f17afc8fbb234b15703f1d8f918"
       }
     }
   ],
   "stepClassCounts": {
     "5.0.1": 109,
     "5.0.2": 66,
-    "5.1.0": 161
+    "5.1.0": 678
   },
   "components": {
     "repository": "eGovFramework/egovframe-common-components",

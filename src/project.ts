@@ -6,12 +6,13 @@ import { withDirectoryTransaction } from "./file-transaction.js";
 import { createHash } from "node:crypto";
 import { COMPONENTS_DOWNLOAD_TIMEOUT_MS, DOWNLOAD_TIMEOUT_MS, fetchWithTimeout } from "./shared.js";
 import { applyTextEdits } from "./migrate.js";
-import { loadUpdateRules, planPomUpdate, recommendedVersion } from "./update.js";
+import { loadUpdateRules, planPomUpdate, provisionalOf, recommendedVersion } from "./update.js";
+import { planJunit6Items } from "./request-matcher.js";
 
-/** v0.46 alignParent: pom 텍스트의 5.x parent·RTE 버전을 최신 5.0.x 로 맞춘다(순수 함수). */
-export function alignPom(pom: string): { text: string; aligned: { from: string; to: string }[] } {
+/** v0.46 alignParent: pom 텍스트의 5.x parent·RTE 버전을 최신 5.0.x 로 맞춘다(순수 함수). v1.18: target 으로 다른 5.x 버전(예: 5.1.0) */
+export function alignPom(pom: string, target?: string): { text: string; aligned: { from: string; to: string }[] } {
   const rules = loadUpdateRules();
-  const plan = planPomUpdate("pom.xml", pom, recommendedVersion(rules), rules);
+  const plan = planPomUpdate("pom.xml", pom, target ?? recommendedVersion(rules), rules);
   if (!plan.items.length) return { text: pom, aligned: [] };
   const { text } = applyTextEdits(pom, plan.items.flatMap((i) => i.edits ?? []));
   return { text, aligned: plan.items.map((i) => ({ from: i.from, to: i.to ?? "" })) };
@@ -309,6 +310,8 @@ export interface CreateOptions {
   dryRun?: boolean;
   /** v0.46: true 면 생성 직후 pom 의 5.x parent·RTE 버전을 최신 5.0.x 로 맞춘다(기본 false = 공식 템플릿 그대로) */
   alignParent?: boolean;
+  /** v1.18: 생성 직후 pom 의 5.x parent·RTE 버전을 이 버전으로(update-rules 의 versions 중 하나, 예: "5.1.0"). alignParent 를 함의 */
+  rteVersion?: string;
   /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
   faultInjection?: "after-extract" | "after-customize";
 }
@@ -371,6 +374,10 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     throw new Error(`groupId는 자바 패키지 형식이어야 합니다 (예: egovframework.example): ${opts.groupId}`);
   if (!DB_TYPES.includes(opts.database))
     throw new Error(`database는 ${DB_TYPES.join("|")} 중 하나여야 합니다: ${opts.database}`);
+  // v1.18: rteVersion(예: 5.1.0) — alignParent 를 함의
+  const updateRules = loadUpdateRules();
+  if (opts.rteVersion !== undefined && !updateRules.versions.includes(opts.rteVersion)) throw new Error(`rteVersion 은 ${updateRules.versions.join("·")} 중 하나여야 합니다: ${opts.rteVersion}`);
+  const alignTo: string | null = opts.rteVersion ?? (opts.alignParent ? recommendedVersion(updateRules) : null);
 
   const ref = (opts.ref ?? tpl.branch).trim();
   if (!REF_RE.test(ref))
@@ -434,13 +441,13 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
       customized.push("멀티 프로젝트 템플릿 — 좌표/DB 설정 자동 적용 없음 (하위 프로젝트별 README 참조)");
     } else {
       if (hasPom) customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName}) — 적용 예정`);
-      if (hasPom && opts.alignParent) {
+      if (hasPom && alignTo) {
         const pomEntry = entries.find((e) => rel(e.entryName) === "pom.xml");
-        const plan = pomEntry ? alignPom(pomEntry.getData().toString("utf8")) : null;
+        const plan = pomEntry ? alignPom(pomEntry.getData().toString("utf8"), alignTo) : null;
         if (plan?.aligned.length) {
           aligned.push(...plan.aligned);
-          customized.push(`pom.xml 5.x 최신 유지(alignParent): ${plan.aligned.map((x) => `${x.from} → ${x.to}`).join(", ")} — 적용 예정`);
-        } else if (plan) customized.push("pom.xml 5.x 최신 유지(alignParent): 이미 최신 — 바꿀 항목 없음");
+          customized.push(`pom.xml 5.x 버전 맞춤(${alignTo}): ${plan.aligned.map((x) => `${x.from} → ${x.to}`).join(", ")} — 적용 예정`);
+        } else if (plan) customized.push(`pom.xml 5.x 버전 맞춤(${alignTo}): 이미 최신 — 바꿀 항목 없음`);
       }
       if (hasProps) customized.push(`src/main/resources/application.properties (Globals.DbType=${opts.database}) — 적용 예정`);
       if (hasGlobals) customized.push(`${GLOBALS_PROPS_REL} (Globals.DbType=${opts.database}) — 적용 예정`);
@@ -454,7 +461,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
       ref: effectiveRef,
       dryRun: true,
       archiveVerified,
-      ...(opts.alignParent ? { aligned } : {}),
+      ...(alignTo ? { aligned } : {}),
       nextSteps: [`미리보기 모드입니다. 실제 생성하려면 dryRun 없이 다시 호출하세요.`],
     };
   }
@@ -485,13 +492,34 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
       const filled = applyPomPlaceholders(pom, opts.groupId, opts.projectName);
       pom = customizePomCoordinates(filled.pom, opts.groupId, opts.projectName);
       customized.push(`pom.xml (groupId=${opts.groupId}, artifactId/name=${opts.projectName})`);
-      if (opts.alignParent) {
-        const plan = alignPom(pom);
+      if (alignTo) {
+        const plan = alignPom(pom, alignTo);
         if (plan.aligned.length) {
           pom = plan.text;
           aligned.push(...plan.aligned);
-          customized.push(`pom.xml 5.x 최신 유지(alignParent): ${plan.aligned.map((x) => `${x.from} → ${x.to}`).join(", ")}`);
-        } else customized.push("pom.xml 5.x 최신 유지(alignParent): 이미 최신 — 바꿀 항목 없음");
+          customized.push(`pom.xml 5.x 버전 맞춤(${alignTo}): ${plan.aligned.map((x) => `${x.from} → ${x.to}`).join(", ")}`);
+          if (provisionalOf(alignTo, updateRules)) customized.push(`${alignTo} 은 GitHub 태그·공식 공지 전 버전입니다(저장소 배포본·5.1.x 브랜치 근거) — 운영 프로젝트는 태그 뒤에 올리세요. 보안·접근·암호화 스타터는 이 버전부터 자동구성입니다(check_egovframe_operations 의 egov-security-* 규칙)`);
+        } else customized.push(`pom.xml 5.x 버전 맞춤(${alignTo}): 이미 최신 — 바꿀 항목 없음`);
+        // v1.18: 목표 parent 가 JUnit Jupiter 6 이면 템플릿 테스트의 MediaType 모호성(와일드카드 import 겹침)을 함께 고친다(simple-backend 실측)
+        const kind = /egovframe-web-config-parent/.test(pom) ? "web" : "boot";
+        const jv = updateRules.parents.find((x) => x.kind === kind)?.versions[alignTo]?.properties["junit-jupiter.version"];
+        if (jv && Number(jv.split(".")[0]) >= 6) {
+          const testRoot = path.join(stagingPath, "src", "test", "java");
+          const stack = fs.existsSync(testRoot) ? [testRoot] : [];
+          let fixed = 0;
+          while (stack.length) {
+            const dir = stack.pop()!;
+            for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+              const p = path.join(dir, e.name);
+              if (e.isDirectory()) { stack.push(p); continue; }
+              if (!e.name.endsWith(".java")) continue;
+              const t = fs.readFileSync(p, "utf8");
+              const its = planJunit6Items(e.name, t);
+              if (its.length) { fs.writeFileSync(p, applyTextEdits(t, its.flatMap((i) => i.edits ?? [])).text); fixed++; }
+            }
+          }
+          if (fixed) customized.push(`JUnit Jupiter ${jv}(${alignTo} parent): 테스트 ${fixed}개에 MediaType 단일 import 추가(와일드카드 import 겹침)`);
+        }
       }
       fs.writeFileSync(pomPath, pom);
     }
@@ -598,7 +626,7 @@ export async function createProjectInternal(opts: CreateOptions, transactionStag
     "자바 패키지 구조 변경(groupId에 맞춘 소스 이동)은 PoC 범위 밖입니다 — IDE의 rename refactoring 사용을 권장합니다.",
   ];
 
-  return { projectPath, filesExtracted: count, customized, nextSteps, ref: effectiveRef, dryRun: false, archiveVerified, ...(opts.alignParent ? { aligned } : {}) };
+  return { projectPath, filesExtracted: count, customized, nextSteps, ref: effectiveRef, dryRun: false, archiveVerified, ...(alignTo ? { aligned } : {}) };
 }
 
 /** 템플릿 zip 다운로드 → 압축 해제 → 사용자 값 적용 (dryRun이면 미리보기만) */

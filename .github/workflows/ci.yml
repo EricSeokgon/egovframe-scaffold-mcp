@@ -163,6 +163,8 @@ jobs:
         run: npm run test:operations-live
       - name: Portfolio of 8 projects (6 official templates and the 3.10.0 / 4.3.2 corpus, same rows from project, delivery package and CI artifact inputs)
         run: npm run test:portfolio-live
+      - name: eGovFrame 5.1.0 stage 2 (boot-web and simple-backend on 5.1.0 start, JUnit 6 MediaType fix, security starter 401 / regex matcher startup failure / url matcher 200, common components AuthenticInterceptor)
+        run: npm run test:rte51-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)

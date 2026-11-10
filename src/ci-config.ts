@@ -146,8 +146,12 @@ export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary
 }
 const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", "egovframe-assessment.json", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : []), ...(opts.delivery ? [`${DELIVERY_DIR}/**`] : [])];
 
-/** GitLab supply-chain job 준비: Node 22 이상 보장(v1.0, engines >=22) */
-export const NODE22_ENSURE = `node -e "process.exit(+process.versions.node.split('.')[0] >= 22 ? 0 : 1)" 2>/dev/null || ((command -v npm >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq nodejs npm)) && npm install -g -s node@22)`;
+/**
+ * GitLab supply-chain job 준비: Node 22 이상 보장(v1.0, engines >=22)
+ * v1.18: 먼저 nodejs.org 의 최신 22.x 공식 tarball(SHASUMS256 대조)을 /usr/local 에 푼다 — 배포판 apt 미러가 막히면
+ * (archive.ubuntu.com 연결 시간 초과로 실제 CI 실패) 그때만 예전 경로(apt nodejs·npm → npm 의 node@22)로 넘어간다.
+ */
+export const NODE22_ENSURE = `node -e "process.exit(+process.versions.node.split('.')[0] >= 22 ? 0 : 1)" 2>/dev/null || (command -v curl >/dev/null 2>&1 && a=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/') && u=https://nodejs.org/dist/latest-v22.x && curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -o /tmp/node-sums.txt $u/SHASUMS256.txt && f=$(grep -o "node-v22[0-9.]*-linux-$a.tar.gz" /tmp/node-sums.txt | head -1) && [ -n "$f" ] && curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -o /tmp/$f $u/$f && (cd /tmp && grep " $f$" node-sums.txt | sha256sum -c - >/dev/null) && tar -xzf /tmp/$f -C /usr/local --strip-components=1 --exclude=README.md --exclude=LICENSE --exclude=CHANGELOG.md && node --version) || ((command -v npm >/dev/null 2>&1 || (apt-get -o Acquire::Retries=3 update -qq && apt-get install -y -qq nodejs npm)) && npm install -g -s node@22)`;
 
 // ── GitHub Actions ───────────────────────────────────────
 /** 공급망 게이트 job(v0.39, v0.43 에 sbom-check 단계): SBOM 생성 → 최소 요소 점검 → 평가서(등급을 PR 요약에) → 아티팩트. */

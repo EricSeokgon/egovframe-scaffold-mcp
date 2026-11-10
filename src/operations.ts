@@ -11,7 +11,7 @@ export type OpsSeverity = "high" | "medium" | "low";
 export type OpsTarget = "properties" | "yaml" | "xml" | "web-xml" | "log4j2" | "logback" | "pom" | "gradle";
 export interface OpsRule {
   id: string; category: string; severity: OpsSeverity; title: string; title_en?: string;
-  check: { kind: "line" | "lacks" | "pom" | "session-timeout" | "upload" | "profile" | "secrets"; targets?: OpsTarget[]; pattern?: string; unless?: string; requires?: string; artifact?: string; maxMinutes?: number; maxBytes?: number };
+  check: { kind: "line" | "lacks" | "pom" | "session-timeout" | "upload" | "profile" | "secrets" | "egov-security"; targets?: OpsTarget[]; pattern?: string; unless?: string; requires?: string; artifact?: string; maxMinutes?: number; maxBytes?: number; /** v1.18 egov-security: default-chain | matcher-type | weak-hash */ mode?: "default-chain" | "matcher-type" | "weak-hash" };
   message: string; message_en?: string; fix: string; fix_en?: string; basis: string; basis_en?: string;
 }
 export interface OpsRules { schemaVersion: number; surveyedAt: string; sources: { name: string; name_en?: string }[]; categories: { id: string; label: string; labelEn: string }[]; rules: OpsRule[] }
@@ -80,6 +80,33 @@ export function classifyOpsFile(r: string): OpsTarget | null {
   if (/\.xml$/.test(base)) return "xml";
   return null;
 }
+/** properties·yml 을 평평한 키 → 값으로(yml 은 들여쓰기 기반의 단순 해석 — 스칼라 값만). 같은 키는 뒤 파일이 이긴다 */
+export function flattenConfig(files: { type: string; text: string }[]): Map<string, { value: string; index: number; file: number }> {
+  const out = new Map<string, { value: string; index: number; file: number }>();
+  const norm = (k: string) => k.toLowerCase().replace(/[-_]/g, "");
+  files.forEach((f, fi) => {
+    if (f.type === "properties") {
+      let idx = 0;
+      for (const ln of f.text.split("\n")) { const m = ln.match(/^\s*([^#!=:\s][^=:\s]*)\s*[=:]\s*(.*?)\s*$/); if (m) out.set(norm(m[1]), { value: m[2], index: idx, file: fi }); idx += ln.length + 1; }
+      return;
+    }
+    const stack: { indent: number; key: string }[] = [];
+    let idx = 0;
+    for (const ln of f.text.split("\n")) {
+      const at = idx; idx += ln.length + 1;
+      if (/^\s*(#|$|-)/.test(ln) || /^---/.test(ln)) continue;
+      const m = ln.match(/^(\s*)([^:#]+?)\s*:(?:\s+(.*?))?\s*$/);
+      if (!m) continue;
+      const indent = m[1].length;
+      while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+      const key = [...stack.map((x) => x.key), m[2].trim().replace(/^["']|["']$/g, "")].join(".");
+      const v = (m[3] ?? "").replace(/\s+#.*$/, "").replace(/^["']|["']$/g, "");
+      if (v) out.set(norm(key), { value: v, index: at, file: fi }); else stack.push({ indent, key: m[2].trim() });
+    }
+  });
+  return out;
+}
+
 const PROD_NAMES = ["prod", "production", "release", "ops", "real", "live"];
 const DEV_NAMES = ["dev", "local", "test", "development", "stage", "staging", "docker", "h2", "hsql"];
 
@@ -91,7 +118,8 @@ export async function checkOperations(opts: OperationsOptions): Promise<Operatio
   if (unknown.length) throw new Error(L(`알 수 없는 규칙: ${unknown.join(", ")} (사용 가능: ${all.rules.map((r) => r.id).join(", ")})`, `Unknown rule: ${unknown.join(", ")} (available: ${all.rules.map((r) => r.id).join(", ")})`));
   const rules = opts.rules?.length ? all.rules.filter((r) => opts.rules!.includes(r.id)) : all.rules;
   const notes: string[] = [];
-  const files = walk(projectDir, opts.maxFiles ?? 20_000).map((p) => ({ abs: p, rel: rel(projectDir, p), type: classifyOpsFile(rel(projectDir, p)) })).filter((f): f is { abs: string; rel: string; type: OpsTarget } => !!f.type);
+  const walked = walk(projectDir, opts.maxFiles ?? 20_000);
+  const files = walked.map((p) => ({ abs: p, rel: rel(projectDir, p), type: classifyOpsFile(rel(projectDir, p)) })).filter((f): f is { abs: string; rel: string; type: OpsTarget } => !!f.type);
   const pomText = read(path.join(projectDir, "pom.xml")) + files.filter((f) => f.type === "gradle").map((f) => read(f.abs)).join("\n");
   const runtime: OperationsResult["runtime"] = /spring-boot-starter|egovframe-boot-starter|org\.springframework\.boot/.test(pomText) ? "boot" : /<packaging>\s*war|egovframe-web-config-parent|spring-webmvc/.test(pomText) ? "classic" : "unknown";
 
@@ -188,6 +216,49 @@ export async function checkOperations(opts: OperationsOptions): Promise<Operatio
     } else if (c.kind === "profile") {
       applicable = runtime === "boot" && propsFiles.length > 0;
       if (applicable && !prodProfile) push(rule, propsFiles[0].rel, 1, excludedProfiles.length ? L(`프로파일 파일 ${excludedProfiles.join(", ")} 만 있음`, `only profiles ${excludedProfiles.join(", ")} exist`) : L("프로파일 파일 없음", "no profile files"), "application-prod.properties");
+    } else if (c.kind === "egov-security") {
+      // v1.18: eGov Boot 보안 스타터(egovframe-boot-starter-security) — 스타터가 의존성에 있을 때만
+      let dep: { rel: string; line: number; code: string } | null = null;
+      for (const f of files.filter((x) => x.type === "pom" || x.type === "gradle")) {
+        const src = f.type === "pom" ? stripXmlComments(text(f)) : text(f);
+        const m = (f.type === "pom" ? /<artifactId>\s*egovframe-boot-starter-security\s*<\/artifactId>/ : /['":]egovframe-boot-starter-security(?=[:'"])/).exec(src);
+        if (m) { dep = { rel: f.rel, line: lineOf(src, m.index), code: m[0] }; break; }
+      }
+      const cfg = flattenConfig(propsFiles.map((f) => ({ type: f.type, text: text(f) })));
+      const get = (k: string) => cfg.get(k.toLowerCase().replace(/[-_]/g, ""));
+      const auth = get("Globals.Auth")?.value.trim() ?? null;
+      const at = (k: string) => { const e = get(k); if (!e) return null; const f = propsFiles[e.file]; return { rel: f.rel, line: lineOf(text(f), e.index) }; };
+      applicable = !!dep;
+      if (dep && c.mode === "default-chain") {
+        const java = walked.filter((p) => p.endsWith(".java") && !/[\\/]src[\\/]test[\\/]/.test(p)).map((p) => read(p));
+        const excluded = /SecurityAutoConfiguration/.test(get("spring.autoconfigure.exclude")?.value ?? "") || java.some((t) => /exclude\w*\s*=\s*\{?[^)]*SecurityAutoConfiguration/.test(t));
+        const ownChain = java.some((t) => /\bSecurityFilterChain\s+\w+\s*\(/.test(t));
+        if (auth !== "security" && !excluded && !ownChain) push(rule, dep.rel, dep.line, `${dep.code} · Globals.Auth=${auth ?? L("(없음)", "(none)")}`, "Globals.Auth=security | spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration");
+      } else if (dep && c.mode === "matcher-type") {
+        const type = (get("org.egovframe.security.request-matcher-type")?.value ?? "regex").trim();
+        const sqls = walked.filter((p) => /\.sql$/i.test(p) && !/[\\/]src[\\/]test[\\/]/.test(p));
+        let seen = false;
+        const regexType = /^(ci)?regex$/i.test(type);
+        if (auth === "security") {
+          for (const p of sqls) {
+            const t = read(p);
+            // 문장 끝: ; 또는 다음 문장 시작(HSQL 스크립트는 ; 없이 줄 단위)
+            const re = /INSERT\s+INTO\s+[`"]?SECURED_RESOURCES[`"]?\s*(?:\(|VALUES)/gi;
+            let m: RegExpExecArray | null;
+            while ((m = re.exec(t))) {
+              seen = true;
+              const rest = t.slice(m.index, m.index + 2000);
+              const end = rest.search(/;|\n\s*(?:INSERT|CREATE|DROP|SET|COMMIT|ALTER)\b/i);
+              const pat = (end < 0 ? rest : rest.slice(0, end)).match(/'(\/[^']*?(?<!\.)\*[^']*)'/);
+              if (pat && regexType) { push(rule, rel(projectDir, p), lineOf(t, m.index), pat[1], "org.egovframe.security.request-matcher-type=url"); break; }
+            }
+          }
+        }
+        applicable = seen;
+      } else if (dep && c.mode === "weak-hash") {
+        const h = get("org.egovframe.security.hash");
+        if (h && /^(md5|ldap|noop|plain(text)?|none|sha(-?(1|224|256|384|512))?)$/i.test(h.value.trim())) { const loc = at("org.egovframe.security.hash")!; push(rule, loc.rel, loc.line, `hash: ${h.value.trim()}`, "org.egovframe.security.hash=bcrypt"); }
+      }
     } else if (c.kind === "secrets") {
       applicable = propsFiles.length > 0 || scanFiles.some((f) => f.type === "xml");
       try {

@@ -20,8 +20,8 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
 {
   const rules = m.loadOperationsRules();
   const ids = rules.rules.map((r) => r.id);
-  assert(rules.rules.length === 17 && new Set(ids).size === ids.length && rules.sources.length >= 3 && rules.categories.length === 6, `규칙 17종, id 중복 없음, 출처·분류`);
-  assert(rules.rules.every((r) => r.title && r.title_en && r.message && r.message_en && r.fix && r.fix_en && r.basis && r.basis_en && ["high", "medium", "low"].includes(r.severity) && rules.categories.some((c) => c.id === r.category) && ["line", "lacks", "pom", "session-timeout", "upload", "profile", "secrets"].includes(r.check.kind)), "규칙마다 제목·설명·조치·근거(ko/en)·심각도·분류·check 종류");
+  assert(rules.rules.length === 20 && new Set(ids).size === ids.length && rules.sources.length >= 3 && rules.categories.length === 7, `규칙 20종, id 중복 없음, 출처·분류`);
+  assert(rules.rules.every((r) => r.title && r.title_en && r.message && r.message_en && r.fix && r.fix_en && r.basis && r.basis_en && ["high", "medium", "low"].includes(r.severity) && rules.categories.some((c) => c.id === r.category) && ["line", "lacks", "pom", "session-timeout", "upload", "profile", "secrets", "egov-security"].includes(r.check.kind)), "규칙마다 제목·설명·조치·근거(ko/en)·심각도·분류·check 종류");
   assert(m.classifyOpsFile("src/main/resources/egovframework/egovProps/globals.properties") === "properties" && m.classifyOpsFile("src/main/webapp/WEB-INF/web.xml") === "web-xml" && m.classifyOpsFile("src/main/resources/log4j2.xml") === "log4j2" && m.classifyOpsFile("src/main/resources/logback-spring.xml") === "logback" && m.classifyOpsFile("pom.xml") === "pom" && m.classifyOpsFile("src/main/resources/application-prod.yml") === "yaml" && m.classifyOpsFile("src/main/resources/egovframework/spring/com/context-datasource.xml") === "xml", "파일 분류");
   assert(m.classifyOpsFile("src/main/resources/egovframework/message/com/message-common.properties") === null && m.classifyOpsFile("src/main/resources/egovframework/mapper/com/cop/bbs/EgovArticle_SQL_mysql.xml") === null && m.classifyOpsFile("src/test/resources/application.properties") === null && m.classifyOpsFile("src/main/resources/egovframework/validator/validator-rules.xml") === null, "메시지 번들·매퍼·테스트·validator 제외");
 }
@@ -48,7 +48,7 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
   assert(find(r, "upload-limits").length === 2 && find(r, "upload-limits").some((f) => /maxRequestSize = 104857600/.test(f.code) && f.suggestion.includes("52428800")) && find(r, "upload-limits").some((f) => /Extensions/.test(f.code)), "업로드: 100MB 상한 + 확장자 없음");
   assert(find(r, "egov-dev-flags").length === 2 && find(r, "hardcoded-secret-config")[0].code.includes("ps***") && !JSON.stringify(r).includes("pst01"), "개발 플래그 2(주석 제외), 비밀값은 가림");
   assert(find(r, "pool-timeouts-missing").length === 1 && find(r, "pool-timeouts-missing")[0].file.endsWith("context-datasource.xml"), "풀 타임아웃: XML 에서 1건(properties 중복 없음)");
-  assert(r.grade.grade === "C" && r.summary.fail === 13 && r.summary.pass === 3 && r.summary.na === 1 && r.summary.high === 4, `등급 C(높음 규칙 3·항목 4) · 미달 13 (${r.grade.grade}, ${JSON.stringify(r.summary)})`);
+  assert(r.grade.grade === "C" && r.summary.fail === 13 && r.summary.pass === 3 && r.summary.na === 4 && r.summary.high === 4, `등급 C(높음 규칙 3·항목 4) · 미달 13 (${r.grade.grade}, ${JSON.stringify(r.summary)})`);
   const md = m.renderOperationsMarkdown(r, 10);
   assert(md.includes("등급 **C**") && md.includes("| SQL 로깅 프록시 드라이버가 운영 설정에 남음 `sql-logging-driver` | high | ⚠️ fail | 2 |") && md.includes("## 미달 항목") && md.includes("→ 제안 `<session-timeout>30</session-timeout>`") && md.includes("건 더(format=json)") && md.includes(".egovframe-ops-ignore.json"), "Markdown: 점검표·미달·제안·topN·예외 안내");
   // 예외 파일
@@ -72,7 +72,7 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
     "src/main/webapp/WEB-INF/web.xml": '<web-app>\n  <session-config>\n    <session-timeout>30</session-timeout>\n    <cookie-config><http-only>true</http-only><secure>true</secure></cookie-config>\n  </session-config>\n  <error-page><error-code>404</error-code><location>/error.jsp</location></error-page>\n</web-app>\n',
   });
   const r = await m.checkOperations({ projectDir: d });
-  assert(r.summary.fail === 0 && r.summary.total === 0 && r.grade.grade === "A" && r.summary.na === 1, `통과 프로젝트: 미달 0 · A (${JSON.stringify(r.rules.filter((x) => x.status === "fail").map((x) => x.rule))})`);
+  assert(r.summary.fail === 0 && r.summary.total === 0 && r.grade.grade === "A" && r.summary.na === 4, `통과 프로젝트: 미달 0 · A (${JSON.stringify(r.rules.filter((x) => x.status === "fail").map((x) => x.rule))})`);
   rmSync(d, { recursive: true, force: true });
 }
 
@@ -102,6 +102,34 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
   rmSync(d2, { recursive: true, force: true });
 }
 
+// ── v1.18: eGov Boot 보안 스타터 ───────────────────────
+{
+  const STARTER = "<dependency><groupId>org.egovframe.boot</groupId><artifactId>egovframe-boot-starter-security</artifactId></dependency>";
+  const APP = "src/main/resources/application.properties";
+  const SEC = (r) => r.rules.filter((x) => x.rule.startsWith("egov-security")).map((x) => `${x.rule.replace("egov-security-", "")}:${x.status}`).join(" ");
+  // 스타터 없음 → 셋 다 n/a
+  const r0 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(), [APP]: "server.port=8080\n" }) });
+  assert(SEC(r0) === "default-chain:n/a matcher-type:n/a weak-hash:n/a", `스타터 없으면 해당 없음 (${SEC(r0)})`);
+  // 스타터 + Globals.Auth 없음 → Boot 기본 보안(모든 URL 401)
+  const r1 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(STARTER), [APP]: "server.port=8080\n" }) });
+  assert(status(r1, "egov-security-default-chain") === "fail" && find(r1, "egov-security-default-chain")[0].file === "pom.xml" && find(r1, "egov-security-default-chain")[0].suggestion.includes("SecurityAutoConfiguration") && find(r1, "egov-security-default-chain")[0].severity === "high", `스타터 + Globals.Auth 없음 → 높음 (${SEC(r1)})`);
+  // 보안 자동구성 제외·자체 SecurityFilterChain·Globals.Auth=security(yml) 이면 통과
+  const r2 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(STARTER), [APP]: "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration\n" }) });
+  const r3 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(STARTER), [APP]: "server.port=8080\n", "src/main/java/a/Sec.java": "class Sec { @Bean SecurityFilterChain chain(HttpSecurity h) { return null; } }\n" }) });
+  const r4 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(STARTER), "src/main/resources/application.yml": "Globals:\n  Auth: security  # eGov\norg:\n  egovframe:\n    security:\n      hash: md5\n" }) });
+  assert(status(r2, "egov-security-default-chain") === "pass" && status(r3, "egov-security-default-chain") === "pass" && status(r4, "egov-security-default-chain") === "pass", `제외·자체 체인·Globals.Auth=security(yml) → 통과 (${SEC(r2)} / ${SEC(r3)} / ${SEC(r4)})`);
+  assert(status(r4, "egov-security-weak-hash") === "fail" && find(r4, "egov-security-weak-hash")[0].line === 6 && find(r4, "egov-security-weak-hash")[0].suggestion === "org.egovframe.security.hash=bcrypt", "yml 해시 md5 → 중간, 줄 6");
+  // 보호자원 SQL 이 PathPattern 인데 matcher 가 regex(기본) → 기동 실패, url 이면 통과, 보호자원 SQL 이 없으면 해당 없음
+  const DATA = "src/main/resources/db/schema.sql";
+  const SQL = "CREATE MEMORY TABLE SECURED_RESOURCES(RESOURCE_ID VARCHAR(50))\nINSERT INTO SECURED_RESOURCES VALUES('r1','\\A/admin/.*\\Z','url',1)\nINSERT INTO SECURED_RESOURCES VALUES('r2','/mypage/**','url',2)\n";
+  const r5 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(STARTER), [APP]: "Globals.Auth=security\n", [DATA]: SQL }) });
+  const r6 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(STARTER), [APP]: "Globals.Auth=security\norg.egovframe.security.request-matcher-type=url\n", [DATA]: SQL }) });
+  const r7 = await m.checkOperations({ projectDir: project({ "pom.xml": BOOT_POM(STARTER), [APP]: "Globals.Auth=security\n" }) });
+  assert(status(r5, "egov-security-matcher-type") === "fail" && find(r5, "egov-security-matcher-type")[0].code === "/mypage/**" && find(r5, "egov-security-matcher-type")[0].line === 3, `PathPattern + regex → 높음(정규식 행은 건너뜀) (${JSON.stringify(find(r5, "egov-security-matcher-type").map((f) => [f.line, f.code]))})`);
+  assert(status(r6, "egov-security-matcher-type") === "pass" && status(r7, "egov-security-matcher-type") === "n/a", `url 이면 통과, 보호자원 SQL 없으면 해당 없음 (${SEC(r6)} / ${SEC(r7)})`);
+  assert(m.flattenConfig([{ type: "yaml", text: "a:\n  b: 1\n  c:\n    d: 'x'\ne: 2\n" }]).get("a.c.d").value === "x" && m.flattenConfig([{ type: "properties", text: "Globals.Auth = session\n" }]).get("globals.auth").value === "session", "flattenConfig: yml 중첩·properties, 키는 소문자·-_ 무시");
+}
+
 // ── 평가서·MCP·CLI ───────────────────────────────────
 {
   const d = project({ "pom.xml": BOOT_POM(), "src/main/resources/application.properties": "server.port=8080\nspring.datasource.url=jdbc:log4jdbc:mysql://127.0.0.1:3306/app\nspring.jpa.show-sql=true\nlogging.level.root=DEBUG\n" });
@@ -116,9 +144,9 @@ const find = (r, id) => r.findings.filter((f) => f.rule === id);
   await server.connect(st); await client.connect(ct);
   const tools = (await client.listTools()).tools;
   const t = tools.find((x) => x.name === "check_egovframe_operations");
-  assert(t && t.annotations.readOnlyHint === true && t.inputSchema.properties.rules.items.enum.length === 17 && t.outputSchema && tools.length >= 42, "MCP: 등록됨, 읽기 전용, 규칙 enum 17, outputSchema");
+  assert(t && t.annotations.readOnlyHint === true && t.inputSchema.properties.rules.items.enum.length === 20 && t.outputSchema && tools.length >= 42, "MCP: 등록됨, 읽기 전용, 규칙 enum 20, outputSchema");
   const res = await client.callTool({ name: "check_egovframe_operations", arguments: { projectDir: d, format: "json" } });
-  assert(!res.isError && res.structuredContent.grade.grade === "C" && res.structuredContent.rules.length === 17, "MCP 호출: 구조화 출력");
+  assert(!res.isError && res.structuredContent.grade.grade === "C" && res.structuredContent.rules.length === 20, "MCP 호출: 구조화 출력");
   await client.close(); await server.close();
   // CLI
   const io = () => { const out = [], err = []; return { cwd: d, env: {}, stdout: (s) => out.push(s), stderr: (s) => err.push(s), out, err }; };

@@ -212,7 +212,41 @@ CI 통합(`test:rehearse-live`)은 이 값을 `catalog/migration-corpus.json` �
 - 게이트(`test:update`): 규칙 데이터 정합, pom·Gradle 계획(속성 참조·비 RTE 좌표 불변, 의도한 고정값 보존), 참조 탐지(접두어만 같은 클래스·와일드카드 import), 구간(target 5.0.1, from 5.0.1), 3.x 거부, dryRun 무기록, fault-injection 롤백, 적용·백업·재진단, 가짜 runner verify 의 오류 ↔ 변경 항목 연결, `alignPom`, 평가서 2절, outputSchema, MCP `tools/call`.
 - CI 통합(`test:update-live`): 위 실측표의 web·boot-web 값을 기대값으로 고정하고, 적용 → compile, alignParent 생성 → compile 을 확인합니다.
 
-범위 밖: 5.1 같은 마이너 이상 갱신(미출시), parent 를 쓰지 않는 프로젝트의 Spring·Boot 버전 맞춤(→ `check_egovframe_dependencies`), 바뀐 동작의 자동 수정.
+범위 밖: 5.1 같은 마이너 이상 갱신(당시 미출시 — v1.3·v1.18 에서 다룸), parent 를 쓰지 않는 프로젝트의 Spring·Boot 버전 맞춤(→ `check_egovframe_dependencies`), 바뀐 동작의 자동 수정.
+
+## 6-2단계(v1.18.0): 5.1.0 대응 2단계 — 소스 브랜치 근거·Boot 스타터·폐기 예정 API·JUnit 6
+
+### 문제
+
+v1.3 은 GitHub 태그가 없어 저장소 sources jar 만으로 5.1.0 규칙을 만들었다. 2026-11-05 `egovframe-runtime` 에 `5.1.x` 브랜치(5.1.0 Beta 소스)가 생겼고, 개발환경 마법사는 이미 5.1.0 parent 로 프로젝트를 만든다. 그 사이 실측으로 5.1.0 이 **컴파일·기동은 되는데 깨지는 것** 셋을 확인했다.
+
+- **Boot 스타터 자동구성**: `egovframe-boot-starter-security`·`access`·`crypto` 5.0.x 는 일반 `@Configuration` 이라 `org.egovframe.boot` 를 스캔해야 적용됐다. 5.1.0 은 `AutoConfiguration.imports` 로 의존성만 있으면 적용된다(security 는 `Globals.Auth=security`, access 는 `session`, crypto 는 조건 없음 — jar 의 애노테이션으로 확인). 보안 스타터는 `spring-boot-starter-security` 를 끌어오므로 `Globals.Auth` 가 `security` 가 아니면 **Spring Boot 기본 보안이 켜져 모든 URL 이 401** 이다(공식 boot-web 5.1.0 사본 실측).
+- **보호자원 매처**: 보안 스타터의 `request-matcher-type` 기본값은 `regex` 다. 보호자원에 `/**` 같은 PathPattern 이 있으면 `PatternSyntaxException: Dangling meta character '*'` 로 **기동 실패**(실측), `url` 이면 HTTP 200.
+- **JUnit 6**: 5.1.0 의 두 parent 는 `junit-jupiter.version` 을 6.1.3 으로 올린다(5.0.x 는 Boot 기본 5.12.x). JUnit 6 에 `org.junit.jupiter.api.MediaType` 이 생겨 `org.junit.jupiter.api.*` 와 `org.springframework.http.*` 를 함께 와일드카드 import 한 테스트가 `reference to MediaType is ambiguous` 로 컴파일되지 않는다 — 공식 simple-backend 의 `EgovLoginApiControllerTest` 가 이렇다.
+
+또 Spring Security 6.5(5.x parent 전부)에서 `AntPathRequestMatcher`·`MvcRequestMatcher` 가 `@Deprecated(forRemoval = true)` 다. 공통컴포넌트 main 은 10-27 에 `PathPatternRequestMatcher` 로 바꿨다(#1396).
+
+### 결정
+
+| 항목 | 결정 |
+|---|---|
+| 근거 | `update-mapping.json` 의 `mavenSteps[].branch`("5.1.x") — 생성기가 직전 태그 → 브랜치 끝의 변경 클래스를 git 으로 구해 sources jar 비교와 맞춰 본다(`branch.onlyInBranch`·`onlyInMaven`, 배포본에만 있는 변경은 재배포 경고). 큐레이션 검증은 둘의 합집합 — Boot 스타터처럼 RTE BOM 밖 모듈은 브랜치로만 검증된다. 저장소에 닿지 못하면 `--reuse-maven`(기존 sources jar 근거와 그 버전 parent 속성을 그대로, 대조 생략 `compared=false`) |
+| `boot-starter-autoconfig` | 큐레이션 변경(since 5.1.0)에 `artifacts` 를 더해 **의존성 선언**(pom·Gradle, 주석 제외)으로 탐지한다 — 코드가 스타터 클래스를 직접 부르지 않으므로 |
+| 보안 스타터 함정 | `check_egovframe_operations` 규칙 3종(`egov-security-default-chain`·`matcher-type`·`weak-hash`, [design-operations.md](design-operations.md)) — 갱신 항목 사유가 이 규칙을 가리킨다. 스타터 자동 삽입·설정 이동은 하지 않는다 |
+| `deprecated-api` | 갱신 모드에서 목표 버전과 무관하게 본다(5.x parent 는 모두 Security 6.5.x). 한 파일의 모든 사용이 리터럴 패턴·HTTP 메서드·타입 이름이면 auto(`PathPatternRequestMatcher.withDefaults().matcher(…)`, import 교체·`HttpMethod` 추가), 하나라도 변수 패턴·끝이 아닌 `**`(PathPattern 은 끝에만)·대소문자 인자·static import·`MvcRequestMatcher` 면 파일 전체 manual. 테스트 소스 제외 |
+| `library-change` | 목표 parent 의 `junit-jupiter.version` 이 6 이상이고 현재가 5 이하면 테스트 소스의 MediaType 모호성을 auto(쓰던 쪽 단일 import 추가 — 단일 import 가 와일드카드보다 우선)로, 그 밖의 JUnit 6 변경은 안내(verify=true) |
+| 생성 | `create_egovframe_project(rteVersion="5.1.0")` — alignParent 를 함의, 태그 전 버전 안내, JUnit 6 MediaType 보정까지. 기본값은 5.0.x 그대로(`v5.1.0-Final` 태그와 공식 템플릿 저장소 반영 뒤 전환) |
+
+### 기획과 달라진 점
+
+- **MVC `EgovRestExceptionHandler` 규칙은 넣지 않았다.** 이 클래스는 `v5.0.2-Final` 에 없고 5.1.0 에서 새로 생겼다(브랜치 diff 506줄 추가). 09-30 의 상태 보존 수정은 출시 전 변경이라 5.0.x → 5.1.0 갱신의 동작 변화가 아니다.
+- **Boot 스타터는 5.0.0 부터 있었다.** 5.0.x 브랜치에 `Boot/` 디렉터리가 없을 뿐, 스타터 3종은 5.0.0 부터 저장소에 배포됐고 5.1.0 에 logging 이 더해졌다. 바뀐 것은 자동구성 여부다.
+- **JUnit 6** 은 기획에 없던 것으로, 5.1.0 으로 공식 simple-backend 를 띄우는 실측에서 찾았다.
+
+### 검증
+
+- 게이트 `test:rte51`(25단언, 오프라인): 브랜치 근거·provisional, 스타터 의존성 탐지(pom 줄·Gradle·주석 제외·구간), RequestMatcher 판정과 적용(생성·팩토리·타입·메서드·import, 파일 단위 manual 사유, static import·MvcRequestMatcher·와일드카드 import·주석/문자열 제외), 갱신 모드 적용·재진단, JUnit 6 판정·구간, alignPom target.
+- CI 통합 `test:rte51-live`: boot-web·simple-backend 를 `rteVersion="5.1.0"` 으로 생성해 기동, simple-backend 5.0.1 → 5.1.0 갱신(MediaType auto) 뒤 기동, boot-web 사본에 보안 스타터 → HTTP 401 + 운영 점검 높음, `Globals.Auth=security` + `/**` + regex → 기동 실패 + 높음, `url` → HTTP 200, 공통컴포넌트 v5.0.7 `AuthenticInterceptor` manual / main 0.
 
 ## 7단계(v1.12.0): 사용자 수정 자동 재적용 (`reapply`)
 
