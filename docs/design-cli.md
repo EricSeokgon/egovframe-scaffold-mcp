@@ -63,7 +63,7 @@ v0.43 에서 `sbom` 과 `assess` 사이에 `sbom-check --out egovframe-sbom-chec
 | | GitHub Actions | GitLab CI | Jenkins (Declarative) |
 |---|---|---|---|
 | 파일 | `.github/workflows/egovframe-ci.yml` | `.gitlab-ci.yml` | `Jenkinsfile` |
-| 실행 환경 | `ubuntu-latest` + setup-java·setup-node | `maven:3.9-eclipse-temurin-<JDK 주 버전>`(Gradle: `eclipse-temurin:<JDK>`), 게이트 job 은 Node 가 없으면 apt 로 설치 시도 | `agent any` — 에이전트에 JDK·Maven·Node.js |
+| 실행 환경 | `ubuntu-latest` + setup-java·setup-node | `maven:3.9-eclipse-temurin-<JDK 주 버전>`(Gradle: `eclipse-temurin:<JDK>`), 게이트 job 은 Node 22 미만이면 nodejs.org 공식 22.x tarball(SHASUMS256 대조)을 /usr/local 에 풀고, 실패하면 apt nodejs·npm → npm 의 node@22(v1.18 — apt 미러 연결 시간 초과로 CI 가 실패한 일) | `agent any` — 에이전트에 JDK·Maven·Node.js |
 | 빌드 | `mvn -B verify` / `./gradlew build` | 같음 + JUnit 리포트, 로컬 저장소 캐시(`MAVEN_OPTS`·`GRADLE_USER_HOME`) | 같음, `isUnix()` 로 `sh`/`bat` |
 | 게이트 | 별도 job | `supply-chain` job(`needs: []` 로 빌드와 병렬) | `SBOM` → `SBOM check` → `Assessment` 단계 |
 | 보관 | upload-artifact(`if: always()`) | `artifacts: when: always` + `reports: cyclonedx` | `post { always { archiveArtifacts allowEmptyArchive: true } }` |
