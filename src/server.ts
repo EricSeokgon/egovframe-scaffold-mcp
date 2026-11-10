@@ -24,7 +24,7 @@ import { CI_BUNDLE_PATH_RE, CI_FAIL_ON_RE, CI_JDK_RE, CI_NPM_REGISTRY_RE, CI_SUP
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
-import { applyUpdate, isUpdateTarget, renderUpdateMarkdown, updateProject, verifyUpdate } from "./update.js";
+import { applyUpdate, isUpdateTarget, loadUpdateRules, renderUpdateMarkdown, updateProject, verifyUpdate } from "./update.js";
 import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, renderMigrationVerifyMarkdown, verifyMigration, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
 import { NETWORK_HOSTS, diagnoseNetwork, renderNetworkMarkdown } from "./network.js";
@@ -119,7 +119,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "create_egovframe_project",
     { title: t("create_egovframe_project"), description: d("create_egovframe_project", "전자정부 표준프레임워크 공식 템플릿으로 새 프로젝트 골격을 생성합니다. " +
       "공식 GitHub 템플릿을 내려받아 projectName/groupId/DB 타입을 적용합니다. " +
-      "dryRun=true로 먼저 미리보기할 수 있습니다. alignParent=true 면 생성 직후 5.x parent·RTE 버전을 최신 5.0.x 로 맞춥니다(공식 Initializr 템플릿은 parent 5.0.0·5.0.1)."), inputSchema: {
+      "dryRun=true로 먼저 미리보기할 수 있습니다. alignParent=true 면 생성 직후 5.x parent·RTE 버전을 최신 5.0.x 로 맞춥니다(공식 Initializr 템플릿은 parent 5.0.0·5.0.1). rteVersion 으로 다른 5.x 버전(예: 태그 전 5.1.0)을 고를 수 있습니다."), inputSchema: {
       projectName: z.string().describe("프로젝트명(artifactId). 소문자·숫자·하이픈, 예: my-egov-app"),
       groupId: z.string().describe("자바 groupId. 예: egovframework.example"),
       database: z.enum(DB_TYPES).default("hsql").describe("DB 타입 (템플릿 지원: hsql|mysql|oracle|altibase|tibero)"),
@@ -128,6 +128,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       ref: z.string().optional().describe("내려받을 브랜치/태그(미지정 시 템플릿 기본 브랜치). 예: main, v4.3.0"),
       dryRun: z.boolean().default(false).describe("true면 디스크에 쓰지 않고 생성 예정 내용만 미리보기"),
       alignParent: z.boolean().default(false).describe("true면 생성 직후 pom 의 5.x parent·RTE 버전을 최신 5.0.x(공식 parent 기준)로 맞춤. 기본 false = 공식 템플릿 그대로(Initializr 템플릿은 parent 5.0.0·5.0.1)"),
+      rteVersion: z.enum(loadUpdateRules().versions as [string, ...string[]]).optional().describe("생성 직후 pom 의 5.x parent·RTE 버전을 이 버전으로(alignParent 함의). 5.1.0 은 태그 전 버전 — 기본값은 바꾸지 않음"),
     }, annotations: toolAnnotations("create_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);

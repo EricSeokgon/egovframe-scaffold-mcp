@@ -62,7 +62,9 @@ export type MigrationKind =
   | "jakarta-package" | "web-xml" | "xml-namespace"
   | "component-class-removed" | "component-class-moved" | "component-reassemble"
   // v0.46: 5.x 안의 갱신(update.ts)
-  | "parent-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency";
+  | "parent-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency"
+  // v1.18: Spring Security 6.5 폐기 예정 API(request-matcher.ts)
+  | "deprecated-api" | "library-change";
 /** 파일 원문 오프셋 기준 치환(2단계 적용용). start==end 이면 삽입. */
 export interface TextEdit { start: number; end: number; replacement: string }
 export interface MigrationItem { file: string; line: number; kind: MigrationKind; from: string; to: string | null; action: MigrationAction; reason: string; edits?: TextEdit[] }
@@ -664,7 +666,7 @@ const kindLabels = (): Record<MigrationKind, string> => ({
   package: L("RTE 패키지 접두어", "RTE package prefix"), "package-renamed": L("RTE 패키지 이름 변경", "RTE package rename"), "class-moved": L("RTE 클래스 이동", "RTE class move"), "class-removed": L("제거된 RTE 클래스", "Removed RTE class"), "class-unknown": L("확인 필요 클래스", "Class to verify"),
   "jakarta-package": L("javax → jakarta 패키지", "javax → jakarta package"), "web-xml": L("web.xml 스키마", "web.xml schema"), "xml-namespace": L("제거된 XML 네임스페이스", "Removed XML namespace"),
   "component-class-removed": L("제거된 공통컴포넌트 클래스", "Removed common-component class"), "component-class-moved": L("이동한 공통컴포넌트 클래스", "Moved common-component class"), "component-reassemble": L("공통컴포넌트 재조립 권고", "Common-component reassembly advised"),
-  "parent-version": L("parent 버전", "parent version"), "parent-property": L("parent 관리 속성", "parent-managed property"), "rte-change": L("바뀐 RTE API·동작", "Changed RTE API/behaviour"), "component-update": L("공통컴포넌트 최신 유지", "Keep common components current"), "duplicate-dependency": L("중복 의존성 선언", "Duplicate dependency declaration"),
+  "parent-version": L("parent 버전", "parent version"), "parent-property": L("parent 관리 속성", "parent-managed property"), "rte-change": L("바뀐 RTE API·동작", "Changed RTE API/behaviour"), "component-update": L("공통컴포넌트 최신 유지", "Keep common components current"), "duplicate-dependency": L("중복 의존성 선언", "Duplicate dependency declaration"), "deprecated-api": L("폐기 예정 API", "Deprecated API"), "library-change": L("parent 가 올린 라이브러리 변경", "Library change brought by the parent"),
 });
 const KIND_LABEL = (k: MigrationKind): string => kindLabels()[k];
 

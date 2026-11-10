@@ -171,7 +171,8 @@ export type { SecretKind, SecretFormat, SecretAction, SecretFinding, Externalize
 export { findSecretPlaceholders } from "./deploy.js";
 export { summarizePortfolio, classifyPortfolioInput, expandPortfolioInputs, parsePortfolioFilter, rowFromAssessment, renderPortfolioMarkdown, renderPortfolioCsv, GRADE_ORDER } from "./portfolio.js";
 export type { PortfolioSource, PortfolioRow, PortfolioOptions, PortfolioResult } from "./portfolio.js";
-export { loadOperationsRules, classifyOpsFile, checkOperations, renderOperationsMarkdown, OPS_IGNORE_FILE } from "./operations.js";
+export { loadOperationsRules, classifyOpsFile, checkOperations, renderOperationsMarkdown, flattenConfig, OPS_IGNORE_FILE } from "./operations.js";
+export { planRequestMatcherItems, planJunit6Items, pathPatternCompatible, maskJavaComments } from "./request-matcher.js";
 export type { OpsSeverity, OpsTarget, OpsRule, OpsRules, OpsFinding, OpsRuleResult, OperationsOptions, OperationsResult } from "./operations.js";
 export { readIgnoreFile } from "./secure-coding.js";
 export { buildProjectMap, impactOf, handoverTables, tablesInSql, renderMermaid, renderProjectMapMarkdown } from "./project-map.js";

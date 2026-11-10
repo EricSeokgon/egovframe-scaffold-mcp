@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "surveyedAt": "2026-11-04",
-  "note": "운영 준비 점검 규칙(check_egovframe_operations, v1.15). 공식 운영 기준 문서가 없어 출처는 공식 템플릿 기본값 실측·HikariCP/Spring Boot/Tomcat 문서·우리 실측입니다. check 종류 — line: 대상 파일의 줄 패턴(unless 로 제외), lacks: 대상 파일이 requires 에 맞으면서 pattern 이 없을 때, property: 운영 설정 세트(properties·yml)의 키를 when(missing|matches|gt|lt) 으로, pom: 의존성 좌표.",
+  "surveyedAt": "2026-11-10",
+  "note": "운영 준비 점검 규칙(check_egovframe_operations, v1.15). 공식 운영 기준 문서가 없어 출처는 공식 템플릿 기본값 실측·HikariCP/Spring Boot/Tomcat 문서·우리 실측입니다. check 종류 — line: 대상 파일의 줄 패턴(unless 로 제외), lacks: 대상 파일이 requires 에 맞으면서 pattern 이 없을 때, property: 운영 설정 세트(properties·yml)의 키를 when(missing|matches|gt|lt) 으로, pom: 의존성 좌표. egov-security(v1.18): egovframe-boot-starter-security 가 의존성에 있을 때만 — mode default-chain(Globals.Auth·보안 자동구성 제외·자체 SecurityFilterChain), matcher-type(보호자원 SQL 의 PathPattern 과 request-matcher-type), weak-hash(org.egovframe.security.hash).",
   "sources": [
     {
       "name": "공식 템플릿 6종(web·boot-web·simple-backend·simple-homepage·portal-site·enterprise-business, Initializr v5.0.7 zip) 기본 설정 실측, 2026-11-04",
@@ -18,6 +18,10 @@
     {
       "name": "Servlet 6.0 web.xml(session-config·cookie-config·error-page), Apache Tomcat 10.1 설정 문서",
       "name_en": "Servlet 6.0 web.xml (session-config, cookie-config, error-page), Apache Tomcat 10.1 configuration docs"
+    },
+    {
+      "name": "egovframe-runtime 5.1.x 브랜치 Boot/org.egovframe.boot.starter.security README 와 egovframe-boot-starter-security 5.0.0·5.1.0 jar(@ConditionalOnProperty Globals.Auth=security, spring-boot-starter-security 의존), 2026-11-10",
+      "name_en": "egovframe-runtime 5.1.x branch Boot/org.egovframe.boot.starter.security README and the egovframe-boot-starter-security 5.0.0 and 5.1.0 jars (@ConditionalOnProperty Globals.Auth=security, depends on spring-boot-starter-security), 2026-11-10"
     }
   ],
   "categories": [
@@ -50,6 +54,11 @@
       "id": "egov",
       "label": "표준프레임워크 운영 플래그",
       "labelEn": "eGovFrame operating flags"
+    },
+    {
+      "id": "security",
+      "label": "보안 스타터",
+      "labelEn": "Security starter"
     }
   ],
   "rules": [
@@ -403,6 +412,57 @@
       "fix_en": "Move them to environment-variable placeholders or an external key file with externalize_egovframe_config.",
       "basis": "v1.13 선행 조사(공식 portal-site Globals.Password 평문, 공통컴포넌트 암호화 키 저장소 포함)",
       "basis_en": "v1.13 pre-research (plain Globals.Password in official portal-site, common-component crypto key kept in the repository)"
+    },
+    {
+      "id": "egov-security-default-chain",
+      "category": "security",
+      "severity": "high",
+      "title": "보안 스타터가 있는데 Globals.Auth 가 security 가 아님",
+      "title_en": "Security starter present but Globals.Auth is not security",
+      "check": {
+        "kind": "egov-security",
+        "mode": "default-chain"
+      },
+      "message": "egovframe-boot-starter-security 는 spring-boot-starter-security 를 끌어옵니다. Globals.Auth=security 가 아니면 eGov 보안 설정은 꺼지고 Spring Boot 기본 보안(모든 URL 인증 요구, 기동 때 생성되는 비밀번호)이 켜져, 기동은 되지만 모든 요청이 401 이 됩니다.",
+      "message_en": "egovframe-boot-starter-security pulls in spring-boot-starter-security. Unless Globals.Auth=security, the eGov security configuration stays off and Spring Boot's default security (every URL requires authentication, a generated password) turns on — the application starts but every request gets 401.",
+      "fix": "eGov 보안을 쓰면 Globals.Auth=security 와 보호자원 테이블, 쓰지 않으면 spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration 또는 스타터 제거.",
+      "fix_en": "To use eGov security set Globals.Auth=security and provide the secured-resource tables; otherwise add spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration or drop the starter.",
+      "basis": "스타터 README 「활성화 조건」(5.1.x 브랜치)과 jar 의 @ConditionalOnProperty(prefix=Globals, name=Auth, havingValue=security) — 5.0.0·5.1.0 동일",
+      "basis_en": "Starter README 'activation conditions' (5.1.x branch) and the jar's @ConditionalOnProperty(prefix=Globals, name=Auth, havingValue=security) — same in 5.0.0 and 5.1.0"
+    },
+    {
+      "id": "egov-security-matcher-type",
+      "category": "security",
+      "severity": "high",
+      "title": "보호자원이 PathPattern 인데 request-matcher-type 이 regex",
+      "title_en": "Secured resources use PathPattern but request-matcher-type is regex",
+      "check": {
+        "kind": "egov-security",
+        "mode": "matcher-type"
+      },
+      "message": "request-matcher-type 기본값은 regex 입니다. SECURED_RESOURCES 에 /admin/** 같은 PathPattern 이 있으면 정규식 해석에 실패해 기동이 실패합니다.",
+      "message_en": "request-matcher-type defaults to regex. If SECURED_RESOURCES holds PathPattern values such as /admin/**, regex parsing fails and startup fails.",
+      "fix": "org.egovframe.security.request-matcher-type=url(PathPattern) 로 두거나 보호자원을 정규식(\\A/admin/.*\\Z)으로.",
+      "fix_en": "Set org.egovframe.security.request-matcher-type=url (PathPattern) or write the secured resources as regular expressions (\\A/admin/.*\\Z).",
+      "basis": "스타터 README 「주요 설정 속성」의 경고(request-matcher-type 기본 regex, PathPattern 이면 기동 실패)",
+      "basis_en": "Warning in the starter README 'main properties' (request-matcher-type defaults to regex; PathPattern values fail startup)"
+    },
+    {
+      "id": "egov-security-weak-hash",
+      "category": "security",
+      "severity": "medium",
+      "title": "보안 스타터 비밀번호 해시가 MD5·SHA(솔트 없음)",
+      "title_en": "Security starter password hash is MD5 or unsalted SHA",
+      "check": {
+        "kind": "egov-security",
+        "mode": "weak-hash"
+      },
+      "message": "솔트 없는 MD5·SHA 계열 해시는 사전 대입·레인보 테이블에 약합니다(KISA 암호 이용 안내서는 솔트·반복을 요구).",
+      "message_en": "Unsalted MD5/SHA hashes are weak against dictionary and rainbow-table attacks (KISA cryptography guidance requires salt and iterations).",
+      "fix": "org.egovframe.security.hash=bcrypt(기본). 기존 해시와 호환이 필요하면 egov-sha256(아이디 솔트) 뒤 단계적으로 bcrypt 재해시.",
+      "fix_en": "org.egovframe.security.hash=bcrypt (the default). If you need compatibility with existing hashes use egov-sha256 (ID salt) and rehash to bcrypt over time.",
+      "basis": "스타터 README 「패스워드 인코딩」(bcrypt 기본, sha·md5·ldap 선택지)",
+      "basis_en": "Starter README 'password encoding' (bcrypt default; sha, md5, ldap options)"
     }
   ]
 }

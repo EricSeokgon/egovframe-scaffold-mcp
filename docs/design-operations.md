@@ -27,8 +27,20 @@
 
 ## 4. 검증
 
-- 게이트 `test:operations`(50단언, 오프라인): 규칙 데이터 정합(17종·ko/en·분류·check 종류·id 중복 없음), 파일 분류(메시지 번들·매퍼·테스트·validator 제외), Classic 미달 전부(주석 제외, 세션 120→30 제안, 업로드 100MB+확장자 없음, 비밀값 가림, 풀 타임아웃 XML 1건)·통과 전부(A), Boot 프로파일(prod 세트·dev 제외·덮인 키 제외·`profile` 지정·운영 프로파일 없음), 예외 파일(사유·검토자·접두어·줄), rules 좁히기, 등급, Markdown, 평가서 절, MCP 42종(읽기 전용)·CLI `ops --fail-on ops:C`.
+- 게이트 `test:operations`(57단언, 오프라인): 규칙 데이터 정합(20종·ko/en·분류·check 종류·id 중복 없음), 파일 분류(메시지 번들·매퍼·테스트·validator 제외), Classic 미달 전부(주석 제외, 세션 120→30 제안, 업로드 100MB+확장자 없음, 비밀값 가림, 풀 타임아웃 XML 1건)·통과 전부(A), Boot 프로파일(prod 세트·dev 제외·덮인 키 제외·`profile` 지정·운영 프로파일 없음), 예외 파일(사유·검토자·접두어·줄), rules 좁히기, 등급, Markdown, 평가서 절, MCP 42종(읽기 전용)·CLI `ops --fail-on ops:C`.
 - CI 통합 `test:operations-live`: 공식 템플릿 6종의 등급·미달 규칙 = 실측 기대값(web C · boot-web B · 나머지 C), portal-site 사본에 제안 적용(실제 드라이버·INFO·풀 타임아웃·세션 30·50MB) → B 로 올라가고 내장 HSQL 로 여전히 기동(56초), 코퍼스 4.3.2 점검표.
+
+## 4-1. eGov Boot 보안 스타터 규칙 (v1.18)
+
+`egovframe-boot-starter-security` 가 의존성(pom·Gradle)에 있을 때만 적용한다(없으면 셋 다 n/a — 공식 템플릿 6종은 스타터를 쓰지 않아 등급이 그대로다). 근거는 5.1.x 브랜치 스타터 README 와 5.0.0·5.1.0 jar 의 애노테이션(`@ConditionalOnProperty(prefix="Globals", name="Auth", havingValue="security")`, `spring-boot-starter-security` 의존).
+
+| 규칙 | 판정 | 실측(공식 boot-web 5.1.0 사본) |
+|---|---|---|
+| `egov-security-default-chain`(high) | `Globals.Auth`(properties·yml, 키 대소문자·`-`·`_` 무시) 가 `security` 가 아니고, `spring.autoconfigure.exclude`·`@SpringBootApplication(exclude=…)` 에 `SecurityAutoConfiguration` 이 없고, 자체 `SecurityFilterChain` Bean 도 없음 | 스타터만 추가 → 기동 · HTTP 401(생성된 비밀번호 경고), 제외 추가 → 200 |
+| `egov-security-matcher-type`(high) | `Globals.Auth=security` 이고 `org.egovframe.security.request-matcher-type` 이 없거나 `regex`·`ciRegex` 인데, 프로젝트 SQL 의 `INSERT INTO SECURED_RESOURCES` 값에 PathPattern(`/…*`, 정규식 `.*` 제외)이 있음. 보호자원 SQL 이 없으면 n/a | `/**` + regex → 기동 실패(`PatternSyntaxException: Dangling meta character '*'`), `url` → 200 |
+| `egov-security-weak-hash`(medium) | `org.egovframe.security.hash` 가 `md5`·`sha`·`sha-256` 등 솔트 없는 해시·`ldap`·`noop` | — |
+
+`flattenConfig` 는 yml 을 들여쓰기로 평평하게 읽는다(스칼라 값만, 목록·다중 문서 구분 없음). 보호자원이 DB 에만 있으면 정적 점검은 볼 수 없다 — 그때는 기동 검증(`verify_egovframe_startup`)이 잡는다.
 
 ## 5. 규칙 갱신 절차
 

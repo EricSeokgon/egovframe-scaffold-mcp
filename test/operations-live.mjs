@@ -62,7 +62,7 @@ try {
   const { dir } = materializeEntry(corpus, corpus.entries.find((x) => x.id === "cc-4.3.2"));
   const c = await m.checkOperations({ projectDir: dir });
   info(`cc-4.3.2: ${c.grade.grade} · ${JSON.stringify(c.summary)} · 미달 ${failed(c)}`);
-  assert(c.rules.length === 17 && failed(c).includes("sql-logging-driver"), "코퍼스 4.3.2: 공통컴포넌트 globals 도 log4jdbc 기본");
+  assert(c.rules.length === 20 && failed(c).includes("sql-logging-driver"), "코퍼스 4.3.2: 공통컴포넌트 globals 도 log4jdbc 기본");
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

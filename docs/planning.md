@@ -42,6 +42,7 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
+- **v1.18.0 완료**: 5.1.0 대응 2단계(도구 43종 그대로) — 5.1.x 브랜치 근거, Boot 스타터 자동구성·Spring Security 폐기 예정 RequestMatcher·JUnit 6 MediaType 갱신 항목, 운영 점검 보안 스타터 규칙 3종, `rteVersion`; 실측 boot-web 사본 HTTP 401·기동 실패를 재현하고 고친 뒤 200([결과](#v1180-결과-2026-11-10)).
 - **v1.17.0 완료**: 포트폴리오(기관 단위) 현황 `summarize_egovframe_portfolio`(도구 43종·CLI `portfolio`) — 공식 템플릿 6종 + 코퍼스 2종 = 8 프로젝트 7초, 행 = 개별 평가서, 디렉터리·납품 패키지·CI 아티팩트 입력의 행 동일([결과](#v1170-결과-2026-11-07)). v1.15–v1.17 기획 완료.
 - **v1.16.0 완료**: 관측 내보내기 `generate_egovframe_deploy(observability="otel")` — OpenTelemetry 에이전트(sha256·폐쇄망 jar)·수집기(core), 공식 boot-web·web 에서 trace·metric·log 도착, 기동 오버헤드 1.1–1.3배([결과](#v1160-결과-2026-11-06)).
 - **v1.15.0 완료**: 운영 준비 점검 `check_egovframe_operations`(도구 42종·CLI `ops`) — 규칙 데이터 17종(출처 명시), 공식 템플릿 6종 등급·미달 = 실측, 제안 적용 사본 기동 확인([결과](#v1150-결과-2026-11-04)).
@@ -49,7 +50,7 @@
 - **v1.13.0 완료**: 설정·비밀값 외부화 `externalize_egovframe_config`(도구 40종·CLI `externalize`) — 공식 portal-site 자리표시자+암호화 키 외부 파일로 실제 기동, 4.x 는 암호화 값 유지·키 수동([결과](#v1130-결과-2026-11-03)).
 - **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.18 5.1.0 대응 2단계 → v1.19 매퍼·DAO 정합성 점검 → v1.20 AI 조립 5.1.0 모듈 기준([다음 버전 기획](#다음-버전-기획-v118v120), 2026-11-09 선행 조사 반영). 그 뒤 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v121-이후)).
+- **다음 계획**: v1.19 매퍼·DAO 정합성 점검 → v1.20 AI 조립 5.1.0 모듈 기준([다음 버전 기획](#다음-버전-기획-v118v120), 2026-11-09 선행 조사 반영). 그 뒤 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v121-이후)).
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -143,6 +144,13 @@ v1.17.0 까지 끝난 상태(2026-11-09, 도구 43종 + CLI 명령 20종)에서 
 - CI 통합(실자산): 공식 `boot-web`·`simple-backend` 를 `target="5.1.0"` 으로 올려 compile·기동(`verify_egovframe_startup`) 통과. `boot-web` 사본에 보안 스타터만 추가 → HTTP 401 재현과 점검 규칙 높음 1건, `Globals.Auth=security` 와 보호자원 테이블 적재 뒤 200. 공통컴포넌트 5.0.7 에서 matcher 규칙이 `AuthenticInterceptor` 1곳을 찾고 main 에서 0곳.
 
 **완료 정의**: 규칙 데이터(`update-rules.json`·`operations-rules.json`)와 근거 갱신 스크립트, `docs/design-migration.md` 「5.1.0 2단계」절, api-contract minor(파라미터 추가 시), CHANGELOG. 도구 수는 그대로(43종).
+
+#### v1.18.0 결과 (2026-11-10)
+
+- 도구 43종 그대로, api-contract minor(`check_egovframe_operations.rules` 허용값 3개, `create_egovframe_project.rteVersion`). 설계: [design-migration.md 6-2단계](design-migration.md#6-2단계v1180-510-대응-2단계--소스-브랜치-근거boot-스타터폐기-예정-apijunit-6), [design-operations.md 4-1](design-operations.md#4-1-egov-boot-보안-스타터-규칙-v118).
+- 근거: `update-rules.json` 5.1.0 단계에 `5.1.x` 브랜치(`cd9938f`, 11-05, 변경 클래스 678 — Boot 스타터·AI 모듈·테스트 지원 포함)를 더했습니다. 이 작업 환경에서 표준프레임워크 Maven 저장소가 막혀(`Request Blocked`) sources jar 대조는 `--reuse-maven`(기존 근거 유지, `compared=false`)으로 만들었습니다 — 저장소에 닿는 환경에서 다시 생성하면 대조 결과가 채워집니다.
+- 실측(공식 템플릿, 2026-11-10): boot-web·simple-backend 를 5.1.0 parent 로 기동(simple-backend 는 JUnit 6 보정 뒤), simple-backend 5.0.1 → 5.1.0 갱신 적용 뒤 기동. boot-web 사본에 보안 스타터만 추가 → 기동·HTTP 401, `Globals.Auth=security` + 보호자원 `/**` + regex → 기동 실패(`PatternSyntaxException`), `request-matcher-type=url` → 200. 공통컴포넌트 v5.0.7 `AuthenticInterceptor` 는 변수 패턴이라 manual, main(#1396) 은 0.
+- 기획과 달라진 점: (1) MVC `EgovRestExceptionHandler` 규칙은 뺐습니다 — `v5.0.2-Final` 에 없던 5.1.0 신규 클래스라 갱신 때의 동작 변화가 아닙니다. (2) Boot 스타터는 5.0.0 부터 배포돼 있었고(5.0.x 브랜치에 디렉터리가 없을 뿐), 바뀐 것은 자동구성 여부입니다. (3) 기획에 없던 **JUnit 6**(5.1.0 parent 의 `junit-jupiter.version` 6.1.3)을 공식 simple-backend 를 띄우다 찾아 갱신·생성 둘 다에 넣었습니다. (4) `AntPathRequestMatcher` 는 5.0.x parent 도 Spring Security 6.5 라 목표와 무관하게 봅니다.
 
 ### v1.19.0 — 매퍼·DAO 정합성 점검
 

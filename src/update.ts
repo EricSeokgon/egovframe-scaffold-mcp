@@ -15,6 +15,7 @@ import { readManifest } from "./manifest.js";
 import { loadCatalog } from "./catalog.js";
 import { detectWorkspace, isMultiModule, moduleOf } from "./workspace.js";
 import { L, tr } from "./lang.js";
+import { planJunit6Items, planRequestMatcherItems } from "./request-matcher.js";
 import {
   applyTextEdits, lineAt, linkBuildError, loadMigrationRules, parsePomDeps, parsePomProperties, versionBelow, walkProjectFiles,
   type ApplyFilePlan, type MigrateResult, type MigrationItem, type SourceEra, type TextEdit, type VerifyLink, type VerifyWorkItem,
@@ -22,10 +23,10 @@ import {
 
 // ── 규칙 ──────────────────────────────────────────────
 /** 변경 근거 — git 태그 비교, 또는 v1.3 태그 없는 버전의 저장소 sources jar 비교 */
-export type UpdateEvidence = { fromTag: string; toTag: string } | { kind: "maven-sources"; from: string; to: string };
-export interface UpdateChange { id: string; since: string; kind: "api" | "behavior"; classes: string[]; summary: string; reason: string; action: "manual"; evidence: UpdateEvidence }
+export type UpdateEvidence = { fromTag: string; toTag: string } | { kind: "maven-sources"; from: string; to: string; branch?: string; commit?: string };
+export interface UpdateChange { id: string; since: string; kind: "api" | "behavior"; classes: string[]; /** v1.18: 이 artifact 를 의존성으로 선언했으면 클래스 참조 없이도 보고(Boot 스타터처럼 코드가 직접 부르지 않는 모듈) */ artifacts?: string[]; summary: string; reason: string; action: "manual"; evidence: UpdateEvidence }
 /** v1.3: GitHub 태그·공식 공지 없이 저장소에만 배포된 버전 */
-export interface ProvisionalVersion { version: string; kind: "maven-sources"; reason: string; reason_en?: string }
+export interface ProvisionalVersion { version: string; kind: "maven-sources"; reason: string; reason_en?: string; branch?: string; commit?: string }
 export interface UpdateParent { kind: "web" | "boot"; groupId: string; artifactId: string; versions: Record<string, { bootParent?: string; properties: Record<string, string> }> }
 export interface UpdateRules {
   schemaVersion: number;
@@ -56,7 +57,7 @@ export const recommendedVersion = (rules: UpdateRules = loadUpdateRules()): stri
 export const provisionalOf = (version: string, rules: UpdateRules = loadUpdateRules()): ProvisionalVersion | null => rules.provisional?.find((p) => p.version === version) ?? null;
 
 // ── 결과 타입 ─────────────────────────────────────────
-export type UpdateKind = "parent-version" | "rte-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency";
+export type UpdateKind = "parent-version" | "rte-version" | "parent-property" | "rte-change" | "component-update" | "duplicate-dependency" | "deprecated-api" | "library-change";
 export interface UpdateInfo {
   /** 프로젝트의 실효 RTE 버전 — (버전 속성 또는 parent 관리 버전)과 RTE 의존성 리터럴 버전 중 가장 낮은 것 */
   from: string | null;
@@ -260,6 +261,8 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
   const effectives: string[] = [];
   let legacy = false;
   const sources: { rel: string; text: string }[] = [];
+  const buildFiles: { rel: string; text: string; gradle: boolean }[] = [];
+  const testSources: { rel: string; text: string }[] = [];
   let scanned = 0;
   for (const abs of files) {
     let st: fs.Stats;
@@ -273,6 +276,7 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
     const base = path.basename(abs);
     if (base === "pom.xml") {
       if (/<groupId>\s*egovframework\.rte\s*<\/groupId>/.test(text)) legacy = true;
+      buildFiles.push({ rel, text, gradle: false });
       const plan = planPomUpdate(rel, text, target, rules);
       if (plan.parent) { if (rel === "pom.xml") rootParent = plan.parent; else if (!modParent || versionBelow(plan.parent.version, modParent.version) === true) modParent = plan.parent; }
       if (plan.effective) effectives.push(plan.effective);
@@ -281,6 +285,7 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
     }
     if (base === "build.gradle" || base === "build.gradle.kts") {
       if (/egovframework\.rte/.test(text)) legacy = true;
+      buildFiles.push({ rel, text, gradle: true });
       const plan = planGradleUpdate(rel, text, target);
       if (plan.effective) effectives.push(plan.effective);
       if (plan.parentVersion && (!parent || versionBelow(plan.parentVersion, parent.version) === true)) parent = { kind: "boot", groupId: "org.egovframe.boot", artifactId: "egovframe-boot-starter-parent", version: plan.parentVersion, to: target };
@@ -288,6 +293,9 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
       continue;
     }
     if (SOURCE_EXT.has(path.extname(abs)) && text.includes("org.egovframe.rte")) sources.push({ rel, text });
+    // v1.18: Spring Security 6.5 폐기 예정 RequestMatcher(목표 버전과 무관 — 5.x parent 는 모두 6.5.x)
+    if (base.endsWith(".java") && !/(^|\/)src\/test\//.test(rel)) items.push(...planRequestMatcherItems(rel, text));
+    if (base.endsWith(".java") && /(^|\/)src\/test\//.test(rel)) testSources.push({ rel, text });
   }
   parent = rootParent ?? modParent ?? parent;
   const from = effectives.sort((a, b) => (versionBelow(a, b) ? -1 : versionBelow(b, a) ? 1 : 0))[0] ?? null;
@@ -315,7 +323,25 @@ export function updateProject(opts: UpdateOptions): UpdateResult {
         break;
       }
     }
-    if (hitFiles.size) changes.push({ id: c.id, since: c.since, kind: c.kind, summary: tr(c, "summary"), files: hitFiles.size });
+    // v1.18: 코드가 직접 부르지 않는 모듈(Boot 스타터 등)은 의존성 선언으로 본다
+    for (const a of c.artifacts ?? []) {
+      for (const b of buildFiles) {
+        const src = b.gradle ? b.text : b.text.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
+        const m = (b.gradle ? new RegExp(`['":]${escapeRe(a)}(?=[:'"])`) : new RegExp(`<artifactId>\\s*${escapeRe(a)}\\s*</artifactId>`)).exec(src);
+        if (!m || hitFiles.has(`${b.rel}#${a}`)) continue;
+        hitFiles.add(`${b.rel}#${a}`);
+        items.push({ file: b.rel, line: lineAt(src, m.index), kind: "rte-change", from: a, to: null, action: "manual", reason: `[${c.since} ${c.kind === "api" ? L("API 변경", "API change") : L("동작 변경", "behavior change")}] ${tr(c, "summary")} — ${tr(c, "reason")}` });
+      }
+    }
+    if (hitFiles.size) changes.push({ id: c.id, since: c.since, kind: c.kind, summary: tr(c, "summary"), files: new Set([...hitFiles].map((x) => x.split("#")[0])).size });
+  }
+
+  // v1.18: parent 가 JUnit Jupiter 를 6 으로 올리는 구간 — org.junit.jupiter.api.MediaType 이 생겨 와일드카드 import 가 겹치면 테스트 컴파일 오류
+  const junitMajor = (v: string | null | undefined): number | null => { if (!v) return null; const p = rules.parents.find((x) => x.kind === (parent?.artifactId === "egovframe-web-config-parent" ? "web" : "boot"))?.versions[v]?.properties["junit-jupiter.version"]; return p ? Number(p.split(".")[0]) : 5; };
+  const jTo = junitMajor(target), jFrom = junitMajor(from) ?? 5;
+  if (jTo !== null && jTo >= 6 && jFrom < 6) {
+    for (const t of testSources) items.push(...planJunit6Items(t.rel, t.text));
+    if (testSources.length) notes.push(L(`목표 ${target} 의 parent 는 JUnit Jupiter 를 ${jFrom}.x → ${jTo}.x 로 올립니다 — org.junit.jupiter.api.MediaType 이 새로 생겨 org.springframework.http.* 와 와일드카드로 함께 import 한 테스트는 'reference to MediaType is ambiguous' 로 컴파일되지 않습니다(자동: 단일 import 추가). 그 밖의 JUnit 6 변경(폐기 API 제거)은 verify=true 로 확인하세요.`, `The ${target} parent raises JUnit Jupiter ${jFrom}.x → ${jTo}.x — the new org.junit.jupiter.api.MediaType makes tests that wildcard-import it together with org.springframework.http.* fail with 'reference to MediaType is ambiguous' (auto: add a single-type import). Check other JUnit 6 changes (removed deprecated APIs) with verify=true.`));
   }
 
   // 공통컴포넌트
@@ -448,7 +474,7 @@ export async function verifyUpdate(opts: UpdateVerifyOptions): Promise<UpdateVer
 
 // ── 렌더링 ────────────────────────────────────────────
 const KIND_LABEL: Record<string, () => string> = {
-  "parent-version": () => L("parent 버전", "parent version"), "rte-version": () => L("RTE 버전", "RTE version"), "parent-property": () => L("parent 관리 속성", "parent-managed property"), "rte-change": () => L("바뀐 RTE API·동작", "changed RTE API/behavior"), "component-update": () => L("공통컴포넌트 최신 유지", "common components update"), "duplicate-dependency": () => L("중복 의존성 선언", "duplicate dependency declaration"),
+  "parent-version": () => L("parent 버전", "parent version"), "rte-version": () => L("RTE 버전", "RTE version"), "parent-property": () => L("parent 관리 속성", "parent-managed property"), "rte-change": () => L("바뀐 RTE API·동작", "changed RTE API/behavior"), "component-update": () => L("공통컴포넌트 최신 유지", "common components update"), "duplicate-dependency": () => L("중복 의존성 선언", "duplicate dependency declaration"), "deprecated-api": () => L("폐기 예정 API", "deprecated API"), "library-change": () => L("parent 가 올린 라이브러리 변경", "library change brought by the parent"),
 };
 export const updateKindLabel = (k: string): string => KIND_LABEL[k]?.() ?? k;
 
