@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { MANIFEST_FILE, readManifest } from "./manifest.js";
+import { checkMappers, type MapperCheckResult } from "./mapper-check.js";
 
 /* ------------------------------------------------------------------ */
 /* 프로젝트 검증 (v0.5.0)                                               */
@@ -18,6 +19,8 @@ export interface ValidateResult {
   /** AI 컴포넌트 실행 전제 진단 (경고와 별도 — ok 판정에 영향 없음) */
   aiChecks: { componentId: string; file: string; exists: boolean; note: string }[];
   warnings: string[];
+  /** v1.19: 매퍼·DAO 정합성(없는 문장·DB 별 차이·XML 안 참조) — 오류가 있으면 ok=false */
+  mapper?: MapperCheckResult;
 }
 
 /** \${user.home}·\${ENV:default} 플레이스홀더를 해석한다 (AI 설정 진단용) */
@@ -55,7 +58,7 @@ export function collectAiChecks(projectDir: string, componentId: string): Valida
 }
 
 /** 조립된 프로젝트의 무결성을 진단한다 (파일 존재·DbType↔DDL 일치). */
-export async function validateProject(opts: { projectDir: string }): Promise<ValidateResult> {
+export async function validateProject(opts: { projectDir: string; /** v1.19: 매퍼·DAO 정합성 검사(기본 true) */ mapper?: boolean; maxIssues?: number }): Promise<ValidateResult> {
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
     throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
@@ -98,5 +101,6 @@ export async function validateProject(opts: { projectDir: string }): Promise<Val
       warnings.push(`Globals.DbType='${dbType}'인데 복사된 DB 스크립트(${dbScriptDirs.join(", ")})와 일치하지 않습니다`);
   }
 
-  return { projectDir, ok: warnings.length === 0, manifestFound: manifest !== null, components, dbType, dbScriptDirs, aiChecks, warnings };
+  const mapper = opts.mapper === false ? undefined : checkMappers({ projectDir, maxIssues: opts.maxIssues ?? 200 });
+  return { projectDir, ok: warnings.length === 0 && (mapper?.summary.errors ?? 0) === 0, manifestFound: manifest !== null, components, dbType: dbType ?? mapper?.dbType ?? null, dbScriptDirs, aiChecks, warnings, ...(mapper ? { mapper } : {}) };
 }

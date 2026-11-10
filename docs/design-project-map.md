@@ -35,3 +35,20 @@
 - "공통컴포넌트는 카탈로그로 미리 채운다"를 하지 않았다 — 전체 파싱이 1초 미만이고, 카탈로그는 참조 대조(미참조 테이블)에 쓴다.
 - 매퍼 간선을 문장 단위로 좁혔다 — 기획에는 없던 정밀도이지만, 공통컴포넌트의 매퍼 하나가 테이블 여럿을 섞어 쓰기 때문에 없으면 영향이 과대평가된다.
 - Mermaid 는 범위를 좁힌 경우에만(200 노드 상한) — 기획대로.
+
+## 5. 매퍼·DAO 정합성 (v1.19)
+
+구조 지도가 읽던 매퍼 XML·DAO 문자열 호출을 **정합성**으로 본다(`src/mapper-check.ts`, `validate_egovframe_project` 의 `mapper` 검사). 지도는 "어디가 이어지나"를, 정합성은 "이어져야 하는데 끊긴 곳"을 답한다. 지도 해석과 따로 둔 이유는 줄 번호·동적 ID·DB 별 사본을 문장 단위로 봐야 해서다(지도는 namespace 단위로 합친다).
+
+| 항목 | 결정 |
+|---|---|
+| 호출 | `selectList`·`selectOne`·`insert`·`update`·`delete`·`list`·`listWithPaging` 등의 첫 인자가 문자열 리터럴(`"NS.id"`)이면 문장 참조, `"NS.prefix" + x` 면 이어 만든 ID(접두가 맞는 문장이 있으면 통과). namespace 는 FQN 또는 단순명(유일할 때) |
+| 인터페이스 | FQN 이 XML namespace 와 같은 인터페이스의 추상 메서드(애노테이션 SQL·default·static 제외) |
+| id 정규화 | `id="ns.x"` → `x`(MyBatis `applyCurrentNamespace` 와 같음) — 공통컴포넌트의 DB 별 차이 15곳(선행 조사)은 전부 이것이었고 정규화 뒤 0 |
+| DB 별 사본 | 파일명 `*_SQL_<db>.xml`·`_<db>.xml` 또는 경로의 DB 디렉터리. 같은 namespace 의 DB 사본 사이 id 집합 차이를 보고, `Globals.DbType` 의 DB 에서 빠지면 오류 |
+| 중복 | 같은 파일 안, 그리고 같은 namespace·같은 DB(또는 DB 무관 파일)로 함께 올라가는 파일 사이 — MyBatis 는 같은 namespace 를 여러 파일이 나눠 쓰는 것은 허용한다 |
+| 후보 | 같은 namespace 의 문장 중 편집 거리 ≤ max(3, 길이 40%) 또는 한쪽이 다른 쪽의 부분열 — 부분열(글자를 끼우거나 뺀 이름)을 먼저. upstream 10-26 수정의 정답(`selectAdministCodeList` → `selectAdministCodeRecptnList` 등) 5/5 가 1순위 |
+| 범위 밖 | 자동 수정, SQL 문법·컬럼 존재(DB 필요 — v1.10), iBATIS `sqlMap`, 애노테이션 SQL 본문, 매퍼가 의존성 jar 안에 있는 경우(프로젝트에 매퍼 XML 이 하나도 없으면 문자열 호출을 보고하지 않음) |
+
+검증: 게이트 `test:mapper-check`(19단언) — 종류별 양성·음성, 주석·CDATA·테스트 제외, 동적 ID, DbType, id 정규화, validate·CLI·평가서. CI 통합 `test:mapper-check-live`(11단언) — 공통컴포넌트 v5.0.7 = 10곳(수정 6 + 미수정 4), main = 4곳, 공식 템플릿 6종은 보고 항목마다 모든 매퍼 XML 을 다시 읽어 독립 확인(오탐 0), 공통컴포넌트 전체 3초 이내(실측 0.6초).
+

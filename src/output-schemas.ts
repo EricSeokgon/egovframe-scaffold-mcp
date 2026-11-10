@@ -30,6 +30,14 @@ export const ValidateOutput = loose({
   dbScriptDirs: z.array(z.string()),
   aiChecks: z.array(loose({ componentId: z.string(), file: z.string(), exists: z.boolean(), note: z.string() })),
   warnings: z.array(z.string()),
+  // v1.19: 매퍼·DAO 정합성
+  mapper: loose({
+    dbType: z.string().nullable(),
+    counts: loose({ mapperFiles: z.number().int(), namespaces: z.number().int(), statements: z.number().int(), stringCalls: z.number().int(), interfaceMethods: z.number().int(), dynamicCalls: z.number().int() }),
+    summary: loose({ errors: z.number().int(), warnings: z.number().int(), missing: z.number().int(), dynamicMatched: z.number().int(), variantGaps: z.number().int(), byKind: z.record(z.string(), z.number().int()) }),
+    issues: z.array(loose({ kind: z.string(), severity: z.enum(["error", "warning"]), file: z.string(), line: z.number().int(), ref: z.string(), message: z.string(), candidates: z.array(z.string()).optional() })),
+    notes: z.array(z.string()),
+  }).optional(),
 });
 
 const MigrationItem = loose({
@@ -207,6 +215,7 @@ export const AssessmentOutput = loose({
   sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.string(), z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
   operations: loose({ grade: z.string(), total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), fail: z.number().int(), pass: z.number().int(), na: z.number().int(), failed: z.array(loose({ rule: z.string(), title: z.string(), severity: z.string(), findings: z.number().int() })), error: z.string().optional() }).optional(),
+  mapper: loose({ errors: z.number().int(), warnings: z.number().int(), missing: z.number().int(), variantGaps: z.number().int(), namespaces: z.number().int(), statements: z.number().int(), byKind: z.record(z.string(), z.number().int()), error: z.string().optional() }).optional(),
   rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable(), reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int() }).optional() }).optional(),
   notes: z.array(z.string()),
 });

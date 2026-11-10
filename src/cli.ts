@@ -151,8 +151,8 @@ export const COMMANDS: Record<string, CommandDef> = {
   },
   validate: {
     tool: "validate_egovframe_project", summary: "조립 프로젝트 무결성 검증", summaryEn: "Assembled project integrity validation",
-    metrics: (s) => ({ invalid: s.ok === false ? 1 : 0, missing: Array.isArray(s.components) ? s.components.reduce((n: number, c) => n + num(rec(c).missing), 0) : 0, warnings: Array.isArray(s.warnings) ? s.warnings.length : 0 }),
-    line: (s) => L(`검증 ${s.ok ? "통과" : "실패"}`, `Validation ${s.ok ? "passed" : "failed"}`),
+    metrics: (s) => { const mp = rec(rec(s.mapper).summary); return { invalid: s.ok === false ? 1 : 0, missing: Array.isArray(s.components) ? s.components.reduce((n: number, c) => n + num(rec(c).missing), 0) : 0, warnings: Array.isArray(s.warnings) ? s.warnings.length : 0, mapperErrors: num(mp.errors), mapperMissing: num(mp.missing), mapperWarnings: num(mp.warnings) }; },
+    line: (s) => { const mp = rec(rec(s.mapper).summary); return L(`검증 ${s.ok ? "통과" : "실패"}${s.mapper ? ` · 매퍼 오류 ${num(mp.errors)}(없는 문장 ${num(mp.missing)})·경고 ${num(mp.warnings)}` : ""}`, `Validation ${s.ok ? "passed" : "failed"}${s.mapper ? ` · mapper errors ${num(mp.errors)} (missing statements ${num(mp.missing)}), warnings ${num(mp.warnings)}` : ""}`); },
   },
   diagnose: {
     tool: "diagnose_egovframe_project", summary: "프로젝트 진단(빌드·RTE·컴포넌트)", summaryEn: "Project diagnosis (build, RTE, components)",

@@ -24,6 +24,7 @@ import { CI_BUNDLE_PATH_RE, CI_FAIL_ON_RE, CI_JDK_RE, CI_NPM_REGISTRY_RE, CI_SUP
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
+import { renderMapperCheckMarkdown } from "./mapper-check.js";
 import { applyUpdate, isUpdateTarget, loadUpdateRules, renderUpdateMarkdown, updateProject, verifyUpdate } from "./update.js";
 import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, renderMigrationVerifyMarkdown, verifyMigration, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
@@ -349,14 +350,17 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
 
   server.registerTool(
     "validate_egovframe_project",
-    { title: t("validate_egovframe_project"), description: d("validate_egovframe_project", "조립된 프로젝트의 무결성을 진단합니다: 설치 매니페스트 기준 파일 존재 확인, Globals.DbType과 복사된 DB 스크립트 일치 확인."), inputSchema: {
+    { title: t("validate_egovframe_project"), description: d("validate_egovframe_project", "조립된 프로젝트의 무결성을 진단합니다: 설치 매니페스트 기준 파일 존재 확인, Globals.DbType과 복사된 DB 스크립트 일치 확인, 매퍼·DAO 정합성(v1.19 — DAO 의 문자열 ID·Mapper 인터페이스 메서드가 가리키는 문장이 XML 에 없는 곳과 비슷한 이름 후보, DB 별 매퍼 사이 문장 차이, include·resultMap 대상 없음, id 중복. 컴파일·기동으로 잡히지 않고 그 화면을 누를 때 실패하는 결함)."), inputSchema: {
       projectDir: z.string().describe("검증할 프로젝트 디렉터리"),
+      mapper: z.boolean().default(true).describe("매퍼·DAO 정합성 검사(v1.19): DAO 의 문자열 ID 호출·Mapper 인터페이스 메서드가 가리키는 문장이 XML 에 없는 곳, DB 별 매퍼 사이 문장 차이, include·resultMap 대상 없음, 같은 DB 로 올라가는 파일 사이 id 중복. 오류가 있으면 ok=false"),
+      topN: z.number().int().min(1).max(500).default(20).describe("Markdown 에 보일 매퍼 항목 수(구조화 출력은 최대 200)"),
     }, outputSchema: OUTPUT_SCHEMAS.validate_egovframe_project.shape, annotations: toolAnnotations("validate_egovframe_project") },
     async (args) => {
       enforceAllowedRoots(args);
-      const r = await validateProject(args as { projectDir: string });
+      const { topN, ...vopts } = args as { projectDir: string; mapper?: boolean; topN?: number };
+      const r = await validateProject(vopts);
       const text = [
-        r.ok ? `✅ 검증 통과: ${r.projectDir}` : `⚠️ 경고 ${r.warnings.length}건: ${r.projectDir}`,
+        r.ok ? `✅ 검증 통과: ${r.projectDir}` : `⚠️ 경고 ${r.warnings.length}건${r.mapper?.summary.errors ? ` · 매퍼 오류 ${r.mapper.summary.errors}건` : ""}: ${r.projectDir}`,
         `- 매니페스트: ${r.manifestFound ? "있음" : "없음"}`,
         ...(r.components.length
           ? [`- 설치 컴포넌트:`, ...r.components.map((c) => `  · ${c.id}: ${c.files}개 파일${c.missing ? ` (누락 ${c.missing}개: ${c.missingSamples.join(", ")})` : " (정상)"}`)]
@@ -366,6 +370,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
           ? ["- AI 실행 전제 진단:", ...r.aiChecks.map((c) => `  ${c.exists ? "✓" : "✗"} ${c.note}: ${c.file}${c.exists ? "" : " (준비 필요)"}`)]
           : []),
         ...(r.warnings.length ? ["", "경고:", ...r.warnings.map((w) => `  ! ${w}`)] : []),
+        ...(r.mapper ? ["", renderMapperCheckMarkdown(r.mapper, topN ?? 20)] : []),
       ].join("\n");
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },

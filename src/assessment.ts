@@ -14,6 +14,7 @@ import { DEFAULT_SBOM_PATH, type SbomDocument } from "./sbom.js";
 import { checkMinimumElements, DEFAULT_VEX_PATH, type VexDocument } from "./sbom-check.js";
 import { readRehearsalRecord } from "./rehearse.js";
 import { checkOperations } from "./operations.js";
+import { checkMappers } from "./mapper-check.js";
 import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
@@ -146,6 +147,8 @@ export interface AssessmentResult {
   secureCoding: { total: number; high: number; medium: number; low: number; byOrigin: Record<string, number>; byRule: { rule: string; guideItem: string; severity: string; count: number }[]; suppressed: number; error?: string };
   /** v1.15: 운영 준비 점검(등급 산식에는 넣지 않음) */
   operations: { grade: string; total: number; high: number; medium: number; low: number; fail: number; pass: number; na: number; failed: { rule: string; title: string; severity: string; findings: number }[]; error?: string };
+  /** v1.19: 매퍼·DAO 정합성 건수(항목은 validate_egovframe_project) */
+  mapper: { errors: number; warnings: number; missing: number; variantGaps: number; namespaces: number; statements: number; byKind: Record<string, number>; error?: string };
   sbom: {
     present: boolean; path: string; components?: number; specVersion?: string; timestamp?: string; vulnerabilities?: number;
     /** v0.40: 최소 요소 7종 */
@@ -278,6 +281,14 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   } catch (e) {
     operations = { grade: "?", total: 0, high: 0, medium: 0, low: 0, fail: 0, pass: 0, na: 0, failed: [], error: e instanceof Error ? e.message : String(e) };
   }
+  // v1.19: 매퍼·DAO 정합성
+  let mapper: AssessmentResult["mapper"];
+  try {
+    const mc = checkMappers({ projectDir, maxFiles: opts.maxFiles, maxIssues: 0 });
+    mapper = { errors: mc.summary.errors, warnings: mc.summary.warnings, missing: mc.summary.missing, variantGaps: mc.summary.variantGaps, namespaces: mc.counts.namespaces, statements: mc.counts.statements, byKind: mc.summary.byKind };
+  } catch (e) {
+    mapper = { errors: 0, warnings: 0, missing: 0, variantGaps: 0, namespaces: 0, statements: 0, byKind: {}, error: e instanceof Error ? e.message : String(e) };
+  }
   // SBOM
   const sbom = readSbom(projectDir, (opts.sbomPath ?? DEFAULT_SBOM_PATH).replace(/\\/g, "/"));
 
@@ -311,7 +322,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       notes: dep.notes,
       ...(fixHistory.length ? { fixHistory } : {}),
     },
-    security, secureCoding, operations, sbom,
+    security, secureCoding, operations, mapper, sbom,
     grades: { migration, supplyChain },
     ...(dep.workspace ? { modules: dep.workspace.modules.map((m) => {
       const u = update?.modules?.find((x) => x.name === m.name);
@@ -443,6 +454,14 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     out.push(L(`- 등급 **${op.grade}** — 미달 규칙 ${op.fail} · 통과 ${op.pass} · 해당 없음 ${op.na} (항목 높음 ${op.high} · 중간 ${op.medium} · 낮음 ${op.low})`, `- Grade **${op.grade}** — failed rules ${op.fail} · passed ${op.pass} · n/a ${op.na} (findings high ${op.high} · medium ${op.medium} · low ${op.low})`));
     for (const f of op.failed.slice(0, 8)) out.push(`  - ${f.severity === "high" ? "⚠️" : "•"} ${f.title} \`${f.rule}\` ${f.findings}`);
     out.push(L(`- 등급 산식에는 넣지 않습니다(운영 투입 전 체크리스트). 파일·줄·제안은 check_egovframe_operations 로.`, `- Not part of the grade formula (a pre-production checklist). Files, lines and suggestions: check_egovframe_operations.`));
+  }
+
+  const mp = r.mapper;
+  if (mp) {
+    out.push(``, L(`### 매퍼·DAO 정합성 (\`validate_egovframe_project\`)`, `### Mapper/DAO consistency (\`validate_egovframe_project\`)`), ``);
+    if (mp.error) out.push(L(`- 점검 실패: ${mp.error}`, `- Check failed: ${mp.error}`));
+    else if (!mp.namespaces) out.push(L(`- MyBatis 매퍼 XML 없음 — 해당 없음`, `- No MyBatis mapper XML — not applicable`));
+    else out.push(L(`- namespace ${mp.namespaces} · 문장 ${mp.statements} — 오류 ${mp.errors}(없는 문장 ${mp.missing}) · 경고 ${mp.warnings}(DB 별 차이 ${mp.variantGaps}). 컴파일·기동으로 잡히지 않고 화면을 누를 때 실패하는 결함 — 위치·후보는 validate_egovframe_project 로.`, `- ${mp.namespaces} namespaces · ${mp.statements} statements — ${mp.errors} errors (${mp.missing} missing statements) · ${mp.warnings} warnings (${mp.variantGaps} DB-variant gaps). Defects that pass compile and startup and fail when the screen is used — locations and candidates via validate_egovframe_project.`));
   }
 
   out.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? L(` · vulnerabilities ${r.sbom.vulnerabilities}건`, ` · vulnerabilities ${r.sbom.vulnerabilities}`) : ""}` : `➖ ${r.sbom.note}`}`);
