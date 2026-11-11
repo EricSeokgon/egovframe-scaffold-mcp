@@ -42,6 +42,7 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
+- **v1.19.0 완료**: 매퍼·DAO 정합성 점검(`validate_egovframe_project` 의 `mapper` 검사, 도구 43종 그대로) — 공통컴포넌트 v5.0.7 없는 문장 10곳(upstream 수정 6 + 미수정 4)·main 4곳·0.6초, 공식 템플릿 4종에서 실제 결함 발견([결과](#v1190-결과-2026-11-10)).
 - **v1.18.0 완료**: 5.1.0 대응 2단계(도구 43종 그대로) — 5.1.x 브랜치 근거, Boot 스타터 자동구성·Spring Security 폐기 예정 RequestMatcher·JUnit 6 MediaType 갱신 항목, 운영 점검 보안 스타터 규칙 3종, `rteVersion`; 실측 boot-web 사본 HTTP 401·기동 실패를 재현하고 고친 뒤 200([결과](#v1180-결과-2026-11-10)).
 - **v1.17.0 완료**: 포트폴리오(기관 단위) 현황 `summarize_egovframe_portfolio`(도구 43종·CLI `portfolio`) — 공식 템플릿 6종 + 코퍼스 2종 = 8 프로젝트 7초, 행 = 개별 평가서, 디렉터리·납품 패키지·CI 아티팩트 입력의 행 동일([결과](#v1170-결과-2026-11-07)). v1.15–v1.17 기획 완료.
 - **v1.16.0 완료**: 관측 내보내기 `generate_egovframe_deploy(observability="otel")` — OpenTelemetry 에이전트(sha256·폐쇄망 jar)·수집기(core), 공식 boot-web·web 에서 trace·metric·log 도착, 기동 오버헤드 1.1–1.3배([결과](#v1160-결과-2026-11-06)).
@@ -50,7 +51,7 @@
 - **v1.13.0 완료**: 설정·비밀값 외부화 `externalize_egovframe_config`(도구 40종·CLI `externalize`) — 공식 portal-site 자리표시자+암호화 키 외부 파일로 실제 기동, 4.x 는 암호화 값 유지·키 수동([결과](#v1130-결과-2026-11-03)).
 - **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.19 매퍼·DAO 정합성 점검 → v1.20 AI 조립 5.1.0 모듈 기준([다음 버전 기획](#다음-버전-기획-v118v120), 2026-11-09 선행 조사 반영). 그 뒤 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v121-이후)).
+- **다음 계획**: v1.20 AI 조립 5.1.0 모듈 기준([다음 버전 기획](#다음-버전-기획-v118v120), 2026-11-09 선행 조사 반영). 그 뒤 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v121-이후)).
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -172,6 +173,13 @@ v1.17.0 까지 끝난 상태(2026-11-09, 도구 43종 + CLI 명령 20종)에서 
 
 **완료 정의**: 검사·출력 필드, `docs/design-project-map.md` 「정합성」절, 미수정 4곳 upstream 이슈 제출, api-contract minor, CHANGELOG.
 
+#### v1.19.0 결과 (2026-11-10)
+
+- `validate_egovframe_project` 에 `mapper` 검사(기본 켬, `mapper=false`·`topN`), 구조화 출력 `mapper`(`ok` 에는 넣지 않음 — 공식 템플릿 결함으로 recipe 조립 검증이 실패해 분리), 평가서 `assessment.mapper`, CLI 지표 `mapperErrors`·`mapperMissing`·`mapperWarnings`. 도구 43종 그대로, api-contract minor. 설계: [design-project-map.md 5절](design-project-map.md#5-매퍼dao-정합성-v119).
+- 실측(2026-11-10): 공통컴포넌트 v5.0.7 namespace 149·문장 1,245·문자열 호출 1,292 → 없는 문장 10곳, 이어 만든 ID 1곳(맞음), 0.6초. main → 4곳. 후보 1순위가 upstream 이 고른 정답 5/5.
+- 공식 템플릿(기획의 "오류 0" 은 틀린 예상): web·boot-web 0, simple-backend 9(매퍼 XML 이 없는 DAO 의 namespace), simple-homepage 21(namespace 17 + HSQL 매퍼에서 주석 처리된 로그인 문장 4), portal-site·enterprise-business 41(namespace 35 + `authorRoleManageDAO` 문장 2 + HSQL 4). 보고 항목마다 모든 매퍼 XML 을 다시 읽어 독립 확인했고(오탐 0), 의존성 jar 에 매퍼가 없음(`mapperLocations` 가 프로젝트 경로만)도 확인했습니다 — 서비스에서 부르는 메서드라 그 기능을 쓰면 실패합니다.
+- 기획과 달라진 점: (1) DB 별 차이 15곳(선행 조사)은 `id="ns.x"` 처럼 namespace 를 붙여 쓴 id 때문이었고 MyBatis 와 같이 정규화하면 0 — 정규화를 넣었습니다. (2) "같은 namespace 를 여러 파일이 선언" 은 오류로 넣지 않았습니다 — MyBatis 가 허용하고 공통컴포넌트가 그렇게 씁니다(`menuManageDAO`). 대신 같은 DB 로 함께 올라가는 파일 사이 id 중복을 봅니다. (3) upstream 이슈 제출은 이 작업 환경에서 GitHub 쓰기가 막혀 보류 항목으로 남깁니다(공통컴포넌트 미수정 4곳, 템플릿 결함).
+
 ### v1.20.0 — AI 조립을 5.1.0 AI 모듈 기준으로 (`add_ai_components`)
 
 **왜 필요한가**: v0.24 의 `add_ai_components` 는 공식 `egovframe-ai-rag` 샘플(Spring AI 1.0.1)을 복사합니다. 5.1.0 parent 는 Spring AI 1.1.8(`-egov.1` 재빌드)을 관리하므로 5.1.0 프로젝트에 이 샘플을 넣으면 버전이 섞입니다. 5.1.0 이 공공 문서에 필요한 부품(HWP·HWPX 추출, 주민등록번호 마스킹, 프롬프트 인젝션 가드, 감사)을 실행환경 모듈로 제공하므로, 샘플이 직접 구현한 부분을 공식 부품으로 바꾸는 것이 맞습니다.
@@ -251,7 +259,7 @@ v1.18–v1.20 다음의 방향입니다. 세 버전 단위 기획은 직전 버�
 - **MCP `tasks`**: SDK 1.32.2 에서도 `experimental/tasks` 입니다. 안정 API 가 되면 장시간 도구(리허설·적재·기동·번들)에 적용합니다.
 - **5.1.0 공식화**: `egovframe-runtime` 에 `5.1.x` 브랜치와 Beta 소스(11-05)가 생겼지만 태그·포털 공지는 아직 없습니다. v1.18 은 Beta 소스를 근거로 더하고, 태그가 생기면 `git-tag` 로 바꿉니다.
 - **egovframe.go.kr 접근**: 포털이 이 작업 환경의 프록시에서 여전히 400 이고, GitHub API·codeload 도 403 입니다. 선행 조사는 `git` 으로 받은 브랜치·태그·커밋으로 합니다. 포털 Q&A 유형 통계는 다음 선행 조사에서 다시 시도합니다.
-- **upstream 에 돌려줄 것**: 지난 기획의 세 가지(`Globals.Hsql.AutoInit=false` 기본값, 템플릿의 `log4jdbc`·DEBUG 로그, `egov-crypto-config.properties` 기본 키)에 더해 — 공통컴포넌트 5.0.7·main 의 `KnoManagementDAO`·`KnoAppraisalDAO` insert·delete 문장 누락(v1.19 실측으로 확인 뒤 이슈), Boot 보안 스타터 README 의 "parent 사용 시 자동 포함" 문구(parent 는 버전 관리만).
+- **upstream 에 돌려줄 것**(v1.19 실측 추가 — 공식 템플릿 simple-backend·simple-homepage·portal-site·enterprise-business 의 매퍼 XML 없는 DAO·빠진 문장·HSQL 매퍼의 주석 처리된 로그인 문장): 지난 기획의 세 가지(`Globals.Hsql.AutoInit=false` 기본값, 템플릿의 `log4jdbc`·DEBUG 로그, `egov-crypto-config.properties` 기본 키)에 더해 — 공통컴포넌트 5.0.7·main 의 `KnoManagementDAO`·`KnoAppraisalDAO` insert·delete 문장 누락(v1.19 실측으로 확인 뒤 이슈), Boot 보안 스타터 README 의 "parent 사용 시 자동 포함" 문구(parent 는 버전 관리만).
 - **외부 기여·보안 제보**: `SECURITY.md` 절차대로 기획보다 먼저.
 
 ## 이전 기획 (v1.15–v1.17, 완료)

@@ -93,5 +93,19 @@ assert(a.status === 2 && a.stdout.includes("전환 준비도 평가서") && a.st
 const u = spawnSync(process.execPath, [entry, "nope"], { encoding: "utf8" });
 assert(u.status === 64, "프로세스: 알 수 없는 명령 → 64");
 
+// v1.19: 도구 호출 제한 — 기본 30분(SDK 기본 60초는 Maven 을 부르는 도구에 짧음), EGOVFRAME_CLI_TIMEOUT_MS 로 조정
+{
+  const err = [];
+  const code = await runCli(["network"], { cwd: proj, env: { EGOVFRAME_CLI_TIMEOUT_MS: "1" }, stdout: () => {}, stderr: (s) => err.push(s) });
+  assert(code === CLI_EXIT.error && /timed out/i.test(err.join("")), `EGOVFRAME_CLI_TIMEOUT_MS=1 이면 도구 호출이 제한에 걸림(설정이 전달됨) (${code}: ${err.join("").trim().slice(0, 80)})`);
+}
+
+// env 없는 io(라이브러리 호출자 — delivery-live 등)도 그대로 동작
+{
+  const out = [];
+  const code = await runCli(["validate", "--project", ".", "--json"], { cwd: proj, stdout: (s) => out.push(s), stderr: () => {} });
+  assert(code === 0 && JSON.parse(out.join("")).projectDir === proj, `io.env 없이도 도구 호출(기본 제한) (${code})`);
+}
+
 rmSync(proj, { recursive: true, force: true });
 if (process.exitCode) console.error(`cli FAIL (${n} assertions)`); else console.log(`cli OK (${n} assertions)`);

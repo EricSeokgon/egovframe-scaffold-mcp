@@ -202,3 +202,5 @@ export type { Lang } from "./lang.js";
 // v1.2 — 진행 알림·취소
 export { AbortError, isAbortError, throwIfAborted, NOOP_PROGRESS, collectProgress, subProgress, stepper, progressFromExtra } from "./progress.js";
 export type { Progress, ProgressEvent } from "./progress.js";
+export { checkMappers, renderMapperCheckMarkdown, editDistance, similarIds } from "./mapper-check.js";
+export type { MapperCheckResult, MapperIssue, MapperIssueKind, MapperCheckOptions } from "./mapper-check.js";

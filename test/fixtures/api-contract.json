@@ -1,6 +1,6 @@
 {
-  "version": "1.18.0",
-  "base": "1.17.0",
+  "version": "1.19.0",
+  "base": "1.18.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -4928,6 +4928,44 @@
                     }
                   }
                 },
+                "mapper": {
+                  "type": "object",
+                  "required": [
+                    "byKind",
+                    "errors",
+                    "missing",
+                    "namespaces",
+                    "statements",
+                    "variantGaps",
+                    "warnings"
+                  ],
+                  "properties": {
+                    "byKind": {
+                      "type": "object"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "integer"
+                    },
+                    "missing": {
+                      "type": "integer"
+                    },
+                    "namespaces": {
+                      "type": "integer"
+                    },
+                    "statements": {
+                      "type": "integer"
+                    },
+                    "variantGaps": {
+                      "type": "integer"
+                    },
+                    "warnings": {
+                      "type": "integer"
+                    }
+                  }
+                },
                 "migration": {
                   "type": "object",
                   "required": [
@@ -9643,8 +9681,18 @@
             "projectDir"
           ],
           "properties": {
+            "mapper": {
+              "type": "boolean",
+              "default": true
+            },
             "projectDir": {
               "type": "string"
+            },
+            "topN": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 500
             }
           }
         },
@@ -9730,6 +9778,136 @@
             },
             "manifestFound": {
               "type": "boolean"
+            },
+            "mapper": {
+              "type": "object",
+              "required": [
+                "counts",
+                "dbType",
+                "issues",
+                "notes",
+                "summary"
+              ],
+              "properties": {
+                "counts": {
+                  "type": "object",
+                  "required": [
+                    "dynamicCalls",
+                    "interfaceMethods",
+                    "mapperFiles",
+                    "namespaces",
+                    "statements",
+                    "stringCalls"
+                  ],
+                  "properties": {
+                    "dynamicCalls": {
+                      "type": "integer"
+                    },
+                    "interfaceMethods": {
+                      "type": "integer"
+                    },
+                    "mapperFiles": {
+                      "type": "integer"
+                    },
+                    "namespaces": {
+                      "type": "integer"
+                    },
+                    "statements": {
+                      "type": "integer"
+                    },
+                    "stringCalls": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "dbType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "issues": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "file",
+                      "kind",
+                      "line",
+                      "message",
+                      "ref",
+                      "severity"
+                    ],
+                    "properties": {
+                      "candidates": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "file": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "line": {
+                        "type": "integer"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "ref": {
+                        "type": "string"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": [
+                          "error",
+                          "warning"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "summary": {
+                  "type": "object",
+                  "required": [
+                    "byKind",
+                    "dynamicMatched",
+                    "errors",
+                    "missing",
+                    "variantGaps",
+                    "warnings"
+                  ],
+                  "properties": {
+                    "byKind": {
+                      "type": "object"
+                    },
+                    "dynamicMatched": {
+                      "type": "integer"
+                    },
+                    "errors": {
+                      "type": "integer"
+                    },
+                    "missing": {
+                      "type": "integer"
+                    },
+                    "variantGaps": {
+                      "type": "integer"
+                    },
+                    "warnings": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
             },
             "ok": {
               "type": "boolean"

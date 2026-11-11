@@ -13,7 +13,7 @@
 | `add_egovframe_components` | 공통컴포넌트 완전 조립 — 소스·매퍼·JSP와 message·IDGN·scheduling·정적 자산·Spring/web fragment 복사, Maven 좌표 탐지, **컴포넌트별 선별 DDL·DML 생성**(`database`), archive 검증·충돌 전체 거부·쓰기 실패 롤백·`dryRun` |
 | `search_egovframe_components` | 키워드로 컴포넌트 검색 (id·이름·설명, 점수순 상위 10건) |
 | `remove_egovframe_components` | 설치 매니페스트 기반 트랜잭션 제거 — 의존 컴포넌트·사용자 수정 hash 보호, `dryRun` 분류, `force` 시 `remove-backup/` 백업 후 제거 |
-| `validate_egovframe_project` | 조립 프로젝트 무결성 진단 — 파일 존재·DbType↔DB 스크립트 일치 |
+| `validate_egovframe_project` | 조립 프로젝트 무결성 진단 — 파일 존재·DbType↔DB 스크립트 일치·**매퍼·DAO 정합성**(v1.19: 없는 문장·DB 별 차이·include/resultMap·id 중복, 비슷한 이름 후보) |
 | `get_egovframe_guide` | 컴포넌트의 공식 가이드 문서 조회 (egovframe-docs, 연계 199건·고유 문서 156종) |
 | `add_ai_components` | 공식 [egovframe-ai-rag](https://github.com/eGovFramework/egovframe-ai-rag) 샘플 기반 AI RAG 챗봇 조립 — Spring AI(Redis Stack)·LangChain4j(PGVector) 스택 선택(상호 배타), 소스·설정(`application-ai.yml` 프로필)·UI·인프라 복사, **pom 누락 의존성만 마커 구간 삽입**(백업 생성, 제거 시 원복), 충돌 시 전체 거부, `dryRun` 미리보기 (설계: [docs/design-ai-components.md](design-ai-components.md)) |
 | `list_egovframe_recipes` | 큐레이션된 레시피(템플릿+컴포넌트 번들) 목록 |
@@ -232,6 +232,22 @@ check_egovframe_sbom(projectDir, baselinePath="sbom/bom-2026Q3.cdx.json", offlin
 규칙은 `catalog/sbom-rules.json` 데이터입니다(출처: NTIA 최소 요소 2021, SW 공급망 보안 가이드라인 1.0) — 국내 지침이 요소를 더하면 데이터로 추가합니다. CI 에서는 `npx -y egovframe-scaffold-mcp sbom-check --offline=false --fail-on "minimum,newVulns"` 로 제출 전 점검을 게이트로 걸 수 있습니다.
 
 제출처가 SPDX 를 요구하면(가이드라인 1.0 은 SPDX·CycloneDX 를 모두 언급) `bomFormat="spdx-json"` 으로 같은 내용을 SPDX 2.3 JSON 으로 냅니다. 체크섬·선언 라이선스(이름만 있는 라이선스는 `LicenseRef-` + `hasExtractedLicensingInfos`)·OSV 권고(`SECURITY`/`advisory` externalRefs)·기준 판정(`egovframe:*` annotations)도 옮기므로, SPDX 로 낸 뒤 `check_egovframe_sbom(sbomPath="sbom/bom.spdx.json")` 의 재판정·비교가 CycloneDX 와 같은 결과를 냅니다. SPDX 3.0, 취약점 판단 자동화(VEX 상태는 사람의 결정), 중앙 저장소 제출 API 는 범위 밖입니다.
+
+## 매퍼·DAO 정합성 (`validate_egovframe_project`, v1.19)
+
+DAO 의 문자열 ID 호출(`selectList("NS.id")`)과 Mapper 인터페이스 메서드는 가리키는 문장이 XML 에 없어도 컴파일·기동이 통과하고, 그 화면을 누를 때 `Mapped Statements collection does not contain value`(인터페이스는 `BindingException`)로 실패합니다. 정적 해석으로 미리 찾습니다. 읽기 전용, 고치지 않고 후보만.
+
+```text
+validate_egovframe_project(projectDir)                       # 매니페스트·DbType 검사 + 매퍼 정합성(기본)
+validate_egovframe_project(projectDir, mapper=false)         # 매퍼 검사 빼기
+npx -y egovframe-scaffold-mcp validate --project . --fail-on mapperMissing>0
+```
+
+- **오류**: 없는 문장(`missing-statement`)·없는 namespace(`missing-namespace`) — 위치(파일·줄)와 비슷한 이름의 문장 후보(글자를 끼우거나 뺀 이름 먼저, 그다음 편집 거리) · `Globals.DbType` 의 DB 매퍼에 빠진 문장(`db-variant`) · `<include refid>`·`resultMap` 대상 없음 · 같은 파일 또는 같은 namespace·같은 DB 로 함께 올라가는 파일 사이 id 중복.
+- **경고**: 다른 DB 매퍼에만 빠진 문장 · 문자열을 이어 만든 ID(`"NS.prefix" + x`)의 앞부분으로 시작하는 문장이 없음 · `parameterType`·`resultType` 의 프로젝트 패키지 클래스가 소스에 없음.
+- `id="namespace.id"` 처럼 namespace 를 붙여 쓴 id 는 MyBatis 와 같이 짧은 id 로 맞춥니다. 같은 namespace 를 여러 파일이 나눠 쓰는 것(공통컴포넌트 `menuManageDAO`)은 허용됩니다. 주석·CDATA 안의 태그, 테스트 소스, iBATIS `sqlMap` 은 보지 않습니다.
+- 결과는 `mapper` 에 따로 담고 `ok`(조립 무결성 — 매니페스트·DbType)에는 넣지 않습니다. 공식 템플릿 4종이 이미 결함을 갖고 있어 조립 검증이 늘 실패하게 되므로, 게이트는 CLI `--fail-on mapperErrors>0` 으로. CLI `--fail-on` 지표 `mapperErrors`·`mapperMissing`·`mapperWarnings`. 평가서 4절 「매퍼·DAO 정합성」에 건수.
+- 실측(2026-11-10): 공통컴포넌트 v5.0.7 없는 문장 10곳(upstream 이 10-26 에 고친 6곳 + 아직 남은 `KnoManagementDAO`·`KnoAppraisalDAO` insert·delete 4곳, 후보 1순위가 upstream 의 정답 5/5) · main 4곳 · 0.6초. 공식 템플릿: web·boot-web 0, simple-backend 9, simple-homepage 21, portal-site·enterprise-business 41 — 모두 매퍼 XML 이 아예 없는 DAO(`BBSAddedOptionsDAO`·`RestdeManageDAO` 등)·빠진 문장·HSQL 매퍼에서 주석 처리된 문장으로, 하나씩 독립 확인한 실제 결함입니다. 설계: [design-project-map.md 5절](design-project-map.md#5-매퍼dao-정합성-v119).
 
 ## 기동 검증 (`verify_egovframe_startup`, v1.11)
 
