@@ -100,5 +100,12 @@ assert(u.status === 64, "프로세스: 알 수 없는 명령 → 64");
   assert(code === CLI_EXIT.error && /timed out/i.test(err.join("")), `EGOVFRAME_CLI_TIMEOUT_MS=1 이면 도구 호출이 제한에 걸림(설정이 전달됨) (${code}: ${err.join("").trim().slice(0, 80)})`);
 }
 
+// env 없는 io(라이브러리 호출자 — delivery-live 등)도 그대로 동작
+{
+  const out = [];
+  const code = await runCli(["validate", "--project", ".", "--json"], { cwd: proj, stdout: (s) => out.push(s), stderr: () => {} });
+  assert(code === 0 && JSON.parse(out.join("")).projectDir === proj, `io.env 없이도 도구 호출(기본 제한) (${code})`);
+}
+
 rmSync(proj, { recursive: true, force: true });
 if (process.exitCode) console.error(`cli FAIL (${n} assertions)`); else console.log(`cli OK (${n} assertions)`);
