@@ -102,7 +102,7 @@ try {
     });
     const v = await validateProject({ projectDir: d });
     const v0 = await validateProject({ projectDir: d, mapper: false });
-    assert(v.ok === false && v.mapper.summary.errors === 1 && v.mapper.issues[0].candidates[0] === "selectA" && v0.mapper === undefined, "validate: mapper 오류면 ok=false, mapper=false 면 건너뜀");
+    assert(v.ok === v0.ok && v.mapper.summary.errors === 1 && v.mapper.issues[0].candidates[0] === "selectA" && v0.mapper === undefined, "validate: mapper 결과는 따로(ok 는 조립 무결성 그대로), mapper=false 면 건너뜀");
     const out = [];
     const io = { cwd: d, env: {}, stdout: (s) => out.push(s), stderr: (s) => out.push(s) };
     const code = await runCli(["validate", "--project", ".", "--fail-on", "mapperMissing>0"], io);

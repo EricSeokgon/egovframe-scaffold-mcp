@@ -246,7 +246,7 @@ npx -y egovframe-scaffold-mcp validate --project . --fail-on mapperMissing>0
 - **오류**: 없는 문장(`missing-statement`)·없는 namespace(`missing-namespace`) — 위치(파일·줄)와 비슷한 이름의 문장 후보(글자를 끼우거나 뺀 이름 먼저, 그다음 편집 거리) · `Globals.DbType` 의 DB 매퍼에 빠진 문장(`db-variant`) · `<include refid>`·`resultMap` 대상 없음 · 같은 파일 또는 같은 namespace·같은 DB 로 함께 올라가는 파일 사이 id 중복.
 - **경고**: 다른 DB 매퍼에만 빠진 문장 · 문자열을 이어 만든 ID(`"NS.prefix" + x`)의 앞부분으로 시작하는 문장이 없음 · `parameterType`·`resultType` 의 프로젝트 패키지 클래스가 소스에 없음.
 - `id="namespace.id"` 처럼 namespace 를 붙여 쓴 id 는 MyBatis 와 같이 짧은 id 로 맞춥니다. 같은 namespace 를 여러 파일이 나눠 쓰는 것(공통컴포넌트 `menuManageDAO`)은 허용됩니다. 주석·CDATA 안의 태그, 테스트 소스, iBATIS `sqlMap` 은 보지 않습니다.
-- 오류가 있으면 `ok=false`. CLI `--fail-on` 지표 `mapperErrors`·`mapperMissing`·`mapperWarnings`. 평가서 4절 「매퍼·DAO 정합성」에 건수.
+- 결과는 `mapper` 에 따로 담고 `ok`(조립 무결성 — 매니페스트·DbType)에는 넣지 않습니다. 공식 템플릿 4종이 이미 결함을 갖고 있어 조립 검증이 늘 실패하게 되므로, 게이트는 CLI `--fail-on mapperErrors>0` 으로. CLI `--fail-on` 지표 `mapperErrors`·`mapperMissing`·`mapperWarnings`. 평가서 4절 「매퍼·DAO 정합성」에 건수.
 - 실측(2026-11-10): 공통컴포넌트 v5.0.7 없는 문장 10곳(upstream 이 10-26 에 고친 6곳 + 아직 남은 `KnoManagementDAO`·`KnoAppraisalDAO` insert·delete 4곳, 후보 1순위가 upstream 의 정답 5/5) · main 4곳 · 0.6초. 공식 템플릿: web·boot-web 0, simple-backend 9, simple-homepage 21, portal-site·enterprise-business 41 — 모두 매퍼 XML 이 아예 없는 DAO(`BBSAddedOptionsDAO`·`RestdeManageDAO` 등)·빠진 문장·HSQL 매퍼에서 주석 처리된 문장으로, 하나씩 독립 확인한 실제 결함입니다. 설계: [design-project-map.md 5절](design-project-map.md#5-매퍼dao-정합성-v119).
 
 ## 기동 검증 (`verify_egovframe_startup`, v1.11)

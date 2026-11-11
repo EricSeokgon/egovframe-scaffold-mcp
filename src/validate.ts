@@ -19,7 +19,7 @@ export interface ValidateResult {
   /** AI 컴포넌트 실행 전제 진단 (경고와 별도 — ok 판정에 영향 없음) */
   aiChecks: { componentId: string; file: string; exists: boolean; note: string }[];
   warnings: string[];
-  /** v1.19: 매퍼·DAO 정합성(없는 문장·DB 별 차이·XML 안 참조) — 오류가 있으면 ok=false */
+  /** v1.19: 매퍼·DAO 정합성(없는 문장·DB 별 차이·XML 안 참조). ok(조립 무결성)에는 넣지 않는다 — 공식 템플릿 자체의 결함으로 조립 검증이 실패하지 않게. 게이트는 CLI mapperErrors 등으로 */
   mapper?: MapperCheckResult;
 }
 
@@ -102,5 +102,5 @@ export async function validateProject(opts: { projectDir: string; /** v1.19: 매
   }
 
   const mapper = opts.mapper === false ? undefined : checkMappers({ projectDir, maxIssues: opts.maxIssues ?? 200 });
-  return { projectDir, ok: warnings.length === 0 && (mapper?.summary.errors ?? 0) === 0, manifestFound: manifest !== null, components, dbType: dbType ?? mapper?.dbType ?? null, dbScriptDirs, aiChecks, warnings, ...(mapper ? { mapper } : {}) };
+  return { projectDir, ok: warnings.length === 0, manifestFound: manifest !== null, components, dbType: dbType ?? mapper?.dbType ?? null, dbScriptDirs, aiChecks, warnings, ...(mapper ? { mapper } : {}) };
 }

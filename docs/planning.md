@@ -175,7 +175,7 @@ v1.17.0 까지 끝난 상태(2026-11-09, 도구 43종 + CLI 명령 20종)에서 
 
 #### v1.19.0 결과 (2026-11-10)
 
-- `validate_egovframe_project` 에 `mapper` 검사(기본 켬, `mapper=false`·`topN`), 구조화 출력 `mapper`, 평가서 `assessment.mapper`, CLI 지표 `mapperErrors`·`mapperMissing`·`mapperWarnings`. 도구 43종 그대로, api-contract minor. 설계: [design-project-map.md 5절](design-project-map.md#5-매퍼dao-정합성-v119).
+- `validate_egovframe_project` 에 `mapper` 검사(기본 켬, `mapper=false`·`topN`), 구조화 출력 `mapper`(`ok` 에는 넣지 않음 — 공식 템플릿 결함으로 recipe 조립 검증이 실패해 분리), 평가서 `assessment.mapper`, CLI 지표 `mapperErrors`·`mapperMissing`·`mapperWarnings`. 도구 43종 그대로, api-contract minor. 설계: [design-project-map.md 5절](design-project-map.md#5-매퍼dao-정합성-v119).
 - 실측(2026-11-10): 공통컴포넌트 v5.0.7 namespace 149·문장 1,245·문자열 호출 1,292 → 없는 문장 10곳, 이어 만든 ID 1곳(맞음), 0.6초. main → 4곳. 후보 1순위가 upstream 이 고른 정답 5/5.
 - 공식 템플릿(기획의 "오류 0" 은 틀린 예상): web·boot-web 0, simple-backend 9(매퍼 XML 이 없는 DAO 의 namespace), simple-homepage 21(namespace 17 + HSQL 매퍼에서 주석 처리된 로그인 문장 4), portal-site·enterprise-business 41(namespace 35 + `authorRoleManageDAO` 문장 2 + HSQL 4). 보고 항목마다 모든 매퍼 XML 을 다시 읽어 독립 확인했고(오탐 0), 의존성 jar 에 매퍼가 없음(`mapperLocations` 가 프로젝트 경로만)도 확인했습니다 — 서비스에서 부르는 메서드라 그 기능을 쓰면 실패합니다.
 - 기획과 달라진 점: (1) DB 별 차이 15곳(선행 조사)은 `id="ns.x"` 처럼 namespace 를 붙여 쓴 id 때문이었고 MyBatis 와 같이 정규화하면 0 — 정규화를 넣었습니다. (2) "같은 namespace 를 여러 파일이 선언" 은 오류로 넣지 않았습니다 — MyBatis 가 허용하고 공통컴포넌트가 그렇게 씁니다(`menuManageDAO`). 대신 같은 DB 로 함께 올라가는 파일 사이 id 중복을 봅니다. (3) upstream 이슈 제출은 이 작업 환경에서 GitHub 쓰기가 막혀 보류 항목으로 남깁니다(공통컴포넌트 미수정 4곳, 템플릿 결함).
