@@ -37,6 +37,8 @@ CLI 는 같은 프로세스에 서버(`buildServer()`)를 만들고 SDK 의 `InM
 
 옵션은 도구 파라미터와 같은 이름입니다(kebab-case 가능: `--resolve-scope all`, `--top-n 10`). 형 변환은 `tools/list` 가 주는 JSON Schema 의 타입을 따릅니다(boolean: `--x`·`--no-x`·`--x=false`, 숫자, 배열은 쉼표). 모르는 옵션은 도구 파라미터 목록과 함께 거부합니다. 공통 옵션은 `--project`(기본 현재 디렉터리)·`--json`·`--out`·`--step-summary`(Markdown 을 `$GITHUB_STEP_SUMMARY` 에 덧붙임)·`--fail-on`·`--write`·`--json-out`(구조화 JSON 을 파일로 — v1.17, 생성 CI 의 `egovframe-assessment.json`) 입니다.
 
+도구 호출 제한은 기본 **30분**입니다(진행 알림이 오면 다시 잽니다). MCP SDK 기본값 60초로는 Maven 을 부르는 `sbom`·`assess`·`deliver` 가 느린 CI 러너에서 `Request timed out` 으로 끊겼습니다(v1.19 GitLab 실측). 환경 변수 `EGOVFRAME_CLI_TIMEOUT_MS` 로 바꿉니다.
+
 ## 5. `--fail-on` 과 종료 코드
 
 식은 쉼표로 여러 개: `metric`(0 초과), `metric>N`·`metric>=N`, 등급 지표는 `grade:C`(C 이상이면 실패 — A<B<C<D). 등급 지표에 임계값을 쓰거나 일반 지표에 등급을 쓰면 사용법 오류입니다.

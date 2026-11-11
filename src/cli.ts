@@ -166,6 +166,8 @@ export const COMMANDS: Record<string, CommandDef> = {
   },
 };
 
+/** CLI 의 도구 호출 제한(기본 30분) — MCP SDK 기본 60초는 Maven 을 부르는 도구에 짧다 */
+export const CLI_TOOL_TIMEOUT_MS = 30 * 60 * 1000;
 const CLI_FLAGS = new Set(["project", "json", "out", "json-out", "fail-on", "step-summary", "write", "lang", "help", "h"]);
 
 export interface ParsedArgs { command: string | null; options: Record<string, string | boolean>; positional: string[] }
@@ -325,7 +327,11 @@ async function runCommand(command: string, def: CommandDef, options: Record<stri
       catch (e) { io.stderr(`${(e as Error).message}\n`); return EXIT.usage; }
     }
 
-    const res = await client.callTool({ name: def.tool, arguments: finalArgs });
+    // v1.19: MCP SDK 기본 요청 제한(60초)이 Maven 을 부르는 도구(sbom·assess·deliver 등)를 느린 CI 러너에서 끊었다(GitLab 실측 "Request timed out").
+    //        CLI 는 같은 프로세스 안 서버라 끊을 이유가 없으므로 기본 30분, EGOVFRAME_CLI_TIMEOUT_MS 로 조정(진행 알림이 오면 다시 잼)
+    const envTimeout = Number(io.env.EGOVFRAME_CLI_TIMEOUT_MS);
+    const timeout = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : CLI_TOOL_TIMEOUT_MS;
+    const res = await client.callTool({ name: def.tool, arguments: finalArgs }, undefined, { timeout, resetTimeoutOnProgress: true });
     const text = Array.isArray(res.content) ? res.content.filter((c) => (c as { type: string }).type === "text").map((c) => (c as { text: string }).text).join("\n") : "";
     if (res.isError) { io.stderr(`${command}: ${text}\n`); return EXIT.error; }
     const structured = (res.structuredContent ?? {}) as Record<string, unknown>;
