@@ -15,7 +15,7 @@
 | `remove_egovframe_components` | 설치 매니페스트 기반 트랜잭션 제거 — 의존 컴포넌트·사용자 수정 hash 보호, `dryRun` 분류, `force` 시 `remove-backup/` 백업 후 제거 |
 | `validate_egovframe_project` | 조립 프로젝트 무결성 진단 — 파일 존재·DbType↔DB 스크립트 일치·**매퍼·DAO 정합성**(v1.19: 없는 문장·DB 별 차이·include/resultMap·id 중복, 비슷한 이름 후보) |
 | `get_egovframe_guide` | 컴포넌트의 공식 가이드 문서 조회 (egovframe-docs, 연계 199건·고유 문서 156종) |
-| `add_ai_components` | 공식 [egovframe-ai-rag](https://github.com/eGovFramework/egovframe-ai-rag) 샘플 기반 AI RAG 챗봇 조립 — Spring AI(Redis Stack)·LangChain4j(PGVector) 스택 선택(상호 배타), 소스·설정(`application-ai.yml` 프로필)·UI·인프라 복사, **pom 누락 의존성만 마커 구간 삽입**(백업 생성, 제거 시 원복), 충돌 시 전체 거부, `dryRun` 미리보기 (설계: [docs/design-ai-components.md](design-ai-components.md)) |
+| `add_ai_components` | **v1.20: Boot parent 5.1.0 이상이면 5.1.0 실행환경 AI 모듈 기준 조립**(`base=auto`) — `egovframe-rte-ai-core` + Spring AI/LangChain4j 어댑터로 문서 추출(HWP·HWPX·DOCX·PDF·Markdown)·한국어 문장 청킹·개인정보 마스킹·PGVector 재색인·프롬프트 인젝션 가드·OpenAI 호환 모델 응답을 프로젝트 패키지에 생성(환경 변수 `EGOV_AI_*`, [아래](#ai-조립--510-ai-모듈-기준-add_ai_components-v120)). 그 밖에는 공식 [egovframe-ai-rag](https://github.com/eGovFramework/egovframe-ai-rag) 샘플 기반 AI RAG 챗봇 조립 — Spring AI(Redis Stack)·LangChain4j(PGVector) 스택 선택(상호 배타), 소스·설정(`application-ai.yml` 프로필)·UI·인프라 복사, **pom 누락 의존성만 마커 구간 삽입**(백업 생성, 제거 시 원복), 충돌 시 전체 거부, `dryRun` 미리보기 (설계: [docs/design-ai-components.md](design-ai-components.md)) |
 | `list_egovframe_recipes` | 큐레이션된 레시피(템플릿+컴포넌트 번들) 목록 |
 | `apply_egovframe_recipe` | 레시피 하나로 생성→컴포넌트(→AI 계층)까지 조립하고 전체 성공 시에만 최종 경로로 atomic commit. 공식 템플릿이 제공하는 공통기반은 확인·보존하고 추가 컴포넌트만 설치 (`dryRun` 지원) |
 | `diagnose_egovframe_project` | 기존/레거시 프로젝트를 스캔해 빌드시스템·RTE 버전·DbType·설치 공통컴포넌트(pathPrefixes 지문)·설정 문제 진단 (읽기 전용) |
@@ -37,7 +37,7 @@
 | `prepare_egovframe_offline_bundle` | **폐쇄망 오프라인 번들** — 인터넷 PC 에서 OSV Maven 덤프·고정 공통컴포넌트 아카이브·Initializr zip 템플릿·공통컴포넌트 태그 미러(·`include=["otel"]` 면 OpenTelemetry Java 에이전트 jar, v1.16)를 sha256 manifest 와 함께 새 디렉터리에 담음(dryRun 기본). 폐쇄망에서는 `EGOVFRAME_OFFLINE_BUNDLE` 로 다운로드·OSV·재조립 원본을 번들로 대체 |
 | `generate_egovframe_sbom` | **SBOM 생성** — Maven/Gradle 프로젝트의 CycloneDX 1.6 JSON(기본) 또는 SPDX 2.3 JSON(`bomFormat="spdx-json"`)을 빌드 파일 변경 없이 생성(Maven: cyclonedx-maven-plugin makeAggregateBom, 해시·라이선스 포함 / Gradle: 해석된 의존성 트리로 구성). `enrich` 로 component 마다 기준 판정(`egovframe:status·basis·baseline`) 속성, `offline=false` 로 OSV 취약점을 `vulnerabilities[]` 에 포함. 출력은 프로젝트 안 경로(기본 `sbom/bom.cdx.json`, SPDX 는 `sbom/bom.spdx.json`), 기존 파일은 `overwrite` 없이는 거부, `dryRun`(기본)은 계획만 |
 | `check_egovframe_sbom` | **SBOM 점검** — 기존 CycloneDX·SPDX 2.x SBOM(형식 자동 판별)의 최소 요소 7종(공급자·구성요소명·버전·고유식별자·의존관계·작성자·생성 시각) 충족 여부와 빠진 component, 빌드 도구 없이 purl 로 기준 재판정·OSV 재조회(생성 이후 새 취약점), `baselinePath` 와 비교(추가·제거·버전·판정·취약점), `vex=true` 면 CycloneDX VEX 초안(`in_triage`, BOM-Link, 사람의 판단 보존, CycloneDX 입력만). SBOM 파일은 바꾸지 않음 |
-| `check_egovframe_secure_coding` | **보안약점 점검** — 행안부·KISA 개발보안 가이드(2021) 구현단계 보안약점 중 정적 패턴 14개 항목(규칙 20종: SQL 삽입·XSS·경로 조작·URL 자동접속·OS 명령·XXE·약한 암호·난수·하드코드 정보·쿠키·오류 노출·빈 catch·역직렬화·디버그 코드)을 파일·라인·CWE·등급·조치·출처(공통컴포넌트 원본/수정본/매니페스트 없음·프로젝트·테스트)로. 예외 파일(사유·검토자), `baselinePath` 비교(새 항목), SARIF 2.1.0(`format=sarif`·`sarifPath`). 진단 보조이며 공인 진단을 대체하지 않음 |
+| `check_egovframe_secure_coding` | **보안약점 점검** — 행안부·KISA 개발보안 가이드(2021) 구현단계 보안약점 중 정적 패턴 14개 항목(규칙 20종 + v1.20 AI 규칙 3종 — 추출 한도 해제·가드 없는 프롬프트·모델 API 키 리터럴: SQL 삽입·XSS·경로 조작·URL 자동접속·OS 명령·XXE·약한 암호·난수·하드코드 정보·쿠키·오류 노출·빈 catch·역직렬화·디버그 코드)을 파일·라인·CWE·등급·조치·출처(공통컴포넌트 원본/수정본/매니페스트 없음·프로젝트·테스트)로. 예외 파일(사유·검토자), `baselinePath` 비교(새 항목), SARIF 2.1.0(`format=sarif`·`sarifPath`). 진단 보조이며 공인 진단을 대체하지 않음 |
 | `fix_egovframe_dependencies` | **취약 의존성 자동 조치**(v1.9) — pom.xml(멀티 모듈 포함)에서 parent 상향 → parent·Boot BOM 보다 낮게 고정한 버전 제거 → 패키지가 같은 좌표 교체 → OSV 에 걸린 직접 적은 버전을 모든 권고를 피하는 가장 낮은 같은 major 릴리스로(저장소 maven-metadata 확인). major 변경·수정 버전 없음·parent 관리 버전·전이 의존성은 수동. 전·후 권고 수, 기본 dryRun, 적용은 transaction + compile 확인(실패 시 되돌림). [자세히](#취약-의존성-자동-조치-fix_egovframe_dependencies-v19) |
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `verify_egovframe_startup` | **기동 검증**(v1.11) — 프로젝트를 바꾸지 않고 실제로 띄움: Boot 는 `spring-boot:run`·`bootRun`(빈 포트), Classic war 는 캐시의 고정 Tomcat 10.1/11.0(sha256 검증, `tomcatHome`)에 ROOT 로. 완료 문구 + HTTP(5xx 아님)로 판정, 실패면 원인 종류(포트·드라이버·DB 접속·테이블 없음·매퍼 XML 파일·줄·설정 누락·javax·실제로 실패한 빈과 정의 파일·GUI 빈·시간 초과·빌드)와 처방. [자세히](#기동-검증-verify_egovframe_startup-v111) |
@@ -232,6 +232,24 @@ check_egovframe_sbom(projectDir, baselinePath="sbom/bom-2026Q3.cdx.json", offlin
 규칙은 `catalog/sbom-rules.json` 데이터입니다(출처: NTIA 최소 요소 2021, SW 공급망 보안 가이드라인 1.0) — 국내 지침이 요소를 더하면 데이터로 추가합니다. CI 에서는 `npx -y egovframe-scaffold-mcp sbom-check --offline=false --fail-on "minimum,newVulns"` 로 제출 전 점검을 게이트로 걸 수 있습니다.
 
 제출처가 SPDX 를 요구하면(가이드라인 1.0 은 SPDX·CycloneDX 를 모두 언급) `bomFormat="spdx-json"` 으로 같은 내용을 SPDX 2.3 JSON 으로 냅니다. 체크섬·선언 라이선스(이름만 있는 라이선스는 `LicenseRef-` + `hasExtractedLicensingInfos`)·OSV 권고(`SECURITY`/`advisory` externalRefs)·기준 판정(`egovframe:*` annotations)도 옮기므로, SPDX 로 낸 뒤 `check_egovframe_sbom(sbomPath="sbom/bom.spdx.json")` 의 재판정·비교가 CycloneDX 와 같은 결과를 냅니다. SPDX 3.0, 취약점 판단 자동화(VEX 상태는 사람의 결정), 중앙 저장소 제출 API 는 범위 밖입니다.
+
+## AI 조립 — 5.1.0 AI 모듈 기준 (`add_ai_components`, v1.20)
+
+표준프레임워크 5.1.0 은 공공 문서에 필요한 AI 부품(HWP·HWPX 추출, 주민등록번호 마스킹, 프롬프트 인젝션 가드, 감사)을 실행환경 모듈로 제공합니다. Boot parent 가 5.1.0 이상이면 공식 샘플(Spring AI 1.0.1)을 복사하는 대신 이 모듈로 작은 RAG 조립물을 **생성**합니다.
+
+```text
+add_ai_components(projectDir, stack="spring-ai", dryRun=true)             # parent 5.1.0 이상 → 5.1.0 AI 모듈 조립 계획
+add_ai_components(projectDir, stack="langchain4j", formats=["pdf","docx"]) # 넣을 문서 파서 고르기(Markdown 은 항상)
+add_ai_components(projectDir, stack="spring-ai", base="sample")           # 5.1.0 이어도 예전처럼 샘플 복사
+remove_egovframe_components(projectDir, components=["ai-rte-spring-ai"])   # 파일 삭제 + pom 원복
+```
+
+- **생성물**(앱 패키지 아래 `.ai`, 파일 4개): `EgovAiConfig`(추출기·가드·모델 클라이언트·PGVector — 모델·저장소는 첫 사용 때 연결), `EgovAiRagService`, `EgovAiController`(`POST /ai/documents` multipart `file` · `POST /ai/ask` `{"question"}`), `EGOV-AI.md`(환경 변수·운영 전 확인 사항). pom 에는 어댑터·모델 클라이언트·`*-pgvector*`·고른 파서만 마커 구간으로(버전은 parent 가 관리).
+- **색인**: 추출(추출 한도·zip 폭탄/XXE 차단) → 정규화 → 한국어 문장 경계 청킹 → 개인정보 마스킹(주민등록번호·카드·계좌·비밀값 → 토큰) → 재색인(같은 파일 이름의 이전 청크 삭제). **질의**: 프롬프트 인젝션 가드(막히면 검색·모델 호출 없음) → 벡터 검색 → 문서 조각을 시스템 프롬프트에 넣어 OpenAI 호환 모델 호출. 가드 판정·마스킹 건수는 `EGOV_AI_AUDIT` 로그.
+- **설정**: 환경 변수만 — `EGOV_AI_BASE_URL`(Ollama·vLLM·사내 게이트웨이의 서버 루트)·`EGOV_AI_API_KEY`·`EGOV_AI_CHAT_MODEL`·`EGOV_AI_EMBEDDING_MODEL`·`EGOV_AI_EMBEDDING_DIMENSIONS`·`EGOV_AI_PGVECTOR_URL`/`USERNAME`/`PASSWORD`·`EGOV_AI_GUARD_POLICY`. 소스에 값이 없습니다.
+- parent 가 5.1.0 미만이면 `base=auto` 는 예전 샘플 조립 그대로이고, `base="rte-ai"` 는 거부하며 `migrate_egovframe_project(target="5.1.0")` 을 안내합니다. 샘플 조립물과 함께 설치할 수 없습니다.
+- 실측(2026-11-12, 공식 boot-web 5.1.0 + PGVector(pg16) + OpenAI 호환 스텁): 두 스택 모두 컴파일·기동, 한글 파일 이름 Markdown·DOCX 색인, 색인의 주민등록번호 → `[RRN]`, 재업로드 시 행 수 그대로, 질의 왕복, 인젝션 문구 차단(모델 호출 0), remove 원복.
+- 하지 않는 것: 모델 서빙, 채팅 UI, 어휘 검색(pg_trgm)·RRF 융합 연결(어댑터의 `EgovHybrid*Retriever` 로 더할 수 있음 — `EGOV-AI.md`), `/ai/**` 인증(프로젝트 보안 설정에), HWP·HWPX·PDF 실제 문서 실측(파서 의존성과 컴파일까지 확인). 설계: [design-ai-components.md 9절](design-ai-components.md#9-510-ai-모듈-기준-조립-v120).
 
 ## 매퍼·DAO 정합성 (`validate_egovframe_project`, v1.19)
 

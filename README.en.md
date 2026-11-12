@@ -79,7 +79,7 @@ Structured output (`structuredContent`, `--json`) keeps the same keys in both la
 | `remove_egovframe_components` | Transactional removal using the install manifest; protects dependents and user-modified files |
 | `upgrade_egovframe_project` | 3-way upgrade of installed components (user changes preserved, dryRun default, backup; `reapply=true` merges conflicting files base·current·target and refuses only what cannot be merged) |
 | `validate_egovframe_project` | Integrity checks (files, DbType vs scripts, AI prerequisites) and, from v1.19, mapper/DAO consistency: statements referenced by DAO string IDs or mapper interfaces that are missing from the XML (with similar-name candidates), DB-specific mapper gaps, include/resultMap targets, duplicate ids |
-| `add_ai_components` | AI RAG chatbot layer from the official egovframe-ai-rag sample (Spring AI / LangChain4j) |
+| `add_ai_components` | AI RAG layer. From v1.20, on a Boot parent of 5.1.0 or later it generates a kit on the eGovFrame 5.1.0 AI modules (HWP/HWPX/DOCX/PDF/Markdown extraction, Korean sentence chunking, PII masking, PGVector re-indexing, prompt-injection guard, OpenAI-compatible model; settings via `EGOV_AI_*`); otherwise it copies the official egovframe-ai-rag sample (Spring AI / LangChain4j) |
 | `list_egovframe_recipes` / `apply_egovframe_recipe` | Curated bundles: project → components → AI layer with one atomic commit |
 | `generate_egovframe_crud` | VO, Mapper XML, Service, Controller, optional JSP and JUnit 5 following the official CRUD wizard; v1.4: from a `CREATE TABLE` statement (`ddl`) with dialect-neutral LIKE search (`search`) |
 | `generate_egovframe_config` | Spring configuration from the 21 official Initializr templates (xml/javaConfig/yaml/properties), offline |

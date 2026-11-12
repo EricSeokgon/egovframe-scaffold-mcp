@@ -42,6 +42,7 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
+- **v1.20.0 완료**: AI 조립을 5.1.0 AI 모듈 기준으로(`add_ai_components(base)`, 도구 43종 그대로) — 두 스택 생성 조립물이 공식 boot-web 5.1.0 에서 컴파일·기동·색인·질의 왕복, 주민등록번호 마스킹·인젝션 차단 확인, 보안약점 AI 규칙 3종([결과](#v1200-결과-2026-11-12)). v1.18–v1.20 기획 완료.
 - **v1.19.0 완료**: 매퍼·DAO 정합성 점검(`validate_egovframe_project` 의 `mapper` 검사, 도구 43종 그대로) — 공통컴포넌트 v5.0.7 없는 문장 10곳(upstream 수정 6 + 미수정 4)·main 4곳·0.6초, 공식 템플릿 4종에서 실제 결함 발견([결과](#v1190-결과-2026-11-10)).
 - **v1.18.0 완료**: 5.1.0 대응 2단계(도구 43종 그대로) — 5.1.x 브랜치 근거, Boot 스타터 자동구성·Spring Security 폐기 예정 RequestMatcher·JUnit 6 MediaType 갱신 항목, 운영 점검 보안 스타터 규칙 3종, `rteVersion`; 실측 boot-web 사본 HTTP 401·기동 실패를 재현하고 고친 뒤 200([결과](#v1180-결과-2026-11-10)).
 - **v1.17.0 완료**: 포트폴리오(기관 단위) 현황 `summarize_egovframe_portfolio`(도구 43종·CLI `portfolio`) — 공식 템플릿 6종 + 코퍼스 2종 = 8 프로젝트 7초, 행 = 개별 평가서, 디렉터리·납품 패키지·CI 아티팩트 입력의 행 동일([결과](#v1170-결과-2026-11-07)). v1.15–v1.17 기획 완료.
@@ -51,7 +52,7 @@
 - **v1.13.0 완료**: 설정·비밀값 외부화 `externalize_egovframe_config`(도구 40종·CLI `externalize`) — 공식 portal-site 자리표시자+암호화 키 외부 파일로 실제 기동, 4.x 는 암호화 값 유지·키 수동([결과](#v1130-결과-2026-11-03)).
 - **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.20 AI 조립 5.1.0 모듈 기준([다음 버전 기획](#다음-버전-기획-v118v120), 2026-11-09 선행 조사 반영). 그 뒤 2.0 계약 정리([장기 로드맵](#장기-로드맵-2027-v121-이후)).
+- **다음 계획**: v1.21 이후 세 버전 기획(선행 조사 뒤 작성) — 후보는 [장기 로드맵](#장기-로드맵-2027-v121-이후)의 2.0 계약 정리, v1.20 에서 미룬 어휘 검색·RRF 융합 연결과 HWP·HWPX 표본 실측, 5.1.0 태그 뒤 기본값 전환.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -106,7 +107,7 @@ v0.32–v0.34 로 MCP 프로토콜 현대화, 5.x 전환 3단계(검증)와 공�
 | **v1.13 계획** | 설정·비밀값 외부화 | 새 도구 `externalize_egovframe_config`(40종): `globals.properties`·`context-datasource.xml`·`application.properties` 의 비밀값을 환경 변수(Boot)·암호화 값+키 환경 변수(Classic)·k8s Secret 으로 옮기고 설정 파일은 자리표시자로, 기동(v1.11)으로 확인 |
 | **v1.14 계획** | 프로젝트 구조 지도·변경 영향 | 새 도구 `map_egovframe_project`(41종): 테이블 → 매퍼 XML → Mapper/DAO → Service → Controller → JSP/URL 그래프, `impact(table\|class\|url)` 조회, 인수인계용 Markdown(화면·URL·DB 접근 표) |
 | **v1.15–v1.17 완료** | 운영 전환·조직 단위 | 운영 준비 점검(`check_egovframe_operations`, 규칙 데이터), 관측 내보내기(`generate_egovframe_deploy(observability)` — OTel 에이전트·수집기까지), 포트폴리오(CLI `portfolio`) — [다음 버전 기획](#이전-기획-v115v117-완료) |
-| **v1.18–v1.20 계획** | 5.1.0 과 그 위에서 깨지는 것 | 5.1.0 대응 2단계(소스 브랜치 근거·MVC 예외 응답 상태 보존·`PathPatternRequestMatcher`·Boot 스타터 점검), 매퍼·DAO 정합성(`validate_egovframe_project` 의 `mapper` 검사 — 공통컴포넌트 5.0.7 에 없는 문장 10곳), AI 조립을 5.1.0 AI 모듈(HWP 추출·개인정보 마스킹·인젝션 가드) 기준으로 — [다음 버전 기획](#다음-버전-기획-v118v120) |
+| **v1.18–v1.20 완료** | 5.1.0 과 그 위에서 깨지는 것 | 5.1.0 대응 2단계(소스 브랜치 근거·MVC 예외 응답 상태 보존·`PathPatternRequestMatcher`·Boot 스타터 점검), 매퍼·DAO 정합성(`validate_egovframe_project` 의 `mapper` 검사 — 공통컴포넌트 5.0.7 에 없는 문장 10곳), AI 조립을 5.1.0 AI 모듈(HWP 추출·개인정보 마스킹·인젝션 가드) 기준으로 — [다음 버전 기획](#다음-버전-기획-v118v120) |
 | **2.0** | 계약 정리 | 폐기 제거, 도구 묶기, 기관별 규칙 팩, MCP tasks |
 
 ## 다음 버전 기획 (v1.18–v1.20)
@@ -197,6 +198,14 @@ v1.17.0 까지 끝난 상태(2026-11-09, 도구 43종 + CLI 명령 20종)에서 
 - CI 통합(실자산): 공식 `boot-web` 을 5.1.0 으로 올린 사본에 두 스택 각각 조립 → compile·기동, OpenAI 호환 스텁 서버로 질의 1건 왕복, hwplib 로 만든 HWP·HWPX 샘플의 추출·색인, 주민등록번호가 든 문서가 색인에서 토큰으로 바뀌는지, 인젝션 문구 질의가 가드에서 막히는지
 
 **완료 정의**: `docs/design-ai-components.md` 「5.1.0 AI 모듈」절, 카탈로그 갱신, api-contract minor, CHANGELOG. 착수 조건: 5.1.0 배포본의 AI 모듈이 v1.18 근거 대조에서 소스 브랜치와 같을 것(다르면 v1.19 를 먼저 끝내고 기다림).
+
+#### v1.20.0 결과 (2026-11-12)
+
+- `add_ai_components` 에 `base`(auto·sample·rte-ai)·`formats`. 도구 43종 그대로, api-contract minor. 새 모듈 `src/ai-rte.ts`, 템플릿 `catalog/ai-rte/`. 설계: [design-ai-components.md 9절](design-ai-components.md#9-510-ai-모듈-기준-조립-v120).
+- 실측(2026-11-12): 공식 boot-web 을 5.1.0 parent 로 만들어 두 스택을 조립 → `mvn package` → PGVector(pg16, Docker)와 OpenAI 호환 스텁으로 기동. 한글 파일 이름 Markdown·DOCX 색인, 색인 안 주민등록번호 → `[RRN]`, 같은 이름 재업로드 시 행 수 유지, 질의 왕복(검색 조각이 시스템 프롬프트에·출처 파일 이름), 인젝션 문구는 모델 호출 0 으로 차단, `EGOV_AI_AUDIT` 로그, remove 로 pom 바이트 원복.
+- 만들며 찾은 것: (1) 한글 파일 이름을 못 쓰는 로캘에서 임시 파일 생성이 실패 → 해시 이름. (2) 공식 boot-web 의 예외 해석기 설정 때문에 `@ExceptionHandler` 가 동작하지 않음 → 컨트롤러가 직접 JSON 응답. (3) 실행환경 재색인 라이터가 Spring AI `SimpleVectorStore` 를 거부 → 저장소는 PGVector.
+- 기획과 달라진 점: 벡터 저장소는 PGVector 하나(Redis Stack 제외), 어휘 검색·RRF 융합은 연결하지 않음, HWP·HWPX 표본 실측 없음(파서 의존성·컴파일까지), 모델 설정은 처음부터 환경 변수(외부화 도구를 거치지 않음), 채팅 UI 없음(REST 두 개).
+- 한계: 이 작업 환경에서 표준프레임워크 Maven 저장소가 막혀 AI 모듈 jar 는 `5.1.x` 브랜치(`cd9938f`)를 직접 빌드해 검증했습니다. CI(`test:ai-rte-live`)는 공식 저장소 배포본을 받으므로 배포본이 브랜치와 다르면 거기서 드러납니다.
 
 ### 장기 로드맵 (2027, v1.21 이후)
 

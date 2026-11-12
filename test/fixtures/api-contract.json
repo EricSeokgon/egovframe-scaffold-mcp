@@ -1,6 +1,6 @@
 {
-  "version": "1.19.0",
-  "base": "1.18.0",
+  "version": "1.20.0",
+  "base": "1.19.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -12,9 +12,30 @@
             "stack"
           ],
           "properties": {
+            "base": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "rte-ai",
+                "sample"
+              ],
+              "default": "auto"
+            },
             "dryRun": {
               "type": "boolean",
               "default": false
+            },
+            "formats": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "docx",
+                  "hwp",
+                  "hwpx",
+                  "pdf"
+                ]
+              }
             },
             "includeInfra": {
               "type": "boolean",

@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { withFileTransaction } from "./file-transaction.js";
 import { COMPONENTS_DOWNLOAD_TIMEOUT_MS, fetchWithTimeout, sha256 } from "./shared.js";
 import { MANIFEST_FILE, readManifest, type Manifest } from "./manifest.js";
+import { addRteAiComponents, resolveAiBase } from "./ai-rte.js";
 
 /* ------------------------------------------------------------------ */
 /* AI 컴포넌트 조립 (M1 미리보기 + M2 실조립) — 설계: docs/design-ai-components.md */
@@ -79,6 +80,10 @@ export interface AddAiComponentsOptions {
   includeTests?: boolean;
   ref?: string;
   dryRun?: boolean;
+  /** v1.20: auto(기본) = Boot parent 5.1.0 이상이면 rte-ai(5.1.0 AI 모듈로 생성), 아니면 sample(공식 egovframe-ai-rag 복사) */
+  base?: "auto" | "sample" | "rte-ai";
+  /** v1.20 rte-ai: 넣을 문서 파서(기본 hwp·hwpx·docx·pdf, Markdown 은 항상) */
+  formats?: ("hwp" | "hwpx" | "docx" | "pdf")[];
   /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
   faultInjection?: "after-files" | "after-pom";
 }
@@ -102,7 +107,7 @@ export interface AiPlanResult {
 }
 
 /** pom 마커 주석 — 제거 시 이 구간만 걷어내 원복한다 */
-const AI_POM_MARKER = (id: string, kind: "deps" | "props", pos: "start" | "end") =>
+export const AI_POM_MARKER = (id: string, kind: "deps" | "props", pos: "start" | "end") =>
   `<!-- egovframe-scaffold-mcp:ai:${id}:${kind}:${pos} -->`;
 
 interface AiPlanInternal {
@@ -115,7 +120,7 @@ interface AiPlanInternal {
   groups: (keyof AiComponent["copyGroups"])[];
 }
 
-const depCoord = (d: AiMavenDependency) =>
+export const depCoord = (d: AiMavenDependency) =>
   `${d.groupId}:${d.artifactId}${d.version ? ":" + d.version : ""}${d.scope ? " (" + d.scope + ")" : ""}`;
 
 /** 공통 게이트·의존성 diff·복사 그룹 계산 (dryRun/실조립 공용) */
@@ -132,6 +137,8 @@ function computeAiPlan(opts: AddAiComponentsOptions): AiPlanInternal {
   if (manifest) {
     if (manifest.components[comp.id])
       throw new Error(`'${comp.id}'가 이미 설치되어 있습니다 (매니페스트 기준)`);
+    const rte = Object.keys(manifest.components).find((x) => x.startsWith("ai-rte-"));
+    if (rte) throw new Error(`다른 AI 조립물 '${rte}'가 이미 설치되어 있습니다 — 먼저 remove_egovframe_components 로 제거하세요`);
     for (const x of comp.conflictsWith)
       if (manifest.components[x])
         throw new Error(
@@ -241,7 +248,7 @@ function mapAiEntry(relInModule: string, groupPaths: string[]): string | null {
 }
 
 /** XML 의존성 블록 직렬화 (exclusions·scope·optional 보존) */
-function depToXml(d: AiMavenDependency, indent = "        "): string {
+export function depToXml(d: AiMavenDependency, indent = "        "): string {
   const i2 = indent + "    ";
   const lines = [`${indent}<dependency>`, `${i2}<groupId>${d.groupId}</groupId>`, `${i2}<artifactId>${d.artifactId}</artifactId>`];
   if (d.version) lines.push(`${i2}<version>${d.version}</version>`);
@@ -289,6 +296,11 @@ export const AI_POM_BACKUP = "pom.xml.bak-ai";
  * - transaction: 파일·POM 백업·매니페스트 중 어느 단계가 실패해도 호출 전 상태로 롤백
  */
 export async function addAiComponents(opts: AddAiComponentsOptions): Promise<AddAiResult> {
+  // v1.20: 5.1.0 AI 모듈 기준 조립
+  if (resolveAiBase(opts.projectDir, opts.base) === "rte-ai") {
+    if (!AI_STACKS.includes(opts.stack)) throw new Error(`stack은 ${AI_STACKS.join("|")} 중 하나여야 합니다: ${String(opts.stack)}`);
+    return addRteAiComponents(opts);
+  }
   if (opts.dryRun === true) {
     const plan = await planAiComponents(opts);
     return { ...plan, copiedFiles: 0, pomChanged: false, pomBackup: null };

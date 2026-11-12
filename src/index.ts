@@ -32,6 +32,7 @@ export { loadCatalog, resolveComponents, searchComponents } from "./catalog.js";
 export type { CatalogComponent, Catalog, SearchResult } from "./catalog.js";
 export { MANIFEST_FILE, readManifest } from "./manifest.js";
 export type { ManifestEntry, Manifest } from "./manifest.js";
+export { addRteAiComponents, resolveAiBase, bootParentVersion, findBootApplicationPackage, AI_RTE_FORMATS, AI_RTE_COMPONENT_IDS, AI_RTE_MIN_PARENT } from "./ai-rte.js";
 export { AI_STACKS, loadAiCatalog, planAiComponents, findProjectDependenciesClose, AI_POM_BACKUP, addAiComponents, stripAiPomAdditions } from "./ai.js";
 export type { AiMavenDependency, AiCopyGroup, AiComponent, AiCatalog, AddAiComponentsOptions, AiPlanResult, AddAiResult } from "./ai.js";
 export { ECC_DB_TYPES, addComponents, removeComponents, buildComponentSqlPlan } from "./components.js";
