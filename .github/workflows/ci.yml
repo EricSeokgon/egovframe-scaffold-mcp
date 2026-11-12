@@ -167,6 +167,8 @@ jobs:
         run: npm run test:rte51-live
       - name: Mapper/DAO consistency (common components v5.0.7 = 10 missing statements, main = 4, official templates cross-checked, under 3 s)
         run: npm run test:mapper-check-live
+      - name: AI assembly on the 5.1.0 AI modules (boot-web 5.1.0, both stacks build and start against PGVector and an OpenAI-compatible stub, RRN masked in the index, injection blocked, remove restores)
+        run: npm run test:ai-rte-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)

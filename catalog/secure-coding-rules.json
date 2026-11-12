@@ -415,6 +415,55 @@
       "message_en": "System.out/err output is left in the code",
       "fix": "로거로 바꾸거나 삭제",
       "fix_en": "Replace with a logger or remove"
+    },
+    {
+      "id": "ai-extraction-unlimited",
+      "category": "input",
+      "cwe": 400,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "EgovExtractionBudget\\s*\\.\\s*unlimited\\s*\\(",
+      "guideItem": "부적절한 자원 할당(업로드 문서 추출 한도 없음)",
+      "guideItem_en": "Uncontrolled resource consumption (no extraction budget for uploaded documents)",
+      "message": "업로드 문서를 추출 한도 없이 파싱합니다 — 큰 파일·쪽수 많은 PDF·zip 폭탄(HWPX·DOCX)으로 메모리·CPU 를 소진시킬 수 있습니다",
+      "message_en": "Uploaded documents are parsed without an extraction budget — large files, PDFs with many pages or zip bombs (HWPX/DOCX) can exhaust memory and CPU",
+      "fix": "EgovExtractionBudget.defaults() 또는 builder() 로 파일 크기·쪽수·추출 글자 수·zip 한도를 정함",
+      "fix_en": "Use EgovExtractionBudget.defaults() or builder() to cap file size, pages, extracted characters and zip limits"
+    },
+    {
+      "id": "ai-prompt-without-guard",
+      "category": "input",
+      "cwe": 1427,
+      "severity": "medium",
+      "targets": [
+        "java"
+      ],
+      "pattern": "(\\.prompt\\s*\\(\\s*\\)\\s*(\\.\\w+\\([^)]*\\)\\s*)*\\.user\\s*\\(\\s*[A-Za-z_]|UserMessage\\s*\\.\\s*(from|userMessage)\\s*\\(\\s*[A-Za-z_]|new\\s+UserMessage\\s*\\(\\s*[A-Za-z_])",
+      "fileLacks": "EgovPromptInjectionGuard|EgovInjectionGuardAdvisor|EgovInjectionGuardrail|InputGuardrail|SafeGuardAdvisor",
+      "guideItem": "LLM 프롬프트 입력값 검증 누락(프롬프트 인젝션)",
+      "guideItem_en": "Improper neutralization of input used for LLM prompting (prompt injection)",
+      "message": "사용자 입력을 모델 프롬프트에 넣는데 이 파일에 프롬프트 인젝션 가드가 보이지 않습니다(가드를 다른 클래스·어드바이저 설정에서 건다면 예외로 등록)",
+      "message_en": "User input goes into a model prompt and no prompt-injection guard is visible in this file (if the guard is applied in another class or advisor configuration, register an exception)",
+      "fix": "EgovPromptInjectionGuard.inspect(질의) 로 먼저 판정하거나 EgovInjectionGuardAdvisor(Spring AI)·EgovInjectionGuardrail(LangChain4j)을 연결",
+      "fix_en": "Check with EgovPromptInjectionGuard.inspect(question) first, or attach EgovInjectionGuardAdvisor (Spring AI) / EgovInjectionGuardrail (LangChain4j)"
+    },
+    {
+      "id": "ai-api-key-literal",
+      "category": "security",
+      "cwe": 798,
+      "severity": "high",
+      "targets": [
+        "java"
+      ],
+      "pattern": "\\.\\s*apiKey\\s*\\(\\s*\"[^\"$]{8,}\"\\s*\\)",
+      "guideItem": "하드코드된 중요정보(모델 API 키)",
+      "guideItem_en": "Hard-coded credentials (model API key)",
+      "message": "모델 API 키가 소스에 문자열로 들어 있습니다",
+      "message_en": "A model API key is hard-coded as a string literal",
+      "fix": "환경 변수·k8s Secret 에서 읽음(@Value(\"${EGOV_AI_API_KEY:}\")) — externalize_egovframe_config 참고",
+      "fix_en": "Read it from an environment variable or k8s Secret (@Value(\"${EGOV_AI_API_KEY:}\")) — see externalize_egovframe_config"
     }
   ]
 }

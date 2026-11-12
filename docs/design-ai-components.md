@@ -123,3 +123,38 @@
 2. `create_egovframe_project`에 `aiStack` 파라미터를 추가해 생성+조립을 한 번에 할지 (components 파라미터와 동일 패턴).
 3. 프론트엔드(simple-react) 프로젝트에 채팅 UI만 조립하는 시나리오를 지원할지.
 4. 업스트림에 "조립 가능한 모듈 구조"(패키지·설정 분리) 개선을 제안할지 — 채택되면 카탈로그가 대폭 단순해진다.
+
+## 9. 5.1.0 AI 모듈 기준 조립 (v1.20)
+
+### 문제
+
+이 문서의 조립은 공식 `egovframe-ai-rag` 샘플(Spring AI 1.0.1)을 복사한다. 5.1.0 parent 는 Spring AI 1.1.8(`-egov.1` 재빌드)·LangChain4j 1.18.1 을 관리하므로 5.1.0 프로젝트에 샘플을 넣으면 버전이 섞이고, 샘플이 직접 구현한 문서 추출·마스킹·가드는 5.1.0 에서 실행환경 모듈(`egovframe-rte-ai-core` + 어댑터 `ai-springai`·`ai-langchain4j`)이 됐다. 샘플 저장소는 2026-11 현재 5.1.0 모듈을 쓰지 않는다.
+
+### 결정
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 선택 | `base`: `auto`(기본 — Boot parent 5.1.0 이상이면 `rte-ai`) · `sample` · `rte-ai` | 5.0.x 프로젝트의 동작은 그대로. 5.1.0 에서 샘플을 원하면 명시 |
+| 방식 | 복사가 아니라 **생성**(`catalog/ai-rte/` 의 템플릿 3개 + `EGOV-AI.md`), 컴포넌트 id `ai-rte-<stack>` | 공식 부품을 잇는 얇은 코드(약 250줄)라 프로젝트가 읽고 고칠 수 있다. 매니페스트·pom 마커·제거는 기존 AI 조립과 같은 규약 |
+| 패키지 | `@SpringBootApplication` 클래스의 패키지 아래 `.ai` | 컴포넌트 스캔에 걸리도록. 못 찾으면 거부 |
+| 벡터 저장소 | 두 스택 모두 **PGVector** | 어댑터의 재색인 라이터는 필터 삭제를 요구한다 — Spring AI `SimpleVectorStore` 는 실행환경 코드가 명시적으로 거부한다. PostgreSQL 은 공공에서 흔하고 core 의 어휘 검색(pg_trgm)과 같은 DB |
+| 모델 | OpenAI 호환 클라이언트를 직접 구성(`spring-ai-openai`·`langchain4j-open-ai`, 스타터·자동구성 없음) | 폐쇄망의 Ollama·vLLM·사내 게이트웨이에 그대로 붙고, 자동구성 조건·속성 이름 변화에 묶이지 않는다 |
+| 설정 | `@Value("${egov.ai.x:${EGOV_AI_X:기본}}")` — 설정 파일을 만들지 않음 | 비밀값이 소스·설정에 들어갈 자리가 없다(v1.13 외부화와 같은 방향) |
+| 지연 연결 | 모델·저장소 Bean 은 `@Lazy` + `ObjectProvider` | 저장소가 없어도 앱이 뜬다(첫 AI 요청에서 실패) |
+| 가드 | 서비스가 `EgovPromptInjectionGuard.inspect` 를 **검색보다 먼저** 호출 | 막힌 질의가 임베딩·검색·모델 호출을 쓰지 않는다. 어드바이저·가드레일을 함께 걸면 감사 로그가 두 번 남아 하나만 |
+| 문서 조각의 위치 | 시스템 프롬프트(사용자 메시지에는 질문만) | 문서 안 문구가 사용자 지시처럼 읽히지 않게 |
+| 임시 파일 이름 | 원래 이름의 SHA-256 앞 16바이트(ASCII), 표시용 `file_name` 은 원래 이름으로 | 문서 식별자가 파일 이름에서 나오므로 같은 이름이면 같은 식별자(재색인 정리). 한글 파일 이름을 못 쓰는 로캘(컨테이너 POSIX)에서 `InvalidPathException` 이 났다(실측) |
+| 오류 응답 | 컨트롤러가 직접 JSON 400/500 | 공식 boot-web 은 `configureHandlerExceptionResolvers` 로 기본 해석기를 바꿔 `@ExceptionHandler` 가 동작하지 않는다(실측) |
+| 파서 | `formats`(기본 hwp·hwpx·docx·pdf) 만 pom 에 | core 가 optional 로 두는 라이브러리 — 쓰지 않는 형식의 의존성·취약점 표면을 줄인다 |
+
+### 기획과 달라진 점
+
+- 벡터 저장소는 Redis Stack 을 빼고 PGVector 하나로(위 표). 어휘 검색·RRF 융합은 연결하지 않고 `EGOV-AI.md` 에 방법만 — 밀집 검색만으로 왕복을 검증했다.
+- 모델 접속 설정은 `externalize_egovframe_config` 를 거치지 않고 처음부터 환경 변수로 생성한다.
+- HWP·HWPX 표본 문서 실측은 하지 못했다(표본을 만들 도구가 없음) — 파서 의존성 추가와 컴파일, Markdown·DOCX 추출까지 확인.
+- 이 작업 환경에서 표준프레임워크 Maven 저장소가 막혀 AI 모듈 jar 3종은 `egovframe-runtime` `5.1.x` 브랜치(`cd9938f`)를 직접 빌드해 썼다. CI 는 공식 저장소의 배포본을 받는다.
+
+### 검증
+
+- 게이트 `test:ai-rte`(36단언, 오프라인): base 판정, parent 게이트, 패키지 탐지, 계획·형식별 의존성, 조립(파일·pom 마커·매니페스트), 생성 코드 불변식(환경 변수 자리표시자만·한도 기본값·가드가 검색보다 먼저·마스킹·재색인 라이터), 재조립·배타 거부, 충돌·fault-injection 롤백, 제거 원복, 보안약점 AI 규칙 3종.
+- CI 통합 `test:ai-rte-live`(27단언): 공식 boot-web 5.1.0 에 두 스택을 조립해 `mvn package` → PGVector(Docker)·OpenAI 호환 스텁으로 기동 → 색인(한글 이름 Markdown·DOCX, `[RRN]` 치환, 재업로드 시 행 수 유지) → 질의 왕복 → 인젝션 차단(모델 호출 0) → 감사 로그 → 400 응답 → 보안약점 규칙 → remove 원복.
