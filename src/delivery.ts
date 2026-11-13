@@ -20,17 +20,18 @@ import { runBuild, detectBuildToolAt, type BuildRunResult } from "./build-runner
 import type { Runner } from "./build-runner.js";
 import { L } from "./lang.js";
 import { isAbortError, stepper, subProgress, throwIfAborted, type Progress } from "./progress.js";
+import { checkPrivacy, renderPrivacyCsv, renderPrivacyMarkdown } from "./privacy.js";
 
 export const DELIVERY_MANIFEST = "delivery-manifest.json";
 export const DELIVERY_INDEX = "index.md";
 export const DELIVERY_SCHEMA_VERSION = 1;
 
-export type DeliveryItemId = "assessment" | "dependencies" | "sbom" | "sbom-check" | "secure-coding" | "deploy" | "map" | "build";
-export const DELIVERY_ITEMS: DeliveryItemId[] = ["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "build"];
+export type DeliveryItemId = "assessment" | "dependencies" | "sbom" | "sbom-check" | "secure-coding" | "deploy" | "map" | "privacy" | "build";
+export const DELIVERY_ITEMS: DeliveryItemId[] = ["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "privacy", "build"];
 /** 기본 포함(빌드는 시간이 걸리고 환경 의존이라 지정할 때만) */
 export const DELIVERY_DEFAULT_INCLUDE: DeliveryItemId[] = ["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy"];
 export const DELIVERY_ITEM_LABEL: Record<DeliveryItemId, string> = {
-  get assessment() { return L("전환 준비도 평가서", "Migration readiness assessment"); }, get dependencies() { return L("의존성 조치 목록", "Dependency action list"); }, get sbom() { return "SBOM(CycloneDX·SPDX)"; }, get "sbom-check"() { return L("SBOM 점검·VEX 초안", "SBOM check and VEX draft"); }, get "secure-coding"() { return L("보안약점 점검(SARIF)", "Secure coding check (SARIF)"); }, get deploy() { return L("컨테이너·배포 산출물", "Container and deployment artifacts"); }, get map() { return L("프로젝트 구조 지도(인수인계 표)", "Project structure map (handover tables)"); }, get build() { return L("빌드 결과", "Build result"); },
+  get assessment() { return L("전환 준비도 평가서", "Migration readiness assessment"); }, get dependencies() { return L("의존성 조치 목록", "Dependency action list"); }, get sbom() { return "SBOM(CycloneDX·SPDX)"; }, get "sbom-check"() { return L("SBOM 점검·VEX 초안", "SBOM check and VEX draft"); }, get "secure-coding"() { return L("보안약점 점검(SARIF)", "Secure coding check (SARIF)"); }, get deploy() { return L("컨테이너·배포 산출물", "Container and deployment artifacts"); }, get privacy() { return L("개인정보 파일·처리 흐름표", "Personal data files and flow table"); }, get map() { return L("프로젝트 구조 지도(인수인계 표)", "Project structure map (handover tables)"); }, get build() { return L("빌드 결과", "Build result"); },
 };
 
 export interface DeliveryFile { path: string; sha256: string; bytes: number }
@@ -288,7 +289,7 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   const prevData = previousDir ? readDeliveryData(previousDir) : null;
 
   // v1.2: 진행 단계 — 실행 순서대로의 항목 + 패키지 기록. 취소는 항목 경계에서 확인하고 AbortError 를 그대로 전달한다(아무것도 쓰지 않음)
-  const RUN_ORDER: DeliveryItemId[] = ["sbom", "sbom-check", "dependencies", "secure-coding", "assessment", "deploy", "map", "build"];
+  const RUN_ORDER: DeliveryItemId[] = ["sbom", "sbom-check", "dependencies", "secure-coding", "assessment", "deploy", "map", "privacy", "build"];
   const planned = RUN_ORDER.filter((id) => include.includes(id));
   const steps = [...planned, "write package"];
   const prog = stepper(opts.progress, steps);
@@ -388,6 +389,12 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
     item.files.push(put("map/programs.csv", csv([["controller", "services", "daos", "mappers", "component"], ...h.programs.map((s) => [s.controller, s.services.join(" "), s.daos.join(" "), s.mappers.join(" "), s.component ?? ""])])));
     item.files.push(put("map/db-access.csv", csv([["table", "C", "R", "U", "D"], ...h.dbAccess.map((s) => [s.table, s.C.join(" "), s.R.join(" "), s.U.join(" "), s.D.join(" ")])])));
     item.summary = { tables: r.summary.tables, mappers: r.summary.mappers, urls: r.summary.urls, views: r.summary.views, orphanMappers: r.summary.orphanMappers, unresolvedRate: r.summary.unresolvedRate };
+  });
+  // v1.21: 개인정보 파일·처리 흐름표·보호조치 점검(선택 항목)
+  if (include.includes("privacy")) await run("privacy", async (item) => {
+    const r = checkPrivacy({ projectDir });
+    item.files.push(put("privacy/privacy.md", `${renderPrivacyMarkdown(r, 1000)}\n`), put("privacy/privacy.json", json(r)), put("privacy/personal-data-files.csv", renderPrivacyCsv(r)));
+    item.summary = { tables: r.summary.tables, columns: r.summary.columns, uniqueIdTables: r.summary.uniqueIdTables, high: r.summary.high, medium: r.summary.medium };
   });
   if (include.includes("build")) await run("build", async (item) => {
     const sub = subFor("build");

@@ -205,3 +205,5 @@ export { AbortError, isAbortError, throwIfAborted, NOOP_PROGRESS, collectProgres
 export type { Progress, ProgressEvent } from "./progress.js";
 export { checkMappers, renderMapperCheckMarkdown, editDistance, similarIds } from "./mapper-check.js";
 export type { MapperCheckResult, MapperIssue, MapperIssueKind, MapperCheckOptions } from "./mapper-check.js";
+export { loadPrivacyRules, classifyPrivacyColumn, checkPrivacy, renderPrivacyMarkdown, renderPrivacyCsv, camelOf, PRIVACY_IGNORE_FILE } from "./privacy.js";
+export type { PrivacyGrade, PrivacyRules, PrivacyItemRule, PrivacyColumn, PrivacyFlow, PrivacyFinding, PrivacyOptions, PrivacyResult } from "./privacy.js";
