@@ -116,6 +116,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => { const sm = rec(s.summary), g = rec(s.grade); return { ops: GRADES.indexOf(String(g.grade)), high: num(sm.high), medium: num(sm.medium), low: num(sm.low), fail: num(sm.fail), total: num(sm.total) }; },
     line: (s) => { const sm = rec(s.summary), g = rec(s.grade); return L(`운영 준비 ${g.grade} — 미달 규칙 ${num(sm.fail)} · 항목 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}`, `Operations readiness ${g.grade} — failed rules ${num(sm.fail)} · findings high ${num(sm.high)} · medium ${num(sm.medium)} · low ${num(sm.low)}`); },
   },
+  privacy: {
+    tool: "check_egovframe_privacy", summary: "개인정보 흐름·보호조치 점검(개인정보 파일·흐름표, --fail-on high>0)", summaryEn: "Personal data flow and safeguards (data files, flow table; --fail-on high>0)",
+    metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), columns: num(sm.columns), uniqueIdTables: num(sm.uniqueIdTables), high: num(sm.high), medium: num(sm.medium) }; },
+    line: (s) => { const sm = rec(s.summary); return L(`개인정보 테이블 ${num(sm.tables)}·컬럼 ${num(sm.columns)}(고유식별정보 테이블 ${num(sm.uniqueIdTables)}) — 보호조치 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)}`, `${num(sm.tables)} personal data tables, ${num(sm.columns)} columns (${num(sm.uniqueIdTables)} with unique identifiers) — suspected missing safeguards: ${num(sm.high)} high, ${num(sm.medium)} medium`); },
+  },
   map: {
     tool: "map_egovframe_project", summary: "프로젝트 구조 지도·변경 영향(읽기 전용, --impact-table/--impact-url/--impact-class)", summaryEn: "Project structure map and change impact (read-only; --impact-table/--impact-url/--impact-class)",
     metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), urls: num(sm.urls), views: num(sm.views), orphanMappers: num(sm.orphanMappers), unresolvedRate: Number(sm.unresolvedRate ?? 0) }; },

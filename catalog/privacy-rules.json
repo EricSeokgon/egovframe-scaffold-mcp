@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "surveyedAt": "2026-11-13",
+  "note": "개인정보 흐름·보호조치 점검 규칙(check_egovframe_privacy, v1.21). 컬럼 이름 사전으로 개인정보 항목을 찾고(정규식은 컬럼 이름 전체에 대조, 대소문자 무시), 보호조치 호출 사전으로 저장 전 암호화·화면 마스킹을 판정한다. 법 해석이 아니라 이름·호출 패턴 기반의 정적 휴리스틱이다.",
+  "sources": [
+    {
+      "name": "개인정보 보호법 제23조(민감정보)·제24조(고유식별정보)·제24조의2(주민등록번호)·제29조(안전조치의무), 개인정보의 안전성 확보조치 기준(개인정보보호위원회 고시) — 고유식별정보·비밀번호 저장 시 암호화, 접근 통제, 접속기록",
+      "name_en": "Personal Information Protection Act arts. 23, 24, 24-2, 29 and the Standards for Personal Information Safety Measures (PIPC notice) — encrypt unique identifiers and passwords at rest, access control, access logs"
+    },
+    {
+      "name": "공통컴포넌트 v5.0.7·main 의 DDL(com_DDL_mysql.sql) 컬럼 이름 실측과 공통 표준 용어(IHIDNUM·MBTLNUM·EMAIL_ADRES·BRTHDY·ADRES), 2026-11-13",
+      "name_en": "Measured column names in the common components DDL (com_DDL_mysql.sql, v5.0.7 and main) and the common standard terms (IHIDNUM, MBTLNUM, EMAIL_ADRES, BRTHDY, ADRES), 2026-11-13"
+    },
+    {
+      "name": "공통컴포넌트의 암호화 유틸(EgovFileScrty·egovEnvCryptoService·ARIA)과 Spring Security PasswordEncoder, 표준프레임워크 실행환경 crypto 모듈",
+      "name_en": "Common component crypto utilities (EgovFileScrty, egovEnvCryptoService, ARIA), Spring Security PasswordEncoder and the runtime crypto module"
+    }
+  ],
+  "grades": [
+    {
+      "id": "unique-id",
+      "label": "고유식별정보",
+      "label_en": "Unique identifier",
+      "encryptAtRest": true
+    },
+    {
+      "id": "credential",
+      "label": "인증정보(비밀번호)",
+      "label_en": "Credential (password)",
+      "encryptAtRest": true
+    },
+    {
+      "id": "financial",
+      "label": "금융정보",
+      "label_en": "Financial",
+      "encryptAtRest": true
+    },
+    {
+      "id": "general",
+      "label": "일반 개인정보",
+      "label_en": "General personal data",
+      "encryptAtRest": false
+    }
+  ],
+  "items": [
+    {
+      "id": "rrn",
+      "grade": "unique-id",
+      "label": "주민등록번호",
+      "label_en": "Resident registration number",
+      "columns": "IHIDNUM|IHID_NUM|JUMIN(_?NO|_?NUM)?|JUMINNO|RRN|RESIDENT_(REG(IST)?_)?(NO|NUM|NUMBER)|SSN"
+    },
+    {
+      "id": "passport",
+      "grade": "unique-id",
+      "label": "여권번호",
+      "label_en": "Passport number",
+      "columns": "PASSPORT(_?NO|_?NUM)?|PSPRT_?NO"
+    },
+    {
+      "id": "driver-license",
+      "grade": "unique-id",
+      "label": "운전면허번호",
+      "label_en": "Driver's licence number",
+      "columns": "DRIVER_?LICEN[SC]E(_?NO)?|DRV?_?LCNS?E?_?NO|DLN"
+    },
+    {
+      "id": "foreigner",
+      "grade": "unique-id",
+      "label": "외국인등록번호",
+      "label_en": "Alien registration number",
+      "columns": "FRGNR_?(REG(IST)?_?)?NO|FOREIGNER_?(REG_?)?NO|ALIEN_?(REG_?)?NO"
+    },
+    {
+      "id": "password",
+      "grade": "credential",
+      "label": "비밀번호",
+      "label_en": "Password",
+      "columns": "(USER_|MBER_|LOGIN_|OLD_|NEW_)?(PASSWORD|PASSWD|PWD|PSWD)|USER_PW|PW"
+    },
+    {
+      "id": "account",
+      "grade": "financial",
+      "label": "계좌번호",
+      "label_en": "Bank account number",
+      "columns": "(BANK_?)?ACNUT_?NO|ACCOUNT_?(NO|NUM|NUMBER)|BANK_?ACCOUNT|ACNT_?NO"
+    },
+    {
+      "id": "card",
+      "grade": "financial",
+      "label": "카드번호",
+      "label_en": "Card number",
+      "columns": "(CRDT_?|CREDIT_?)?CARD_?(NO|NUM|NUMBER)"
+    },
+    {
+      "id": "mobile",
+      "grade": "general",
+      "label": "휴대전화번호",
+      "label_en": "Mobile phone number",
+      "columns": "MBTLNUM|MBTLPHON_?NO|MOBLPHON_?NO|MOBILE(_?NO|_?NUM|_?PHONE)?|HP(_?NO)?|CELL_?PHONE"
+    },
+    {
+      "id": "phone",
+      "grade": "general",
+      "label": "전화번호",
+      "label_en": "Phone number",
+      "columns": "\\w*TELNO|(HOUSE_|OFFM_|HOME_|OFFICE_)?TEL_?NO|PHONE(_?NO|_?NUM)?|FXNUM|FAX_?NO"
+    },
+    {
+      "id": "email",
+      "grade": "general",
+      "label": "이메일",
+      "label_en": "Email",
+      "columns": "(\\w+_)?E_?MAIL(_ADRES|_ADDR(ESS)?)?"
+    },
+    {
+      "id": "address",
+      "grade": "general",
+      "label": "주소",
+      "label_en": "Address",
+      "columns": "(DETAIL_|HOUSE_|OFFM_|HOME_)?ADRES|(DETAIL_|HOME_)?ADDR(ESS)?(_?\\d)?|RDNMADR|LNM_?ADRES"
+    },
+    {
+      "id": "birth",
+      "grade": "general",
+      "label": "생년월일",
+      "label_en": "Date of birth",
+      "columns": "BRTHDY|BRTH(_?DE)?|BIRTH(DAY|_?DE|_?DT|_?DATE)?"
+    },
+    {
+      "id": "name",
+      "grade": "general",
+      "label": "성명",
+      "label_en": "Name",
+      "columns": "(MBER|USER|EMPLYR|APPLCNT|CHARGER|RPRSNTV|MEMBER|EMP|CUST(OMER)?)_?(NM|NAME)"
+    },
+    {
+      "id": "business-no",
+      "grade": "general",
+      "label": "사업자·법인등록번호",
+      "label_en": "Business / corporate registration number",
+      "columns": "BIZRNO|BIZ_?REG_?NO|JURIRNO"
+    }
+  ],
+  "cryptoCalls": "EgovFileScrty\\s*\\.\\s*encrypt\\w*|egovEnvCryptoService|EgovEnvCryptoService|EgovCryptoService|[Cc]ryptoService\\s*\\.\\s*encrypt\\w*|ARIACipher|EgovARIA\\w*|[Pp]asswordEncoder\\s*\\.\\s*encode|BCrypt\\w*\\s*\\.\\s*(hashpw|encode)|\\.\\s*encrypt\\w*\\s*\\(|\\bencrypt\\w*\\s*\\(|\\.\\s*encode(Password)?\\s*\\(|\\bhash(Password|Pw|Pwd)\\w*\\s*\\(|\\bsha(256|512)\\w*\\s*\\(",
+  "sqlCryptoFunctions": "AES_ENCRYPT|HEX\\s*\\(\\s*AES|SHA2?\\s*\\(|MD5\\s*\\(|PASSWORD\\s*\\(|CRYPT\\s*\\(|PGP_SYM_ENCRYPT|ENCRYPT\\w*\\s*\\(|DBMS_CRYPTO|XX1\\.ENC|\\bENC_\\w+\\s*\\(|damo\\.|CubeOne|petra",
+  "maskCalls": "fn:substring|mask\\w*\\s*\\(|\\bMask\\w*|\\*{3,}|●{2,}|#strings\\.(substring|abbreviate)|substring\\s*\\(|replaceAll\\s*\\(|EgovMask\\w*",
+  "logCalls": "\\b(LOGGER|LOG|logger|log)\\s*\\.\\s*(trace|debug|info|warn|error)\\s*\\(|System\\s*\\.\\s*(out|err)\\s*\\.\\s*print"
+}

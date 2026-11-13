@@ -1,6 +1,6 @@
 # 도구 레퍼런스 (v1.5)
 
-도구 43종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
+도구 44종의 파라미터·동작·예시입니다. 처음 쓰는 분은 [README 사용 시나리오](../README.md#사용-시나리오)부터 보세요. 응답은 기본 한국어이고 `EGOVFRAME_LANG=en`(CLI `--lang en`)이면 영문입니다(v1.2, [설계](design-i18n.md)); 장시간 도구는 `progressToken` 을 주면 진행 알림을 보내고 `notifications/cancelled` 로 취소됩니다. 공개 API 의 범위와 호환 규칙은 [버전 정책](versioning.md)에 있습니다.
 
 ## 도구 목록
 
@@ -42,6 +42,7 @@
 | `fix_egovframe_secure_coding` | **보안약점 자동 조치**(v1.7) — 고친 결과를 규칙으로 정할 수 있는 항목만 고치고 나머지는 사유와 함께 수동 항목으로. `<c:out escapeXml="false">`(줄바꿈 → `<br/>` 값은 `fn:escapeXml` 로 먼저 감싸고 단순 값은 `escapeXml` 제거, 본문 필드·HTMLTagFilter 등록 프로젝트는 수동), `printStackTrace()`·`System.out.println` → 클래스 로거, 쿠키 플래그는 제안만. 기본 dryRun, 적용은 백업·트랜잭션이며 재점검이 계획과 다르면 거부. CLI `fix`(`--write` 로 적용) |
 | `verify_egovframe_startup` | **기동 검증**(v1.11) — 프로젝트를 바꾸지 않고 실제로 띄움: Boot 는 `spring-boot:run`·`bootRun`(빈 포트), Classic war 는 캐시의 고정 Tomcat 10.1/11.0(sha256 검증, `tomcatHome`)에 ROOT 로. 완료 문구 + HTTP(5xx 아님)로 판정, 실패면 원인 종류(포트·드라이버·DB 접속·테이블 없음·매퍼 XML 파일·줄·설정 누락·javax·실제로 실패한 빈과 정의 파일·GUI 빈·시간 초과·빌드)와 처방. [자세히](#기동-검증-verify_egovframe_startup-v111) |
 | `summarize_egovframe_portfolio` | **포트폴리오(기관 단위) 현황**(v1.17) — 여러 프로젝트의 평가서를 한 표로: 입력은 프로젝트 디렉터리(평가서 실행, 병렬)·납품 패키지(`assessment/assessment.json` 읽기)·CI 아티팩트(`assess --json-out` 의 `egovframe-assessment.json` 또는 `egovframe-delivery/`) 자동 판별, `dir/*` 펼치기. 행(RTE·세대·전환/공급망/운영 등급·수동 항목·취약/노후 의존성·보안약점·컴포넌트·담당)·분포·먼저 손댈 것·이전 대비 변화·정렬·필터, Markdown·CSV(엑셀)·JSON, `outputDir`(새 디렉터리). CLI `portfolio` |
+| `check_egovframe_privacy` | **개인정보 흐름·보호조치 점검**(v1.21, 읽기 전용) — 컬럼 이름 사전(`catalog/privacy-rules.json`, 항목 14종·등급 4종)으로 DDL·매퍼에서 개인정보 컬럼을 찾아 개인정보 파일(테이블 × 항목 × 등급, CSV)과 흐름표(테이블 → 매퍼 문장 읽기/쓰기 → Service → Controller → URL → 화면)를 만들고, 보호조치 누락을 근거와 함께: 고유식별정보·비밀번호·금융정보 평문 저장(높음)·화면 노출(중간)·로그 노출(중간). `.egovframe-privacy-ignore.json`, 평가서 「개인정보」절, 납품 항목 `privacy`. CLI `privacy`(`--fail-on high>0`). 이름·호출 패턴 기반 진단 보조 |
 | `check_egovframe_operations` | **운영 준비 점검**(v1.15, 읽기 전용) — "기동은 되는데 운영에서 터지는" 설정을 규칙 데이터 20종(`catalog/operations-rules.json`, 출처 명시)으로 점검: SQL 로깅 드라이버·DEBUG 로그·콘솔 전용 로그·devtools·내장 DB·풀 크기/타임아웃·세션/쿠키·업로드 상한/경로·오류 노출·error-page·actuator·개발 플래그·운영 프로파일·비밀값·eGov Boot 보안 스타터(v1.18). 운영 설정 세트(Boot: application + prod 프로파일, Classic: globals·context-*.xml·web.xml·log4j2). 점검표·미달 항목(파일·줄·제안·근거)·등급 A–D, `.egovframe-ops-ignore.json`, 평가서 「운영 준비」절. CLI `ops`(`--fail-on ops:C`) |
 | `map_egovframe_project` | **프로젝트 구조 지도·변경 영향**(v1.14, 읽기 전용) — 테이블 → 매퍼 XML(네임스페이스) → DAO/Mapper → Service → Controller → URL → 화면의 그래프를 정적 해석으로. `impactTable`·`impactUrl`·`impactClass`·`impactView` 로 영향 노드를 거리순으로, 인수인계 표 3종(화면 목록·프로그램 목록·DB 접근 표), 고아(호출 없는 매퍼·문장, URL 없는 Controller, 미참조 컴포넌트 테이블), 해석 실패율. `format` markdown·json(전체 그래프)·mermaid(범위 한정). CLI `map` |
 | `externalize_egovframe_config` | **설정·비밀값 외부화**(v1.13) — 설정 파일의 DB 비밀번호·비밀 값을 저장소 밖으로: 판정은 보안약점 점검의 `hardcoded-config-password` 규칙·화이트리스트 그대로(+ XML `<property name="password" value="리터럴"/>`, 주석 제외). Spring 자리표시자로 읽는 키는 `${EGOV_…_PASSWORD}` 로(env), 표준프레임워크 암호화 값은 그대로 두고 복호화 키를 `egov-crypto-config.properties` 에서 빼 `Globals.CryptoConfigPath=${EGOV_CRYPTO_CONFIG:}` 로 외부 파일에서(crypto-path, runtime 5.x), 파일을 직접 읽는 키(`EgovProperties.getProperty`)·4.x `context-crypto.xml` 의 키는 수동 항목. `deploy/` 산출물 갱신, dryRun 기본, 트랜잭션(원본은 `migration-backup/`), 보안약점 전·후, `verify=true` 면 원래 값을 환경 변수로 주고 기동해 `config-missing` 이면 되돌림. CLI `externalize` (파괴적, 게이트) |
@@ -304,6 +305,24 @@ npx -y egovframe-scaffold-mcp portfolio --inputs "D:/projects/*,D:/delivery/b" [
 - **출력**: Markdown 한 장·CSV(UTF-8 BOM·CRLF — 엑셀)·JSON. `outputDir`(비어 있는 새 디렉터리)에 `portfolio.md`·`portfolio.csv`·`portfolio.json` — 다음 달 `previous` 로. CLI 는 `--write` 가 있어야 씁니다. `--fail-on` 지표: projects·failed·migrationD·supplyChainD·operationsD·vulnerableProjects·secureHigh.
 - 실측(2026-11-07): 공식 템플릿 6종 + 코퍼스 3.10.0·4.3.2 = 8 프로젝트 7초(병렬 4) — 세대 5.x 6·3.x 1·4.x 1, 전환 A2·B4·D2, 공급망 B5·C1·D2, 운영 B1·C7. 같은 프로젝트를 디렉터리·납품 패키지·CI 아티팩트로 넣어도 같은 행.
 - 하지 않는 것: 웹 대시보드·서버, 저장소 자동 탐색(기관 Git 서버가 다양), 프로젝트 사이 의존 그래프. 설계: [design-portfolio.md](design-portfolio.md).
+
+## 개인정보 흐름·보호조치 점검 (`check_egovframe_privacy`, v1.21)
+
+개인정보 영향평가·감리에 내는 "개인정보 파일"과 "처리 흐름"을 DDL 과 화면을 손으로 대조해 만드는 대신 프로젝트에서 뽑습니다. 공통컴포넌트조차 주민등록번호를 평문으로 저장하는 경로가 있어(2026-11-13 실측), 조립한 프로젝트가 물려받은 것을 함께 찾습니다 — 읽기 전용이고 코드를 고치지 않습니다.
+
+```text
+check_egovframe_privacy(projectDir)                     # 개인정보 파일·흐름표·보호조치 누락
+check_egovframe_privacy(projectDir, format="csv")       # 개인정보 파일 대장(테이블·컬럼·항목·등급·출처)
+check_egovframe_privacy(projectDir, format="json", topN=100)
+npx -y egovframe-scaffold-mcp privacy --project . [--fail-on high>0]
+```
+
+- **개인정보 컬럼**: 규칙 데이터 `catalog/privacy-rules.json` 의 이름 사전(컬럼 이름 전체에 대조) — 고유식별정보(주민등록·여권·운전면허·외국인등록) / 인증정보(비밀번호) / 금융정보(계좌·카드) / 일반(이동전화·전화·이메일·주소·생년월일·이름·사업자번호). 출처는 DDL 의 `CREATE TABLE` 과 매퍼 문장(DB 별 사본은 한 번).
+- **흐름표**: 테이블마다 읽기·쓰기 문장 수 → Service → Controller → URL → 화면(v1.14 구조 지도).
+- **보호조치 누락**: `plaintext-storage`(높음 — 암호화 대상 컬럼에 `#{…}` 로 쓰는데 문장에 SQL 암호화 함수가 없고, 호출 경로의 Java 에 그 필드와 암호화·해시 호출(`EgovFileScrty`·`egovEnvCryptoService`·ARIA·`PasswordEncoder` 등)이 가까이 없음) · `screen-exposure`(중간 — 고유식별정보를 마스킹 없이 출력, 입력 필드 제외) · `log-exposure`(중간). DB 별 매퍼 사본은 한 건(`variants`). 예외는 `.egovframe-privacy-ignore.json`(운영 점검 예외 파일과 같은 형식, `rule` = 종류).
+- 실측(2026-11-13): 공통컴포넌트 v5.0.7·main — 개인정보 테이블 32·컬럼 91·고유식별정보 테이블 2, 높음 7(`COMTNEMPLYRINFO`·`COMTNGNRLMBER` 의 `IHIDNUM` insert·update 4 + 게시물·댓글 비밀번호 3), 사용자 비밀번호는 통과, 3.2–3.5초. 공식 템플릿: web·boot-web 0 / simple-backend 높음 5 / simple-homepage 3 / portal-site 2 / enterprise-business 5.
+- 평가서에 「개인정보」절(구조화 출력 `privacy`), 납품 패키지는 `include` 에 `privacy` 를 넣으면 `privacy/privacy.md`·`privacy.json`·`personal-data-files.csv`(기본 포함 아님).
+- 한계: 이름·호출 패턴 기반입니다 — 표준 용어가 아닌 컬럼은 못 찾고, 암호화 판정은 파일 단위(같은 파일의 다른 메서드가 암호화하면 통과), DB 암호화(TDE·플러그인·TypeHandler)는 모릅니다. 하지 않는 것: 법 해석·영향평가서 작성, 실제 데이터 스캔, 자동 암호화 적용, 접근기록 연결 점검. 설계: [design-privacy.md](design-privacy.md).
 
 ## 운영 준비 점검 (`check_egovframe_operations`, v1.15)
 
@@ -590,7 +609,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/2차", dryRun=false, previ
 prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)                               # 받은 패키지 재검증
 ```
 
-- `include` — 기본 `assessment`·`dependencies`·`sbom`·`sbom-check`·`secure-coding`·`deploy`. `map`(v1.14, 구조 지도 Markdown·JSON + 화면 목록·프로그램 목록·DB 접근 표 CSV)은 인수인계 패키지일 때, `build` 는 로컬 JDK·Maven/Gradle 로 `package` 를 실제 실행하므로 지정할 때만. `sbom-check` 는 `sbom` 이 있어야 합니다.
+- `include` — 기본 `assessment`·`dependencies`·`sbom`·`sbom-check`·`secure-coding`·`deploy`. `map`(v1.14, 구조 지도 Markdown·JSON + 화면 목록·프로그램 목록·DB 접근 표 CSV)은 인수인계 패키지일 때, `privacy`(v1.21, 개인정보 점검 Markdown·JSON + 개인정보 파일 대장 CSV)는 개인정보를 다루는 사업일 때, `build` 는 로컬 JDK·Maven/Gradle 로 `package` 를 실제 실행하므로 지정할 때만. `sbom-check` 는 `sbom` 이 있어야 합니다.
 - `outputDir` — 없거나 비어 있어야 하고 프로젝트 밖을 권합니다(CI 는 작업 디렉터리 안 `egovframe-delivery/`). 스테이징 뒤 rename 하므로 중간 실패는 흔적이 없습니다.
 - `previousDelivery` — 이전 패키지 디렉터리. 등급·SBOM(추가·제거·버전·새/해소 취약점)·OSV ID·보안약점 지문을 비교하고, 이전 `sbom/vex.cdx.json` 의 사람 판단을 이어 씁니다. 같은 입력이면 "달라진 점 없음"입니다.
 - `verify` — `delivery-manifest.json` 의 파일별 sha256·크기와 rootHash 를 다시 계산해 일치·불일치·누락·manifest 밖 파일을 보고합니다.
@@ -604,7 +623,7 @@ prepare_egovframe_delivery(projectDir, outputDir="…/1차", verify=true)       
 
 **Resources** (읽기 전용) — 지원 클라이언트에서 도구 호출 없이 카탈로그를 탐색·인용:
 
-모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 15종(목록·검색·진단·검증·점검·upstream 대조·구조 지도·운영 점검), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 22종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·구조 지도·운영 점검·포트폴리오·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
+모든 도구는 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint`)와 ko/en `title` 을 노출합니다 — 읽기 전용 16종(목록·검색·진단·검증·점검·upstream 대조·구조 지도·운영 점검·개인정보 점검), 파괴 가능 8종(`remove_egovframe_components`·`migrate_egovframe_project`·`reassemble_egovframe_components`·`generate_agents_md`·`fix_egovframe_secure_coding`·`fix_egovframe_dependencies`·`upgrade_egovframe_project`·`externalize_egovframe_config`), 네트워크 사용 도구는 `openWorldHint`. `outputSchema` 를 선언한 23종(진단·검증·전환·의존성·의존성 조치·DB 준비·기동 검증·설정 외부화·구조 지도·운영 점검·개인정보 점검·포트폴리오·네트워크·SBOM 생성·SBOM 점검·보안약점 점검·보안약점 수정·배포·리허설·오프라인 번들·납품·리포트·재조립)은 `structuredContent` 로 같은 결과를 구조화해 돌려줍니다(`text` 는 그대로).
 
 - `egovframe://catalog/components` · `egovframe://catalog/components/{id}` · `egovframe://catalog/templates` · `egovframe://catalog/recipes` · `egovframe://catalog/ai-components` · `egovframe://catalog/config-templates` · `egovframe://catalog/migration-rules` · `egovframe://catalog/dependency-baseline`
 

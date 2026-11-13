@@ -215,6 +215,7 @@ export const AssessmentOutput = loose({
   sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.string(), z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
   operations: loose({ grade: z.string(), total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), fail: z.number().int(), pass: z.number().int(), na: z.number().int(), failed: z.array(loose({ rule: z.string(), title: z.string(), severity: z.string(), findings: z.number().int() })), error: z.string().optional() }).optional(),
+  privacy: loose({ tables: z.number().int(), columns: z.number().int(), uniqueIdTables: z.number().int(), high: z.number().int(), medium: z.number().int(), error: z.string().optional() }).optional(),
   mapper: loose({ errors: z.number().int(), warnings: z.number().int(), missing: z.number().int(), variantGaps: z.number().int(), namespaces: z.number().int(), statements: z.number().int(), byKind: z.record(z.string(), z.number().int()), error: z.string().optional() }).optional(),
   rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable(), reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int() }).optional() }).optional(),
   notes: z.array(z.string()),
@@ -477,6 +478,21 @@ export const ProjectMapOutput = loose({
   notes: z.array(z.string()),
 });
 
+// v1.21: check_egovframe_privacy
+const PGradeP = z.enum(["unique-id", "credential", "financial", "general"]);
+export const PrivacyOutput = loose({
+  projectDir: z.string(),
+  rulesVersion: loose({ surveyedAt: z.string(), items: z.number().int() }),
+  durationMs: z.number(),
+  columns: z.array(loose({ table: z.string(), column: z.string(), item: z.string(), label: z.string(), grade: PGradeP, source: z.enum(["ddl", "mapper"]), file: z.string(), line: z.number().int() })),
+  flows: z.array(loose({ table: z.string(), items: z.array(z.string()), grades: z.array(PGradeP), read: z.number().int(), write: z.number().int(), daos: z.array(z.string()), services: z.array(z.string()), controllers: z.array(z.string()), urls: z.array(z.string()), views: z.array(z.string()) })),
+  findings: z.array(loose({ kind: z.enum(["plaintext-storage", "screen-exposure", "log-exposure"]), severity: z.enum(["high", "medium"]), item: z.string(), label: z.string(), grade: PGradeP, file: z.string(), line: z.number().int(), code: z.string(), message: z.string(), evidence: z.string(), table: z.string().optional(), column: z.string().optional(), variants: z.number().int().optional() })),
+  summary: loose({ tables: z.number().int(), columns: z.number().int(), items: z.number().int(), byGrade: z.record(z.string(), z.number().int()), uniqueIdTables: z.number().int(), high: z.number().int(), medium: z.number().int(), suppressed: z.number().int(), ddlFiles: z.number().int(), mapperStatements: z.number().int() }),
+  ignoreFile: z.string().nullable(),
+  invalidIgnores: z.array(z.string()),
+  notes: z.array(z.string()),
+});
+
 // v1.15: check_egovframe_operations
 const OpsSev = z.enum(["high", "medium", "low"]);
 export const OperationsOutput = loose({
@@ -524,6 +540,7 @@ export const OUTPUT_SCHEMAS = {
   externalize_egovframe_config: ExternalizeOutput,
   map_egovframe_project: ProjectMapOutput,
   check_egovframe_operations: OperationsOutput,
+  check_egovframe_privacy: PrivacyOutput,
   summarize_egovframe_portfolio: PortfolioOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,
