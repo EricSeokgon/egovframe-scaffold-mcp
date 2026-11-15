@@ -25,6 +25,7 @@ import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js"
 import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
 import { renderMapperCheckMarkdown } from "./mapper-check.js";
+import { checkPrivacy, renderPrivacyCsv, renderPrivacyMarkdown } from "./privacy.js";
 import { applyUpdate, isUpdateTarget, loadUpdateRules, renderUpdateMarkdown, updateProject, verifyUpdate } from "./update.js";
 import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, renderMigrationVerifyMarkdown, verifyMigration, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
@@ -999,6 +1000,21 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       enforceAllowedRoots(args);
       const r = await checkOperations({ projectDir: args.projectDir, profile: args.profile, rules: args.rules });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderOperationsMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 개인정보 흐름·보호조치 점검 (v1.21) ─────────────────
+  server.registerTool(
+    "check_egovframe_privacy",
+    { title: t("check_egovframe_privacy"), description: d("check_egovframe_privacy", "개인정보가 어느 테이블에 있고 어느 화면이 다루는지(개인정보 파일·처리 흐름표)와 보호조치 누락 의심을 정적으로 찾습니다(읽기 전용, 고치지 않음). 컬럼 이름 사전(catalog/privacy-rules.json — 주민등록번호·여권·운전면허·외국인등록번호·비밀번호·계좌·카드·연락처·주소·이메일·생년월일·성명)으로 DDL 과 매퍼 XML 의 SQL 에서 개인정보 컬럼을 찾고, 구조 지도로 테이블 → 매퍼 문장 → DAO → Service → Controller → URL → 화면을 잇습니다. 보호조치: plaintext-storage(높음 — 고유식별정보·비밀번호·금융정보 컬럼에 쓰는 문장인데 SQL 에 DB 암호화 함수가 없고 호출 경로의 Java 에 그 필드와 암호화 호출이 함께 있는 줄이 없음), screen-exposure(중간 — 화면이 고유식별정보를 마스킹 없이 출력), log-exposure(중간 — 로그로 출력). 이름·호출 패턴 기반 휴리스틱이라 근거(evidence)를 함께 돌려주며, 예외는 .egovframe-privacy-ignore.json(rule=종류·path·line·reason·reviewer). format: markdown·json·csv(개인정보 파일 대장, 엑셀)."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      topN: z.number().int().min(1).max(1000).default(30).describe("Markdown 에 보일 항목·흐름 수"),
+      format: z.enum(["markdown", "json", "csv"]).default("markdown").describe("응답 형식(csv = 개인정보 파일 대장)"),
+    }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_privacy.shape, annotations: toolAnnotations("check_egovframe_privacy") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = checkPrivacy({ projectDir: args.projectDir });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "csv" ? renderPrivacyCsv(r) : renderPrivacyMarkdown(r, args.topN);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );

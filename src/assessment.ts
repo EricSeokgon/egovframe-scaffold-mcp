@@ -15,6 +15,7 @@ import { checkMinimumElements, DEFAULT_VEX_PATH, type VexDocument } from "./sbom
 import { readRehearsalRecord } from "./rehearse.js";
 import { checkOperations } from "./operations.js";
 import { checkMappers } from "./mapper-check.js";
+import { checkPrivacy } from "./privacy.js";
 import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
@@ -147,6 +148,8 @@ export interface AssessmentResult {
   secureCoding: { total: number; high: number; medium: number; low: number; byOrigin: Record<string, number>; byRule: { rule: string; guideItem: string; severity: string; count: number }[]; suppressed: number; error?: string };
   /** v1.15: 운영 준비 점검(등급 산식에는 넣지 않음) */
   operations: { grade: string; total: number; high: number; medium: number; low: number; fail: number; pass: number; na: number; failed: { rule: string; title: string; severity: string; findings: number }[]; error?: string };
+  /** v1.21: 개인정보 건수(흐름표·근거는 check_egovframe_privacy) */
+  privacy: { tables: number; columns: number; uniqueIdTables: number; high: number; medium: number; error?: string };
   /** v1.19: 매퍼·DAO 정합성 건수(항목은 validate_egovframe_project) */
   mapper: { errors: number; warnings: number; missing: number; variantGaps: number; namespaces: number; statements: number; byKind: Record<string, number>; error?: string };
   sbom: {
@@ -289,6 +292,14 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   } catch (e) {
     mapper = { errors: 0, warnings: 0, missing: 0, variantGaps: 0, namespaces: 0, statements: 0, byKind: {}, error: e instanceof Error ? e.message : String(e) };
   }
+  // v1.21: 개인정보
+  let privacy: AssessmentResult["privacy"];
+  try {
+    const pv = checkPrivacy({ projectDir, maxFiles: opts.maxFiles });
+    privacy = { tables: pv.summary.tables, columns: pv.summary.columns, uniqueIdTables: pv.summary.uniqueIdTables, high: pv.summary.high, medium: pv.summary.medium };
+  } catch (e) {
+    privacy = { tables: 0, columns: 0, uniqueIdTables: 0, high: 0, medium: 0, error: e instanceof Error ? e.message : String(e) };
+  }
   // SBOM
   const sbom = readSbom(projectDir, (opts.sbomPath ?? DEFAULT_SBOM_PATH).replace(/\\/g, "/"));
 
@@ -322,7 +333,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       notes: dep.notes,
       ...(fixHistory.length ? { fixHistory } : {}),
     },
-    security, secureCoding, operations, mapper, sbom,
+    security, secureCoding, operations, mapper, privacy, sbom,
     grades: { migration, supplyChain },
     ...(dep.workspace ? { modules: dep.workspace.modules.map((m) => {
       const u = update?.modules?.find((x) => x.name === m.name);
@@ -462,6 +473,14 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     if (mp.error) out.push(L(`- 점검 실패: ${mp.error}`, `- Check failed: ${mp.error}`));
     else if (!mp.namespaces) out.push(L(`- MyBatis 매퍼 XML 없음 — 해당 없음`, `- No MyBatis mapper XML — not applicable`));
     else out.push(L(`- namespace ${mp.namespaces} · 문장 ${mp.statements} — 오류 ${mp.errors}(없는 문장 ${mp.missing}) · 경고 ${mp.warnings}(DB 별 차이 ${mp.variantGaps}). 컴파일·기동으로 잡히지 않고 화면을 누를 때 실패하는 결함 — 위치·후보는 validate_egovframe_project 로.`, `- ${mp.namespaces} namespaces · ${mp.statements} statements — ${mp.errors} errors (${mp.missing} missing statements) · ${mp.warnings} warnings (${mp.variantGaps} DB-variant gaps). Defects that pass compile and startup and fail when the screen is used — locations and candidates via validate_egovframe_project.`));
+  }
+
+  const pvx = r.privacy;
+  if (pvx) {
+    out.push(``, L(`### 개인정보 (\`check_egovframe_privacy\`)`, `### Personal data (\`check_egovframe_privacy\`)`), ``);
+    if (pvx.error) out.push(L(`- 점검 실패: ${pvx.error}`, `- Check failed: ${pvx.error}`));
+    else if (!pvx.columns) out.push(L(`- 개인정보 컬럼을 찾지 못함(DDL·매퍼 SQL 기준)`, `- No personal data columns found (from DDL and mapper SQL)`));
+    else out.push(L(`- 개인정보 테이블 ${pvx.tables} · 컬럼 ${pvx.columns}(고유식별정보 테이블 ${pvx.uniqueIdTables}) — 보호조치 누락 의심 높음 ${pvx.high} · 중간 ${pvx.medium}. 개인정보 파일·처리 흐름표와 근거는 check_egovframe_privacy 로.`, `- ${pvx.tables} personal data tables · ${pvx.columns} columns (${pvx.uniqueIdTables} tables with unique identifiers) — suspected missing safeguards: ${pvx.high} high · ${pvx.medium} medium. Data files, flow table and evidence via check_egovframe_privacy.`));
   }
 
   out.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? L(` · vulnerabilities ${r.sbom.vulnerabilities}건`, ` · vulnerabilities ${r.sbom.vulnerabilities}`) : ""}` : `➖ ${r.sbom.note}`}`);

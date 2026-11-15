@@ -90,7 +90,7 @@ await (async () => { let t = null; try { await m.summarizePortfolio({ inputs: []
   await server.connect(st); await client.connect(ct);
   const tools = (await client.listTools()).tools;
   const t = tools.find((x) => x.name === "summarize_egovframe_portfolio");
-  assert(t && t.annotations.destructiveHint === false && t.annotations.readOnlyHint === false && t.inputSchema.properties.format.enum.join() === "markdown,json,csv" && t.outputSchema && tools.length === 43, "MCP: 43종, 파괴 아님(새 디렉터리에만 씀), outputSchema");
+  assert(t && t.annotations.destructiveHint === false && t.annotations.readOnlyHint === false && t.inputSchema.properties.format.enum.join() === "markdown,json,csv" && t.outputSchema && tools.length >= 43, "MCP: 등록됨, 파괴 아님(새 디렉터리에만 씀), outputSchema");
   const out = path.join(root, "pf-out");
   const res = await client.callTool({ name: "summarize_egovframe_portfolio", arguments: { inputs: [deliv, ciJson], outputDir: out, format: "json" } });
   assert(!res.isError && res.structuredContent.rows.length === 2 && res.structuredContent.written.length === 3 && existsSync(path.join(out, "portfolio.csv")) && JSON.parse(readFileSync(path.join(out, "portfolio.json"), "utf8")).rows.length === 2, "MCP outputDir: portfolio.md·csv·json");
