@@ -30,6 +30,8 @@ export const CI_FAIL_ON_RE = /^(?:(?:migration|supplyChain):[ABCD]|[A-Za-z]+(?:>
 /** v0.43: 사내 npm 레지스트리 URL — 따옴표·공백·$·백틱 등 구조를 깨는 문자 금지 */
 export const CI_NPM_REGISTRY_RE = /^https?:\/\/[A-Za-z0-9.\-]+(?::\d{1,5})?(?:\/[A-Za-z0-9._~%\-\/]*)?$/;
 /** v0.43: 러너·에이전트에서 본 오프라인 번들 경로(절대 경로, 영문·숫자·._-/\\: 와 공백만) */
+/** v1.23: 규칙 팩 경로 — 저장소 상대 경로 또는 러너의 절대 경로(.. 금지, 따옴표·공백·셸 문자 금지) */
+export const CI_RULE_PACKS_RE = /^(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))(?:\/|[A-Za-z]:[\\/]|\.\/)?[A-Za-z0-9_.\-][A-Za-z0-9_.\/\\-]{0,250}$/;
 export const CI_BUNDLE_PATH_RE = /^(?:\/|[A-Za-z]:[\\/])[A-Za-z0-9_.\/\\: -]{0,250}$/;
 /** v0.43: SBOM 공급자 이름(명령줄에 큰따옴표로 들어감) */
 export const CI_SUPPLIER_RE = /^[\p{L}\p{N}][\p{L}\p{N} .,&()_-]{0,99}$/u;
@@ -50,7 +52,7 @@ export interface CiSupplyChainOptions {
   delivery?: boolean;
 }
 /** v0.43: 실행 환경 변수(세 플랫폼 공통) */
-export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string; /** v1.6: 사내 Maven 미러(Nexus·Artifactory 프록시) — 빌드는 -gs settings, 게이트의 CLI 는 EGOVFRAME_MAVEN_MIRROR */ mavenMirror?: string }
+export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string; /** v1.6: 사내 Maven 미러(Nexus·Artifactory 프록시) — 빌드는 -gs settings, 게이트의 CLI 는 EGOVFRAME_MAVEN_MIRROR */ mavenMirror?: string; /** v1.23: 기관 규칙 팩 디렉터리 → 게이트 단계의 EGOVFRAME_RULE_PACKS */ rulePacks?: string }
 
 function checkSupplyChain(opts: CiSupplyChainOptions): void {
   const failOn = opts.failOn ?? "supplyChain:D";
@@ -69,6 +71,10 @@ export function ciEnvEntries(env: CiEnvOptions = {}): [string, string][] {
     out.push(["EGOVFRAME_OFFLINE_BUNDLE", env.offlineBundle]);
   }
   if (env.mavenMirror !== undefined) out.push([MAVEN_MIRROR_ENV, validateMavenMirror(env.mavenMirror)]);
+  if (env.rulePacks !== undefined) {
+    if (!CI_RULE_PACKS_RE.test(env.rulePacks)) throw new Error(`rulePacks 는 저장소 상대 경로 또는 러너의 절대 경로여야 합니다(영문·숫자·._-/\\ 만, .. 불가): ${JSON.stringify(env.rulePacks)}`);
+    out.push(["EGOVFRAME_RULE_PACKS", env.rulePacks]);
+  }
   return out;
 }
 
@@ -358,7 +364,7 @@ export function generateCiConfig(opts: GenerateCiOptions): CiResult {
   const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}), ...(opts.secureCoding ? { secureCoding: true } : {}), ...(opts.delivery ? { delivery: true } : {}) } : false;
   if (opts.secureCoding && !opts.supplyChain) throw new Error("secureCoding 은 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
   if (opts.delivery && !opts.supplyChain) throw new Error("delivery 는 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
-  const env: CiEnvOptions = { ...(opts.npmRegistry ? { npmRegistry: opts.npmRegistry } : {}), ...(opts.offlineBundle ? { offlineBundle: opts.offlineBundle } : {}), ...(opts.mavenMirror ? { mavenMirror: opts.mavenMirror } : {}) };
+  const env: CiEnvOptions = { ...(opts.npmRegistry ? { npmRegistry: opts.npmRegistry } : {}), ...(opts.offlineBundle ? { offlineBundle: opts.offlineBundle } : {}), ...(opts.mavenMirror ? { mavenMirror: opts.mavenMirror } : {}), ...(opts.rulePacks ? { rulePacks: opts.rulePacks } : {}) };
   const jdk = opts.jdk ?? "17";
   const content = platform === "gitlab" ? generateGitlabCi(buildTool, jdk, sc, env) : platform === "jenkins" ? generateJenkinsfile(buildTool, jdk, sc, env) : generateCiYaml(buildTool, jdk, sc, env);
   const rel = CI_PATHS[platform];

@@ -22,6 +22,7 @@ import { SERVER_VERSION } from "./version.js";
 import { checkSecureCoding } from "./secure-coding.js";
 import { updateProject, type UpdateInfo } from "./update.js";
 import { L, tr } from "./lang.js";
+import { loadRulePacks, rulePackInfo, type RulePackInfo } from "./rule-packs.js";
 const SECURE_ORIGIN_KO: Record<string, string> = { get component() { return L("공통컴포넌트 원본", "common component (original)"); }, get "component-modified"() { return L("공통컴포넌트 수정본", "common component (modified)"); }, get "component-unmanaged"() { return L("공통컴포넌트(매니페스트 없음)", "common component (no manifest)"); }, get project() { return L("프로젝트 코드", "project code"); }, get test() { return L("테스트", "test"); } };
 
 // ── 등급 산식 (데이터) ─────────────────────────────────
@@ -107,6 +108,8 @@ export interface AssessmentOptions {
   /** 수동 작업 목록 상위 N(기본 20) */
   topN?: number;
   maxFiles?: number;
+  /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) — 의존성·보안약점·운영·개인정보 점검에 함께 적용 */
+  rulePacks?: string[];
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   now?: () => number;
@@ -116,6 +119,8 @@ export interface AssessmentAction { groupId: string; artifactId: string; version
 export interface AssessmentResult {
   projectDir: string;
   generatedAt: string;
+  /** v1.23: 이 평가에 적용한 규칙 팩(있을 때만) — 어떤 기준으로 본 것인지 */
+  rulePacks?: RulePackInfo[];
   tool: { name: string; version: string; rulesTag: string; rulesSurveyedAt: string; baselineSurveyedAt: string; targetRuntime: string };
   overview: {
     buildSystem: "maven" | "gradle" | "unknown"; isEgovProject: boolean; rteVersion: string | null; sourceEra: SourceEra;
@@ -236,7 +241,8 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const diag = diagnoseProject({ projectDir });
   const mig: MigrateResult = migrateProject({ projectDir, maxFiles: opts.maxFiles });
   const fixHistory = readFixHistory(projectDir);
-  const dep = await checkDependencies({ projectDir, offline: opts.offline ?? true, osvQuery: opts.osvQuery, maxFiles: opts.maxFiles, resolve: opts.resolve, resolveScope: opts.resolveScope, resolveTimeoutMs: opts.resolveTimeoutMs, runner: opts.runner, platform: opts.platform });
+  const packInfo = rulePackInfo(loadRulePacks(opts.rulePacks));
+  const dep = await checkDependencies({ rulePacks: opts.rulePacks, projectDir, offline: opts.offline ?? true, osvQuery: opts.osvQuery, maxFiles: opts.maxFiles, resolve: opts.resolve, resolveScope: opts.resolveScope, resolveTimeoutMs: opts.resolveTimeoutMs, runner: opts.runner, platform: opts.platform });
   const topN = opts.topN ?? 20;
   const notes: string[] = [];
 
@@ -270,7 +276,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   let secureCoding: AssessmentResult["secureCoding"];
   let secureByModule: { module: string; total: number }[] | undefined;
   try {
-    const sc = await checkSecureCoding({ projectDir, maxFindings: 1, maxFiles: opts.maxFiles });
+    const sc = await checkSecureCoding({ projectDir, maxFindings: 1, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
     secureByModule = sc.byModule;
     secureCoding = { total: sc.summary.total, high: sc.summary.high, medium: sc.summary.medium, low: sc.summary.low, byOrigin: Object.fromEntries(Object.entries(sc.byOrigin).filter(([, n]) => n)), byRule: sc.byRule, suppressed: sc.summary.suppressed };
   } catch (e) {
@@ -279,7 +285,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   // v1.15: 운영 준비 점검
   let operations: AssessmentResult["operations"];
   try {
-    const op = await checkOperations({ projectDir, maxFiles: opts.maxFiles });
+    const op = await checkOperations({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
     operations = { grade: op.grade.grade, total: op.summary.total, high: op.summary.high, medium: op.summary.medium, low: op.summary.low, fail: op.summary.fail, pass: op.summary.pass, na: op.summary.na, failed: op.rules.filter((r) => r.status === "fail").map((r) => ({ rule: r.rule, title: r.title, severity: r.severity, findings: r.findings })) };
   } catch (e) {
     operations = { grade: "?", total: 0, high: 0, medium: 0, low: 0, fail: 0, pass: 0, na: 0, failed: [], error: e instanceof Error ? e.message : String(e) };
@@ -295,7 +301,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   // v1.21: 개인정보
   let privacy: AssessmentResult["privacy"];
   try {
-    const pv = checkPrivacy({ projectDir, maxFiles: opts.maxFiles });
+    const pv = checkPrivacy({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
     privacy = { tables: pv.summary.tables, columns: pv.summary.columns, uniqueIdTables: pv.summary.uniqueIdTables, high: pv.summary.high, medium: pv.summary.medium };
   } catch (e) {
     privacy = { tables: 0, columns: 0, uniqueIdTables: 0, high: 0, medium: 0, error: e instanceof Error ? e.message : String(e) };
@@ -318,6 +324,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
 
   return {
     projectDir, generatedAt: new Date(now()).toISOString(),
+    ...(packInfo.length ? { rulePacks: packInfo } : {}),
     tool: { name: "egovframe-scaffold-mcp", version: SERVER_VERSION, rulesTag: mig.rules.toTag, rulesSurveyedAt: mig.rules.surveyedAt, baselineSurveyedAt: dep.baseline.surveyedAt, targetRuntime: mig.rules.runtimeVersion },
     overview: {
       buildSystem: diag.buildSystem, isEgovProject: diag.isEgovProject, rteVersion: mig.rteVersion, sourceEra: mig.sourceEra, parent: dep.parent, java: dep.java, database: diag.database,
@@ -373,6 +380,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
   out.push(L(`- 경로: ${r.projectDir}`, `- Path: ${r.projectDir}`));
   out.push(L(`- 생성: ${r.generatedAt} · ${r.tool.name} ${r.tool.version} · 전환 규칙 ${r.tool.rulesTag}(조사 ${r.tool.rulesSurveyedAt}) · 의존성 기준 조사 ${r.tool.baselineSurveyedAt}`, `- Generated: ${r.generatedAt} · ${r.tool.name} ${r.tool.version} · migration rules ${r.tool.rulesTag} (surveyed ${r.tool.rulesSurveyedAt}) · dependency baseline surveyed ${r.tool.baselineSurveyedAt}`));
   out.push(L(`- **전환 난이도 ${r.grades.migration.grade} · 공급망 상태 ${r.grades.supplyChain.grade}** (산식은 6절)`, `- **Migration difficulty ${r.grades.migration.grade} · Supply-chain status ${r.grades.supplyChain.grade}** (formula in section 6)`));
+  if (r.rulePacks?.length) out.push(L(`- 규칙 팩: ${r.rulePacks.map((p) => `${p.name} ${p.version}(\`${p.sha256.slice(0, 12)}\`)`).join(", ")} — 동봉 규칙 위에 적용`, `- Rule packs: ${r.rulePacks.map((p) => `${p.name} ${p.version} (\`${p.sha256.slice(0, 12)}\`)`).join(", ")} — applied on top of the bundled rules`));
   for (const n of r.notes) out.push(`- ${n}`);
   out.push(``, L(`## 1. 프로젝트 개요`, `## 1. Project overview`), ``);
   out.push(L(`| 항목 | 값 |`, `| Item | Value |`), `|---|---|`);

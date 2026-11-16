@@ -121,6 +121,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), columns: num(sm.columns), uniqueIdTables: num(sm.uniqueIdTables), high: num(sm.high), medium: num(sm.medium) }; },
     line: (s) => { const sm = rec(s.summary); return L(`개인정보 테이블 ${num(sm.tables)}·컬럼 ${num(sm.columns)}(고유식별정보 테이블 ${num(sm.uniqueIdTables)}) — 보호조치 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)}`, `${num(sm.tables)} personal data tables, ${num(sm.columns)} columns (${num(sm.uniqueIdTables)} with unique identifiers) — suspected missing safeguards: ${num(sm.high)} high, ${num(sm.medium)} medium`); },
   },
+  rules: {
+    tool: "list_egovframe_rules", summary: "적용 중인 규칙·출처(동봉/규칙 팩)와 규칙 팩 검증(--rule-packs 디렉터리, 없으면 EGOVFRAME_RULE_PACKS)", summaryEn: "Rules in effect, their source (bundled or rule pack) and rule pack validation (--rule-packs dir, else EGOVFRAME_RULE_PACKS)",
+    metrics: (s) => { const sm = rec(s.summary); return { total: num(sm.total), bundled: num(sm.bundled), fromPacks: num(sm.fromPacks), disabled: num(sm.disabled), packs: Array.isArray(s.rulePacks) ? s.rulePacks.length : 0 }; },
+    line: (s) => { const sm = rec(s.summary); return L(`규칙 ${num(sm.total)}개(동봉 ${num(sm.bundled)} · 팩 ${num(sm.fromPacks)}) · 끈 규칙 ${num(sm.disabled)} · 규칙 팩 ${Array.isArray(s.rulePacks) ? s.rulePacks.length : 0}개`, `${num(sm.total)} rules (bundled ${num(sm.bundled)}, packs ${num(sm.fromPacks)}) · ${num(sm.disabled)} disabled · ${Array.isArray(s.rulePacks) ? s.rulePacks.length : 0} rule pack(s)`); },
+  },
   map: {
     tool: "map_egovframe_project", summary: "프로젝트 구조 지도·변경 영향(읽기 전용, --impact-table/--impact-url/--impact-class)", summaryEn: "Project structure map and change impact (read-only; --impact-table/--impact-url/--impact-class)",
     metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), urls: num(sm.urls), views: num(sm.views), orphanMappers: num(sm.orphanMappers), unresolvedRate: Number(sm.unresolvedRate ?? 0) }; },

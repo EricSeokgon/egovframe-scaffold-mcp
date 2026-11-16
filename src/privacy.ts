@@ -7,6 +7,7 @@
 //        (파일 단위 판정 — 같은 파일의 다른 메서드에서 그 필드를 암호화하면 통과로 본다: 놓칠 수 있으나 오탐을 줄이는 쪽)
 //      screen-exposure(중간): 화면이 고유식별정보 필드를 마스킹 없이 출력 / log-exposure(중간): 고유식별·비밀번호·금융 필드를 로그로 출력
 //   법 해석·실제 데이터 스캔·자동 암호화는 하지 않는다. 값을 고치지 않는다.
+import { loadRulePacks, applyPrivacyPacks, rulePackInfo, type RulePackInfo } from "./rule-packs.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { buildProjectMap, tablesInSql, type ProjectMap } from "./project-map.js";
@@ -26,7 +27,7 @@ let cached: PrivacyRules | null = null;
 export function loadPrivacyRules(): PrivacyRules { if (!cached) cached = JSON.parse(fs.readFileSync(RULES_URL, "utf8")) as PrivacyRules; return cached; }
 const tr = (o: { [k: string]: unknown }, k: string): string => (getLang() === "en" && typeof o[`${k}_en`] === "string" ? (o[`${k}_en`] as string) : (o[k] as string));
 
-export interface PrivacyColumn { table: string; column: string; item: string; label: string; grade: PrivacyGrade; source: "ddl" | "mapper"; file: string; line: number }
+export interface PrivacyColumn { table: string; column: string; item: string; label: string; grade: PrivacyGrade; source: "ddl" | "mapper"; file: string; line: number; /** v1.23: 이 항목을 정한 규칙 팩 이름 */ rulePack?: string }
 export interface PrivacyFlow {
   table: string; items: string[]; grades: PrivacyGrade[];
   read: number; write: number;
@@ -44,7 +45,7 @@ export interface PrivacyFinding {
   /** plaintext-storage: 같은 문장을 가진 DB 별 매퍼 사본 수(2 이상일 때) */
   variants?: number;
 }
-export interface PrivacyOptions { projectDir: string; maxFiles?: number; rules?: PrivacyRules }
+export interface PrivacyOptions { projectDir: string; maxFiles?: number; rules?: PrivacyRules; /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */ rulePacks?: string[] }
 export interface PrivacyResult {
   projectDir: string;
   rulesVersion: { surveyedAt: string; items: number };
@@ -55,6 +56,8 @@ export interface PrivacyResult {
   summary: { tables: number; columns: number; items: number; byGrade: Record<string, number>; uniqueIdTables: number; high: number; medium: number; suppressed: number; ddlFiles: number; mapperStatements: number };
   ignoreFile: string | null;
   invalidIgnores: string[];
+  /** v1.23: 적용한 규칙 팩(있을 때만) */
+  rulePacks?: RulePackInfo[];
   notes: string[];
 }
 export const PRIVACY_IGNORE_FILE = ".egovframe-privacy-ignore.json";
@@ -99,7 +102,9 @@ export function checkPrivacy(opts: PrivacyOptions): PrivacyResult {
   const t0 = Date.now();
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(L(`프로젝트 디렉터리가 없습니다: ${projectDir}`, `Project directory not found: ${projectDir}`));
-  const rules = opts.rules ?? loadPrivacyRules();
+  const packs = opts.rules ? [] : loadRulePacks(opts.rulePacks);
+  const mergedRules = applyPrivacyPacks(opts.rules ?? loadPrivacyRules(), packs);
+  const rules = mergedRules.rules;
   const gradeOf = new Map(rules.grades.map((g) => [g.id, g]));
   const notes: string[] = [];
   const files = walk(projectDir, opts.maxFiles ?? 40_000).map((abs) => ({ abs, rel: rel(projectDir, abs) })).filter((f) => !/(^|\/)src\/test\//.test(f.rel));
@@ -340,12 +345,16 @@ export function checkPrivacy(opts: PrivacyOptions): PrivacyResult {
   kept.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "high" ? -1 : 1) || a.kind.localeCompare(b.kind) || a.file.localeCompare(b.file) || a.line - b.line);
   const byGrade: Record<string, number> = {};
   for (const c of cols) byGrade[c.grade] = (byGrade[c.grade] ?? 0) + 1;
+  if (packs.length) {
+    for (const c of cols) { const src = mergedRules.origins.get(c.item); if (src) c.rulePack = src; }
+    notes.push(L(`규칙 팩 적용: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}`, `Rule packs applied: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}`));
+  }
   if (cols.length && !cols.some((c) => c.source === "ddl")) notes.push(L("DDL 을 찾지 못해 매퍼 SQL 에 나온 컬럼만으로 만들었습니다 — 조회·저장하지 않는 컬럼은 빠질 수 있습니다", "No DDL found; built from columns seen in mapper SQL only — columns never read or written may be missing"));
   return {
     projectDir, rulesVersion: { surveyedAt: rules.surveyedAt, items: rules.items.length }, durationMs: Date.now() - t0,
     columns: cols, flows, findings: kept,
     summary: { tables: tables.length, columns: cols.length, items: new Set(cols.map((c) => c.item)).size, byGrade, uniqueIdTables: new Set(cols.filter((c) => c.grade === "unique-id").map((c) => c.table)).size, high: kept.filter((f) => f.severity === "high").length, medium: kept.filter((f) => f.severity === "medium").length, suppressed, ddlFiles, mapperStatements: new Set([...stmtCols.keys()].map((x) => `${x.ns}|${x.id}`)).size },
-    ignoreFile: ig.file, invalidIgnores: ig.invalid, notes,
+    ignoreFile: ig.file, invalidIgnores: ig.invalid, ...(packs.length ? { rulePacks: rulePackInfo(packs) } : {}), notes,
   };
 }
 

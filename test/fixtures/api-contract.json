@@ -1,6 +1,6 @@
 {
-  "version": "1.22.0",
-  "base": "1.21.0",
+  "version": "1.23.0",
+  "base": "1.22.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -248,6 +248,13 @@
               "default": 300000,
               "minimum": 10000,
               "maximum": 1800000
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
             }
           }
         },
@@ -631,6 +638,41 @@
                 }
               }
             },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "sections",
+                  "sha256",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "dependencies",
+                        "operations",
+                        "privacy",
+                        "secureCoding"
+                      ]
+                    }
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
             "summary": {
               "type": "object"
             },
@@ -725,6 +767,13 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
             },
             "rules": {
               "type": "array",
@@ -910,6 +959,41 @@
             "projectDir": {
               "type": "string"
             },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "sections",
+                  "sha256",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "dependencies",
+                        "operations",
+                        "privacy",
+                        "secureCoding"
+                      ]
+                    }
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
             "rules": {
               "type": "array",
               "items": {
@@ -1038,6 +1122,13 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
             },
             "topN": {
               "type": "integer",
@@ -1288,6 +1379,41 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "sections",
+                  "sha256",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "dependencies",
+                        "operations",
+                        "privacy",
+                        "secureCoding"
+                      ]
+                    }
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              }
             },
             "rulesVersion": {
               "type": "object",
@@ -1915,6 +2041,13 @@
             "projectDir": {
               "type": "string"
             },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
+            },
             "rules": {
               "type": "array",
               "items": {
@@ -2215,6 +2348,41 @@
             },
             "projectDir": {
               "type": "string"
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "sections",
+                  "sha256",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "dependencies",
+                        "operations",
+                        "privacy",
+                        "secureCoding"
+                      ]
+                    }
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              }
             },
             "rulesVersion": {
               "type": "object",
@@ -4104,6 +4272,10 @@
             "projectDir": {
               "type": "string"
             },
+            "rulePacks": {
+              "type": "string",
+              "pattern": "^(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$))(?:\\/|[A-Za-z]:[\\\\/]|\\.\\/)?[A-Za-z0-9_.\\-][A-Za-z0-9_.\\/\\\\-]{0,250}$"
+            },
             "secureCoding": {
               "type": "boolean",
               "default": false
@@ -4895,6 +5067,13 @@
               "default": 300000,
               "minimum": 10000,
               "maximum": 1800000
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
             },
             "sbomPath": {
               "type": "string",
@@ -5766,6 +5945,41 @@
                     }
                   }
                 },
+                "rulePacks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "sections",
+                      "sha256",
+                      "version"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "sections": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "dependencies",
+                            "operations",
+                            "privacy",
+                            "secureCoding"
+                          ]
+                        }
+                      },
+                      "sha256": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
                 "sbom": {
                   "type": "object",
                   "required": [
@@ -6238,6 +6452,173 @@
           "properties": {}
         },
         "output": null,
+        "deprecated": {}
+      },
+      "list_egovframe_rules": {
+        "input": {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "dependencies",
+                  "operations",
+                  "privacy",
+                  "secureCoding"
+                ]
+              }
+            },
+            "topN": {
+              "type": "integer",
+              "default": 200,
+              "minimum": 1,
+              "maximum": 2000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "notes",
+            "rulePacks",
+            "rules",
+            "summary"
+          ],
+          "properties": {
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "sections",
+                  "sha256",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "dependencies",
+                        "operations",
+                        "privacy",
+                        "secureCoding"
+                      ]
+                    }
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "severity",
+                  "source",
+                  "status",
+                  "title",
+                  "tool"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "disabled"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "tool": {
+                    "type": "string",
+                    "enum": [
+                      "dependencies",
+                      "operations",
+                      "privacy",
+                      "secureCoding"
+                    ]
+                  }
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "bundled",
+                "byTool",
+                "disabled",
+                "fromPacks",
+                "total"
+              ],
+              "properties": {
+                "bundled": {
+                  "type": "integer"
+                },
+                "byTool": {
+                  "type": "object"
+                },
+                "disabled": {
+                  "type": "integer"
+                },
+                "fromPacks": {
+                  "type": "integer"
+                },
+                "total": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
         "deprecated": {}
       },
       "list_egovframe_templates": {
@@ -9565,6 +9946,13 @@
             "previous": {
               "type": "string"
             },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
+            },
             "run": {
               "type": "boolean",
               "default": true
@@ -10614,6 +11002,7 @@
         "portfolio": "summarize_egovframe_portfolio",
         "privacy": "check_egovframe_privacy",
         "rehearse": "rehearse_egovframe_migration",
+        "rules": "list_egovframe_rules",
         "sbom": "generate_egovframe_sbom",
         "sbom-check": "check_egovframe_sbom",
         "secure": "check_egovframe_secure_coding",
@@ -10633,7 +11022,8 @@
       "EGOVFRAME_CACHE_DIR",
       "EGOVFRAME_LANG",
       "EGOVFRAME_MAVEN_MIRROR",
-      "EGOVFRAME_OFFLINE_BUNDLE"
+      "EGOVFRAME_OFFLINE_BUNDLE",
+      "EGOVFRAME_RULE_PACKS"
     ],
     "node": ">=22"
   }

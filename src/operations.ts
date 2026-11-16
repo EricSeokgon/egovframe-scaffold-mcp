@@ -2,6 +2,7 @@
 //   "기동은 되는데 운영에서 터지는" 설정(SQL 로깅 드라이버·DEBUG 로그·콘솔 전용 로그·devtools·내장 DB·풀 타임아웃·세션·업로드·오류 노출·actuator·개발 플래그·비밀값)을
 //   운영 설정 세트(Boot: application + application-prod.* / Classic: globals.properties + context-*.xml + web.xml + log4j2.xml)에서 찾는다.
 //   규칙은 catalog/operations-rules.json 데이터(출처 명시). 값을 고치지 않고 바뀔 줄을 제안만 한다.
+import { loadRulePacks, applyOpsPacks, rulePackInfo, type RulePackInfo } from "./rule-packs.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { checkSecureCoding, compileRulePattern, readIgnoreFile, type SecureIgnore } from "./secure-coding.js";
@@ -26,9 +27,11 @@ export interface OpsFinding {
   message: string; fix: string; basis: string;
   /** 바뀔 줄 제안(있을 때) */
   suggestion?: string;
+  /** v1.23: 이 규칙을 정한 규칙 팩 이름(동봉 규칙이면 없음) */
+  source?: string;
 }
-export interface OpsRuleResult { rule: string; category: string; severity: OpsSeverity; title: string; status: "pass" | "fail" | "n/a"; findings: number }
-export interface OperationsOptions { projectDir: string; /** 운영 프로파일 이름(기본: prod·production·release·ops 중 있는 것) */ profile?: string; rules?: string[]; maxFiles?: number }
+export interface OpsRuleResult { rule: string; category: string; severity: OpsSeverity; title: string; status: "pass" | "fail" | "n/a"; findings: number; /** v1.23: 규칙 팩 이름 */ source?: string }
+export interface OperationsOptions { projectDir: string; /** 운영 프로파일 이름(기본: prod·production·release·ops 중 있는 것) */ profile?: string; rules?: string[]; maxFiles?: number; /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */ rulePacks?: string[] }
 export interface OperationsResult {
   projectDir: string;
   rulesVersion: { surveyedAt: string; rules: number };
@@ -42,6 +45,8 @@ export interface OperationsResult {
   grade: { grade: "A" | "B" | "C" | "D"; formula: string };
   ignoreFile: string | null;
   invalidIgnores: string[];
+  /** v1.23: 적용한 규칙 팩(있을 때만) */
+  rulePacks?: RulePackInfo[];
   notes: string[];
 }
 export const OPS_IGNORE_FILE = ".egovframe-ops-ignore.json";
@@ -113,7 +118,9 @@ const DEV_NAMES = ["dev", "local", "test", "development", "stage", "staging", "d
 export async function checkOperations(opts: OperationsOptions): Promise<OperationsResult> {
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(L(`프로젝트 디렉터리가 없습니다: ${projectDir}`, `Project directory not found: ${projectDir}`));
-  const all = loadOperationsRules();
+  const packs = loadRulePacks(opts.rulePacks);
+  const merged = applyOpsPacks(loadOperationsRules(), packs);
+  const all = merged.rules;
   const unknown = (opts.rules ?? []).filter((r) => !all.rules.some((x) => x.id === r));
   if (unknown.length) throw new Error(L(`알 수 없는 규칙: ${unknown.join(", ")} (사용 가능: ${all.rules.map((r) => r.id).join(", ")})`, `Unknown rule: ${unknown.join(", ")} (available: ${all.rules.map((r) => r.id).join(", ")})`));
   const rules = opts.rules?.length ? all.rules.filter((r) => opts.rules!.includes(r.id)) : all.rules;
@@ -281,7 +288,11 @@ export async function checkOperations(opts: OperationsOptions): Promise<Operatio
   const h = failedRules("high"), md = failedRules("medium");
   const grade: OperationsResult["grade"]["grade"] = h === 0 && md <= 1 ? "A" : h <= 1 && md <= 3 ? "B" : h <= 3 ? "C" : "D";
   const formula = L(`규칙 단위로 셉니다(같은 규칙의 여러 줄은 1) — A: 높음 0·중간 ≤1 / B: 높음 ≤1·중간 ≤3 / C: 높음 ≤3 / D: 그 밖. 지금 높음 규칙 ${h}·중간 규칙 ${md}`, `Counted per rule (many lines of one rule = 1) — A: high 0, medium ≤1 / B: high ≤1, medium ≤3 / C: high ≤3 / D: otherwise. Now high ${h} · medium ${md} rules`);
-  const results: OpsRuleResult[] = rules.map((r) => ({ rule: r.id, category: r.category, severity: r.severity, title: tr(r as unknown as Record<string, unknown>, "title"), status: evaluated.get(r.id) ?? "n/a", findings: kept.filter((f) => f.rule === r.id).length }));
+  const results: OpsRuleResult[] = rules.map((r) => ({ rule: r.id, category: r.category, severity: r.severity, title: tr(r as unknown as Record<string, unknown>, "title"), status: evaluated.get(r.id) ?? "n/a", findings: kept.filter((f) => f.rule === r.id).length, ...(merged.origins.has(r.id) ? { source: merged.origins.get(r.id) } : {}) }));
+  if (packs.length) {
+    for (const f of kept) { const src = merged.origins.get(f.rule); if (src) f.source = src; }
+    notes.push(L(`규칙 팩 적용: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}${merged.disabled.length ? ` — 끈 규칙 ${merged.disabled.join(", ")}` : ""}`, `Rule packs applied: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}${merged.disabled.length ? ` — disabled rules ${merged.disabled.join(", ")}` : ""}`));
+  }
   if (runtime === "boot" && !prodProfile && excludedProfiles.length) notes.push(L(`운영 프로파일을 찾지 못해(있는 것: ${excludedProfiles.join(", ")}) application.properties/yml 만 운영 세트로 봤습니다 — profile 로 지정할 수 있습니다`, `No production profile found (present: ${excludedProfiles.join(", ")}); only application.properties/yml was treated as the production set — pass profile to choose one`));
   if (prodProfile) notes.push(L(`운영 세트: application + application-${prodProfile}.* (제외: ${excludedProfiles.join(", ") || "없음"})`, `Production set: application + application-${prodProfile}.* (excluded: ${excludedProfiles.join(", ") || "none"})`));
   if (ig.invalid.length) notes.push(...ig.invalid.map((x) => `${OPS_IGNORE_FILE}: ${x}`));
@@ -290,7 +301,7 @@ export async function checkOperations(opts: OperationsOptions): Promise<Operatio
     configSet: { properties: propsFiles.map((f) => f.rel), profile: prodProfile, excludedProfiles },
     filesScanned: scanFiles.length, findings: kept, rules: results,
     summary: { total: kept.length, high: count("high"), medium: count("medium"), low: count("low"), suppressed: suppressedList.length, pass: results.filter((r) => r.status === "pass").length, fail: results.filter((r) => r.status === "fail").length, na: results.filter((r) => r.status === "n/a").length },
-    grade: { grade, formula }, ignoreFile: ig.file, invalidIgnores: ig.invalid, notes,
+    grade: { grade, formula }, ignoreFile: ig.file, invalidIgnores: ig.invalid, ...(packs.length ? { rulePacks: rulePackInfo(packs) } : {}), notes,
   };
 }
 
