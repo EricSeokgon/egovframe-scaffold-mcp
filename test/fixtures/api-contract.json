@@ -1,6 +1,6 @@
 {
-  "version": "1.21.0",
-  "base": "1.20.0",
+  "version": "1.22.0",
+  "base": "1.21.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -54,6 +54,14 @@
             },
             "ref": {
               "type": "string"
+            },
+            "search": {
+              "type": "string",
+              "enum": [
+                "dense",
+                "hybrid"
+              ],
+              "default": "dense"
             },
             "stack": {
               "type": "string",
@@ -4516,6 +4524,29 @@
                 "actuator": {
                   "type": "boolean"
                 },
+                "ai": {
+                  "type": "object",
+                  "required": [
+                    "search",
+                    "stack"
+                  ],
+                  "properties": {
+                    "search": {
+                      "type": "string",
+                      "enum": [
+                        "dense",
+                        "hybrid"
+                      ]
+                    },
+                    "stack": {
+                      "type": "string",
+                      "enum": [
+                        "langchain4j",
+                        "spring-ai"
+                      ]
+                    }
+                  }
+                },
                 "appName": {
                   "type": "string"
                 },
@@ -7940,6 +7971,7 @@
                       "dependencies",
                       "deploy",
                       "map",
+                      "privacy",
                       "sbom",
                       "sbom-check",
                       "secure-coding"

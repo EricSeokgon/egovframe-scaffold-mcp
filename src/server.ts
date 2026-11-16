@@ -406,10 +406,11 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     { title: t("add_ai_components"), description: d("add_ai_components", "공식 egovframe-ai-rag 샘플 기반 AI RAG 챗봇(문서 업로드→임베딩→하이브리드 검색→LLM 응답)을 기존 Boot 프로젝트에 조립합니다. " +
       "소스·설정(application-ai.yml 프로필)·UI·인프라를 복사하고 pom에 누락 의존성만 마커 구간으로 삽입합니다(백업 생성, 제거 시 원복). " +
       "기존 파일과 충돌하면 아무것도 쓰지 않고 거부합니다. dryRun=true로 먼저 미리볼 수 있습니다. " +
-      "v1.20: Boot parent 가 5.1.0 이상이면(base=auto) 샘플 복사 대신 5.1.0 실행환경 AI 모듈(egovframe-rte-ai-core + Spring AI/LangChain4j 어댑터)을 쓰는 조립물을 프로젝트 패키지에 생성합니다 — 문서 추출(HWP·HWPX·DOCX·PDF·Markdown, 추출 한도)→정규화→한국어 문장 청킹→개인정보 마스킹→PGVector 재색인, 질의는 프롬프트 인젝션 가드→검색→OpenAI 호환 모델 응답(POST /ai/documents·/ai/ask), 접속 정보는 환경 변수 EGOV_AI_*."), inputSchema: {
+      "v1.20: Boot parent 가 5.1.0 이상이면(base=auto) 샘플 복사 대신 5.1.0 실행환경 AI 모듈(egovframe-rte-ai-core + Spring AI/LangChain4j 어댑터)을 쓰는 조립물을 프로젝트 패키지에 생성합니다 — 문서 추출(HWP·HWPX·DOCX·PDF·Markdown, 추출 한도)→정규화→한국어 문장 청킹→개인정보 마스킹→PGVector 재색인, 질의는 프롬프트 인젝션 가드→검색→OpenAI 호환 모델 응답(POST /ai/documents·/ai/ask), 접속 정보는 환경 변수 EGOV_AI_*. v1.22: search=hybrid 면 벡터 순위와 어휘(pg_trgm) 순위를 RRF 로 융합하고, EGOV-AI.md 에 프로젝트 보안 방식에 맞는 /ai/** 접근 통제 조각을 싣습니다."), inputSchema: {
       projectDir: z.string().describe("대상 프로젝트 디렉터리(절대경로 권장). egovframe-boot-starter-parent 기반 Boot 프로젝트"),
       base: z.enum(["auto", "sample", "rte-ai"]).default("auto").describe("auto = Boot parent 5.1.0 이상이면 rte-ai, 아니면 sample. rte-ai = 5.1.0 AI 모듈로 생성(parent 5.1.0 이상 필요, 벡터 저장소 PGVector). sample = 공식 egovframe-ai-rag 샘플 복사"),
       formats: z.array(z.enum(["hwp", "hwpx", "docx", "pdf"])).optional().describe("rte-ai: pom 에 넣을 문서 파서(기본 전부). Markdown 은 항상 지원"),
+      search: z.enum(["dense", "hybrid"]).default("dense").describe("rte-ai(v1.22): dense = 벡터 검색(v1.20 과 같은 코드). hybrid = 벡터 + 어휘(pg_trgm) 순위를 RRF 로 융합 — 조문 번호·고유명사·약어 질의용, PostgreSQL pg_trgm 확장 필요"),
       stack: z.enum(AI_STACKS).describe("AI 스택: spring-ai | langchain4j. 상호 배타. 벡터 저장소 — sample: spring-ai=Redis Stack·langchain4j=PGVector, rte-ai: 둘 다 PGVector"),
       includeInfra: z.boolean().default(true).describe("sample: docker-compose.ai.yml·Dockerfile.ai·k8s/ai 복사"),
       includeUi: z.boolean().default(true).describe("채팅 UI(chat.html·static) 복사"),
@@ -438,6 +439,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
         `- ${r.dryRun ? "복사 계획" : "복사 완료"} (총 ${r.totalFiles}개 파일):`,
         ...r.copyPlan.map((g) => `  · ${g.group}: ${g.files}개`),
         `- 실행 전제: ${r.prerequisites.join(", ")}`,
+        ...(r.search ? [`- 검색: ${r.search === "hybrid" ? "하이브리드(벡터 + pg_trgm 어휘, RRF 융합)" : "벡터(dense)"} · 접근 통제: ${r.accessControl?.kind ?? "-"}${r.accessControl?.evidence ? ` (${r.accessControl.evidence})` : ""}`] : []),
         ``,
         `다음 단계:`,
         ...r.nextSteps.map((s, i) => `  ${i + 1}. ${s}`),

@@ -409,6 +409,8 @@ export const DeployOutput = loose({
   profile: loose({
     appName: z.string(), version: z.string(), buildTool: z.enum(["maven", "gradle"]), wrapper: z.boolean(), packaging: z.enum(["war", "jar"]), runtime: z.enum(["tomcat", "boot"]),
     web: z.boolean(), actuator: z.boolean(), tomcat: z.enum(["10.1", "11.0"]), port: z.number().int(), contextPath: z.string(), liveness: z.string(), readiness: z.string(),
+    // v1.22: add_ai_components(base="rte-ai") 조립물이 있을 때
+    ai: loose({ stack: z.enum(["spring-ai", "langchain4j"]), search: z.enum(["dense", "hybrid"]) }).optional(),
     db: loose({ type: z.string(), inject: z.enum(["env", "file", "none"]), file: z.string(), url: z.string().nullable(), user: z.string().nullable(), host: z.string().nullable(), port: z.number().int().nullable(), database: z.string().nullable(), service: z.enum(["container", "external"]), initScripts: z.array(z.string()) }).nullable(),
   }).optional(),
   dryRun: z.boolean(),
@@ -421,7 +423,7 @@ export const DeployOutput = loose({
 });
 
 // v1.1: prepare_egovframe_delivery (만들기·verify 두 모양을 한 스키마로 — mode 로 구분)
-const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.string(), z.unknown()), error: z.string().optional() });
+const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "privacy", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.string(), z.unknown()), error: z.string().optional() });
 export const DeliveryOutput = loose({
   mode: z.enum(["prepare", "verify"]),
   projectDir: z.string().optional(),

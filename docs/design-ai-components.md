@@ -158,3 +158,38 @@
 
 - 게이트 `test:ai-rte`(36단언, 오프라인): base 판정, parent 게이트, 패키지 탐지, 계획·형식별 의존성, 조립(파일·pom 마커·매니페스트), 생성 코드 불변식(환경 변수 자리표시자만·한도 기본값·가드가 검색보다 먼저·마스킹·재색인 라이터), 재조립·배타 거부, 충돌·fault-injection 롤백, 제거 원복, 보안약점 AI 규칙 3종.
 - CI 통합 `test:ai-rte-live`(27단언): 공식 boot-web 5.1.0 에 두 스택을 조립해 `mvn package` → PGVector(Docker)·OpenAI 호환 스텁으로 기동 → 색인(한글 이름 Markdown·DOCX, `[RRN]` 치환, 재업로드 시 행 수 유지) → 질의 왕복 → 인젝션 차단(모델 호출 0) → 감사 로그 → 400 응답 → 보안약점 규칙 → remove 원복.
+
+## 10. AI 조립 보강 (v1.22)
+
+### 문제
+
+v1.20 조립물은 밀집(벡터) 검색만 연결했다. 공공 문서 질의에는 조문 번호·문서 번호·고유명사·약어가 많고 임베딩은 이것을 구별하지 못한다. 실행환경은 어휘 검색(pg_trgm)과 RRF 융합 부품을 이미 제공한다. 또 HWP·HWPX·PDF 는 실제 문서로 확인하지 못했고, 배포 산출물은 조립물을 몰랐고, `/ai/**` 는 "보안 설정에 넣으세요"라는 문장뿐이었다.
+
+### 결정
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 선택 | `search`: `dense`(기본) · `hybrid` | 기존 사용자의 생성물을 바꾸지 않는다. 설정 클래스는 v1.20 과 바이트 동일(게이트가 해시로 고정) |
+| 템플릿 | `EgovAiConfig.hybrid.java.tpl`·`EgovAiRagService.hybrid.java.tpl` 을 따로 둔다 | 조건 분기 문법 없이 dense 템플릿을 그대로 둔다 |
+| 어휘 채널 | `EgovPgTrgmLexicalSearch`(같은 PostgreSQL, 표·본문 컬럼은 저장소가 만든 것) | 저장소를 더 두지 않는다. RediSearch 구현도 있지만 저장소가 PGVector 다 |
+| 조각 식별자 | 어휘 채널은 `metadata->>'id'` 를 돌려준다. LangChain4j 라이터는 이 값을 넣지만 Spring AI 쪽은 넣지 않아 색인 때 `metadata.id = 문서 id` 를 넣는다 | 두 채널의 키가 같아야 융합된다 — 다르면 어휘 결과가 모두 "없는 문서"가 된다 |
+| 어휘 단독 조각 | 본문을 조회해 **포함**(Spring AI 는 JDBC 조회 람다, LangChain4j 는 `EgovJdbcSegmentLookup`), `rerankOnly` 를 쓰지 않음 | 임베딩이 놓친 문서를 찾는 것이 목적이다 |
+| 연결 | 검색기 Bean 안에서 `JdbcTemplate`·`DataSourceTransactionManager` 를 만든다(Bean 으로 내놓지 않음) | 프로젝트의 `DataSource`·`JdbcTemplate`·트랜잭션 관리자 주입과 겹치지 않게. 임계값 설정(`set_config(…, true)`)은 같은 트랜잭션이어야 한다 |
+| 스키마 | 첫 사용 때 `CREATE EXTENSION IF NOT EXISTS pg_trgm` + GIN 색인. `EGOV_AI_LEXICAL_INIT=false` 면 하지 않고 `EGOV-AI.md` 의 SQL 을 DBA 가 적용 | 실행환경 스키마 파일은 "DBA 가 명시적으로 적용"이 원칙이고 표 이름이 다르다 |
+| 조정 | `EGOV_AI_LEXICAL_THRESHOLD`(0.3)·`EGOV_AI_LEXICAL_WEIGHT`(1.0) | pg_trgm 기본 임계값 0.6 은 질문 문장 안의 낱말 하나를 놓친다(실측) |
+| 실패 | 어휘 채널 오류는 밀집 결과로 넘어가지 않고 전파(실행환경 검색기의 정책 그대로) | 확장이 없는 줄 모르고 운영하는 것을 막는다 |
+| 추출 실패 | 문서가 0건이고 실패가 있으면 `IllegalArgumentException` → 400. 사유의 임시 파일 이름은 올린 이름으로 바꾼다. dense 에도 적용 | v1.20 은 200 + `failures` 에 임시 경로·예외 클래스가 나갔다(CWE-209). 이 한 군데가 dense 서비스 클래스의 v1.20 대비 차이다 |
+| 접근 통제 | `detectAiAccessControl`: `SecurityFilterChain` Bean 이 있는 클래스 → 보안 스타터 의존성 → `spring-boot-starter-security` → 인증 인터셉터 → 없음. 조각은 `EGOV-AI.md` 에만 | 보안 설정은 역할·경로 규칙이 프로젝트마다 달라 쓰지 않는다. 대신 "어느 파일의 어디에"까지 가리킨다 |
+| 배포 | `detectAiAssembly`(매니페스트의 `ai-rte-*`) → compose 에 `ai-db`(pgvector 이미지, `AI_PGVECTOR_IMAGE`)·`EGOV_AI_*`·`host.docker.internal`, Kubernetes 는 ConfigMap·Secret 자리만 | Kubernetes 는 기존 DB 와 같은 규약(기관 DB 를 가리키는 자리표시자). 조립물이 없으면 산출물이 그대로 |
+
+### 기획과 달라진 점
+
+- 오프라인 번들 `include` 에 PGVector 이미지를 넣지 않았다. 번들은 URL 로 받는 파일만 다루고 컨테이너 이미지는 범위 밖이다(v1.16 수집기 이미지와 같음).
+- Kubernetes 에 PGVector 워크로드를 만들지 않고 자리표시자만 둔다.
+- PDF 표본은 ASCII 본문이다(표준 14 글꼴은 한글을 담지 못하고 CI 에 한글 글꼴이 없다). 한글 추출은 HWP·HWPX·Markdown·DOCX 로 확인했다.
+- dense 생성물은 "v1.20 과 바이트 동일"이 아니라 설정 클래스만 동일하다(서비스 클래스의 추출 실패 처리, `EGOV-AI.md` 의 접근 통제 절이 바뀜).
+
+### 검증
+
+- 게이트 `test:ai-hybrid`(32단언, 오프라인): dense 설정 클래스 해시(v1.20), hybrid 생성 코드 불변식, 추출 실패 처리, 접근 통제 판정 4종·조각, 배포 산출물 블록·조립물이 없을 때 그대로, remove 원복, MCP 파라미터.
+- CI 통합 `test:ai-hybrid-live`(32단언): 두 스택 hybrid 로 `mvn package`·기동 → 임베딩이 같은 문서 6건과 문서 번호·조문 번호가 든 문서 1건 — 밀집 상위 4에 없음을 SQL 로 독립 확인한 뒤 질의 결과에 들어옴 → `test/fixtures/EgovSampleDocs.java` 로 만든 HWP·HWPX·PDF 추출·색인 → 2,001쪽 PDF·압축 폭탄 400 → 생성한 compose 로 앱 + `ai-db` 기동·색인·질의(spring-ai).
