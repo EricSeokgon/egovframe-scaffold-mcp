@@ -7,3 +7,6 @@ catalog/config-templates/** -text
 *.json text eol=lf
 *.md text eol=lf
 *.yml text eol=lf
+# 생성 템플릿·테스트 표본 생성기도 LF(생성물의 해시를 테스트가 고정한다 — Windows autocrlf 로 CRLF 가 되면 해시가 달라진다).
+*.tpl text eol=lf
+*.java text eol=lf

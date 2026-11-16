@@ -81,7 +81,8 @@ export function detectAiAccessControl(projectDir: string): AiAccessControl {
   return { kind: "none", evidence: null, snippet: `<!-- pom.xml: 프로젝트에 인증 설정이 없습니다. Spring Security 를 넣는 경우 -->\n<dependency>\n    <groupId>org.springframework.boot</groupId>\n    <artifactId>spring-boot-starter-security</artifactId>\n</dependency>\n\n// 설정 클래스\n@Bean\nSecurityFilterChain aiSecurity(HttpSecurity http) throws Exception {\n    return http.securityMatcher("/ai/**").authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults()).build();\n}` };
 }
 
-const readTpl = (rel: string) => fs.readFileSync(new URL(rel, TEMPLATE_ROOT), "utf8");
+/** 템플릿은 LF 로 읽는다 — Windows 체크아웃(autocrlf)에서도 생성물이 같은 바이트가 되게 */
+const readTpl = (rel: string) => fs.readFileSync(new URL(rel, TEMPLATE_ROOT), "utf8").replace(/\r\n/g, "\n");
 
 /** pom 의 egovframe-boot-starter-parent 버전(없으면 null) */
 export function bootParentVersion(pom: string): string | null {
