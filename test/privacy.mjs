@@ -73,6 +73,7 @@ try {
     const out = path.join(root, "delivery");
     const dv = await prepareDelivery({ projectDir: d, outputDir: out, dryRun: false, include: ["privacy"] });
     assert(dv.items[0].id === "privacy" && dv.items[0].status === "ok" && ["privacy/privacy.md", "privacy/privacy.json", "privacy/personal-data-files.csv"].every((p) => existsSync(path.join(out, p))) && dv.items[0].summary.high === 2 && JSON.parse(readFileSync(path.join(out, "privacy/privacy.json"), "utf8")).columns.length === 6, "납품 패키지 선택 항목 privacy(md·json·csv)");
+    assert(OUTPUT_SCHEMAS.prepare_egovframe_delivery.safeParse({ mode: "prepare", ...dv }).success, "납품 구조화 출력 스키마가 privacy 항목을 받음(v1.22 수정 — v1.21 은 MCP 응답 검증에서 거부)");
     // CLI
     const io = () => { const o = []; return { cwd: d, env: {}, stdout: (s) => o.push(s), stderr: (s) => o.push(s), o }; };
     const i1 = io(), i2 = io();

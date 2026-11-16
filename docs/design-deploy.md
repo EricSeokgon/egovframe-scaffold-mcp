@@ -93,6 +93,16 @@
 
 검증: 게이트 `test:observability`(33단언 — 산출물 구조·none 바이트 동일·Classic·미리 빌드·다중 서비스 안내·번들 항목·지문 불일치 거부·MCP), CI 통합 `test:observability-live`(공식 boot-web·web 을 compose 로 띄워 HTTP 1건 뒤 수집기에 span 120여·metric 30여·log 수십 도착, 같은 이미지를 `JAVA_TOOL_OPTIONS` 없이 띄우면 에이전트가 붙지 않음, 기동 시간 2배 이내 — 실측 boot-web 5.0s/4.5s·web 5.4s/4.2s, web 은 `deploy/otel/` jar 폐쇄망 경로·다운로드 주소는 닿지 않는 곳, hadolint·kubeconform 통과).
 
+## 6-2. AI 조립물 (v1.22)
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 감지 | 매니페스트(`.egovframe-components.json`)의 `ai-rte-spring-ai`·`ai-rte-langchain4j`. 검색 방식은 생성된 `EgovAiConfig.java` 에서 | 파라미터 없이 — 조립물이 있으면 저장소가 필요하다. 샘플 조립물(`ai-rag-*`)은 자체 인프라 파일을 가져오므로 제외 |
+| compose | 서비스 `ai-db`(`catalog/deploy-rules.json` `ai.pgvector` — `pgvector/pgvector:pg16`, `AI_PGVECTOR_IMAGE` 로 변경), 헬스체크·볼륨 `ai-db-data`, 앱은 `depends_on: service_healthy` | pgvector 이미지는 `docker.io/library` 가 아니라 `BASE_REGISTRY` 로 바꿀 수 없다 |
+| 환경 변수 | `EGOV_AI_BASE_URL`(기본 `http://host.docker.internal:11434`)·모델 이름·차원·`EGOV_AI_PGVECTOR_*`·`EGOV_AI_API_KEY` — `${VAR:-기본}` 치환, `.env.example` 에 자리 | 모델 서버는 포함하지 않는다(호스트의 Ollama·사내 게이트웨이) |
+| Kubernetes | ConfigMap 에 `CHANGE_ME_MODEL_SERVER_URL`·`CHANGE_ME_PGVECTOR_HOST`, Secret 에 `EGOV_AI_PGVECTOR_PASSWORD`·`EGOV_AI_API_KEY` | 업무 DB 와 같은 규약 — 저장소는 기관 PostgreSQL |
+| 조립물이 없을 때 | 산출물 바이트 그대로 | 기존 사용자의 산출물이 바뀌지 않게 |
+
 ## 7. 검증
 
 - **게이트** (`test:deploy`)

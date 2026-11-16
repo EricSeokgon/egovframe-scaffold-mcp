@@ -84,6 +84,8 @@ export interface AddAiComponentsOptions {
   base?: "auto" | "sample" | "rte-ai";
   /** v1.20 rte-ai: 넣을 문서 파서(기본 hwp·hwpx·docx·pdf, Markdown 은 항상) */
   formats?: ("hwp" | "hwpx" | "docx" | "pdf")[];
+  /** v1.22 rte-ai: dense(기본, 벡터 검색) | hybrid(벡터 + pg_trgm 어휘 검색을 RRF 로 융합) */
+  search?: "dense" | "hybrid";
   /** fault-injection 회귀 테스트 전용. MCP 스키마에는 노출하지 않는다. */
   faultInjection?: "after-files" | "after-pom";
 }
@@ -102,6 +104,10 @@ export interface AiPlanResult {
   copyPlan: { group: string; files: number; paths: string[] }[];
   totalFiles: number;
   prerequisites: string[];
+  /** v1.22 rte-ai: 검색 방식 */
+  search?: "dense" | "hybrid";
+  /** v1.22 rte-ai: 프로젝트에서 찾은 보안 방식(/ai/** 연결 조각은 EGOV-AI.md) */
+  accessControl?: { kind: "spring-security" | "egov-security" | "interceptor" | "none"; evidence: string | null };
   nextSteps: string[];
   dryRun: boolean;
 }

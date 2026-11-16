@@ -27,6 +27,8 @@ export interface DeployRules {
   /** v1.10: verify_egovframe_startup 이 Classic war 를 띄우는 Tomcat(버전·sha256·내려받을 곳) */
   startup?: { note: string; tomcat: Record<"10.1" | "11.0", { version: string; sha256: string; maven: string; archive: string }> };
   /** v1.16: OpenTelemetry 에이전트·수집기(고정 버전) */
+  /** v1.22: AI 조립물(rte-ai)의 벡터 저장소 */
+  ai?: { note: string; pgvector: { image: string; version: string; port: number; database: string; user: string; data: string; healthcheck: string } };
   observability?: { note: string; agent: { groupId: string; artifactId: string; version: string; sha256: string; bytes: number; url: string; path: string }; collector: { image: string; version: string; digest: string; configPath: string; ports: { grpc: number; http: number } } };
 }
 export type DeployObservability = "none" | "otel";
@@ -139,6 +141,8 @@ export interface DeployProfile {
   db: DeployDb | null;
   /** v1.13: 설정 파일의 비밀 자리표시자(${EGOV_…_PASSWORD} 등, externalize_egovframe_config 가 만든 것) — compose·.env.example·Secret 에 자리를 만든다 */
   secretEnv: string[];
+  /** v1.22: add_ai_components(base="rte-ai") 조립물이 있으면 — compose 에 PGVector 서비스, EGOV_AI_* 환경 변수·Secret 자리 */
+  ai?: { stack: "spring-ai" | "langchain4j"; search: "dense" | "hybrid" };
 }
 export interface DeployAnalysis { profile: DeployProfile | null; unsupported: { id: string; reason: string } | null; notes: string[] }
 
@@ -282,7 +286,7 @@ export function analyzeDeploy(projectDir: string): DeployAnalysis {
     db = { type, inject: "env", file: appConfig!, keys: { url: "spring.datasource.url", user: props.has("spring.datasource.username") ? "spring.datasource.username" : undefined, password: "spring.datasource.password", driver: props.has("spring.datasource.driver-class-name") ? "spring.datasource.driver-class-name" : undefined }, url, user: props.get("spring.datasource.username")?.value ?? null, host: parsed?.host ?? null, port: parsed?.port ?? null, database: parsed?.database ?? null, service: rules.databases[type] ? "container" : "external", initScripts: [] };
   }
   const appName = slug(artifactId);
-  return { profile: { appName, version, buildTool: isMaven ? "maven" : "gradle", wrapper, packaging, runtime, web, actuator, tomcat, port, contextPath, liveness, readiness, db, secretEnv: findSecretPlaceholders(projectDir) }, unsupported: null, notes };
+  return { profile: { appName, version, buildTool: isMaven ? "maven" : "gradle", wrapper, packaging, runtime, web, actuator, tomcat, port, contextPath, liveness, readiness, db, secretEnv: findSecretPlaceholders(projectDir), ...(detectAiAssembly(projectDir) ? { ai: detectAiAssembly(projectDir) } : {}) }, unsupported: null, notes };
 }
 
 // ── 렌더러 ───────────────────────────────────────────────
@@ -384,6 +388,35 @@ export function findSecretPlaceholders(projectDir: string): string[] {
   return [...out].sort();
 }
 interface DbEnv { name: string; key: string; value: string; secret: boolean }
+/** v1.22: 매니페스트의 rte-ai 조립물(샘플 조립물은 자체 인프라 파일을 가져온다) */
+export function detectAiAssembly(projectDir: string): DeployProfile["ai"] | undefined {
+  let manifest: { components?: Record<string, { files?: string[] }> };
+  try { manifest = JSON.parse(fs.readFileSync(path.join(projectDir, ".egovframe-components.json"), "utf8")); } catch { return undefined; }
+  for (const stack of ["spring-ai", "langchain4j"] as const) {
+    const c = manifest.components?.[`ai-rte-${stack}`];
+    if (!c) continue;
+    const cfg = (c.files ?? []).find((f) => f.endsWith("/EgovAiConfig.java"));
+    return { stack, search: cfg && /EgovPgTrgmLexicalSearch/.test(read(path.join(projectDir, cfg))) ? "hybrid" : "dense" };
+  }
+  return undefined;
+}
+const aiRules = () => { const a = loadDeployRules().ai; if (!a) throw new Error("deploy-rules.json 에 ai 가 없습니다"); return a.pgvector; };
+/** AI 조립물의 환경 변수. compose 는 ${VAR:-기본} 치환, Kubernetes 는 CHANGE_ME 자리 */
+function aiEnvFor(p: DeployProfile, compose: boolean): DbEnv[] {
+  if (!p.ai) return [];
+  const a = aiRules();
+  const v = (name: string, dflt: string, k8s: string) => (compose ? `\${${name}:-${dflt}}` : k8s);
+  return [
+    { name: "EGOV_AI_BASE_URL", value: v("EGOV_AI_BASE_URL", "http://host.docker.internal:11434", "CHANGE_ME_MODEL_SERVER_URL"), secret: false },
+    { name: "EGOV_AI_CHAT_MODEL", value: v("EGOV_AI_CHAT_MODEL", "CHANGE_ME", "CHANGE_ME"), secret: false },
+    { name: "EGOV_AI_EMBEDDING_MODEL", value: v("EGOV_AI_EMBEDDING_MODEL", "CHANGE_ME", "CHANGE_ME"), secret: false },
+    { name: "EGOV_AI_EMBEDDING_DIMENSIONS", value: v("EGOV_AI_EMBEDDING_DIMENSIONS", "1024", "1024"), secret: false },
+    { name: "EGOV_AI_PGVECTOR_URL", value: compose ? `jdbc:postgresql://ai-db:${a.port}/${a.database}` : `jdbc:postgresql://CHANGE_ME_PGVECTOR_HOST:${a.port}/${a.database}`, secret: false },
+    { name: "EGOV_AI_PGVECTOR_USERNAME", value: a.user, secret: false },
+    { name: "EGOV_AI_PGVECTOR_PASSWORD", value: v("EGOV_AI_PGVECTOR_PASSWORD", "CHANGE_ME", "CHANGE_ME"), secret: true },
+    { name: "EGOV_AI_API_KEY", value: v("EGOV_AI_API_KEY", "none", "CHANGE_ME"), secret: true },
+  ].map((e) => ({ ...e, key: e.name }));
+}
 /** 자리표시자 비밀 값의 환경 변수 항목(DB 비밀번호와 이름이 겹치면 DB 쪽이 이김) */
 function secretEnvFor(p: DeployProfile, taken: Set<string>): DbEnv[] {
   return (p.secretEnv ?? []).filter((n) => !taken.has(n)).map((n) => ({ name: n, key: n, value: n === "EGOV_CRYPTO_CONFIG" ? "file:/run/egov/egov-crypto-config.properties" : "CHANGE_ME", secret: true }));
@@ -436,20 +469,32 @@ export function renderCompose(p: DeployProfile, o: DeployRenderOptions): string 
   const dbEnv = dbEnvFor(p, svc ? "db" : (db?.host ?? "db"));
   const extraSecrets = secretEnvFor(p, new Set(dbEnv.map((e) => e.name)));
   const otelEnv = o.observability === "otel" ? otelEnvFor(p, `http://otel-collector:${otelRules().collector.ports.http}`, true) : [];
-  const env = [...dbEnv, ...extraSecrets, ...otelEnv];
+  const aiEnv = aiEnvFor(p, true);
+  const env = [...dbEnv, ...extraSecrets, ...otelEnv, ...aiEnv];
   if (env.length) {
     out.push("    environment:");
     for (const e of dbEnv) out.push(`      ${e.name}: ${e.secret ? '"${DB_PASSWORD:-CHANGE_ME}"' : q(e.value)}`);
     for (const e of extraSecrets) out.push(`      ${e.name}: "\${${e.name}:-${e.value}}"`);
     for (const e of otelEnv) out.push(`      ${e.name}: ${JSON.stringify(e.value)}`);
+    for (const e of aiEnv) out.push(`      ${e.name}: ${JSON.stringify(e.value)}`);
   }
   if (db?.inject === "file") out.push("    volumes:", `      - ./config/${path.posix.basename(db.file)}:${classicTarget(p)}:ro`);
-  if (svc || otelEnv.length) {
+  if (svc || otelEnv.length || aiEnv.length) {
     out.push("    depends_on:");
     if (svc) out.push("      db:", "        condition: service_healthy");
     if (otelEnv.length) out.push("      otel-collector:", "        condition: service_started");
+    if (aiEnv.length) out.push("      ai-db:", "        condition: service_healthy");
   }
+  if (aiEnv.length) out.push("    extra_hosts:", '      - "host.docker.internal:host-gateway"');
   out.push("    restart: unless-stopped");
+  if (aiEnv.length) {
+    const a = aiRules();
+    out.push(L("  # AI 조립물의 벡터 저장소(PostgreSQL + pgvector" + (p.ai!.search === "hybrid" ? " + pg_trgm" : "") + ")", "  # Vector store of the AI kit (PostgreSQL + pgvector" + (p.ai!.search === "hybrid" ? " + pg_trgm" : "") + ")"),
+      "  ai-db:", `    image: \${AI_PGVECTOR_IMAGE:-${a.image}:${a.version}}`, "    environment:", `      POSTGRES_USER: ${q(a.user)}`, '      POSTGRES_PASSWORD: "${EGOV_AI_PGVECTOR_PASSWORD:-CHANGE_ME}"', `      POSTGRES_DB: ${q(a.database)}`, "      TZ: Asia/Seoul",
+      "    volumes:", `      - ai-db-data:${a.data}`,
+      "    healthcheck:", `      test: ["CMD-SHELL", ${JSON.stringify(a.healthcheck)}]`, "      interval: 10s", "      timeout: 5s", "      retries: 30", "      start_period: 20s",
+      "    restart: unless-stopped");
+  }
   if (otelEnv.length) {
     const oc = otelRules().collector;
     out.push("  otel-collector:", `    image: \${OTEL_COLLECTOR_IMAGE:-${oc.image}:${oc.version}}`, "    volumes:", `      - ./otel/collector.yaml:${oc.configPath}:ro`, "    restart: unless-stopped");
@@ -470,8 +515,9 @@ export function renderCompose(p: DeployProfile, o: DeployRenderOptions): string 
     out.push("    volumes:", `      - db-data:${svc.data}`);
     db.initScripts.forEach((s, i) => out.push(`      - ../${s}:${svc.initdb}/${String(i + 1).padStart(2, "0")}-${path.posix.basename(s)}:ro`));
     out.push("    healthcheck:", `      test: ["CMD-SHELL", ${JSON.stringify(svc.healthcheck)}]`, "      interval: 10s", "      timeout: 5s", "      retries: 30", "      start_period: 30s");
-    out.push("    restart: unless-stopped", "volumes:", "  db-data: {}");
+    out.push("    restart: unless-stopped");
   }
+  if ((svc && db) || aiEnv.length) out.push("volumes:", ...(svc && db ? ["  db-data: {}"] : []), ...(aiEnv.length ? ["  ai-db-data: {}"] : []));
   return out.join("\n") + "\n";
 }
 
@@ -482,6 +528,7 @@ export function renderEnvExample(p: DeployProfile, o: DeployRenderOptions): stri
     ...(p.web ? [`APP_PORT=${p.port}`] : []),
     ...(p.db && p.db.inject !== "none" ? ["DB_PASSWORD=CHANGE_ME"] : []),
     ...secretEnvFor(p, new Set(dbEnvFor(p, "db").map((e) => e.name))).map((e) => `${e.name}=${e.value}`),
+    ...(p.ai ? [L("# AI 조립물 — EGOV-AI.md. 모델 서버는 OpenAI 호환 주소(호스트의 Ollama 는 host.docker.internal)", "# AI kit — EGOV-AI.md. The model server is an OpenAI-compatible URL (Ollama on the host: host.docker.internal)"), "EGOV_AI_BASE_URL=http://host.docker.internal:11434", "EGOV_AI_API_KEY=none", "EGOV_AI_CHAT_MODEL=CHANGE_ME", "EGOV_AI_EMBEDDING_MODEL=CHANGE_ME", "EGOV_AI_EMBEDDING_DIMENSIONS=1024", "EGOV_AI_PGVECTOR_PASSWORD=CHANGE_ME", `AI_PGVECTOR_IMAGE=${aiRules().image}:${aiRules().version}`] : []),
     ...(o.observability === "otel" ? [L("# 관측(OpenTelemetry) — deploy/otel/README.md", "# Observability (OpenTelemetry) — deploy/otel/README.md"), `OTEL_COLLECTOR_IMAGE=${otelRules().collector.image}:${otelRules().collector.version}`, "DEPLOY_ENV=local", "OTEL_METRIC_EXPORT_INTERVAL=60000", L("# 폐쇄망: 사내 저장소의 같은 jar(sha256 동일) — 또는 deploy/otel/opentelemetry-javaagent.jar 를 두기", "# Air-gapped: the same jar (same sha256) from an internal repository — or place deploy/otel/opentelemetry-javaagent.jar"), `# OTEL_AGENT_URL=${otelRules().agent.url}`] : []),
     "",
   ].join("\n");
@@ -496,7 +543,7 @@ export function renderKubernetes(projectDir: string, p: DeployProfile, o: Deploy
   const docs: string[][] = [];
   // 같은 이름은 뒤(extra — 작업공간의 localhost 참조 치환)가 이긴다
   const dbEnv = dbEnvFor(p, "CHANGE_ME_DB_HOST");
-  const env = [...new Map([...dbEnv, ...secretEnvFor(p, new Set(dbEnv.map((e) => e.name))), ...(extra.env ?? []).map((e) => ({ ...e, key: e.name }))].map((e) => [e.name, e] as const)).values()];
+  const env = [...new Map([...dbEnv, ...secretEnvFor(p, new Set(dbEnv.map((e) => e.name))), ...aiEnvFor(p, false), ...(extra.env ?? []).map((e) => ({ ...e, key: e.name }))].map((e) => [e.name, e] as const)).values()];
   const otelK8s = o.observability === "otel" ? otelEnvFor(p, `http://otel-collector:${otelRules().collector.ports.http}`, false) : [];
   const plain = [...env.filter((e) => !e.secret), ...otelK8s.map((e) => ({ ...e, key: e.name, secret: false }))];
   const secret = env.filter((e) => e.secret);
@@ -671,6 +718,7 @@ export async function generateDeploy(opts: GenerateDeployOptions): Promise<Gener
     if (cfg) files.push({ path: `deploy/config/${path.posix.basename(p.db!.file)}`, target: "compose", content: cfg + "\n" });
   }
   if (targets.includes("k8s")) files.push({ path: `deploy/k8s/${p.appName}.yaml`, target: "k8s", content: renderKubernetes(projectDir, p, o) });
+  if (p.ai) notes.push(L(`AI 조립물(${p.ai.stack}, 검색 ${p.ai.search}): compose 에 PGVector 서비스 ai-db(${aiRules().image}:${aiRules().version} — AI_PGVECTOR_IMAGE 로 변경)와 EGOV_AI_* 환경 변수를 넣었습니다. Kubernetes 는 ConfigMap·Secret 에 자리(CHANGE_ME_MODEL_SERVER_URL·CHANGE_ME_PGVECTOR_HOST·EGOV_AI_PGVECTOR_PASSWORD·EGOV_AI_API_KEY)만 만들고 저장소는 기관 PostgreSQL(pgvector${p.ai.search === "hybrid" ? "·pg_trgm" : ""} 확장)을 가리키게 합니다. 모델 서버는 포함하지 않습니다.`, `AI kit (${p.ai.stack}, search ${p.ai.search}): compose gets a PGVector service ai-db (${aiRules().image}:${aiRules().version} — override with AI_PGVECTOR_IMAGE) and the EGOV_AI_* variables. Kubernetes only gets placeholders in the ConfigMap and Secret (CHANGE_ME_MODEL_SERVER_URL, CHANGE_ME_PGVECTOR_HOST, EGOV_AI_PGVECTOR_PASSWORD, EGOV_AI_API_KEY); point them at your PostgreSQL with the pgvector${p.ai.search === "hybrid" ? " and pg_trgm" : ""} extension${p.ai.search === "hybrid" ? "s" : ""}. No model server is included.`));
   if (observability === "otel") {
     files.push({ path: "deploy/otel/README.md", target: targets.includes("docker") ? "docker" : targets[0], content: renderOtelReadme(p) });
     if (targets.includes("compose")) files.push({ path: "deploy/otel/collector.yaml", target: "compose", content: renderCollectorConfig() });

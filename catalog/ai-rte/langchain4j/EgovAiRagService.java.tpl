@@ -80,6 +80,12 @@ public class EgovAiRagService {
 		try {
 			Files.copy(content, file, StandardCopyOption.REPLACE_EXISTING);
 			EgovDocumentLoader.Result loaded = EgovDocumentLoader.of(extractors, List.of(file)).loadAll();
+			// 실패 사유는 임시 경로·예외 클래스 없이, 올린 파일 이름으로 돌려준다
+			List<String> failures = loaded.failures().stream().map(f -> f.reason().replace(file.getFileName().toString(), fileName)).collect(Collectors.toList());
+			if (loaded.documents().isEmpty() && !failures.isEmpty()) {
+				// 추출 한도 초과·손상 문서 — 색인하지 않고 400 으로 거부한다
+				throw new IllegalArgumentException("문서를 읽지 못했습니다: " + String.join("; ", failures));
+			}
 			EgovNormalizingTransformer normalizer = EgovNormalizingTransformer.defaults();
 			EgovPiiMaskingTransformer masker = EgovPiiMaskingTransformer.defaults();
 			EgovKoreanSentenceSplitter splitter = EgovKoreanSentenceSplitter.builder().maxSize(chunkSize).build();
@@ -95,7 +101,7 @@ public class EgovAiRagService {
 			result.put("fileName", fileName);
 			result.put("documents", loaded.documents().size());
 			result.put("chunks", segments.size());
-			result.put("failures", loaded.failures().stream().map(Object::toString).collect(Collectors.toList()));
+			result.put("failures", failures);
 			return result;
 		} finally {
 			Files.deleteIfExists(file);

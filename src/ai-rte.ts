@@ -43,7 +43,43 @@ const FORMAT_DEPS: Record<AiRteFormat, AiMavenDependency[]> = {
 };
 const NAMES = { "spring-ai": "AI RAG (5.1.0 AI 모듈 + Spring AI + PGVector)", langchain4j: "AI RAG (5.1.0 AI 모듈 + LangChain4j + PGVector)" } as const;
 
+export const AI_RTE_SEARCH = ["dense", "hybrid"] as const;
+export type AiRteSearch = (typeof AI_RTE_SEARCH)[number];
+/** hybrid(v1.22): 어휘 채널(pg_trgm)이 JdbcTemplate·트랜잭션 관리자를 쓴다 — Spring AI 는 pgvector 저장소가 이미 끌어온다 */
+const HYBRID_DEPS: Record<"spring-ai" | "langchain4j", AiMavenDependency[]> = { "spring-ai": [], langchain4j: [{ groupId: "org.springframework", artifactId: "spring-jdbc" }] };
 export interface AiRteOptions extends AddAiComponentsOptions { formats?: AiRteFormat[] }
+
+export interface AiAccessControl { kind: "spring-security" | "egov-security" | "interceptor" | "none"; evidence: string | null; snippet: string }
+/** 프로젝트의 보안 방식을 보고 /ai/** 를 인증 대상에 넣는 조각을 만든다(쓰지 않는다 — EGOV-AI.md 에 싣는다) */
+export function detectAiAccessControl(projectDir: string): AiAccessControl {
+  const root = path.resolve(projectDir);
+  const pom = fs.existsSync(path.join(root, "pom.xml")) ? fs.readFileSync(path.join(root, "pom.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, "") : "";
+  let chain: string | null = null, interceptor: { file: string; cls: string } | null = null, mvcConfig: string | null = null;
+  const stack = [path.join(root, "src", "main", "java")];
+  let seen = 0;
+  while (stack.length && seen < 20_000) {
+    const dir = stack.pop()!;
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { continue; }
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      const f = path.join(dir, e.name);
+      if (e.isDirectory()) { stack.push(f); continue; }
+      if (!e.name.endsWith(".java")) continue;
+      seen++;
+      const t = fs.readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+      const rel = path.relative(root, f).split(path.sep).join("/");
+      if (!chain && /\bSecurityFilterChain\b/.test(t) && /@Bean\b/.test(t)) chain = rel;
+      const cls = t.match(/\bclass\s+(\w*(?:Authentic|Auth|Login)\w*Interceptor)\b/)?.[1];
+      if (!interceptor && cls && /HandlerInterceptor|WebContentInterceptor/.test(t)) interceptor = { file: rel, cls };
+      if (!mvcConfig && /\bimplements\s+[^{]*WebMvcConfigurer\b/.test(t) && /addInterceptors\s*\(/.test(t)) mvcConfig = rel;
+    }
+  }
+  if (chain) return { kind: "spring-security", evidence: chain, snippet: `// ${chain} 의 SecurityFilterChain — 다른 requestMatchers 보다 앞에 둡니다\nhttp.authorizeHttpRequests(auth -> auth\n        .requestMatchers("/ai/**").authenticated()\n        // … 기존 규칙\n);` };
+  if (/<artifactId>\s*egovframe-boot-starter-security\s*<\/artifactId>/.test(pom)) return { kind: "egov-security", evidence: "pom.xml (egovframe-boot-starter-security)", snippet: `# 표준프레임워크 보안 스타터는 보호자원(URL 패턴 – 역할)을 DB 에서 읽습니다.\n# 보호자원 데이터에 URL 패턴 /ai/** 를 추가하고 문서를 다룰 역할(예: ROLE_USER)에 연결하세요.\n# 패턴 문법은 egov.security.request-matcher-type 을 따릅니다(regex 면 \\A/ai/.*\\Z).` };
+  if (/<artifactId>\s*spring-boot-starter-security\s*<\/artifactId>/.test(pom)) return { kind: "spring-security", evidence: "pom.xml (spring-boot-starter-security)", snippet: `@Bean\nSecurityFilterChain aiSecurity(HttpSecurity http) throws Exception {\n    return http.securityMatcher("/ai/**").authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).build();\n}` };
+  if (interceptor) return { kind: "interceptor", evidence: interceptor.file, snippet: `// ${mvcConfig ?? "WebMvcConfigurer 구현 클래스"} 의 addInterceptors — ${interceptor.cls} 가 보는 경로에 /ai/** 를 더합니다\nregistry.addInterceptor(new ${interceptor.cls}()).addPathPatterns("/ai/**");` };
+  return { kind: "none", evidence: null, snippet: `<!-- pom.xml: 프로젝트에 인증 설정이 없습니다. Spring Security 를 넣는 경우 -->\n<dependency>\n    <groupId>org.springframework.boot</groupId>\n    <artifactId>spring-boot-starter-security</artifactId>\n</dependency>\n\n// 설정 클래스\n@Bean\nSecurityFilterChain aiSecurity(HttpSecurity http) throws Exception {\n    return http.securityMatcher("/ai/**").authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults()).build();\n}` };
+}
 
 const readTpl = (rel: string) => fs.readFileSync(new URL(rel, TEMPLATE_ROOT), "utf8");
 
@@ -85,8 +121,11 @@ export function findBootApplicationPackage(projectDir: string): string | null {
   return null;
 }
 
-function renderReadme(stack: "spring-ai" | "langchain4j", pkg: string, formats: AiRteFormat[]): string {
+const ACCESS_LABEL: Record<AiAccessControl["kind"], string> = { "spring-security": "Spring Security 설정", "egov-security": "표준프레임워크 보안 스타터", interceptor: "인증 인터셉터", none: "인증 설정을 찾지 못함" };
+function renderReadme(stack: "spring-ai" | "langchain4j", pkg: string, formats: AiRteFormat[], search: AiRteSearch, access: AiAccessControl): string {
   const table = stack === "spring-ai" ? "egov_ai_vector" : "egov_ai_segment";
+  const textCol = stack === "spring-ai" ? "content" : "text";
+  const hybrid = search === "hybrid";
   return `# AI RAG 조립물 (표준프레임워크 5.1.0 AI 모듈 · ${stack === "spring-ai" ? "Spring AI" : "LangChain4j"} · PGVector)
 
 egovframe-scaffold-mcp 의 \`add_ai_components(base="rte-ai")\` 가 만들었습니다. 코드는 \`${pkg}\` 패키지의 세 클래스입니다.
@@ -94,7 +133,7 @@ egovframe-scaffold-mcp 의 \`add_ai_components(base="rte-ai")\` 가 만들었습
 | 클래스 | 하는 일 |
 |---|---|
 | \`EgovAiConfig\` | 추출기·인젝션 가드, OpenAI 호환 모델 클라이언트, PGVector 저장소(첫 사용 때 연결 — 저장소가 없어도 앱은 뜹니다) |
-| \`EgovAiRagService\` | 색인: 추출 → 정규화 → 문장 경계 청킹 → 개인정보 마스킹 → 재색인 / 질의: 가드 → 검색 → 응답 |
+| \`EgovAiRagService\` | 색인: 추출 → 정규화 → 문장 경계 청킹 → 개인정보 마스킹 → 재색인 / 질의: 가드 → ${hybrid ? "하이브리드 검색(밀집 + 어휘, RRF 융합)" : "검색"} → 응답 |
 | \`EgovAiController\` | \`POST /ai/documents\`(multipart \`file\`) · \`POST /ai/ask\`(\`{"question":"…"}\`) |
 
 지원 형식: Markdown${formats.length ? ` · ${formats.map((f) => f.toUpperCase()).join(" · ")}` : ""}(pom 에 넣은 파서만). 다른 형식을 더하려면 해당 라이브러리(hwplib·hwpxlib·poi-ooxml·pdfbox)를 pom 에 추가하세요 — 버전은 parent 가 관리합니다.
@@ -114,22 +153,46 @@ egovframe-scaffold-mcp 의 \`add_ai_components(base="rte-ai")\` 가 만들었습
 | \`EGOV_AI_PGVECTOR_USERNAME\` · \`EGOV_AI_PGVECTOR_PASSWORD\` | (없음) | 저장소 계정 |
 | \`EGOV_AI_GUARD_POLICY\` | \`block\` | 프롬프트 인젝션 가드 — \`block\`(거부) 또는 \`log\`(허용하고 기록) |
 | \`EGOV_AI_CHUNK_SIZE\` · \`EGOV_AI_TOP_K\` | \`800\` · \`4\` | 청크 크기(글자) · 검색 조각 수 |
-
+${hybrid ? `| \`EGOV_AI_LEXICAL_THRESHOLD\` | \`0.3\` | 어휘 검색(pg_trgm word_similarity) 임계값 0–1 — 낮추면 더 많이, 높이면 정확히 맞는 것만 |
+| \`EGOV_AI_LEXICAL_WEIGHT\` | \`1.0\` | RRF 융합에서 어휘 순위의 가중치(밀집은 1.0) |
+| \`EGOV_AI_LEXICAL_INIT\` | \`true\` | 첫 사용 때 pg_trgm 확장·색인을 만듦 — DBA 가 적용하면 \`false\` |
+` : ""}
 표 \`${table}\` 은 첫 사용 때 만들어집니다(계정에 \`CREATE EXTENSION vector\` 권한이 없으면 DBA 가 확장을 먼저 설치).
+${hybrid ? `
+## 하이브리드 검색
 
+질의마다 밀집(벡터) 순위와 어휘(pg_trgm) 순위를 RRF 로 융합합니다. 조문 번호·고유명사·약어·문서 번호처럼 임베딩이 놓치는 질의를 어휘 채널이 잡습니다. 어휘 채널에만 잡힌 조각도 본문을 조회해 결과에 넣습니다.
+
+DBA 가 직접 적용하는 환경은 \`EGOV_AI_LEXICAL_INIT=false\` 로 두고 아래를 실행합니다(표가 만들어진 뒤).
+
+\`\`\`sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS ${table}_trgm ON ${table} USING gin (${textCol} gin_trgm_ops);
+\`\`\`
+
+- 데이터베이스의 \`LC_CTYPE\` 이 \`C\`/\`POSIX\` 이면 pg_trgm 이 한글을 글자로 보지 않아 한글 질의가 어휘 채널에 잡히지 않습니다. UTF-8 로캘(\`en_US.UTF-8\`·\`ko_KR.UTF-8\`)로 만든 데이터베이스를 쓰세요.
+- 어휘 채널이 실패하면(확장 없음·권한 없음) 밀집 결과로 조용히 넘어가지 않고 오류를 냅니다.
+` : ""}
 ## 운영 전에 확인할 것
 
-- **접근 통제**: \`/ai/**\` 는 인증·권한 설정이 없습니다. 프로젝트의 보안 설정(Spring Security·인터셉터)에 넣으세요.
+- **접근 통제**: \`/ai/**\` 는 인증·권한 설정이 없습니다. 아래 「접근 통제 연결」의 조각을 프로젝트 보안 설정에 넣으세요.
 - **문서 식별자**: 같은 파일 이름으로 다시 올리면 이전 색인을 지우고 다시 넣습니다. 여러 사용자·부서가 한 저장소를 쓰면 남의 문서를 같은 이름으로 덮어쓸 수 있으니(CWE-639) 이름 앞에 소유자·부서를 붙이거나 저장소를 나누세요.
 - **업로드 크기**: 추출 한도(파일 크기·PDF 쪽수·추출 글자 수·zip 폭탄)는 실행환경 기본값입니다. 서블릿 업로드 상한(\`spring.servlet.multipart.max-file-size\`)도 함께 정하세요.
 - **개인정보**: 색인 단계에서 주민등록번호·카드번호·계좌번호·비밀값을 토큰으로 바꿉니다(\`EGOV_AI_AUDIT\` 로그에 건수). 이름·주소 같은 다른 개인정보는 바꾸지 않습니다.
 - **감사 로그**: 가드 판정·마스킹 건수는 로거 \`EGOV_AI_AUDIT\` 로 남습니다(질의 원문은 남기지 않음). 운영 로그 설정에서 이 로거를 파일로 보내세요.
-- **검색**: 밀집(벡터) 검색만 연결했습니다. 어휘 검색(pg_trgm)과 RRF 융합은 어댑터의 \`EgovHybrid${stack === "spring-ai" ? "DocumentRetriever" : "ContentRetriever"}\` 로 더할 수 있습니다.
+${hybrid ? "" : "- **검색**: 밀집(벡터) 검색만 연결했습니다. 어휘 검색(pg_trgm)과 RRF 융합은 \`add_ai_components(search=\"hybrid\")\` 로 조립하면 연결됩니다.\n"}
+## 접근 통제 연결
+
+이 프로젝트에서 찾은 보안 방식: **${ACCESS_LABEL[access.kind]}**${access.evidence ? ` (\`${access.evidence}\`)` : ""}. 아래 조각은 제안이며 조립 도구가 쓰지 않았습니다 — 프로젝트의 역할·경로 규칙에 맞게 고쳐 넣으세요.
+
+\`\`\`${access.kind === "egov-security" ? "text" : access.kind === "none" ? "xml" : "java"}
+${access.snippet}
+\`\`\`
 `;
 }
 
 interface RtePlan {
-  projectDir: string; stack: "spring-ai" | "langchain4j"; id: string; pkg: string | null; formats: AiRteFormat[];
+  projectDir: string; stack: "spring-ai" | "langchain4j"; id: string; pkg: string | null; formats: AiRteFormat[]; search: AiRteSearch; access: AiAccessControl;
   compatibility: AddAiResult["compatibility"]; toAdd: AiMavenDependency[]; alreadyPresent: string[];
   files: { rel: string; content: string }[];
 }
@@ -141,6 +204,8 @@ function computeRtePlan(opts: AiRteOptions): RtePlan {
   const formats = [...new Set(opts.formats ?? [...AI_RTE_FORMATS])];
   const bad = formats.filter((f) => !AI_RTE_FORMATS.includes(f));
   if (bad.length) throw new Error(`formats 는 ${AI_RTE_FORMATS.join("|")} 중에서 고릅니다: ${bad.join(", ")}`);
+  const search: AiRteSearch = opts.search ?? "dense";
+  if (!AI_RTE_SEARCH.includes(search)) throw new Error(`search 는 ${AI_RTE_SEARCH.join("|")} 중에서 고릅니다: ${String(search)}`);
   const manifest = readManifest(projectDir);
   if (manifest) {
     if (manifest.components[id]) throw new Error(`'${id}'가 이미 설치되어 있습니다 (매니페스트 기준)`);
@@ -159,7 +224,7 @@ function computeRtePlan(opts: AiRteOptions): RtePlan {
     parentOk = !!v && versionBelow(v, AI_RTE_MIN_PARENT) === false;
     if (!parentOk) warnings.push(`5.1.0 AI 모듈 조립은 egovframe-boot-starter-parent ${AI_RTE_MIN_PARENT} 이상이 필요합니다(발견: ${parentFound ?? "없음"}) — migrate_egovframe_project(target="5.1.0") 로 올리거나 base="sample" 을 쓰세요`);
     const seen = new Set<string>();
-    for (const d of [...STACK_DEPS[stack], ...formats.flatMap((f) => FORMAT_DEPS[f])]) {
+    for (const d of [...STACK_DEPS[stack], ...(search === "hybrid" ? HYBRID_DEPS[stack] : []), ...formats.flatMap((f) => FORMAT_DEPS[f])]) {
       if (seen.has(d.artifactId)) continue;
       seen.add(d.artifactId);
       if (new RegExp(`<artifactId>\\s*${d.artifactId}\\s*</artifactId>`).test(pom)) alreadyPresent.push(depCoord(d)); else toAdd.push(d);
@@ -169,15 +234,17 @@ function computeRtePlan(opts: AiRteOptions): RtePlan {
   if (pomFound && !appPkg) warnings.push("@SpringBootApplication 클래스를 찾지 못했습니다 — 생성 코드를 둘 패키지를 정할 수 없습니다");
   const pkg = appPkg ? `${appPkg}.ai` : null;
   const files: RtePlan["files"] = [];
+  const access = fs.existsSync(projectDir) ? detectAiAccessControl(projectDir) : detectAiAccessControl(path.join(projectDir, "__none__"));
+  const variant = search === "hybrid" ? ".hybrid" : "";
   if (pkg) {
     const dir = `src/main/java/${pkg.split(".").join("/")}`;
     const fill = (t: string) => t.replace(/__PKG__/g, pkg);
-    files.push({ rel: `${dir}/EgovAiConfig.java`, content: fill(readTpl(`${stack}/EgovAiConfig.java.tpl`)) });
-    files.push({ rel: `${dir}/EgovAiRagService.java`, content: fill(readTpl(`${stack}/EgovAiRagService.java.tpl`)) });
+    files.push({ rel: `${dir}/EgovAiConfig.java`, content: fill(readTpl(`${stack}/EgovAiConfig${variant}.java.tpl`)) });
+    files.push({ rel: `${dir}/EgovAiRagService.java`, content: fill(readTpl(`${stack}/EgovAiRagService${variant}.java.tpl`)) });
     files.push({ rel: `${dir}/EgovAiController.java`, content: fill(readTpl("common/EgovAiController.java.tpl")) });
-    files.push({ rel: README_FILE, content: renderReadme(stack, pkg, formats) });
+    files.push({ rel: README_FILE, content: renderReadme(stack, pkg, formats, search, access) });
   }
-  return { projectDir, stack, id, pkg, formats, compatibility: { pomFound, required, parentFound, parentOk, warnings }, toAdd, alreadyPresent, files };
+  return { projectDir, stack, id, pkg, formats, search, access, compatibility: { pomFound, required, parentFound, parentOk, warnings }, toAdd, alreadyPresent, files };
 }
 
 const PREREQUISITES = ["OpenAI 호환 모델 서버(대화·임베딩 모델)", "PostgreSQL + pgvector 확장", "환경 변수 EGOV_AI_*(EGOV-AI.md)"];
@@ -191,7 +258,8 @@ export async function addRteAiComponents(opts: AiRteOptions): Promise<AddAiResul
     component: { id: p.id, name: NAMES[p.stack], vectorStore: "PostgreSQL (PGVector)" },
     compatibility: p.compatibility,
     dependencyChanges: { toAdd: p.toAdd.map(depCoord), alreadyPresent: p.alreadyPresent },
-    copyPlan, totalFiles: p.files.length, prerequisites: PREREQUISITES,
+    copyPlan, totalFiles: p.files.length, prerequisites: p.search === "hybrid" ? [...PREREQUISITES, "PostgreSQL pg_trgm 확장(UTF-8 로캘 데이터베이스)"] : PREREQUISITES,
+    search: p.search, accessControl: { kind: p.access.kind, evidence: p.access.evidence },
   };
   if (opts.dryRun === true) return { ...base, nextSteps: ["미리보기 모드입니다. 실제 조립하려면 dryRun 없이 다시 호출하세요."], dryRun: true, copiedFiles: 0, pomChanged: false, pomBackup: null };
 
@@ -234,7 +302,7 @@ export async function addRteAiComponents(opts: AiRteOptions): Promise<AddAiResul
       `${README_FILE} 의 환경 변수(EGOV_AI_BASE_URL·EGOV_AI_CHAT_MODEL·EGOV_AI_EMBEDDING_MODEL·EGOV_AI_EMBEDDING_DIMENSIONS·EGOV_AI_PGVECTOR_*)를 정합니다 — 값은 소스에 적지 않습니다`,
       "PostgreSQL 에 pgvector 확장을 준비합니다(표는 첫 사용 때 생성)",
       "빌드·기동 뒤 POST /ai/documents(multipart file) 로 문서를 올리고 POST /ai/ask 로 질의합니다",
-      "/ai/** 에 인증·권한을 붙이고(프로젝트 보안 설정), 운영 로그에 EGOV_AI_AUDIT 로거를 남깁니다",
+      `/ai/** 에 인증·권한을 붙입니다 — ${README_FILE} 「접근 통제 연결」에 이 프로젝트(${ACCESS_LABEL[p.access.kind]})에 맞는 조각이 있습니다. 운영 로그에 EGOV_AI_AUDIT 로거를 남깁니다`,
       "check_egovframe_secure_coding 으로 AI 규칙(추출 한도·가드·API 키)을 확인합니다",
     ],
   };

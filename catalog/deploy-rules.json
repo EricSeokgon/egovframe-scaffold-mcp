@@ -189,5 +189,10 @@
         "http": 4318
       }
     }
+  },
+  "ai": {
+    "note": "v1.22: add_ai_components(base=\"rte-ai\") 조립물의 벡터 저장소. PostgreSQL 16 + pgvector 확장 이미지(pg_trgm 은 PostgreSQL contrib 로 이미지에 들어 있음). 이미지는 docker.io/library 가 아니므로 AI_PGVECTOR_IMAGE 로 바꾼다(폐쇄망 사내 레지스트리).",
+    "note_en": "v1.22: vector store of the add_ai_components(base=\"rte-ai\") kit. PostgreSQL 16 image with the pgvector extension (pg_trgm ships in the image as PostgreSQL contrib). The image is not under docker.io/library, so override it with AI_PGVECTOR_IMAGE (internal registry in air-gapped sites).",
+    "pgvector": { "image": "pgvector/pgvector", "version": "pg16", "port": 5432, "database": "egovai", "user": "egovai", "data": "/var/lib/postgresql/data", "healthcheck": "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"" }
   }
 }
