@@ -208,3 +208,5 @@ export { checkMappers, renderMapperCheckMarkdown, editDistance, similarIds } fro
 export type { MapperCheckResult, MapperIssue, MapperIssueKind, MapperCheckOptions } from "./mapper-check.js";
 export { loadPrivacyRules, classifyPrivacyColumn, checkPrivacy, renderPrivacyMarkdown, renderPrivacyCsv, camelOf, PRIVACY_IGNORE_FILE } from "./privacy.js";
 export type { PrivacyGrade, PrivacyRules, PrivacyItemRule, PrivacyColumn, PrivacyFlow, PrivacyFinding, PrivacyOptions, PrivacyResult } from "./privacy.js";
+export { RULE_PACKS_ENV, RULE_PACK_FILE, RULE_PACK_SECTIONS, RulePackError, resolveRulePackPaths, loadRulePack, loadRulePacks, rulePackInfo, applySecurePacks, applyOpsPacks, applyPrivacyPacks, packDependencyRule, listRules, renderRuleListMarkdown } from "./rule-packs.js";
+export type { RulePack, RulePackInfo, RulePackSection, RuleListResult, RuleListEntry, PackBannedDependency, PackMinimumDependency } from "./rule-packs.js";

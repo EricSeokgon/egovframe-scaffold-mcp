@@ -4,6 +4,7 @@
 //   - 항목마다 출처: 공통컴포넌트 원본(매니페스트 해시 일치)·수정본·매니페스트 없는 공통컴포넌트 경로·프로젝트 코드·테스트
 //   - 예외 파일(.egovframe-secure-ignore.json)은 사유·검토자가 있는 항목만 적용, baseline(이전 결과 JSON·SARIF)과 비교해 새 항목 표시
 //   - SARIF 2.1.0 출력(GitHub code scanning 등). 패턴 기반 진단 보조이며 공인 진단을 대체하지 않는다.
+import { loadRulePacks, applySecurePacks, rulePackInfo, type RulePackInfo } from "./rule-packs.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
@@ -134,6 +135,8 @@ export interface SecureFinding {
   /** v1.5: 메서드 안 데이터 흐름 판정(흐름 규칙만). tainted 면 소스 → 위험 호출 경로 */
   flow?: { status: SinkFlow["status"]; method: string; path: { line: number; code: string; step: string }[]; detected?: boolean };
   isNew?: boolean;
+  /** v1.23: 이 규칙을 정한 규칙 팩 이름(동봉 규칙이면 없음) */
+  source?: string;
 }
 export interface SecureIgnore { rule: string; path: string; line?: number; reason: string; reviewer: string }
 export interface SecureCodingOptions {
@@ -151,6 +154,8 @@ export interface SecureCodingOptions {
   maxFindings?: number;
   /** v1.5: 메서드 안 데이터 흐름 분석(기본 true) — false 면 v1.4 까지의 패턴 판정만 */
   dataFlow?: boolean;
+  /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */
+  rulePacks?: string[];
 }
 export interface SecureCodingResult {
   projectDir: string;
@@ -158,7 +163,9 @@ export interface SecureCodingResult {
   filesScanned: number;
   byTarget: Record<string, number>;
   summary: { total: number; high: number; medium: number; low: number; new: number | null; suppressed: number };
-  byRule: { rule: string; guideItem: string; severity: SecureSeverity; count: number }[];
+  byRule: { rule: string; guideItem: string; severity: SecureSeverity; count: number; source?: string }[];
+  /** v1.23: 적용한 규칙 팩(있을 때만) */
+  rulePacks?: RulePackInfo[];
   byOrigin: Record<SecureOrigin, number>;
   /** v0.47: 멀티 모듈 작업공간이면 모듈별 건수 */
   byModule?: { module: string; high: number; medium: number; low: number; total: number }[];
@@ -217,7 +224,9 @@ function readBaseline(projectDir: string, rel: string): { relPath: string; finge
 export async function checkSecureCoding(opts: SecureCodingOptions): Promise<SecureCodingResult> {
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) throw new Error(L(`프로젝트 디렉터리가 없습니다: ${projectDir}`, `Project directory not found: ${projectDir}`));
-  const all = loadSecureRules();
+  const packs = loadRulePacks(opts.rulePacks);
+  const merged = applySecurePacks(loadSecureRules(), packs);
+  const all = merged.rules;
   const unknown = (opts.rules ?? []).filter((r) => !all.rules.some((x) => x.id === r));
   if (unknown.length) throw new Error(L(`알 수 없는 규칙: ${unknown.join(", ")} (사용 가능: ${all.rules.map((r) => r.id).join(", ")})`, `Unknown rule: ${unknown.join(", ")} (available: ${all.rules.map((r) => r.id).join(", ")})`));
   const rules = opts.rules?.length ? all.rules.filter((r) => opts.rules!.includes(r.id)) : all.rules;
@@ -347,7 +356,7 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
   const count = (s: SecureSeverity) => kept.filter((f) => f.severity === s).length;
   const byRuleMap = new Map<string, SecureCodingResult["byRule"][number]>();
   for (const f of kept) {
-    const r = byRuleMap.get(f.rule) ?? { rule: f.rule, guideItem: f.guideItem, severity: rules.find((x) => x.id === f.rule)!.severity, count: 0 };
+    const r = byRuleMap.get(f.rule) ?? { rule: f.rule, guideItem: f.guideItem, severity: rules.find((x) => x.id === f.rule)!.severity, count: 0, ...(merged.origins.has(f.rule) ? { source: merged.origins.get(f.rule) } : {}) };
     r.count++; byRuleMap.set(f.rule, r);
   }
   const byOrigin: Record<SecureOrigin, number> = { component: 0, "component-modified": 0, "component-unmanaged": 0, project: 0, test: 0 };
@@ -363,6 +372,10 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
     const mine = kept.filter((f) => moduleOf(ws, f.file)?.name === m.name);
     return { module: m.dir, high: mine.filter((f) => f.severity === "high").length, medium: mine.filter((f) => f.severity === "medium").length, low: mine.filter((f) => f.severity === "low").length, total: mine.length };
   }) : undefined;
+  if (packs.length) {
+    for (const f of kept) { const src = merged.origins.get(f.rule); if (src) f.source = src; }
+    notes.push(L(`규칙 팩 적용: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}${merged.disabled.length ? ` — 끈 규칙 ${merged.disabled.join(", ")}` : ""}`, `Rule packs applied: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}${merged.disabled.length ? ` — disabled rules ${merged.disabled.join(", ")}` : ""}`));
+  }
   const result: SecureCodingResult = {
     projectDir,
     rulesVersion: { surveyedAt: all.surveyedAt, rules: rules.length, source: all.sources[0] ? tr(all.sources[0], "name") : "" },
@@ -377,6 +390,7 @@ export async function checkSecureCoding(opts: SecureCodingOptions): Promise<Secu
     ...(baseline ? { baseline } : {}),
     ...(rules.some((r) => r.id === "xss-cout-unescaped") ? { htmlTagFilter: tagFilter } : {}),
     dataFlow: { enabled: opts.dataFlow !== false, tainted: kept.filter((f) => f.flow?.status === "tainted").length, constant: kept.filter((f) => f.flow?.status === "constant").length, unknown: kept.filter((f) => f.flow?.status === "unknown").length, detected: kept.filter((f) => f.flow?.detected).length },
+    ...(packs.length ? { rulePacks: rulePackInfo(packs) } : {}),
     notes, disclaimer: tr(all, "disclaimer"),
   };
 

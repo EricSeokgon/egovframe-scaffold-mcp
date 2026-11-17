@@ -3,6 +3,7 @@
 // 보안 설정의 존재 여부를 파일·라인 근거와 함께 보고한다. 기본은 오프라인이며 offline=false 일 때만 OSV 로 알려진 취약점을 조회한다.
 // v0.34: 기준 출처를 parent 직접 → 계열(BOM import·버전 속성) → Spring Boot BOM 전체 → RTE 모듈 전이 순으로 넓혀 '기준 없음'을 줄이고,
 //        항목마다 basis 로 어느 기준과 대조했는지 적는다. Boot parent 프로젝트는 Boot BOM 을, 그 밖은 RTE 전이를 먼저 본다.
+import { loadRulePacks, packDependencyRule, rulePackInfo, type RulePackInfo } from "./rule-packs.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { diagnoseProject } from "./diagnose.js";
@@ -14,7 +15,7 @@ import { lineAt, loadMigrationRules, parsePomDeps, parsePomProperties, resolvePr
 import { resolveDependencyTree, type DependencyTreeResult, type ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { subProgress, throwIfAborted, type Progress } from "./progress.js";
-import { L, tr } from "./lang.js";
+import { L, tr, isEn } from "./lang.js";
 
 export interface BaselineManaged { groupId: string; artifactId: string; version: string; scope?: string; type?: string; sources: ("web" | "boot")[]; versionBySource?: Record<string, string>; parentVersion?: string }
 export interface DependencyBaseline {
@@ -100,6 +101,8 @@ export interface DependencyFinding {
   /** v0.47: 멀티 모듈 작업공간이면 이 항목이 속한 모듈 */
   module?: string;
   note?: string;
+  /** v1.23: 이 판정을 정한 규칙 팩 이름(동봉 기준이면 없음) */
+  source?: string;
 }
 export interface SecurityCheck { id: string; title: string; status: "ok" | "missing" | "n/a"; evidence: { file: string; line: number; text: string }[]; hint: string }
 export interface Vulnerability { dependency: string; version: string; ids: string[] }
@@ -129,6 +132,8 @@ export interface CheckDependenciesResult {
     summary: Record<DependencyStatus, number>;
     error?: string;
   };
+  /** v1.23: 적용한 규칙 팩(있을 때만) */
+  rulePacks?: RulePackInfo[];
   notes: string[];
 }
 export type OsvQuery = (queries: { package: { name: string; ecosystem: "Maven" }; version: string }[]) => Promise<{ results: { vulns?: { id: string }[] }[] }>;
@@ -144,8 +149,11 @@ export interface CheckDependenciesOptions {
   platform?: NodeJS.Platform | string;
   /** v1.2: 진행 알림·취소(signal) — resolve=true 일 때 모듈별 트리 해석을 보고하고, 취소되면 AbortError 를 던진다 */
   progress?: Progress;
+  /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */
+  rulePacks?: string[];
 }
 
+export { classifyBundled as classifyDependency };
 // v1.3: 표준프레임워크가 다시 빌드해 자체 저장소에만 올린 좌표(예: spring-security 6.5.11-egov.1)
 export const EGOV_REBUILD_RE = /-egov\.\d+$/;
 export const isEgovRebuild = (version: string | null | undefined): boolean => !!version && EGOV_REBUILD_RE.test(version);
@@ -165,7 +173,7 @@ export const defaultOsvQuery: OsvQuery = async (queries) => {
 const SKIP_SCOPES = new Set<string>(); // 모든 scope 를 본다(test 도 취약점 대상)
 
 /** 좌표 하나를 분류한다(순수 함수, 테스트 대상). */
-export function classifyDependency(
+function classifyBundled(
   dep: { groupId: string; artifactId: string; version: string | null; resolvedVersion: string | null },
   ctx: { baseline: DependencyBaseline; rules: MigrationRules; parentKind: ParentInfo["kind"] },
 ): { status: DependencyStatus; baseline: string | null; basis: DependencyBasis | null; note?: string } {
@@ -390,6 +398,24 @@ function scanCsrf(dir: string, files: string[]): { enabled: SecurityCheck["evide
 export async function checkDependencies(opts: CheckDependenciesOptions): Promise<CheckDependenciesResult> {
   let baseline = loadDependencyBaseline();
   const rules = loadMigrationRules();
+  // v1.23: 규칙 팩의 금지 좌표·최소 버전은 동봉 기준 판정 위에 얹는다(금지 → replace, 최소 버전 미만 → outdated)
+  const packs = loadRulePacks(opts.rulePacks).filter((p) => p.dependencies);
+  const classifyDependency = (dep: Parameters<typeof classifyBundled>[0], ctx: Parameters<typeof classifyBundled>[1]): ReturnType<typeof classifyBundled> & { source?: string } => {
+    const c = classifyBundled(dep, ctx);
+    if (!packs.length) return c;
+    const hit = packDependencyRule(packs, dep.groupId, dep.artifactId);
+    if (!hit) return c;
+    const en = isEn();
+    if (hit.kind === "banned") {
+      const b = hit.rule;
+      if (b.versionBelow && (!dep.resolvedVersion || versionBelow(dep.resolvedVersion, b.versionBelow) !== true)) return c;
+      return { status: "replace", baseline: b.replacement ?? null, basis: null, note: `[${hit.pack}] ${(en && b.reason_en) || b.reason}${b.versionBelow ? L(` (${b.versionBelow} 미만 금지)`, ` (banned below ${b.versionBelow})`) : ""}`, source: hit.pack };
+    }
+    const m = hit.rule;
+    if (c.status === "legacy" || c.status === "replace") return c;
+    if (dep.resolvedVersion && versionBelow(dep.resolvedVersion, m.version) === true) return { status: "outdated", baseline: m.version, basis: null, note: `[${hit.pack}] ${(en && m.reason_en) || m.reason || L(`기관 최소 버전 ${m.version}`, `organisation minimum ${m.version}`)}`, source: hit.pack };
+    return c;
+  };
   const offline = opts.offline ?? true;
   const dir = path.resolve(opts.projectDir);
   const diag = diagnoseProject({ projectDir: dir });
@@ -426,7 +452,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
     seen.add(key);
     const c = classifyDependency(d, { baseline, rules, parentKind: d.parentKind ?? parent.kind });
     const mod = multi ? moduleOf(ws, d.file) : null;
-    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "declared", ...(mod ? { module: mod.name } : {}), ...(c.note ? { note: c.note } : {}) });
+    findings.push({ file: d.file, line: d.line, groupId: d.groupId, artifactId: d.artifactId, version: d.version, resolvedVersion: d.resolvedVersion, scope: d.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "declared", ...(mod ? { module: mod.name } : {}), ...(c.note ? { note: c.note } : {}), ...(c.source ? { source: c.source } : {}) });
   }
 
   // ── v0.36: 해석된 트리 — 선언에 없는 artifact 는 transitive 로 추가하고, 선언과 다른 버전으로 풀린 좌표는 differs 로 ──
@@ -468,7 +494,7 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
       const c = classifyDependency({ groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version }, { baseline, rules, parentKind: parent.kind });
       rsum[c.status]++;
       transitive++;
-      findings.push({ file: a.file || buildFileDefault, line: 0, groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version, scope: a.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "transitive", via: a.via, depth: a.depth, ...(a.module ? { module: a.module } : {}), ...(c.note ? { note: c.note } : {}) });
+      findings.push({ file: a.file || buildFileDefault, line: 0, groupId: a.groupId, artifactId: a.artifactId, version: a.version, resolvedVersion: a.version, scope: a.scope, status: c.status, baseline: c.baseline, basis: c.basis, origin: "transitive", via: a.via, depth: a.depth, ...(a.module ? { module: a.module } : {}), ...(c.note ? { note: c.note } : {}), ...(c.source ? { source: c.source } : {}) });
     }
     resolution = { ran: tree.ran, success: tree.success, scope: tree.scope, command: tree.command, durationMs: tree.durationMs, artifacts: tree.artifacts.length, direct: tree.artifacts.filter((a) => a.depth === 1).length, transitive, differs, summary: rsum, ...(tree.error ? { error: tree.error } : {}) };
     if (!tree.success) notes.push(L(`의존성 트리 해석 실패(${tree.error ?? "원인 미상"}) — 선언된 의존성만 판정했습니다. 명령: ${tree.command}`, `Dependency tree resolution failed (${tree.error ?? "unknown cause"}) — only declared dependencies were assessed. Command: ${tree.command}`));
@@ -509,10 +535,11 @@ export async function checkDependencies(opts: CheckDependenciesOptions): Promise
   checks.push({ id: "security-headers", title: L("보안 응답 헤더(X-Frame-Options·CSP·HSTS 등)", "Security response headers (X-Frame-Options, CSP, HSTS, etc.)"), status: headers.length ? "ok" : "missing", evidence: headers, hint: headers.length ? "" : L("Spring Security headers() 또는 web.xml 필터로 X-Frame-Options·Content-Security-Policy 등을 설정하세요", "Set X-Frame-Options, Content-Security-Policy, etc. via Spring Security headers() or a web.xml filter") });
   checks.push({ id: "https-repositories", title: L("Maven 저장소 URL HTTPS", "Maven repository URLs use HTTPS"), status: repoIssues.length ? "missing" : (buildSystem === "unknown" ? "n/a" : "ok"), evidence: repoIssues, hint: repoIssues.length ? L("http:// 저장소는 중간자 변조에 노출됩니다. https://maven.egovframe.go.kr/maven/ 등 HTTPS 로 바꾸세요(migrate_egovframe_project 가 자동 치환)", "http:// repositories are exposed to man-in-the-middle tampering. Switch to HTTPS such as https://maven.egovframe.go.kr/maven/ (migrate_egovframe_project rewrites this automatically)") : "" });
 
+  if (packs.length) notes.push(L(`규칙 팩 적용: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")} — 팩 기준에 걸린 좌표 ${findings.filter((f) => f.source).length}건`, `Rule packs applied: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")} — ${findings.filter((f) => f.source).length} coordinates matched a pack rule`));
   const result: CheckDependenciesResult = {
     projectDir: dir, buildSystem, offline,
     baseline: { surveyedAt: baseline.surveyedAt, rte: baseline.rte.version, springFramework: baseline.spring.framework, springBoot: baseline.spring.boot, java: baseline.java, bootBom: baseline.boot ? Object.keys(baseline.boot.managed).length : 0, rteTransitive: baseline.rteTransitive ? Object.keys(baseline.rteTransitive.managed).length : 0 },
-    parent, java: { value: javaValue, status: javaStatus }, findings, summary, checks, ...(resolution ? { resolution } : {}), notes,
+    parent, java: { value: javaValue, status: javaStatus }, findings, summary, checks, ...(resolution ? { resolution } : {}), ...(packs.length ? { rulePacks: rulePackInfo(packs) } : {}), notes,
     ...(multi ? { workspace: { kind: ws.kind, modules: ws.modules.map((m) => {
       const fs_ = findings.filter((f) => f.module === m.name);
       const sm: Record<DependencyStatus, number> = { ok: 0, outdated: 0, managed: 0, legacy: 0, replace: 0, vendor: 0, unknown: 0, unversioned: 0 };

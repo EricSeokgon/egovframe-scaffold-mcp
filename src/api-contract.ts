@@ -21,7 +21,7 @@ export interface ApiContract {
 }
 
 /** 공개 환경 변수(README 「보안 설정」·「폐쇄망」·CLI 절에 문서화된 것) */
-export const PUBLIC_ENV = ["EGOVFRAME_ALLOWED_ROOTS", "EGOVFRAME_BUNDLE_MAX_AGE_DAYS", "EGOVFRAME_CACHE_DIR", "EGOVFRAME_LANG", "EGOVFRAME_MAVEN_MIRROR", "EGOVFRAME_OFFLINE_BUNDLE"];
+export const PUBLIC_ENV = ["EGOVFRAME_ALLOWED_ROOTS", "EGOVFRAME_BUNDLE_MAX_AGE_DAYS", "EGOVFRAME_CACHE_DIR", "EGOVFRAME_LANG", "EGOVFRAME_MAVEN_MIRROR", "EGOVFRAME_OFFLINE_BUNDLE", "EGOVFRAME_RULE_PACKS"];
 
 const KEEP = ["type", "enum", "const", "default", "required", "properties", "items", "anyOf", "oneOf", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "minItems", "maxItems", "pattern"];
 

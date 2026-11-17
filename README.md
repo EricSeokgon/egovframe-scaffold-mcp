@@ -54,6 +54,7 @@ npx -y egovframe-scaffold-mcp secure --project . --sarif-path egovframe-secure.s
 | `EGOVFRAME_LANG=en` | 도구 설명과 응답 본문(평가서·전환·의존성·SBOM·보안약점·배포·납품 결과의 라벨·헤더·사유)을 영문으로(v1.2). CLI 는 `--lang en` |
 | `EGOVFRAME_ALLOWED_ROOTS` | 도구가 읽고 쓸 수 있는 디렉터리 제한(여러 개는 OS 경로 구분자로). 미설정 시 제한 없음 |
 | `EGOVFRAME_OFFLINE_BUNDLE` | 폐쇄망 오프라인 번들 디렉터리([폐쇄망](#폐쇄망에서-쓰기)) |
+| `EGOVFRAME_RULE_PACKS` | 기관 규칙 팩 디렉터리(여러 개는 OS 경로 구분자로, 뒤가 이김) — 보안약점·운영·의존성·개인정보 점검에 기관 기준을 얹음(v1.23, [설계](docs/design-rule-packs.md)) |
 | `EGOVFRAME_CACHE_DIR` | 공통컴포넌트 아카이브·태그 미러 캐시 위치(기본 `~/.cache/egovframe-scaffold-mcp`) |
 | `EGOVFRAME_MAVEN_MIRROR` | 사내 Maven 미러(Nexus·Artifactory 프록시) URL — 빌드·테스트·SBOM·의존성 트리의 모든 Maven 요청을 이 미러로(v1.6). 표준프레임워크 저장소가 503 을 자주 낼 때 |
 | `HTTPS_PROXY` + `NODE_USE_ENV_PROXY=1` | 사내 프록시 뒤에서 다운로드가 타임아웃될 때 |
@@ -155,7 +156,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 
 모든 결과는 Markdown(사람용)과 JSON(`--json`, 구조화 출력)으로 받을 수 있어 감리 양식에 옮기거나 대시보드에 넣을 수 있습니다.
 
-## 도구 목록 (44종)
+## 도구 목록 (45종)
 
 파라미터와 동작 상세는 [docs/tools.md](docs/tools.md) 에 있습니다.
 
@@ -168,6 +169,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 | 기관 단위 | `summarize_egovframe_portfolio` |
 | 납품 점검 | `check_egovframe_dependencies` · `generate_egovframe_sbom` · `check_egovframe_sbom` · `fix_egovframe_dependencies` · `check_egovframe_secure_coding` · `fix_egovframe_secure_coding` · `generate_egovframe_report` · `prepare_egovframe_delivery` |
 | 개인정보 | `check_egovframe_privacy` |
+| 기관 기준 | `list_egovframe_rules` |
 | 배포·CI·폐쇄망 | `verify_egovframe_startup` · `check_egovframe_operations` · `prepare_egovframe_database` · `externalize_egovframe_config` · `generate_egovframe_deploy` · `generate_egovframe_ci` · `prepare_egovframe_offline_bundle` |
 
 MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이 읽을 수 있고, 프롬프트 `scaffold_board_login`·`scaffold_ai_chatbot`·`scaffold_portal`·`maintain_existing` 이 자주 쓰는 흐름을 안내합니다. 모든 도구에 `readOnlyHint`·`destructiveHint` 등 annotations 가 있어 클라이언트가 위험한 도구를 구분합니다.
@@ -183,13 +185,13 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 
 ## 버전 정책
 
-1.0.0 부터 [SemVer 2.0](https://semver.org/lang/ko/) 을 따릅니다. **공개 API** 는 도구 이름과 입력 파라미터, 구조화 출력 23종의 필드, CLI 명령과 종료 코드, 환경 변수 `EGOVFRAME_*` 6종, 지원 Node 버전입니다. 이것을 지우거나 호환되지 않게 바꾸면 MAJOR, 더하면 MINOR, 버그 수정·데이터 갱신·문구는 PATCH 입니다. Markdown 응답 문구와 카탈로그 데이터의 내용은 공개 API 가 아니라 PATCH 에서도 바뀔 수 있습니다. 폐기할 파라미터는 옛 이름을 경고와 함께 계속 받다가 다음 MAJOR 에서만 지웁니다(현재: `check_egovframe_secure_coding` 의 `top` → `topN`, 2.0.0 제거). 계약 테스트가 매 릴리스에서 변경 등급과 버전 증가 폭을 맞춰 봅니다. 자세한 기준은 [docs/versioning.md](docs/versioning.md) 입니다.
+1.0.0 부터 [SemVer 2.0](https://semver.org/lang/ko/) 을 따릅니다. **공개 API** 는 도구 이름과 입력 파라미터, 구조화 출력 24종의 필드, CLI 명령과 종료 코드, 환경 변수 `EGOVFRAME_*` 7종, 지원 Node 버전입니다. 이것을 지우거나 호환되지 않게 바꾸면 MAJOR, 더하면 MINOR, 버그 수정·데이터 갱신·문구는 PATCH 입니다. Markdown 응답 문구와 카탈로그 데이터의 내용은 공개 API 가 아니라 PATCH 에서도 바뀔 수 있습니다. 폐기할 파라미터는 옛 이름을 경고와 함께 계속 받다가 다음 MAJOR 에서만 지웁니다(현재: `check_egovframe_secure_coding` 의 `top` → `topN`, 2.0.0 제거). 계약 테스트가 매 릴리스에서 변경 등급과 버전 증가 폭을 맞춰 봅니다. 자세한 기준은 [docs/versioning.md](docs/versioning.md) 입니다.
 
 ## 문서
 
 | 문서 | 내용 |
 |---|---|
-| [docs/tools.md](docs/tools.md) | 도구 44종 파라미터·동작·예시, MCP 리소스·프롬프트 |
+| [docs/tools.md](docs/tools.md) | 도구 45종 파라미터·동작·예시, MCP 리소스·프롬프트 |
 | [docs/versioning.md](docs/versioning.md) | 버전 정책, 공개 API 범위, 폐기 절차 |
 | [CHANGELOG.md](CHANGELOG.md) | 버전별 변경 이력 |
 | [docs/development.md](docs/development.md) | 로컬 개발, 검증 체계, 릴리스 절차, 브랜치 보호 (기여자용) |

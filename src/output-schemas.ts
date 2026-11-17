@@ -5,6 +5,9 @@ import { z } from "zod";
 
 const loose = <T extends z.ZodRawShape>(shape: T) => z.object(shape).passthrough();
 
+// v1.23: 적용한 기관 규칙 팩(있을 때만)
+const RulePackInfoSchema = loose({ name: z.string(), version: z.string(), sha256: z.string(), sections: z.array(z.enum(["secureCoding", "operations", "dependencies", "privacy"])) });
+const rulePacksField = z.array(RulePackInfoSchema).optional();
 export const DiagnoseOutput = loose({
   projectDir: z.string(),
   isEgovProject: z.boolean(),
@@ -83,6 +86,7 @@ export const MigrateOutput = loose({
 const DependencyStatus = z.enum(["ok", "outdated", "managed", "legacy", "replace", "vendor", "unknown", "unversioned"]);
 const DependencyBasis = z.enum(["parent", "family", "boot-bom", "rte-transitive", "migration-rules"]);
 export const DependenciesOutput = loose({
+  rulePacks: rulePacksField,
   projectDir: z.string(),
   buildSystem: z.enum(["maven", "gradle", "unknown"]),
   offline: z.boolean(),
@@ -188,6 +192,7 @@ const GradeResult = loose({
   caveats: z.array(z.string()),
 });
 export const AssessmentOutput = loose({
+  rulePacks: rulePacksField,
   projectDir: z.string(),
   generatedAt: z.string(),
   tool: loose({ name: z.string(), version: z.string(), rulesTag: z.string(), rulesSurveyedAt: z.string(), baselineSurveyedAt: z.string(), targetRuntime: z.string() }),
@@ -382,6 +387,7 @@ export const StartupOutput = loose({
 // v0.44: check_egovframe_secure_coding
 const SecureSeverity = z.enum(["high", "medium", "low"]);
 export const SecureCodingOutput = loose({
+  rulePacks: rulePacksField,
   projectDir: z.string(),
   rulesVersion: loose({ surveyedAt: z.string(), rules: z.number().int(), source: z.string() }),
   filesScanned: z.number().int(),
@@ -483,6 +489,7 @@ export const ProjectMapOutput = loose({
 // v1.21: check_egovframe_privacy
 const PGradeP = z.enum(["unique-id", "credential", "financial", "general"]);
 export const PrivacyOutput = loose({
+  rulePacks: rulePacksField,
   projectDir: z.string(),
   rulesVersion: loose({ surveyedAt: z.string(), items: z.number().int() }),
   durationMs: z.number(),
@@ -498,6 +505,7 @@ export const PrivacyOutput = loose({
 // v1.15: check_egovframe_operations
 const OpsSev = z.enum(["high", "medium", "low"]);
 export const OperationsOutput = loose({
+  rulePacks: rulePacksField,
   projectDir: z.string(),
   rulesVersion: loose({ surveyedAt: z.string(), rules: z.number().int() }),
   runtime: z.enum(["boot", "classic", "unknown"]),
@@ -514,6 +522,14 @@ export const OperationsOutput = loose({
 
 // v1.17: summarize_egovframe_portfolio
 const PGrade = z.string().nullable();
+// v1.23: list_egovframe_rules
+export const RuleListOutput = loose({
+  rulePacks: z.array(RulePackInfoSchema),
+  summary: loose({ total: z.number().int(), bundled: z.number().int(), fromPacks: z.number().int(), disabled: z.number().int(), byTool: z.record(z.string(), z.number().int()) }),
+  rules: z.array(loose({ tool: z.enum(["secureCoding", "operations", "dependencies", "privacy"]), id: z.string(), severity: z.string().nullable(), title: z.string(), source: z.string(), status: z.enum(["active", "disabled"]) })),
+  notes: z.array(z.string()),
+});
+
 export const PortfolioOutput = loose({
   org: z.string().nullable(),
   generatedAt: z.string(),
@@ -543,6 +559,7 @@ export const OUTPUT_SCHEMAS = {
   map_egovframe_project: ProjectMapOutput,
   check_egovframe_operations: OperationsOutput,
   check_egovframe_privacy: PrivacyOutput,
+  list_egovframe_rules: RuleListOutput,
   summarize_egovframe_portfolio: PortfolioOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,

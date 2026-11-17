@@ -20,7 +20,7 @@ import { diagnoseProject } from "./diagnose.js";
 import { generateProjectReport } from "./report.js";
 import { upgradeProject } from "./upgrade.js";
 import { explainComponent } from "./explain.js";
-import { CI_BUNDLE_PATH_RE, CI_FAIL_ON_RE, CI_JDK_RE, CI_NPM_REGISTRY_RE, CI_SUPPLIER_RE, generateCiConfig } from "./ci-config.js";
+import { CI_BUNDLE_PATH_RE, CI_RULE_PACKS_RE, CI_FAIL_ON_RE, CI_JDK_RE, CI_NPM_REGISTRY_RE, CI_SUPPLIER_RE, generateCiConfig } from "./ci-config.js";
 import { loadTemplateCatalog, syncTemplateCatalog } from "./template-catalog.js";
 import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
@@ -41,6 +41,7 @@ import { verifyStartup, renderStartupMarkdown } from "./startup.js";
 import { externalizeConfig, renderExternalizeMarkdown } from "./externalize.js";
 import { buildProjectMap, handoverTables, renderMermaid, renderProjectMapMarkdown } from "./project-map.js";
 import { checkOperations, renderOperationsMarkdown, loadOperationsRules } from "./operations.js";
+import { listRules, renderRuleListMarkdown, RULE_PACK_SECTIONS } from "./rule-packs.js";
 import { summarizePortfolio, renderPortfolioMarkdown, renderPortfolioCsv } from "./portfolio.js";
 import { DEPLOY_HOST_RE, DEPLOY_IMAGE_RE, DEPLOY_IMAGE_REGISTRY_RE, generateDeploy, renderDeployMarkdown } from "./deploy.js";
 import { rehearseMigration, renderRehearsalMarkdown } from "./rehearse.js";
@@ -652,6 +653,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "check_egovframe_dependencies",
     { title: t("check_egovframe_dependencies"), description: d("check_egovframe_dependencies", "프로젝트의 Maven/Gradle 의존성(resolve=true 면 빌드 도구로 해석한 전이 의존성까지, 트리 경로와 선언·해석 버전 차이 포함)을 공식 5.x parent(egovframe-web-config-parent·egovframe-boot-starter-parent)가 관리하는 기준 버전, Spring Boot BOM 전체(spring-boot-dependencies + import 한 단계), RTE 모듈 18종의 전이 의존성과 대조해 기준 충족/기준 미만/parent 관리/전환 대상(3.x·4.x RTE, javax 좌표)/교체 필요(DBCP 1.x·Log4j 1.x·Jackson 1·Ehcache 2 등)/벤더 배포(국내 DBMS·GPKI 등)/기준 없음 으로 분류하고 항목마다 기준 출처(parent 직접·계열·Boot BOM·RTE 전이)를 적으며, 5.x parent 사용 여부와 Java 버전, 보안 설정 존재 여부(sec.security 컴포넌트·CSRF·XSS 필터·보안 헤더·HTTPS 저장소)를 파일·라인 근거와 함께 보고합니다. 기본은 오프라인(동봉 기준 catalog/dependency-baseline.json)이며 offline=false 일 때만 OSV(api.osv.dev)로 알려진 취약점을 조회합니다. 디스크를 변경하지 않습니다. 멀티 모듈 작업공간이면 모듈별로 판정하고(모듈 parent·Gradle 버전 변수·공식 parent BOM) 모듈 요약을 함께 냅니다. parent 5.1.0 프로젝트는 5.1 기준(BOM egovframe-rte-root, GitHub 태그 없이 저장소에 배포된 버전)으로 판정하고, -egov.N 재빌드 좌표는 원 버전으로 비교·OSV 조회합니다."), inputSchema: {
       projectDir: z.string().describe("점검할 프로젝트 디렉터리(절대경로 권장)"),
+      rulePacks: z.array(z.string()).max(10).optional().describe("v1.23: 기관 규칙 팩 디렉터리(rule-pack.json 이 있는 곳, 여러 개면 뒤가 이김). 없으면 환경 변수 EGOVFRAME_RULE_PACKS"),
       offline: z.boolean().default(true).describe("true(기본)면 네트워크 없이 기준 대조만, false 면 OSV 취약점 조회 추가"),
       resolve: z.boolean().default(false).describe("true 면 빌드 도구(Maven dependency:tree / Gradle dependencies)로 전이 의존성까지 해석해 함께 판정(빌드 도구·저장소 접근 필요, 수십 초)"),
       resolveScope: z.enum(["runtime", "all"]).default("runtime").describe("resolve 범위: runtime(compile+runtime, 기본) | all(test·provided 포함)"),
@@ -660,7 +662,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_dependencies.shape, annotations: toolAnnotations("check_egovframe_dependencies") },
     async (args, extra) => {
       enforceAllowedRoots(args);
-      const r = await checkDependencies({ progress: progressFromExtra(extra), projectDir: args.projectDir, offline: args.offline, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs });
+      const r = await checkDependencies({ progress: progressFromExtra(extra), projectDir: args.projectDir, offline: args.offline, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs, rulePacks: args.rulePacks });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderDependencyMarkdown(r);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -842,6 +844,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "check_egovframe_secure_coding",
     { title: t("check_egovframe_secure_coding"), description: d("check_egovframe_secure_coding", "행정안전부·KISA 「소프트웨어 개발보안 가이드」(2021) 구현단계 보안약점 중 정적 패턴으로 오탐을 통제할 수 있는 항목을 소스에서 찾습니다 — SQL 삽입(MyBatis ${…}·iBATIS $…$·JDBC 문자열 연결), 크로스사이트 스크립트(요청 값·EL param/header/cookie 무이스케이프 출력, <c:out escapeXml=\"false\">), 경로 조작, 신뢰되지 않는 URL 자동접속, 운영체제 명령어, XML 외부개체, 취약한 해시·암호, 보안 문맥의 부적절한 난수, 코드·설정의 하드코드된 중요정보, HttpOnly·Secure 없는 쿠키, printStackTrace, 빈 catch, 역직렬화, 남은 디버그 출력. 규칙은 catalog/secure-coding-rules.json 데이터이고 주석은 무시합니다. 항목마다 파일·라인·CWE·등급·조치와 출처(공통컴포넌트 원본·수정본·매니페스트 없음·프로젝트 코드·테스트)를 냅니다. 예외는 .egovframe-secure-ignore.json(사유·검토자 필수), baselinePath(이전 JSON 결과·SARIF)와 비교해 새 항목 표시, format=sarif 또는 sarifPath 로 SARIF 2.1.0(GitHub code scanning 등). v1.5: 메서드 안 데이터 흐름(요청 파라미터·헤더·쿠키·Spring 바인딩 값 → 대입·결합·append → JDBC·파일 경로·OS 명령·리다이렉트)으로 등급을 올리거나 내리고 변수를 거친 미탐을 찾습니다(메서드 간 흐름은 보지 않음). v1.7: HTMLTagFilter 가 등록돼 있으면(요청 값을 엔티티로 저장) c:out escapeXml=\"false\" 를 낮음으로 보고 사유를 적습니다. 고칠 수 있는 항목은 fix_egovframe_secure_coding 으로. 패턴 기반 진단 보조이며 공인 진단을 대체하지 않습니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장) — 읽기만 함"),
+      rulePacks: z.array(z.string()).max(10).optional().describe("v1.23: 기관 규칙 팩 디렉터리(rule-pack.json 이 있는 곳, 여러 개면 뒤가 이김). 없으면 환경 변수 EGOVFRAME_RULE_PACKS"),
       rules: z.array(z.string()).optional().describe("점검할 규칙 id(기본 전체)"),
       paths: z.array(z.string()).optional().describe("프로젝트 상대 경로 접두어로 좁히기(예: src/main/java/egovframework/example)"),
       includeTests: z.boolean().default(true).describe("src/test 도 점검(등급은 낮음으로)"),
@@ -857,7 +860,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     async (raw) => {
       enforceAllowedRoots(raw);
       const { args, warnings } = applyDeprecatedParams("check_egovframe_secure_coding", raw);
-      const r = await checkSecureCoding({ projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeTests: args.includeTests, baselinePath: args.baselinePath, sarifPath: args.sarifPath, overwrite: args.overwrite, dataFlow: args.dataFlow, maxFindings: args.maxFindings });
+      const r = await checkSecureCoding({ rulePacks: args.rulePacks, projectDir: args.projectDir, rules: args.rules, paths: args.paths, includeTests: args.includeTests, baselinePath: args.baselinePath, sarifPath: args.sarifPath, overwrite: args.overwrite, dataFlow: args.dataFlow, maxFindings: args.maxFindings });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "sarif" ? JSON.stringify(toSarif(r), null, 2) : renderSecureCodingMarkdown(r, args.topN ?? 40);
       // 경고는 본문과 섞지 않는다(format=json·sarif 본문이 그대로 파싱되도록 별도 content 항목)
       return { content: [{ type: "text" as const, text }, ...warnings.map((w) => ({ type: "text" as const, text: `⚠ ${w}` }))], structuredContent: r as unknown as Record<string, unknown> };
@@ -993,6 +996,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "check_egovframe_operations",
     { title: t("check_egovframe_operations"), description: d("check_egovframe_operations", "\"기동은 되는데 운영에서 터지는\" 설정을 운영 투입 전에 점검합니다(읽기 전용, 값을 고치지 않고 바뀔 줄을 제안). 운영 설정 세트 — Boot 는 application + application-prod(production·release·ops 중 있는 것, profile 로 지정).* 만 보고 dev·local·test 프로파일은 뺍니다, Classic 은 globals.properties·context-*.xml·web.xml·log4j2/logback.xml — 에서 규칙 데이터(catalog/operations-rules.json, 규칙마다 출처 명시) 17종을 평가합니다: SQL 로깅 프록시 드라이버(log4jdbc·P6Spy) 잔존, DEBUG/TRACE 로그 수준, 콘솔 전용 로그(로테이션 없음), spring-boot-devtools, 내장 DB(HSQL·H2) 잔존, 커넥션 풀 크기·타임아웃·수명·누수 감지 미설정, 세션 타임아웃 없음/60분 초과, 세션 쿠키 http-only·secure, 업로드 상한 없음/100MB 이상·허용 확장자 없음, 업로드 경로 상대·/tmp·웹 루트, 오류 상세 노출(include-stacktrace·show-sql·debug), error-page 없음, actuator 전체 노출, 표준프레임워크 개발 플래그(LocalIp 127.0.0.1·Hsql.AutoInit), 운영 프로파일 없음, 하드코드 비밀값(보안약점 규칙과 같은 판정, externalize_egovframe_config 참조). 결과는 점검표(규칙 × 통과/미달/해당 없음)·미달 항목(파일·줄·현재 값·제안·근거)·등급 A–D(규칙 단위: A 높음 0·중간 ≤1, B 높음 ≤1·중간 ≤3, C 높음 ≤3, D). 예외는 .egovframe-ops-ignore.json(rule·path·reason·reviewer). 공식 운영 기준 문서가 없어 근거는 공식 템플릿 기본값 실측·HikariCP/Spring Boot/Tomcat 문서입니다. 평가서(generate_egovframe_report)에도 「운영 준비」가 들어갑니다. 부하 시험·운영 WAS(JEUS 등)·OS/DB 서버 설정은 보지 않습니다."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      rulePacks: z.array(z.string()).max(10).optional().describe("v1.23: 기관 규칙 팩 디렉터리(rule-pack.json 이 있는 곳, 여러 개면 뒤가 이김). 없으면 환경 변수 EGOVFRAME_RULE_PACKS"),
       profile: z.string().optional().describe("운영 프로파일 이름(Boot, 기본: prod·production·release·ops 중 있는 것)"),
       rules: z.array(z.enum(loadOperationsRules().rules.map((r) => r.id) as [string, ...string[]])).optional().describe("점검할 규칙 id(기본 전체)"),
       topN: z.number().int().min(1).max(1000).default(50).describe("Markdown 에 보일 미달 항목 수"),
@@ -1000,8 +1004,23 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_operations.shape, annotations: toolAnnotations("check_egovframe_operations") },
     async (args) => {
       enforceAllowedRoots(args);
-      const r = await checkOperations({ projectDir: args.projectDir, profile: args.profile, rules: args.rules });
+      const r = await checkOperations({ projectDir: args.projectDir, profile: args.profile, rules: args.rules, rulePacks: args.rulePacks });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderOperationsMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
+  // ── 적용 중인 규칙·규칙 팩 검증 (v1.23) ─────────────────
+  server.registerTool(
+    "list_egovframe_rules",
+    { title: t("list_egovframe_rules"), description: d("list_egovframe_rules", "지금 적용되는 점검 규칙과 출처(동봉/기관 규칙 팩)를 보여 주고 규칙 팩을 검증합니다(읽기 전용). 규칙 팩은 동봉 규칙 위에 얹는 기관 기준입니다 — 디렉터리의 rule-pack.json 에 보안약점(규칙 추가·등급 조정·끄기)·운영 점검(규칙 추가·임계값·끄기)·의존성(금지 좌표·최소 버전)·개인정보(컬럼 사전·암호화 호출)를 데이터로 적습니다. 경로는 rulePacks 파라미터 또는 환경 변수 EGOVFRAME_RULE_PACKS(여러 개면 뒤가 이김). 팩의 형식·정규식·id·check 종류가 틀리면 사유를 모두 돌려주고 거부합니다."), inputSchema: {
+      rulePacks: z.array(z.string()).max(10).optional().describe("규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS, 그것도 없으면 동봉 규칙만)"),
+      tools: z.array(z.enum(RULE_PACK_SECTIONS)).optional().describe("볼 도구(기본 전부): secureCoding | operations | dependencies | privacy"),
+      topN: z.number().int().min(1).max(2000).default(200).describe("Markdown 에 보일 규칙 수(팩이 정한 것 먼저)"),
+      format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
+    }, outputSchema: OUTPUT_SCHEMAS.list_egovframe_rules.shape, annotations: toolAnnotations("list_egovframe_rules") },
+    async (args) => {
+      const r = listRules({ rulePacks: args.rulePacks, tools: args.tools });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : renderRuleListMarkdown(r, args.topN);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
@@ -1010,12 +1029,13 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "check_egovframe_privacy",
     { title: t("check_egovframe_privacy"), description: d("check_egovframe_privacy", "개인정보가 어느 테이블에 있고 어느 화면이 다루는지(개인정보 파일·처리 흐름표)와 보호조치 누락 의심을 정적으로 찾습니다(읽기 전용, 고치지 않음). 컬럼 이름 사전(catalog/privacy-rules.json — 주민등록번호·여권·운전면허·외국인등록번호·비밀번호·계좌·카드·연락처·주소·이메일·생년월일·성명)으로 DDL 과 매퍼 XML 의 SQL 에서 개인정보 컬럼을 찾고, 구조 지도로 테이블 → 매퍼 문장 → DAO → Service → Controller → URL → 화면을 잇습니다. 보호조치: plaintext-storage(높음 — 고유식별정보·비밀번호·금융정보 컬럼에 쓰는 문장인데 SQL 에 DB 암호화 함수가 없고 호출 경로의 Java 에 그 필드와 암호화 호출이 함께 있는 줄이 없음), screen-exposure(중간 — 화면이 고유식별정보를 마스킹 없이 출력), log-exposure(중간 — 로그로 출력). 이름·호출 패턴 기반 휴리스틱이라 근거(evidence)를 함께 돌려주며, 예외는 .egovframe-privacy-ignore.json(rule=종류·path·line·reason·reviewer). format: markdown·json·csv(개인정보 파일 대장, 엑셀)."), inputSchema: {
       projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      rulePacks: z.array(z.string()).max(10).optional().describe("v1.23: 기관 규칙 팩 디렉터리(rule-pack.json 이 있는 곳, 여러 개면 뒤가 이김). 없으면 환경 변수 EGOVFRAME_RULE_PACKS"),
       topN: z.number().int().min(1).max(1000).default(30).describe("Markdown 에 보일 항목·흐름 수"),
       format: z.enum(["markdown", "json", "csv"]).default("markdown").describe("응답 형식(csv = 개인정보 파일 대장)"),
     }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_privacy.shape, annotations: toolAnnotations("check_egovframe_privacy") },
     async (args) => {
       enforceAllowedRoots(args);
-      const r = checkPrivacy({ projectDir: args.projectDir });
+      const r = checkPrivacy({ projectDir: args.projectDir, rulePacks: args.rulePacks });
       const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "csv" ? renderPrivacyCsv(r) : renderPrivacyMarkdown(r, args.topN);
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
@@ -1025,6 +1045,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "summarize_egovframe_portfolio",
     { title: t("summarize_egovframe_portfolio"), description: d("summarize_egovframe_portfolio", "여러 전자정부 표준프레임워크 프로젝트의 전환 준비도·공급망·보안약점·운영 준비를 한 표로 모읍니다(새 분석 없이 평가서를 모으기·비교·표). 입력 inputs 는 디렉터리 목록(끝이 /* 면 그 아래 디렉터리 전부)이고 종류를 자동 판별합니다 — 프로젝트(pom.xml·build.gradle: generate_egovframe_report 평가서를 실행, jobs 로 병렬, offline 기본 true), 납품 패키지(delivery-manifest.json: assessment/assessment.json 을 읽기만), CI 아티팩트(egovframe-assessment.json 또는 egovframe-delivery/ — 생성 CI 의 egovframe-supply-chain 아티팩트를 내려받은 폴더). 행: RTE 버전·세대, 전환 난이도·공급망·운영 준비 등급, 수동 전환 항목, 취약 의존성(OSV 조회한 평가서만)·노후 의존성, 보안약점 높음/중간, 공통컴포넌트 수, 평가일, 담당(ownerMap CSV). 분포(세대·등급별)와 '먼저 손댈 것'(여러 프로젝트에 걸친 취약 좌표·보안약점 규칙·운영 미달 규칙 Top N). previous(이전 portfolio.json)를 주면 프로젝트별 등급·취약 ID 변화와 빠진 프로젝트, sort·only(migration:C·supplyChain:D·operations:C·vulnerabilities>0·secure>0·era:4.x·failed)로 정렬·필터. 실패한 입력은 행에 사유. outputDir 를 주면 portfolio.md·portfolio.csv(UTF-8 BOM, 엑셀)·portfolio.json 을 새 디렉터리에 씁니다(프로젝트는 바꾸지 않음)."), inputSchema: {
       inputs: z.array(z.string()).min(1).max(500).describe("프로젝트·납품 패키지·CI 아티팩트 디렉터리(절대경로 권장, 끝이 /* 면 하위 디렉터리 전부)"),
+      rulePacks: z.array(z.string()).max(10).optional().describe("v1.23: 기관 규칙 팩 디렉터리(rule-pack.json 이 있는 곳, 여러 개면 뒤가 이김). 없으면 환경 변수 EGOVFRAME_RULE_PACKS"),
       run: z.boolean().default(true).describe("프로젝트 디렉터리면 평가서를 실행(false 면 납품 패키지·CI 아티팩트만 읽음)"),
       offline: z.boolean().default(true).describe("프로젝트 평가 때 OSV 조회 안 함(false 면 조회 — 취약점 열이 채워짐)"),
       jobs: z.number().int().min(1).max(8).default(2).describe("동시에 평가할 프로젝트 수"),
@@ -1039,7 +1060,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }, outputSchema: OUTPUT_SCHEMAS.summarize_egovframe_portfolio.shape, annotations: toolAnnotations("summarize_egovframe_portfolio") },
     async (args, extra) => {
       for (const p of [...args.inputs.map((x) => x.replace(/[\\/]\*$/, "")), ...(args.previous ? [args.previous] : []), ...(args.ownerMap ? [args.ownerMap] : []), ...(args.outputDir ? [args.outputDir] : [])]) enforceAllowedRoots({ projectDir: p });
-      const r = await summarizePortfolio({ progress: progressFromExtra(extra), inputs: args.inputs, run: args.run, offline: args.offline, jobs: args.jobs, previous: args.previous, sort: args.sort, only: args.only, org: args.org, ownerMap: args.ownerMap, topN: args.topN });
+      const r = await summarizePortfolio({ progress: progressFromExtra(extra), inputs: args.inputs, run: args.run, offline: args.offline, jobs: args.jobs, previous: args.previous, sort: args.sort, only: args.only, org: args.org, ownerMap: args.ownerMap, topN: args.topN, rulePacks: args.rulePacks });
       const md = renderPortfolioMarkdown(r, args.topN), csv = renderPortfolioCsv(r);
       let written: string[] | undefined;
       if (args.outputDir) {
@@ -1112,6 +1133,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     "generate_egovframe_report",
     { title: t("generate_egovframe_report"), description: d("generate_egovframe_report", "프로젝트 리포트를 Markdown(또는 format=json)으로 만듭니다. sections=[\"components\"](기본)는 설치 공통컴포넌트·참조 테이블·가이드 문서 링크·이슈, sections=[\"assessment\"]는 5.x 전환 준비도 평가서 — (1) 개요(빌드 도구·RTE 세대·parent·Java·공통컴포넌트) (2) 전환 범위(migrate 진단 요약: 자동/수동·종류별·재조립 권고·예상 수동 작업 상위 N) (3) 의존성(기준 판정 집계·조치 목록, resolve=true 면 전이 포함, offline=false 면 OSV 취약점) (4) 보안 설정 점검 (5) SBOM 요약(sbomPath 에 있으면) (6) 등급과 근거 — 전환 난이도·공급망 상태를 각각 A–D 로 매기고 산식(요인·구간·점수)을 리포트에 그대로 적어 사람이 재계산할 수 있게 합니다. 비용·공수는 산정하지 않습니다. outputPath 를 주면 프로젝트 안에 새 파일로만 저장하고(기존 파일 거부, transaction), 그 외에는 디스크를 바꾸지 않습니다."), inputSchema: {
       projectDir: z.string().describe("리포트를 만들 프로젝트 디렉터리(절대경로 권장)"),
+      rulePacks: z.array(z.string()).max(10).optional().describe("v1.23: 기관 규칙 팩 디렉터리(rule-pack.json 이 있는 곳, 여러 개면 뒤가 이김). 없으면 환경 변수 EGOVFRAME_RULE_PACKS"),
       sections: z.array(z.enum(["components", "assessment"])).default(["components"]).describe("포함할 절: components(설치 컴포넌트 리포트, 기본) · assessment(전환 준비도 평가서) — 둘 다 주면 이어 붙임"),
       resolve: z.boolean().default(false).describe("assessment: 빌드 도구로 전이 의존성까지 해석해 판정(빌드 도구·저장소 접근 필요)"),
       resolveScope: z.enum(["runtime", "all"]).default("runtime").describe("resolve 범위"),
@@ -1125,7 +1147,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
     }, outputSchema: OUTPUT_SCHEMAS.generate_egovframe_report.shape, annotations: toolAnnotations("generate_egovframe_report") },
     async (args) => {
       enforceAllowedRoots(args);
-      const r = await generateProjectReport({ projectDir: args.projectDir, sections: args.sections, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs, offline: args.offline, sbomPath: args.sbomPath, topN: args.topN, outputPath: args.outputPath, dryRun: args.dryRun });
+      const r = await generateProjectReport({ projectDir: args.projectDir, sections: args.sections, resolve: args.resolve, resolveScope: args.resolveScope, resolveTimeoutMs: args.resolveTimeoutMs, offline: args.offline, sbomPath: args.sbomPath, topN: args.topN, outputPath: args.outputPath, dryRun: args.dryRun, rulePacks: args.rulePacks });
       const { markdown, ...structured } = r;
       const head = r.outputPath ? (r.written ? `✅ ${r.outputPath} 저장 (${r.bytes} bytes)\n\n` : `📝 dryRun — ${r.outputPath} 에 쓰지 않음\n\n`) : "";
       const text = args.format === "json" ? JSON.stringify(structured, null, 2) : `${head}${markdown}`;
@@ -1395,6 +1417,7 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       offlineBundle: z.string().regex(CI_BUNDLE_PATH_RE, "러너에서 본 절대 경로").optional().describe("폐쇄망 러너·에이전트에서 본 오프라인 번들 경로(EGOVFRAME_OFFLINE_BUNDLE 로 설정)"),
       mavenMirror: z.string().regex(MAVEN_MIRROR_RE, "http(s) URL").optional().describe("v1.6: 사내 Maven 미러 URL(Nexus·Artifactory 프록시). 빌드 단계는 모든 저장소(*)를 이 미러로 보내는 settings 를 -gs 로 쓰고, 게이트의 CLI 단계는 EGOVFRAME_MAVEN_MIRROR 로 받습니다. Maven 빌드에만 적용"),
       secureCoding: z.boolean().default(false).describe("v0.44: 게이트에 보안약점 점검 단계 추가(secure --fail-on high, SARIF 를 GitHub code scanning 에 업로드·GitLab·Jenkins 는 보관)"),
+      rulePacks: z.string().regex(CI_RULE_PACKS_RE, "저장소 상대 경로 또는 러너의 절대 경로").optional().describe("v1.23: 게이트에 적용할 기관 규칙 팩 디렉터리 — 저장소 안이면 상대 경로(예: .egovframe/rule-pack), 러너에 둔 것이면 절대 경로. 게이트 단계에 EGOVFRAME_RULE_PACKS 로 넘깁니다"),
       delivery: z.boolean().default(false).describe("v1.1: 게이트 끝에 납품 패키지 단계 추가(deliver --write → egovframe-delivery/ 를 아티팩트로 보관, 실패 항목이 있으면 단계 실패). supplyChain=true 필요"),
     }, annotations: toolAnnotations("generate_egovframe_ci") },
     async (args) => {

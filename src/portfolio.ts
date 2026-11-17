@@ -29,11 +29,15 @@ export interface PortfolioRow {
   secureHigh: number | null;
   secureMedium: number | null;
   components: number | null;
+  /** v1.23: 평가에 적용한 규칙 팩(이름 버전, 있을 때만) */
+  rulePacks?: string[];
   /** 이전 portfolio 대비(있을 때) */
   change?: { migration?: string; supplyChain?: string; operations?: string; vulnerabilityIds?: number; new?: boolean };
   error?: string;
 }
 export interface PortfolioOptions {
+  /** v1.23: 프로젝트를 평가할 때 적용할 규칙 팩(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */
+  rulePacks?: string[];
   /** 프로젝트·납품 패키지·CI 아티팩트 디렉터리(끝이 /* 면 그 아래 디렉터리 전부) */
   inputs: string[];
   /** 프로젝트 디렉터리면 평가서를 실행(기본 true). false 면 기존 산출물만 읽음 */
@@ -120,6 +124,7 @@ export function rowFromAssessment(name: string, input: string, source: Portfolio
     manual: a.migration.manual, vulnerableDependencies: a.dependencies.vulnerabilities.queried ? a.dependencies.vulnerabilities.dependencies : null, vulnerabilityIds: a.dependencies.vulnerabilities.queried ? a.dependencies.vulnerabilities.ids : null,
     outdated: a.dependencies.summary.outdated ?? 0, secureHigh: a.secureCoding.error ? null : a.secureCoding.high, secureMedium: a.secureCoding.error ? null : a.secureCoding.medium,
     components: a.overview.components.count,
+    ...(a.rulePacks?.length ? { rulePacks: a.rulePacks.map((p) => `${p.name} ${p.version}`) } : {}),
   };
 }
 const emptyRow = (name: string, input: string, source: PortfolioSource | null, error: string): PortfolioRow => ({ name, input, source, assessedAt: null, rteVersion: null, era: null, buildSystem: null, migration: null, supplyChain: null, operations: null, manual: null, vulnerableDependencies: null, vulnerabilityIds: null, outdated: null, secureHigh: null, secureMedium: null, components: null, error });
@@ -151,7 +156,7 @@ export async function summarizePortfolio(opts: PortfolioOptions): Promise<Portfo
   if (dirs.length > 500) throw new Error(L(`입력이 너무 많습니다(${dirs.length}개, 최대 500)`, `Too many inputs (${dirs.length}, max 500)`));
   const owners = opts.ownerMap ? readOwnerMap(path.resolve(opts.ownerMap)) : null;
   const filter = opts.only ? parsePortfolioFilter(opts.only) : null;
-  const assess = opts.assess ?? ((projectDir: string) => assessProject({ projectDir, offline: opts.offline !== false }));
+  const assess = opts.assess ?? ((projectDir: string) => assessProject({ projectDir, offline: opts.offline !== false, rulePacks: opts.rulePacks }));
   const nameCount = new Map<string, number>();
   const nameOf = (dir: string) => { const b = path.basename(dir); const n = (nameCount.get(b) ?? 0) + 1; nameCount.set(b, n); return n === 1 ? b : `${b}#${n}`; };
   const named = dirs.map((d) => ({ dir: d, name: nameOf(d) }));
@@ -228,6 +233,11 @@ export async function summarizePortfolio(opts: PortfolioOptions): Promise<Portfo
     migration: dist("migration"), supplyChain: dist("supplyChain"), operations: dist("operations"),
     vulnerableProjects: ok.filter((r) => (r.vulnerabilityIds ?? 0) > 0).length, vulnerabilityIds: ok.reduce((s, r) => s + (r.vulnerabilityIds ?? 0), 0), secureHigh: ok.reduce((s, r) => s + (r.secureHigh ?? 0), 0),
   };
+  {
+    const sets = new Set(ok.map((r) => (r.rulePacks ?? []).join(", ")));
+    if (sets.size === 1 && [...sets][0]) notes.push(L(`규칙 팩: ${[...sets][0]} — 모든 프로젝트를 같은 기준으로 봤습니다.`, `Rule packs: ${[...sets][0]} — every project was assessed with the same rules.`));
+    else if (sets.size > 1) notes.push(L(`프로젝트마다 적용한 규칙 팩이 다릅니다(${[...sets].map((x) => x || "없음").join(" / ")}) — 등급을 나란히 비교하기 전에 같은 팩으로 다시 평가하세요.`, `Projects were assessed with different rule packs (${[...sets].map((x) => x || "none").join(" / ")}) — re-assess with the same packs before comparing grades.`));
+  }
   if (ok.some((r) => r.vulnerabilityIds === null)) notes.push(L("OSV 를 조회하지 않은 평가서가 있어 취약점 열이 비어 있습니다 — offline=false 로 평가하거나 offline=false 로 만든 납품 패키지를 쓰세요.", "Some assessments did not query OSV, so the vulnerability columns are empty — assess with offline=false or use delivery packages made with offline=false."));
   if (ok.some((r) => r.operations === null)) notes.push(L("운영 준비 등급이 없는 평가서가 있습니다(v1.15 이전 산출물) — 다시 평가하면 채워집니다.", "Some assessments have no operations grade (made before v1.15) — re-assess to fill it in."));
   // 정렬·필터
