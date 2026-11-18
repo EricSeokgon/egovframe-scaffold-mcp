@@ -175,6 +175,8 @@ jobs:
         run: npm run test:privacy-live
       - name: Organisation rule packs (sample pack on the six official templates - pack findings carry their source, bundled results unchanged, portfolio shows the pack)
         run: npm run test:rule-packs-live
+      - name: Access control check (common components v5.0.6 vs v5.0.7 - handlers upstream hardened are reported before the fix and not after, six official templates)
+        run: npm run test:access-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)

@@ -93,7 +93,8 @@ assert(![...files].some((f) => /^(test|scripts|src|\.github|node_modules)\//.tes
 // v0.46: 규칙 생성기의 입력(큐레이션 *-mapping.json)은 실행에 쓰지 않는다 — 생성 결과(*-rules.json·catalog)만 싣는다
 assert(![...files].some((f) => /^catalog\/[^/]*-mapping\.json$/.test(f)), "tarball 제외: 생성기 입력 catalog/*-mapping.json");
 // v1.2: 기획 기록(docs/planning.md, 160KB+)은 저장소 문서이지 패키지 문서가 아니다 — 영문 응답·_en 규칙 데이터로 압축 크기가 600KB 를 넘어 제외
-assert(!files.has("docs/planning.md") && files.has("docs/design-i18n.md"), "tarball 제외: docs/planning.md(설계 문서는 포함)");
+// v1.24: 설계 문서(docs/design-*.md, 약 250KB)도 저장소 문서로 — 압축 크기가 상한 900KB 를 넘어 제외(README·tools.md 의 링크는 저장소로 이어진다)
+assert(!files.has("docs/planning.md") && ![...files].some((f) => /^docs\/design-.*\.md$/.test(f)) && files.has("docs/tools.md") && files.has("docs/versioning.md"), "tarball 제외: docs/planning.md·설계 문서(docs/design-*.md) — tools.md·versioning.md 는 포함");
 // v0.46: 풀린 크기 상한 2MB → 2.5MB. 0.46.0 이 2.09MB(README 0.29MB·카탈로그 0.6MB·dist)로 여유가 10KB 뿐이었다. 압축 상한(600KB)은 그대로 둔다
 // v1.3: 상한 압축 600KB → 700KB, 풀린 크기 2.5MB → 3MB. parent 버전별 의존성 기준(dependency-baseline-5.1.json, 205KB)이 더해져 1.3.0 이 압축 593KB 로 여유가 없었다
 // v1.11: 상한 압축 700KB → 800KB, 풀린 크기 3MB → 3.5MB. v1.9–v1.11 의 도구 3종(의존성 조치·DB 준비·기동 검증)과 문서로 1.11.0 이 압축 약 725KB·풀면 2.9MB

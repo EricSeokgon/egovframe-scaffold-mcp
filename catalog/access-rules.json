@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "surveyedAt": "2026-11-19",
+  "note": "접근 통제 점검 규칙(check_egovframe_access, v1.24). 컨트롤러 핸들러 안의 검증 호출을 사전으로 찾아 수준(없음 < 로그인 < 역할 < 소유권)을 정하고, 서비스 호출·메서드 이름의 동사로 하는 일(C·R·U·D)을 정한다. 정규식은 주석·문자열 내용을 지운 소스에 대조한다(어노테이션 인자의 문자열은 유지). 법·지침의 해석이 아니라 호출 이름 기반의 정적 휴리스틱이다.",
+  "note_en": "Access control check rules (check_egovframe_access, v1.24). Check calls inside controller handlers are matched against dictionaries to decide the level (none < login < role < ownership), and verbs in service calls and method names decide the action (C/R/U/D). Patterns run on source with comments and string contents removed (strings in annotation arguments are kept). A static heuristic based on call names, not an interpretation of regulations.",
+  "sources": [
+    { "name": "행정안전부·KISA 소프트웨어 개발보안 가이드(2021) 구현단계 — 부적절한 인가(CWE-285)·중요 기능에 대한 인증 누락(CWE-306), 그리고 CWE-862(인가 누락)·CWE-639(사용자 제어 키에 의한 인가 우회)", "name_en": "MOIS/KISA Secure Coding Guide (2021), implementation phase — improper authorization (CWE-285), missing authentication for critical function (CWE-306), plus CWE-862 and CWE-639" },
+    { "name": "공통컴포넌트 v5.0.7 과 main(e5c1347, 2026-11-06)의 컨트롤러 실측 — EgovUserDetailsHelper·EgovAuthorizationHelper(assertLoginUser·assertAdmin·assertOwner 등 main 에서 추가) 호출과 등록자 비교 관용구, 2026-11-19", "name_en": "Measured controllers of the common components v5.0.7 and main (e5c1347, 2026-11-06) — EgovUserDetailsHelper and EgovAuthorizationHelper calls (assertLoginUser, assertAdmin, assertOwner etc. added on main) and registrant comparison idioms, 2026-11-19" },
+    { "name": "Spring Security 메서드 보안 어노테이션(@PreAuthorize·@Secured·@RolesAllowed)과 URL 인가 설정(authorizeHttpRequests·intercept-url), Spring MVC 인터셉터 경로 패턴", "name_en": "Spring Security method security annotations (@PreAuthorize, @Secured, @RolesAllowed), URL authorization (authorizeHttpRequests, intercept-url) and Spring MVC interceptor path patterns" }
+  ],
+  "loginCalls": "isAuthenticated\\s*\\(|assertLoginUser\\s*\\(|egovAssertLoginUser\\s*\\(|requireLogin\\w*\\s*\\(|@AuthenticationPrincipal\\b|@PreAuthorize\\s*\\(\\s*\"\\s*isAuthenticated|getAttribute\\s*\\(\\s*\"(?:loginVO|LoginVO|loginUser|loginInfo)\"\\s*\\)\\s*==\\s*null|if\\s*\\(\\s*(?:loginVO|loginUser|loginInfo|user)\\s*==\\s*null",
+  "roleCalls": "getAuthorities\\s*\\(|assertAdmin\\s*\\(|egovAssertAdmin\\s*\\(|\\bisAdmin\\s*\\(|hasRole\\s*\\(|hasAuthority\\s*\\(|hasAnyRole\\s*\\(|@PreAuthorize\\s*\\(\\s*\"[^\"]*has(?:Any)?(?:Role|Authority)|@Secured\\s*\\(|@RolesAllowed\\s*\\(|isUserInRole\\s*\\(|assertSameDept\\s*\\(|isSameDept\\s*\\(",
+  "ownerCalls": "assert(?:AdminOr)?Owner\\w*\\s*\\(|egovAssertAdminOrOwner\\w*\\s*\\(|is(?:AdminOr)?Owner\\w*\\s*\\(|assert\\w*Readable\\s*\\(|is\\w*Readable\\s*\\(|get(?:FrstRegister|Register|Wrter|Regist|Ntcr|Charger|Owner|Applcnt|Reqster|Emplyr|Mber|Usid)\\w*Id\\s*\\(\\s*\\)\\s*\\.\\s*equals\\s*\\(|equals\\s*\\(\\s*\\w+\\s*\\.\\s*get(?:FrstRegister|Register|Wrter|Regist|Ntcr|Charger|Owner|Applcnt|Reqster)\\w*Id\\s*\\(|get(?:Uniq|User)Id\\s*\\(\\s*\\)\\s*\\.\\s*equals\\s*\\(\\s*\\w+\\s*\\.\\s*get\\w*Id\\s*\\(|@PreAuthorize\\s*\\(\\s*\"[^\"]*(?:principal|authentication\\.name)[^\"]*==|@PostAuthorize\\s*\\(",
+  "ownerFields": "(?:get|set)(?:FrstRegister|Register|Wrter|Regist|Ntcr|Charger|Owner|Applcnt|Reqster|LastUpdusr)\\w*Id\\s*\\(|(?:get|set)UniqId\\s*\\(",
+  "verbs": {
+    "create": "insert|regist|create|save|add(?=[A-Z])|write|apply|request|send",
+    "update": "update|updt|modify|edit|change|confirm|approve|aprv|cancel|reply|merge|move",
+    "delete": "delete|remove|del(?=[A-Z])|erase|drop",
+    "read": "select|get|find|search|retrieve|list|view|detail|inqire|count|check|is(?=[A-Z])"
+  },
+  "serviceReceivers": "Service|DAO|Dao|Mapper|Manager|Manage|Repository|Facade|Biz",
+  "publicUrlPatterns": ["/**/login*", "/**/actionLogin*", "/**/logout*", "/**/actionLogout*", "/**/*Login*.do", "/error/**", "/**/error*", "/uat/uia/**", "/index.do", "/", "/**/validator.do", "/**/sample/**"],
+  "authInterceptors": "(?i)Authentic\\w*Interceptor|Auth\\w*Interceptor|Login\\w*Interceptor|Session\\w*Interceptor|JwtAuth\\w*|Token\\w*Interceptor"
+}

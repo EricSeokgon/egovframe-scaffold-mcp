@@ -26,6 +26,7 @@ import { renderCatalogDriftLines } from "./catalog-drift.js";
 import { CONFIG_FORMATS, describeConfigTemplates, generateConfig, loadConfigCatalog } from "./config-generator.js";
 import { renderMapperCheckMarkdown } from "./mapper-check.js";
 import { checkPrivacy, renderPrivacyCsv, renderPrivacyMarkdown } from "./privacy.js";
+import { checkAccess, renderAccessCsv, renderAccessMarkdown } from "./access.js";
 import { applyUpdate, isUpdateTarget, loadUpdateRules, renderUpdateMarkdown, updateProject, verifyUpdate } from "./update.js";
 import { applyMigration, loadMigrationRules, migrateProject, renderMigrationApplyMarkdown, renderMigrationMarkdown, renderMigrationVerifyMarkdown, verifyMigration, type MigrateResult } from "./migrate.js";
 import { checkDependencies, loadDependencyBaseline, renderDependencyMarkdown } from "./dependencies.js";
@@ -1009,12 +1010,28 @@ export function buildServer(opts: { lang?: "ko" | "en" } = {}): McpServer {
       return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
     },
   );
+  // ── 접근 통제 점검 (v1.24) ─────────────────
+  server.registerTool(
+    "check_egovframe_access",
+    { title: t("check_egovframe_access"), description: d("check_egovframe_access", "접근 통제 누락을 정적으로 찾습니다(읽기 전용, 고치지 않음). 컨트롤러 핸들러마다 URL·HTTP 메서드·하는 일(서비스 호출·메서드 이름으로 등록/조회/수정/삭제)·검증 수준(없음 < 로그인 < 역할 < 소유권 — EgovUserDetailsHelper·EgovAuthorizationHelper·@PreAuthorize/@Secured·등록자 비교의 호출 사전)을 URL 권한 표로 내고(format=csv 는 감리 제출용), 전역 보호(Spring Security URL 규칙·인증 인터셉터·표준프레임워크 보호자원)를 읽은 뒤, 누락 의심을 근거와 함께 보고합니다: 검증이 전혀 없는 변경 핸들러, 같은 컨트롤러의 형제 핸들러보다 낮은 검증, 로그인만 확인하고 등록자와 비교하지 않는 수정·삭제(CWE-639), 형제보다 낮은 상세 조회. 예외 파일 .egovframe-access-ignore.json. 호출 이름 기반 휴리스틱이라 서비스·AOP·필터의 검증과 DB 의 역할–URL 데이터는 보이지 않습니다."), inputSchema: {
+      projectDir: z.string().describe("프로젝트 디렉터리(절대경로 권장)"),
+      rulePacks: z.array(z.string()).max(10).optional().describe("기관 규칙 팩 디렉터리(access 절: 검증 호출 사전·소유자 필드·공개 경로). 없으면 환경 변수 EGOVFRAME_RULE_PACKS"),
+      topN: z.number().int().min(1).max(2000).default(40).describe("Markdown 에 보일 누락 의심 수(URL 표는 3배)"),
+      format: z.enum(["markdown", "json", "csv"]).default("markdown").describe("응답 형식(csv = URL 권한 표)"),
+    }, outputSchema: OUTPUT_SCHEMAS.check_egovframe_access.shape, annotations: toolAnnotations("check_egovframe_access") },
+    async (args) => {
+      enforceAllowedRoots(args);
+      const r = checkAccess({ projectDir: args.projectDir, rulePacks: args.rulePacks });
+      const text = args.format === "json" ? JSON.stringify(r, null, 2) : args.format === "csv" ? renderAccessCsv(r) : renderAccessMarkdown(r, args.topN);
+      return { content: [{ type: "text", text }], structuredContent: r as unknown as Record<string, unknown> };
+    },
+  );
   // ── 적용 중인 규칙·규칙 팩 검증 (v1.23) ─────────────────
   server.registerTool(
     "list_egovframe_rules",
     { title: t("list_egovframe_rules"), description: d("list_egovframe_rules", "지금 적용되는 점검 규칙과 출처(동봉/기관 규칙 팩)를 보여 주고 규칙 팩을 검증합니다(읽기 전용). 규칙 팩은 동봉 규칙 위에 얹는 기관 기준입니다 — 디렉터리의 rule-pack.json 에 보안약점(규칙 추가·등급 조정·끄기)·운영 점검(규칙 추가·임계값·끄기)·의존성(금지 좌표·최소 버전)·개인정보(컬럼 사전·암호화 호출)를 데이터로 적습니다. 경로는 rulePacks 파라미터 또는 환경 변수 EGOVFRAME_RULE_PACKS(여러 개면 뒤가 이김). 팩의 형식·정규식·id·check 종류가 틀리면 사유를 모두 돌려주고 거부합니다."), inputSchema: {
       rulePacks: z.array(z.string()).max(10).optional().describe("규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS, 그것도 없으면 동봉 규칙만)"),
-      tools: z.array(z.enum(RULE_PACK_SECTIONS)).optional().describe("볼 도구(기본 전부): secureCoding | operations | dependencies | privacy"),
+      tools: z.array(z.enum(RULE_PACK_SECTIONS)).optional().describe("볼 도구(기본 전부): secureCoding | operations | dependencies | privacy | access"),
       topN: z.number().int().min(1).max(2000).default(200).describe("Markdown 에 보일 규칙 수(팩이 정한 것 먼저)"),
       format: z.enum(["markdown", "json"]).default("markdown").describe("응답 형식"),
     }, outputSchema: OUTPUT_SCHEMAS.list_egovframe_rules.shape, annotations: toolAnnotations("list_egovframe_rules") },

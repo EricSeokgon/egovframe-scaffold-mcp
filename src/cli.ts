@@ -121,6 +121,11 @@ export const COMMANDS: Record<string, CommandDef> = {
     metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), columns: num(sm.columns), uniqueIdTables: num(sm.uniqueIdTables), high: num(sm.high), medium: num(sm.medium) }; },
     line: (s) => { const sm = rec(s.summary); return L(`개인정보 테이블 ${num(sm.tables)}·컬럼 ${num(sm.columns)}(고유식별정보 테이블 ${num(sm.uniqueIdTables)}) — 보호조치 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)}`, `${num(sm.tables)} personal data tables, ${num(sm.columns)} columns (${num(sm.uniqueIdTables)} with unique identifiers) — suspected missing safeguards: ${num(sm.high)} high, ${num(sm.medium)} medium`); },
   },
+  access: {
+    tool: "check_egovframe_access", summary: "접근 통제 점검(URL 권한 표·검증 누락 의심, --fail-on high>0)", summaryEn: "Access control check (URL permission table, suspected missing checks; --fail-on high>0)",
+    metrics: (s) => { const sm = rec(s.summary); return { handlers: num(sm.handlers), writes: num(sm.writes), writesWithoutCheck: num(sm.writesWithoutCheck), high: num(sm.high), medium: num(sm.medium), low: num(sm.low) }; },
+    line: (s) => { const sm = rec(s.summary); return L(`핸들러 ${num(sm.handlers)}개 · 변경 ${num(sm.writes)}개 중 검증 없음 ${num(sm.writesWithoutCheck)} — 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}`, `${num(sm.handlers)} handlers · ${num(sm.writesWithoutCheck)} of ${num(sm.writes)} writes without a check — suspected gaps: high ${num(sm.high)} · medium ${num(sm.medium)} · low ${num(sm.low)}`); },
+  },
   rules: {
     tool: "list_egovframe_rules", summary: "적용 중인 규칙·출처(동봉/규칙 팩)와 규칙 팩 검증(--rule-packs 디렉터리, 없으면 EGOVFRAME_RULE_PACKS)", summaryEn: "Rules in effect, their source (bundled or rule pack) and rule pack validation (--rule-packs dir, else EGOVFRAME_RULE_PACKS)",
     metrics: (s) => { const sm = rec(s.summary); return { total: num(sm.total), bundled: num(sm.bundled), fromPacks: num(sm.fromPacks), disabled: num(sm.disabled), packs: Array.isArray(s.rulePacks) ? s.rulePacks.length : 0 }; },

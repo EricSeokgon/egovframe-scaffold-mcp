@@ -156,7 +156,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 
 모든 결과는 Markdown(사람용)과 JSON(`--json`, 구조화 출력)으로 받을 수 있어 감리 양식에 옮기거나 대시보드에 넣을 수 있습니다.
 
-## 도구 목록 (45종)
+## 도구 목록 (46종)
 
 파라미터와 동작 상세는 [docs/tools.md](docs/tools.md) 에 있습니다.
 
@@ -168,7 +168,7 @@ export EGOVFRAME_OFFLINE_BUNDLE=/opt/egov-bundle    # 폐쇄망 PC (cmd: setx EG
 | 5.x 전환·유지 | `migrate_egovframe_project` · `rehearse_egovframe_migration` · `reassemble_egovframe_components` · `upgrade_egovframe_project` |
 | 기관 단위 | `summarize_egovframe_portfolio` |
 | 납품 점검 | `check_egovframe_dependencies` · `generate_egovframe_sbom` · `check_egovframe_sbom` · `fix_egovframe_dependencies` · `check_egovframe_secure_coding` · `fix_egovframe_secure_coding` · `generate_egovframe_report` · `prepare_egovframe_delivery` |
-| 개인정보 | `check_egovframe_privacy` |
+| 개인정보·접근 통제 | `check_egovframe_privacy` · `check_egovframe_access` |
 | 기관 기준 | `list_egovframe_rules` |
 | 배포·CI·폐쇄망 | `verify_egovframe_startup` · `check_egovframe_operations` · `prepare_egovframe_database` · `externalize_egovframe_config` · `generate_egovframe_deploy` · `generate_egovframe_ci` · `prepare_egovframe_offline_bundle` |
 
@@ -185,18 +185,18 @@ MCP 리소스(`egovframe://catalog/...`)로 카탈로그를 도구 호출 없이
 
 ## 버전 정책
 
-1.0.0 부터 [SemVer 2.0](https://semver.org/lang/ko/) 을 따릅니다. **공개 API** 는 도구 이름과 입력 파라미터, 구조화 출력 24종의 필드, CLI 명령과 종료 코드, 환경 변수 `EGOVFRAME_*` 7종, 지원 Node 버전입니다. 이것을 지우거나 호환되지 않게 바꾸면 MAJOR, 더하면 MINOR, 버그 수정·데이터 갱신·문구는 PATCH 입니다. Markdown 응답 문구와 카탈로그 데이터의 내용은 공개 API 가 아니라 PATCH 에서도 바뀔 수 있습니다. 폐기할 파라미터는 옛 이름을 경고와 함께 계속 받다가 다음 MAJOR 에서만 지웁니다(현재: `check_egovframe_secure_coding` 의 `top` → `topN`, 2.0.0 제거). 계약 테스트가 매 릴리스에서 변경 등급과 버전 증가 폭을 맞춰 봅니다. 자세한 기준은 [docs/versioning.md](docs/versioning.md) 입니다.
+1.0.0 부터 [SemVer 2.0](https://semver.org/lang/ko/) 을 따릅니다. **공개 API** 는 도구 이름과 입력 파라미터, 구조화 출력 25종의 필드, CLI 명령과 종료 코드, 환경 변수 `EGOVFRAME_*` 7종, 지원 Node 버전입니다. 이것을 지우거나 호환되지 않게 바꾸면 MAJOR, 더하면 MINOR, 버그 수정·데이터 갱신·문구는 PATCH 입니다. Markdown 응답 문구와 카탈로그 데이터의 내용은 공개 API 가 아니라 PATCH 에서도 바뀔 수 있습니다. 폐기할 파라미터는 옛 이름을 경고와 함께 계속 받다가 다음 MAJOR 에서만 지웁니다(현재: `check_egovframe_secure_coding` 의 `top` → `topN`, 2.0.0 제거). 계약 테스트가 매 릴리스에서 변경 등급과 버전 증가 폭을 맞춰 봅니다. 자세한 기준은 [docs/versioning.md](docs/versioning.md) 입니다.
 
 ## 문서
 
 | 문서 | 내용 |
 |---|---|
-| [docs/tools.md](docs/tools.md) | 도구 45종 파라미터·동작·예시, MCP 리소스·프롬프트 |
+| [docs/tools.md](docs/tools.md) | 도구 46종 파라미터·동작·예시, MCP 리소스·프롬프트 |
 | [docs/versioning.md](docs/versioning.md) | 버전 정책, 공개 API 범위, 폐기 절차 |
 | [CHANGELOG.md](CHANGELOG.md) | 버전별 변경 이력 |
 | [docs/development.md](docs/development.md) | 로컬 개발, 검증 체계, 릴리스 절차, 브랜치 보호 (기여자용) |
 | [docs/planning.md](docs/planning.md) | 버전별 기획 원문·결과·선행 조사 기록(저장소 문서, npm 패키지에는 넣지 않음) |
-| 설계 노트 | [응답 영문화·진행 알림](docs/design-i18n.md) · [납품 패키지](docs/design-delivery.md) · [전환](docs/design-migration.md) · [의존성 점검](docs/design-dependency-check.md) · [평가서](docs/design-assessment-report.md) · [보안약점](docs/design-secure-coding.md) · [배포](docs/design-deploy.md) · [멀티 모듈·MSA](docs/design-workspace.md) · [CLI·CI](docs/design-cli.md) · [오프라인 번들](docs/design-offline-bundle.md) · [AI 컴포넌트](docs/design-ai-components.md) · [CRUD](docs/design-crud-generation.md) · [설정 생성](docs/design-config-generation.md) · [템플릿 조달](docs/design-initializr-zip-templates.md) · [카탈로그 동기화](docs/design-catalog-sync.md) · [components 파라미터](docs/design-components-parameter.md) |
+| 설계 노트(저장소 문서 — v1.24 부터 npm 패키지에는 넣지 않음) | [응답 영문화·진행 알림](docs/design-i18n.md) · [납품 패키지](docs/design-delivery.md) · [전환](docs/design-migration.md) · [의존성 점검](docs/design-dependency-check.md) · [평가서](docs/design-assessment-report.md) · [보안약점](docs/design-secure-coding.md) · [배포](docs/design-deploy.md) · [멀티 모듈·MSA](docs/design-workspace.md) · [CLI·CI](docs/design-cli.md) · [오프라인 번들](docs/design-offline-bundle.md) · [AI 컴포넌트](docs/design-ai-components.md) · [CRUD](docs/design-crud-generation.md) · [설정 생성](docs/design-config-generation.md) · [템플릿 조달](docs/design-initializr-zip-templates.md) · [카탈로그 동기화](docs/design-catalog-sync.md) · [components 파라미터](docs/design-components-parameter.md) |
 
 ## 기여
 

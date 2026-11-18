@@ -16,6 +16,7 @@ import { readRehearsalRecord } from "./rehearse.js";
 import { checkOperations } from "./operations.js";
 import { checkMappers } from "./mapper-check.js";
 import { checkPrivacy } from "./privacy.js";
+import { checkAccess } from "./access.js";
 import type { ResolveScope } from "./dependency-tree.js";
 import type { Runner } from "./build-runner.js";
 import { SERVER_VERSION } from "./version.js";
@@ -155,6 +156,8 @@ export interface AssessmentResult {
   operations: { grade: string; total: number; high: number; medium: number; low: number; fail: number; pass: number; na: number; failed: { rule: string; title: string; severity: string; findings: number }[]; error?: string };
   /** v1.21: 개인정보 건수(흐름표·근거는 check_egovframe_privacy) */
   privacy: { tables: number; columns: number; uniqueIdTables: number; high: number; medium: number; error?: string };
+  /** v1.24: 접근 통제 건수(URL 권한 표·근거는 check_egovframe_access) */
+  access: { handlers: number; writes: number; writesWithoutCheck: number; global: string; high: number; medium: number; low: number; error?: string };
   /** v1.19: 매퍼·DAO 정합성 건수(항목은 validate_egovframe_project) */
   mapper: { errors: number; warnings: number; missing: number; variantGaps: number; namespaces: number; statements: number; byKind: Record<string, number>; error?: string };
   sbom: {
@@ -299,6 +302,13 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
     mapper = { errors: 0, warnings: 0, missing: 0, variantGaps: 0, namespaces: 0, statements: 0, byKind: {}, error: e instanceof Error ? e.message : String(e) };
   }
   // v1.21: 개인정보
+  let access: AssessmentResult["access"];
+  try {
+    const ac = checkAccess({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
+    access = { handlers: ac.summary.handlers, writes: ac.summary.writes, writesWithoutCheck: ac.summary.writesWithoutCheck, global: ac.global.kind, high: ac.summary.high, medium: ac.summary.medium, low: ac.summary.low };
+  } catch (e) {
+    access = { handlers: 0, writes: 0, writesWithoutCheck: 0, global: "none", high: 0, medium: 0, low: 0, error: e instanceof Error ? e.message : String(e) };
+  }
   let privacy: AssessmentResult["privacy"];
   try {
     const pv = checkPrivacy({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
@@ -340,7 +350,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       notes: dep.notes,
       ...(fixHistory.length ? { fixHistory } : {}),
     },
-    security, secureCoding, operations, mapper, privacy, sbom,
+    security, secureCoding, operations, mapper, privacy, access, sbom,
     grades: { migration, supplyChain },
     ...(dep.workspace ? { modules: dep.workspace.modules.map((m) => {
       const u = update?.modules?.find((x) => x.name === m.name);
@@ -481,6 +491,14 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     if (mp.error) out.push(L(`- 점검 실패: ${mp.error}`, `- Check failed: ${mp.error}`));
     else if (!mp.namespaces) out.push(L(`- MyBatis 매퍼 XML 없음 — 해당 없음`, `- No MyBatis mapper XML — not applicable`));
     else out.push(L(`- namespace ${mp.namespaces} · 문장 ${mp.statements} — 오류 ${mp.errors}(없는 문장 ${mp.missing}) · 경고 ${mp.warnings}(DB 별 차이 ${mp.variantGaps}). 컴파일·기동으로 잡히지 않고 화면을 누를 때 실패하는 결함 — 위치·후보는 validate_egovframe_project 로.`, `- ${mp.namespaces} namespaces · ${mp.statements} statements — ${mp.errors} errors (${mp.missing} missing statements) · ${mp.warnings} warnings (${mp.variantGaps} DB-variant gaps). Defects that pass compile and startup and fail when the screen is used — locations and candidates via validate_egovframe_project.`));
+  }
+
+  const acx = r.access;
+  if (acx) {
+    out.push(``, L(`### 접근 통제 (\`check_egovframe_access\`)`, `### Access control (\`check_egovframe_access\`)`), ``);
+    if (acx.error) out.push(L(`- 점검 실패: ${acx.error}`, `- Check failed: ${acx.error}`));
+    else if (!acx.handlers) out.push(L(`- 컨트롤러 핸들러를 찾지 못함`, `- No controller handlers found`));
+    else out.push(L(`- 핸들러 ${acx.handlers}개 · 변경(등록·수정·삭제) ${acx.writes}개 중 검증 없음 ${acx.writesWithoutCheck}개 · 전역 보호 ${acx.global} — 누락 의심 높음 ${acx.high} · 중간 ${acx.medium} · 낮음 ${acx.low}. URL 권한 표와 근거는 \`check_egovframe_access\`.`, `- ${acx.handlers} handlers · ${acx.writesWithoutCheck} of ${acx.writes} write handlers without a check · global protection ${acx.global} — suspected gaps: high ${acx.high} · medium ${acx.medium} · low ${acx.low}. See \`check_egovframe_access\` for the URL permission table and evidence.`));
   }
 
   const pvx = r.privacy;
