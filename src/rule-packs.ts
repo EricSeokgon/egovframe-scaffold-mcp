@@ -18,7 +18,7 @@ import { loadPrivacyRules, type PrivacyItemRule, type PrivacyRules } from "./pri
 
 export const RULE_PACKS_ENV = "EGOVFRAME_RULE_PACKS";
 export const RULE_PACK_FILE = "rule-pack.json";
-export const RULE_PACK_SECTIONS = ["secureCoding", "operations", "dependencies", "privacy"] as const;
+export const RULE_PACK_SECTIONS = ["secureCoding", "operations", "dependencies", "privacy", "access"] as const;
 export type RulePackSection = (typeof RULE_PACK_SECTIONS)[number];
 
 export interface PackBannedDependency { groupId: string; artifactId?: string; /** 이 버전 미만만 금지(없으면 전부) */ versionBelow?: string; reason: string; reason_en?: string; replacement?: string }
@@ -29,6 +29,8 @@ export interface RulePack {
   operations?: { rules: OpsRule[]; thresholds: Record<string, { maxMinutes?: number; maxBytes?: number }>; severity: Record<string, OpsSeverity>; disable: string[] };
   dependencies?: { banned: PackBannedDependency[]; minimum: PackMinimumDependency[] };
   privacy?: { items: PrivacyItemRule[]; cryptoCalls: string[]; sqlCryptoFunctions: string[]; maskCalls: string[] };
+  /** v1.24: 접근 통제 점검의 호출 사전·소유자 필드·공개 경로(추가만) */
+  access?: { loginCalls: string[]; roleCalls: string[]; ownerCalls: string[]; ownerFields: string[]; publicUrlPatterns: string[] };
 }
 /** 결과에 남기는 팩 표시(경로는 넣지 않는다 — 사람마다 다르다) */
 export interface RulePackInfo { name: string; version: string; sha256: string; sections: RulePackSection[] }
@@ -226,6 +228,25 @@ function validatePrivacy(raw: unknown, problems: string[]): RulePack["privacy"] 
   return { items, cryptoCalls: calls("cryptoCalls"), sqlCryptoFunctions: calls("sqlCryptoFunctions"), maskCalls: calls("maskCalls") };
 }
 
+function validateAccess(raw: unknown, problems: string[]): RulePack["access"] {
+  const W = "access";
+  if (!isObj(raw)) { problems.push(L(`${W}: 객체여야 합니다`, `${W}: must be an object`)); return undefined; }
+  unknownKeys(raw, ["loginCalls", "roleCalls", "ownerCalls", "ownerFields", "publicUrlPatterns"], W, problems);
+  const calls = (k: string): string[] => {
+    const v = raw[k];
+    if (v === undefined) return [];
+    if (!strList(v)) { problems.push(L(`${W}.${k}: 정규식 문자열 배열이어야 합니다`, `${W}.${k}: must be an array of regular expression strings`)); return []; }
+    v.forEach((s, i) => tryRegex(s, `${W}.${k}[${i}]`, problems));
+    return v;
+  };
+  let pub: string[] = [];
+  if (raw.publicUrlPatterns !== undefined) {
+    if (!strList(raw.publicUrlPatterns) || !raw.publicUrlPatterns.every((p) => p.startsWith("/") && p.length <= 200 && !/\s/.test(p))) problems.push(L(`${W}.publicUrlPatterns: "/" 로 시작하는 Ant 경로 패턴 배열이어야 합니다`, `${W}.publicUrlPatterns: must be an array of Ant path patterns starting with "/"`));
+    else pub = raw.publicUrlPatterns;
+  }
+  return { loginCalls: calls("loginCalls"), roleCalls: calls("roleCalls"), ownerCalls: calls("ownerCalls"), ownerFields: calls("ownerFields"), publicUrlPatterns: pub };
+}
+
 /** 팩 디렉터리 하나를 읽고 검증한다. 문제가 있으면 RulePackError(사유 전부). earlier = 먼저 적용되는 팩(그 팩이 더한 규칙 id 를 가리킬 수 있다) */
 export function loadRulePack(dirInput: string, earlier: RulePack[] = []): RulePack {
   const dir = assertPathAllowed("rulePacks", dirInput);
@@ -265,12 +286,13 @@ export function loadRulePack(dirInput: string, earlier: RulePack[] = []): RulePa
   };
   const pack: RulePack = { name: String(m.name ?? ""), version: String(m.version ?? ""), ...(typeof m.description === "string" && m.description ? { description: m.description } : {}), dir, sha256: "", files };
   const before = problems.length;
-  const s = section("secureCoding"), o = section("operations"), d = section("dependencies"), p = section("privacy");
+  const s = section("secureCoding"), o = section("operations"), d = section("dependencies"), p = section("privacy"), ac = section("access");
   if (problems.length === before) {
     if (s !== undefined) pack.secureCoding = validateSecure(s, problems, earlier);
     if (o !== undefined) pack.operations = validateOps(o, problems, earlier);
     if (d !== undefined) pack.dependencies = validateDeps(d, problems);
     if (p !== undefined) pack.privacy = validatePrivacy(p, problems);
+    if (ac !== undefined) pack.access = validateAccess(ac, problems);
     if (!problems.length && !RULE_PACK_SECTIONS.some((k) => pack[k])) problems.push(L(`규칙 절이 하나도 없습니다(${RULE_PACK_SECTIONS.join("·")})`, `no rule section (${RULE_PACK_SECTIONS.join(", ")})`));
   }
   if (problems.length) throw new RulePackError(dirInput, problems);
@@ -378,6 +400,9 @@ export function listRules(opts: { rulePacks?: string[]; tools?: RulePackSection[
   if (want.includes("privacy")) {
     const a = applyPrivacyPacks(loadPrivacyRules(), packs);
     for (const it of a.rules.items) rules.push({ tool: "privacy", id: it.id, severity: it.grade, title: it.label, source: a.origins.get(it.id) ?? BUNDLED, status: "active" });
+  }
+  if (want.includes("access")) {
+    for (const p of packs) for (const k of ["loginCalls", "roleCalls", "ownerCalls", "ownerFields", "publicUrlPatterns"] as const) for (const v of p.access?.[k] ?? []) rules.push({ tool: "access", id: `${k}:${v}`.slice(0, 120), severity: null, title: L("접근 통제 사전 추가", "access dictionary entry"), source: p.name, status: "active" });
   }
   if (want.includes("dependencies")) {
     for (const p of packs) {
