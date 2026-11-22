@@ -1,6 +1,6 @@
 {
-  "version": "1.23.0",
-  "base": "1.22.0",
+  "version": "1.24.0",
+  "base": "1.23.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -207,6 +207,401 @@
           }
         },
         "output": null,
+        "deprecated": {}
+      },
+      "check_egovframe_access": {
+        "input": {
+          "type": "object",
+          "required": [
+            "projectDir"
+          ],
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json",
+                "markdown"
+              ],
+              "default": "markdown"
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10
+            },
+            "topN": {
+              "type": "integer",
+              "default": 40,
+              "minimum": 1,
+              "maximum": 2000
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "durationMs",
+            "findings",
+            "global",
+            "handlers",
+            "ignoreFile",
+            "invalidIgnores",
+            "notes",
+            "projectDir",
+            "rulesVersion",
+            "summary"
+          ],
+          "properties": {
+            "durationMs": {
+              "type": "integer"
+            },
+            "findings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "controller",
+                  "file",
+                  "fix",
+                  "kind",
+                  "level",
+                  "line",
+                  "message",
+                  "method",
+                  "severity",
+                  "url"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "create",
+                      "delete",
+                      "other",
+                      "read",
+                      "update"
+                    ]
+                  },
+                  "controller": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "fix": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "missing-ownership",
+                      "sibling-mismatch",
+                      "unprotected-detail",
+                      "unprotected-write"
+                    ]
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "login",
+                      "none",
+                      "owner",
+                      "role"
+                    ]
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "high",
+                      "low",
+                      "medium"
+                    ]
+                  },
+                  "sibling": {
+                    "type": "object",
+                    "required": [
+                      "level",
+                      "line",
+                      "method"
+                    ],
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "login",
+                          "none",
+                          "owner",
+                          "role"
+                        ]
+                      },
+                      "line": {
+                        "type": "integer"
+                      },
+                      "method": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "global": {
+              "type": "object",
+              "required": [
+                "exclude",
+                "file",
+                "kind",
+                "note",
+                "protect"
+              ],
+              "properties": {
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "file": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "egov-security",
+                    "interceptor",
+                    "none",
+                    "spring-security"
+                  ]
+                },
+                "note": {
+                  "type": "string"
+                },
+                "protect": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "handlers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "controller",
+                  "evidence",
+                  "file",
+                  "globalLogin",
+                  "http",
+                  "level",
+                  "line",
+                  "method",
+                  "ownerData",
+                  "urls"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "create",
+                      "delete",
+                      "other",
+                      "read",
+                      "update"
+                    ]
+                  },
+                  "controller": {
+                    "type": "string"
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "globalLogin": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "http": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "login",
+                      "none",
+                      "owner",
+                      "role"
+                    ]
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "method": {
+                    "type": "string"
+                  },
+                  "ownerData": {
+                    "type": "boolean"
+                  },
+                  "urls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "ignoreFile": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "invalidIgnores": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "projectDir": {
+              "type": "string"
+            },
+            "rulePacks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "sections",
+                  "sha256",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "access",
+                        "dependencies",
+                        "operations",
+                        "privacy",
+                        "secureCoding"
+                      ]
+                    }
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "rulesVersion": {
+              "type": "object",
+              "required": [
+                "surveyedAt"
+              ],
+              "properties": {
+                "surveyedAt": {
+                  "type": "string"
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "required": [
+                "byAction",
+                "byLevel",
+                "controllers",
+                "handlers",
+                "high",
+                "low",
+                "medium",
+                "suppressed",
+                "writes",
+                "writesWithoutCheck"
+              ],
+              "properties": {
+                "byAction": {
+                  "type": "object"
+                },
+                "byLevel": {
+                  "type": "object"
+                },
+                "controllers": {
+                  "type": "integer"
+                },
+                "handlers": {
+                  "type": "integer"
+                },
+                "high": {
+                  "type": "integer"
+                },
+                "low": {
+                  "type": "integer"
+                },
+                "medium": {
+                  "type": "integer"
+                },
+                "suppressed": {
+                  "type": "integer"
+                },
+                "writes": {
+                  "type": "integer"
+                },
+                "writesWithoutCheck": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
         "deprecated": {}
       },
       "check_egovframe_dependencies": {
@@ -657,6 +1052,7 @@
                     "items": {
                       "type": "string",
                       "enum": [
+                        "access",
                         "dependencies",
                         "operations",
                         "privacy",
@@ -978,6 +1374,7 @@
                     "items": {
                       "type": "string",
                       "enum": [
+                        "access",
                         "dependencies",
                         "operations",
                         "privacy",
@@ -1399,6 +1796,7 @@
                     "items": {
                       "type": "string",
                       "enum": [
+                        "access",
                         "dependencies",
                         "operations",
                         "privacy",
@@ -2368,6 +2766,7 @@
                     "items": {
                       "type": "string",
                       "enum": [
+                        "access",
                         "dependencies",
                         "operations",
                         "privacy",
@@ -5129,6 +5528,44 @@
                 "tool"
               ],
               "properties": {
+                "access": {
+                  "type": "object",
+                  "required": [
+                    "global",
+                    "handlers",
+                    "high",
+                    "low",
+                    "medium",
+                    "writes",
+                    "writesWithoutCheck"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "global": {
+                      "type": "string"
+                    },
+                    "handlers": {
+                      "type": "integer"
+                    },
+                    "high": {
+                      "type": "integer"
+                    },
+                    "low": {
+                      "type": "integer"
+                    },
+                    "medium": {
+                      "type": "integer"
+                    },
+                    "writes": {
+                      "type": "integer"
+                    },
+                    "writesWithoutCheck": {
+                      "type": "integer"
+                    }
+                  }
+                },
                 "dependencies": {
                   "type": "object",
                   "required": [
@@ -5964,6 +6401,7 @@
                         "items": {
                           "type": "string",
                           "enum": [
+                            "access",
                             "dependencies",
                             "operations",
                             "privacy",
@@ -6478,6 +6916,7 @@
               "items": {
                 "type": "string",
                 "enum": [
+                  "access",
                   "dependencies",
                   "operations",
                   "privacy",
@@ -6527,6 +6966,7 @@
                     "items": {
                       "type": "string",
                       "enum": [
+                        "access",
                         "dependencies",
                         "operations",
                         "privacy",
@@ -6581,6 +7021,7 @@
                   "tool": {
                     "type": "string",
                     "enum": [
+                      "access",
                       "dependencies",
                       "operations",
                       "privacy",
@@ -8233,6 +8674,7 @@
               "items": {
                 "type": "string",
                 "enum": [
+                  "access",
                   "assessment",
                   "build",
                   "dependencies",
@@ -8347,6 +8789,7 @@
                   "id": {
                     "type": "string",
                     "enum": [
+                      "access",
                       "assessment",
                       "build",
                       "dependencies",
@@ -10986,6 +11429,7 @@
     },
     "cli": {
       "commands": {
+        "access": "check_egovframe_access",
         "assess": "generate_egovframe_report",
         "bundle": "prepare_egovframe_offline_bundle",
         "check": "check_egovframe_dependencies",

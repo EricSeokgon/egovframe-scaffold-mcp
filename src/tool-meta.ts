@@ -60,6 +60,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   // v1.15: 읽기 전용 설정 점검
   check_egovframe_operations: { title: { ko: "운영 준비 점검", en: "Operations readiness check" }, annotations: ro() },
   list_egovframe_rules: { title: { ko: "적용 중인 규칙·규칙 팩 검증", en: "Rules in effect and rule pack validation" }, annotations: ro() },
+  check_egovframe_access: { title: { ko: "접근 통제 점검(URL 권한 표)", en: "Access control check (URL permission table)" }, annotations: ro() },
   check_egovframe_privacy: { title: { ko: "개인정보 흐름·보호조치 점검", en: "Personal data flow and safeguards check" }, annotations: ro() },
   // v1.17: 프로젝트는 읽기만, outputDir 를 주면 새 파일(portfolio.md·csv·json)만 씀
   summarize_egovframe_portfolio: { title: { ko: "포트폴리오(기관 단위) 현황", en: "Portfolio (organisation-wide) status" }, annotations: create() },

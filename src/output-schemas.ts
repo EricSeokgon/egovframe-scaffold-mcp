@@ -6,7 +6,7 @@ import { z } from "zod";
 const loose = <T extends z.ZodRawShape>(shape: T) => z.object(shape).passthrough();
 
 // v1.23: 적용한 기관 규칙 팩(있을 때만)
-const RulePackInfoSchema = loose({ name: z.string(), version: z.string(), sha256: z.string(), sections: z.array(z.enum(["secureCoding", "operations", "dependencies", "privacy"])) });
+const RulePackInfoSchema = loose({ name: z.string(), version: z.string(), sha256: z.string(), sections: z.array(z.enum(["secureCoding", "operations", "dependencies", "privacy", "access"])) });
 const rulePacksField = z.array(RulePackInfoSchema).optional();
 export const DiagnoseOutput = loose({
   projectDir: z.string(),
@@ -220,6 +220,8 @@ export const AssessmentOutput = loose({
   sbom: loose({ present: z.boolean(), path: z.string(), components: z.number().int().optional(), specVersion: z.string().optional(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), minimum: loose({ verdict: z.enum(["ready", "needs-work"]), missing: z.array(z.string()) }).optional(), vex: loose({ path: z.string(), present: z.boolean(), timestamp: z.string().optional(), vulnerabilities: z.number().int().optional(), states: z.record(z.string(), z.number().int()).optional() }).optional(), note: z.string() }),
   grades: loose({ migration: GradeResult, supplyChain: GradeResult }),
   operations: loose({ grade: z.string(), total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), fail: z.number().int(), pass: z.number().int(), na: z.number().int(), failed: z.array(loose({ rule: z.string(), title: z.string(), severity: z.string(), findings: z.number().int() })), error: z.string().optional() }).optional(),
+  // v1.24: 접근 통제 건수
+  access: loose({ handlers: z.number().int(), writes: z.number().int(), writesWithoutCheck: z.number().int(), global: z.string(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), error: z.string().optional() }).optional(),
   privacy: loose({ tables: z.number().int(), columns: z.number().int(), uniqueIdTables: z.number().int(), high: z.number().int(), medium: z.number().int(), error: z.string().optional() }).optional(),
   mapper: loose({ errors: z.number().int(), warnings: z.number().int(), missing: z.number().int(), variantGaps: z.number().int(), namespaces: z.number().int(), statements: z.number().int(), byKind: z.record(z.string(), z.number().int()), error: z.string().optional() }).optional(),
   rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable(), reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int() }).optional() }).optional(),
@@ -429,7 +431,7 @@ export const DeployOutput = loose({
 });
 
 // v1.1: prepare_egovframe_delivery (만들기·verify 두 모양을 한 스키마로 — mode 로 구분)
-const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "privacy", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.string(), z.unknown()), error: z.string().optional() });
+const DeliveryItemSchema = loose({ id: z.enum(["assessment", "dependencies", "sbom", "sbom-check", "secure-coding", "deploy", "map", "privacy", "access", "build"]), label: z.string(), status: z.enum(["ok", "failed", "skipped"]), durationMs: z.number().int(), files: z.array(z.string()), summary: z.record(z.string(), z.unknown()), error: z.string().optional() });
 export const DeliveryOutput = loose({
   mode: z.enum(["prepare", "verify"]),
   projectDir: z.string().optional(),
@@ -522,11 +524,28 @@ export const OperationsOutput = loose({
 
 // v1.17: summarize_egovframe_portfolio
 const PGrade = z.string().nullable();
+// v1.24: check_egovframe_access
+const AccessLevelSchema = z.enum(["none", "login", "role", "owner"]);
+const AccessActionSchema = z.enum(["create", "update", "delete", "read", "other"]);
+export const AccessOutput = loose({
+  projectDir: z.string(),
+  rulesVersion: loose({ surveyedAt: z.string() }),
+  durationMs: z.number().int(),
+  global: loose({ kind: z.enum(["spring-security", "egov-security", "interceptor", "none"]), file: z.string().nullable(), protect: z.array(z.string()), exclude: z.array(z.string()), note: z.string() }),
+  handlers: z.array(loose({ file: z.string(), line: z.number().int(), controller: z.string(), method: z.string(), urls: z.array(z.string()), http: z.array(z.string()), action: AccessActionSchema, level: AccessLevelSchema, evidence: z.array(z.string()), globalLogin: z.boolean().nullable(), ownerData: z.boolean() })),
+  findings: z.array(loose({ kind: z.enum(["unprotected-write", "sibling-mismatch", "missing-ownership", "unprotected-detail"]), severity: z.enum(["high", "medium", "low"]), file: z.string(), line: z.number().int(), controller: z.string(), method: z.string(), url: z.string(), action: AccessActionSchema, level: AccessLevelSchema, message: z.string(), fix: z.string(), sibling: loose({ method: z.string(), level: AccessLevelSchema, line: z.number().int() }).optional() })),
+  summary: loose({ controllers: z.number().int(), handlers: z.number().int(), byLevel: z.record(z.string(), z.number().int()), byAction: z.record(z.string(), z.number().int()), writes: z.number().int(), writesWithoutCheck: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), suppressed: z.number().int() }),
+  ignoreFile: z.string().nullable(),
+  invalidIgnores: z.array(z.string()),
+  rulePacks: rulePacksField,
+  notes: z.array(z.string()),
+});
+
 // v1.23: list_egovframe_rules
 export const RuleListOutput = loose({
   rulePacks: z.array(RulePackInfoSchema),
   summary: loose({ total: z.number().int(), bundled: z.number().int(), fromPacks: z.number().int(), disabled: z.number().int(), byTool: z.record(z.string(), z.number().int()) }),
-  rules: z.array(loose({ tool: z.enum(["secureCoding", "operations", "dependencies", "privacy"]), id: z.string(), severity: z.string().nullable(), title: z.string(), source: z.string(), status: z.enum(["active", "disabled"]) })),
+  rules: z.array(loose({ tool: z.enum(["secureCoding", "operations", "dependencies", "privacy", "access"]), id: z.string(), severity: z.string().nullable(), title: z.string(), source: z.string(), status: z.enum(["active", "disabled"]) })),
   notes: z.array(z.string()),
 });
 
@@ -560,6 +579,7 @@ export const OUTPUT_SCHEMAS = {
   check_egovframe_operations: OperationsOutput,
   check_egovframe_privacy: PrivacyOutput,
   list_egovframe_rules: RuleListOutput,
+  check_egovframe_access: AccessOutput,
   summarize_egovframe_portfolio: PortfolioOutput,
   generate_egovframe_deploy: DeployOutput,
   rehearse_egovframe_migration: RehearseOutput,

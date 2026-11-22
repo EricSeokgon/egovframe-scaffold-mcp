@@ -161,13 +161,18 @@ export function prepareCatalinaBase(home: string, war: string, port: number, bas
   return baseDir;
 }
 
-export async function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
+/** 앱이 기동하면서 스스로 여는 포트 — 여기에 HTTP 포트를 주면 "이미 사용 중"으로 실패한다(35729 = Spring Boot devtools LiveReload) */
+export const RESERVED_APP_PORTS: ReadonlySet<number> = new Set([35729]);
+/** 운영체제가 주는 빈 포트. 앱이 스스로 여는 포트는 건너뛴다(pick 은 테스트용) */
+export async function freePort(pick?: () => Promise<number>): Promise<number> {
+  const once = pick ?? (() => new Promise<number>((resolve, reject) => {
     const s = net.createServer();
     s.unref();
     s.on("error", reject);
     s.listen(0, "127.0.0.1", () => { const a = s.address(); const p = typeof a === "object" && a ? a.port : 0; s.close(() => resolve(p)); });
-  });
+  }));
+  for (let i = 0; i < 5; i++) { const p = await once(); if (!RESERVED_APP_PORTS.has(p)) return p; }
+  throw new Error(L("빈 포트를 찾지 못했습니다", "Could not find a free port"));
 }
 export type HttpProbe = (url: string) => Promise<number | null>;
 const defaultProbe: HttpProbe = async (url) => {

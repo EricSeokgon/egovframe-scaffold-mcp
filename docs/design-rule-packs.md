@@ -44,6 +44,7 @@
 | `operations` | 규칙 추가(check 종류 `line`·`lacks`·`pom`), `thresholds`(`session-timeout.maxMinutes`·`upload-limits.maxBytes`), `severity`, `disable` | 점검표·항목의 `source` |
 | `dependencies` | `banned`(좌표, `artifactId` 없으면 groupId 전체, `versionBelow` 면 그 미만만) → `replace`, `minimum` 미만 → `outdated` | 항목의 `source`·사유 |
 | `privacy` | `items`(컬럼 사전, 같은 id 덮어쓰기 — 동봉 사전보다 먼저 대조), 암호화·SQL 암호화·마스킹 호출 사전 추가 | 컬럼의 `rulePack` |
+| `access`(v1.24) | 검증 호출 사전 추가(`loginCalls`·`roleCalls`·`ownerCalls`), 소유자 필드(`ownerFields`), 공개 경로(`publicUrlPatterns`, Ant 패턴) | 결과의 `rulePacks` |
 
 ## 3. 결정
 

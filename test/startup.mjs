@@ -23,6 +23,9 @@ const root = mkdtempSync(path.join(tmpdir(), "egov-startup-test-"));
   assert(tc.started && tc.startedInMs > 0 && tc.cause === null, `Tomcat 성공: Server startup in ${tc.startedInMs}ms`);
   const db = m.analyzeStartupLog(fx("boot-db-refused"), "boot", { afterStart: true });
   assert(db.started && db.cause?.kind === "db-connection" && /Connection refused|Communications link failure/.test(db.cause.summary), `기동 뒤 DB 접속 거부(헬스 체크) → db-connection (${db.cause?.summary})`);
+  // 빈 포트: 앱이 스스로 여는 포트(devtools LiveReload 35729)는 건너뛴다 — CI 에서 운영체제가 35729 를 줘 simple-backend 기동이 "포트 사용 중"으로 실패한 적이 있다
+  { const seq = [35729, 35729, 41001]; let calls = 0; const p = await m.freePort(async () => { calls++; return seq.shift(); });
+    assert(p === 41001 && calls === 3 && m.RESERVED_APP_PORTS.has(35729) && (await m.freePort()) !== 35729, "freePort: 앱이 스스로 여는 포트(35729)는 다시 고름"); }
   assert(m.analyzeStartupLog(fx("boot-db-refused"), "boot").cause === null, "afterStart 가 아니면 기동 성공 로그의 늦은 오류는 원인으로 보지 않음");
   const dr = m.analyzeStartupLog(fx("boot-driver-missing"), "boot");
   assert(!dr.started && dr.cause?.kind === "driver-missing" && dr.cause.driver === "oracle.jdbc.driver.OracleDriver" && dr.cause.hint.includes("com.oracle.database.jdbc:ojdbc11"), "드라이버 없음 → 좌표 처방");
