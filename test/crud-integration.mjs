@@ -56,11 +56,21 @@ async function compileTemplate({ projectName, template, profile, expectedFiles }
   });
   if (paged.files.length !== expectedFiles || paged.paging?.style !== "limit") throw new Error(`${template}/${profile} paged CRUD: files ${paged.files.length}, paging ${JSON.stringify(paged.paging)}`);
 
-  const compiled = spawnSync(executable, commandArgs, {
-    cwd: created.projectPath,
-    encoding: "utf-8",
-    timeout: 300_000,
-  });
+  // 저장소의 일시 장애(내려받기 실패가 "absent"·"Could not transfer" 로 남음)는 -U 를 붙여 두 번까지 다시 — 컴파일 오류는 다시 하지 않는다
+  const REPO_FAILURE = /Non-resolvable parent POM|Could not transfer artifact|could not be resolved|Could not find artifact|\(absent\)|Connection (reset|timed out)|\b50[234]\b/;
+  let compiled;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    compiled = spawnSync(executable, attempt === 1 ? commandArgs : [...commandArgs, "-U"], {
+      cwd: created.projectPath,
+      encoding: "utf-8",
+      timeout: 300_000,
+    });
+    const out = `${compiled.stdout || ""}${compiled.stderr || ""}`;
+    if (!compiled.error && compiled.status === 0) break;
+    if (attempt === 3 || /COMPILATION ERROR/.test(out) || !REPO_FAILURE.test(out)) break;
+    console.log(`info: ${template}/${profile} 저장소 내려받기 실패로 보여 ${attempt * 30}초 뒤 -U 로 다시 시도(${attempt}/2)`);
+    await new Promise((r) => setTimeout(r, attempt * 30_000));
+  }
   if (compiled.error || compiled.status !== 0) {
     throw new Error(
       `${template}/${profile} Maven compile failed\n${compiled.stdout || ""}\n${compiled.stderr || compiled.error || ""}`,
