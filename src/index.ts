@@ -166,7 +166,7 @@ export { readFixHistory } from "./fix-history.js";
 export { mergeThreeWay, emptyReapply, tallyReapply, reapplyLine } from "./reapply.js";
 export type { MergeStatus, MergeResult, ReapplyEntry, ReapplySummary } from "./reapply.js";
 export { DATABASE_TYPES, CONTAINER_DBS, MYSQL_CHARSET, DB_OUTPUT_DIR, normalizeDbType, splitSql, classifyStatement, orderByReferences, buildScripts, parseInsert, hangulProbe, missingReferences, supplementFrom, renderDbCompose, loadCommands, prepareDatabase, databaseReadiness, renderDatabaseMarkdown, defaultDocker } from "./database.js";
-export { analyzeStartupLog, normalizeResource, ensureTomcat, prepareCatalinaBase, freePort, verifyStartup, renderStartupMarkdown, startupKindLabel } from "./startup.js";
+export { analyzeStartupLog, normalizeResource, ensureTomcat, prepareCatalinaBase, freePort, RESERVED_APP_PORTS, verifyStartup, renderStartupMarkdown, startupKindLabel } from "./startup.js";
 export type { StartupFailureKind, StartupCause, StartupLogAnalysis, StartupOptions, StartupResult, HttpProbe, Download } from "./startup.js";
 export { scanSecrets, externalizeConfig, renderExternalizeMarkdown, envNameForKey, maskSecret, looksEgovEncrypted, algorithmKeyHash, CONFIG_PASSWORD_RULE, CRYPTO_CONFIG_FILE, CRYPTO_PATH_KEY, CRYPTO_ENV } from "./externalize.js";
 export type { SecretKind, SecretFormat, SecretAction, SecretFinding, ExternalizeOptions, ExternalizeResult, ExternalizeChange } from "./externalize.js";
