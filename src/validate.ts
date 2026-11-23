@@ -4,6 +4,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { MANIFEST_FILE, readManifest } from "./manifest.js";
 import { checkMappers, type MapperCheckResult } from "./mapper-check.js";
+import { checkConsistency, type ConsistencyResult } from "./consistency.js";
 
 /* ------------------------------------------------------------------ */
 /* 프로젝트 검증 (v0.5.0)                                               */
@@ -21,6 +22,8 @@ export interface ValidateResult {
   warnings: string[];
   /** v1.19: 매퍼·DAO 정합성(없는 문장·DB 별 차이·XML 안 참조). ok(조립 무결성)에는 넣지 않는다 — 공식 템플릿 자체의 결함으로 조립 검증이 실패하지 않게. 게이트는 CLI mapperErrors 등으로 */
   mapper?: MapperCheckResult;
+  /** v1.25: 화면–쿼리–DB 정합성(목록·건수 조건, 입력 길이). mapper 처럼 ok 에는 넣지 않는다 */
+  consistency?: ConsistencyResult;
 }
 
 /** \${user.home}·\${ENV:default} 플레이스홀더를 해석한다 (AI 설정 진단용) */
@@ -58,7 +61,7 @@ export function collectAiChecks(projectDir: string, componentId: string): Valida
 }
 
 /** 조립된 프로젝트의 무결성을 진단한다 (파일 존재·DbType↔DDL 일치). */
-export async function validateProject(opts: { projectDir: string; /** v1.19: 매퍼·DAO 정합성 검사(기본 true) */ mapper?: boolean; maxIssues?: number }): Promise<ValidateResult> {
+export async function validateProject(opts: { projectDir: string; /** v1.19: 매퍼·DAO 정합성 검사(기본 true) */ mapper?: boolean; /** v1.25: 화면–쿼리–DB 정합성 검사(기본 true) */ consistency?: boolean; maxIssues?: number }): Promise<ValidateResult> {
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
     throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
@@ -102,5 +105,6 @@ export async function validateProject(opts: { projectDir: string; /** v1.19: 매
   }
 
   const mapper = opts.mapper === false ? undefined : checkMappers({ projectDir, maxIssues: opts.maxIssues ?? 200 });
-  return { projectDir, ok: warnings.length === 0, manifestFound: manifest !== null, components, dbType: dbType ?? mapper?.dbType ?? null, dbScriptDirs, aiChecks, warnings, ...(mapper ? { mapper } : {}) };
+  const consistency = opts.consistency === false ? undefined : checkConsistency({ projectDir, maxIssues: opts.maxIssues ?? 200 });
+  return { projectDir, ok: warnings.length === 0, manifestFound: manifest !== null, components, dbType: dbType ?? mapper?.dbType ?? null, dbScriptDirs, aiChecks, warnings, ...(mapper ? { mapper } : {}), ...(consistency ? { consistency } : {}) };
 }
