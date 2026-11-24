@@ -2,7 +2,7 @@
 
 버전별 기획 원문과 결과, 선행 조사를 그대로 남긴 기록입니다. 현재 사용법은 [README](../README.md), 변경 내용은 [CHANGELOG](../CHANGELOG.md)를 보세요.
 
-## 진행 현황 (버전별 요약) (2026-11-19)
+## 진행 현황 (버전별 요약) (2026-11-23)
 
 - **소스 기준**: v1.8.0(`package.json`), 도구 36종 + CLI 명령 13종·공식 템플릿 22종·설정 템플릿 21종·카탈로그 190항목(공통컴포넌트 v5.0.7).
 - **안전성 기준선 완료**: [PR #7](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/7)~[#16](https://github.com/EricSeokgon/egovframe-scaffold-mcp/pull/16)을 반영해 provenance·strict assertion·safe remove와 프로젝트 생성/레시피/직접 조립/AI 조립/업그레이드 transaction을 갖췄습니다.
@@ -42,6 +42,7 @@
 - **v0.33.0 추가**: `migrate_egovframe_project` 3단계 — `verify=true` 가 compile 을 실행해 컴파일 오류를 수동 항목과 연결하고 "처리하면 해결될 오류 수" 순 작업 목록을 냅니다(javac `symbol:`/`location:` 파싱). 규칙 카탈로그(schemaVersion 2)에 공통컴포넌트 3.x→5.x 대응표(`egovframe-common-components` v3.10.0↔v5.0.6, 제거 54·이동 4)를 추가해 `egovframework.com.*` 제거·이동 클래스를 진단하고, 3.x 공통컴포넌트 소스가 섞인 프로젝트에는 컴포넌트 단위 재조립 권고(`skipComponents` 로 치환 제외)를 냅니다.
 - **v1.9.0 완료**: 취약 의존성 자동 조치 `fix_egovframe_dependencies`(도구 37종·CLI `fix-deps`) — parent 상향·고정 해제·좌표 교체·취약 버전 상향, 공식 msa-common-components 권고 47 → 3·compile 통과([결과](#v190-결과-2026-10-29)).
 - **v1.10.0 완료**: DB 준비·적재 확인 `prepare_egovframe_database`(도구 38종·CLI `db`) — 공통컴포넌트 전체 MySQL 8.4·PostgreSQL 16 적재 통과, upstream #1386·#1387 재현과 해결, 선별본이 빠뜨린 참조 테이블 보완([결과](#v1100-결과-2026-10-29)).
+- **v1.25.0 완료**: 화면–쿼리–DB 정합성(`validate_egovframe_project` 의 `consistency`, 도구 46종 그대로) — 목록·건수 쿼리의 조건 차이와 `maxlength`·`@Size`·DDL 길이 불일치, upstream 이 v5.0.7 에서 고친 4쌍·42곳을 v5.0.6 에서 보고([결과](#v1250-결과-2026-11-23)). 다음은 선행 조사를 다시 하고 v1.26 을 새로 정합니다.
 - **v1.24.0 완료**: 접근 통제 점검 `check_egovframe_access`(도구 46종·CLI `access`) — URL 권한 표와 검증 누락 의심, upstream 이 v5.0.6 → v5.0.7 에서 고친 변경 핸들러 93개 중 78.5% 를 수정 전에 보고·수정 뒤 재보고 1건([결과](#v1240-결과-2026-11-19)). 선행 조사 한 가지를 정정했고 v1.26 은 다시 정합니다.
 - **v1.23.0 완료**: 기관 규칙 팩 `EGOVFRAME_RULE_PACKS`·`list_egovframe_rules`(도구 45종·CLI `rules`) — 보안약점·운영·의존성·개인정보 점검에 기관 기준을 데이터로 얹고 결과에 팩 이름·지문·출처, 공식 템플릿 6종에 예시 팩 적용 실측([결과](#v1230-결과-2026-11-16)). v1.21–v1.23 기획을 모두 마쳤습니다.
 - **v1.22.0 완료**: AI 조립 보강(`add_ai_components(search="hybrid")`, 도구 44종 그대로) — 벡터 + pg_trgm 어휘 순위 RRF 융합(문서 번호·조문 번호 질의 실측), HWP·HWPX·PDF 표본 추출, `/ai/**` 접근 통제 조각, 배포 산출물의 PGVector·`EGOV_AI_*`([결과](#v1220-결과-2026-11-16)). 다음은 v1.23(기관 규칙 팩).
@@ -56,7 +57,7 @@
 - **v1.13.0 완료**: 설정·비밀값 외부화 `externalize_egovframe_config`(도구 40종·CLI `externalize`) — 공식 portal-site 자리표시자+암호화 키 외부 파일로 실제 기동, 4.x 는 암호화 값 유지·키 수동([결과](#v1130-결과-2026-11-03)).
 - **v1.12.0 완료**: 사용자 수정 자동 재적용 `reapply`(재조립·업그레이드·리허설 파라미터, 도구 수 그대로) — 실자산 알려진 수정 4건 중 자동 3·충돌 1, upgrade 가 새 태그로 가지 못하던 문제 수정([결과](#v1120-결과-2026-11-02)).
 - **v1.11.0 완료**: 기동 검증 `verify_egovframe_startup`(도구 39종·CLI `startup`) — 공식 템플릿 7종 실제 기동, 깨뜨린 사본의 원인 분류, 포털·업무 템플릿의 HSQL 자동 적재 수정([결과](#v1110-결과-2026-10-30)).
-- **다음 계획**: v1.25 화면–쿼리–DB 정합성(목록·건수 쌍, 입력 길이 3자 대조) → v1.26 은 선행 조사를 다시 하고 새로 정함([다음 버전 기획](#다음-버전-기획-v124v126), [정정](#선행-조사-정정-2026-11-19)).
+- **다음 계획**: v1.24·v1.25 를 마쳤습니다. v1.26 은 전제가 틀려 그대로 진행하지 않으며([정정](#선행-조사-정정-2026-11-19)), 선행 조사를 다시 하고 새로 씁니다.
 - **배포 상태**: npm 최신 배포 버전은 상단 npm 배지와 [npm 패키지 페이지](https://www.npmjs.com/package/egovframe-scaffold-mcp)를 단일 출처로 확인합니다. 이 문서의 버전 표기는 저장소 소스(`package.json`) 기준이며, git 태그 `vX.Y.Z`가 해당 배포본의 커밋을 가리킵니다.
 
 ## 로드맵
@@ -168,7 +169,7 @@ v1.24 를 구현하며 위 조사의 한 가지가 틀린 것을 확인했습니
 - 패키지: 압축 크기가 상한(900KB)을 넘어 npm 패키지에서 설계 문서(`docs/design-*.md`)를 뺐습니다. 상한 숫자는 그대로 둡니다.
 - upstream 에 돌려줄 것(후보): v5.0.7 에 남은 형제 불일치 52건 가운데 확인된 것.
 
-### v1.25.0 — 화면–쿼리–DB 정합성 (`validate_egovframe_project` 의 `consistency` 검사)
+### v1.25.0 — 화면–쿼리–DB 정합성 (`validate_egovframe_project` 의 `consistency` 검사) — 완료
 
 **왜 필요한가**: 컴파일·기동·기능 시험이 모두 통과하는데 운영에서 드러나는 불일치가 두 가지 있습니다. 목록과 건수 쿼리의 검색조건이 달라 **페이지 수가 맞지 않는 것**, 화면·VO·DB 의 길이가 달라 **입력이 잘리거나 저장 때 오류가 나는 것**. 둘 다 upstream 이 컴포넌트마다 손으로 대조 테스트를 붙이며 고치는 중이고, v1.19 매퍼 점검의 다음 한 걸음입니다.
 
@@ -186,6 +187,14 @@ v1.24 를 구현하며 위 조사의 한 가지가 틀린 것을 확인했습니
 - CI 통합(실자산): upstream 수정 6건(당직체크·RSS태그·행사접수·DB모니터링 등)의 **수정 전 커밋 = 불일치 보고, 수정 뒤 = 통과**, upstream 이 대조 테스트를 붙인 VO–JSP 쌍(QnA·상담·메뉴·프로그램·용어사전)의 수정 전 불일치 재현, 공통컴포넌트 main 의 남은 불일치 수와 표본 확인, 공식 템플릿 6종, 1초 이내
 
 **완료 정의**: 검사·출력 필드, `docs/tools.md`·설계 문서(매퍼 정합성 절에 이어서), api-contract minor, CHANGELOG. main 에 남은 불일치는 upstream 이슈 후보로 정리.
+
+#### v1.25.0 결과 (2026-11-23)
+
+- `validate_egovframe_project` 의 `consistency` 검사와 출력 필드, 평가서 `consistency`. 도구 46종 그대로, api-contract minor. 새 모듈 `src/consistency.ts`. 설계: [design-project-map.md 6절](design-project-map.md#6-화면쿼리db-정합성-v125).
+- 실측(2026-11-23, 정답 구간 v5.0.6 → v5.0.7): 목록·건수 1,408쌍 중 v5.0.6 에서 21쌍 보고 → upstream 이 고친 4쌍은 v5.0.7 에서 사라지고 새 보고 없음(남은 17쌍). `maxlength > @Size` 54 → 12건. 컬럼 초과 7건은 두 태그 모두에 남음. 0.7초. 공식 템플릿: portal-site 오류 3·경고 10, enterprise-business 오류 3, 나머지 4종 0.
+- 만들며 찾은 것: (1) 적재 데이터 스크립트(150MB)까지 DDL 로 읽고 컬럼마다 줄 번호를 처음부터 세면 5초 → 이름으로 고르고 줄 시작 위치를 이진 탐색(0.7초). (2) `#{field, jdbcType=VARCHAR}` 의 쉼표가 VALUES 를 잘못 나눔 → 중괄호도 깊이로. (3) XML 의 `&lt;` 를 풀지 않으면 순번 조건(`RN <= 5`)을 못 알아봄.
+- 기획과 달라진 점: `NOT NULL`–`@NotNull` 대조 제외, 짝은 이름 규칙만, upstream 수정 6건 중 4건 재현(행사접수·주소록은 고정 조건·조인 차이).
+- upstream 에 돌려줄 것(후보): v5.0.7 에 남은 목록·건수 17쌍과 컬럼 초과 7건(`ServerEqpmn.hdDisk` @Size 1000 > 18, `AnnvrsryManage.memo` 2500 > 1000 등) 가운데 확인된 것.
 
 ### v1.26.0 — upstream 수정 선별 반영 (`reassemble_egovframe_components(fixes=…)`) — 다시 정함
 

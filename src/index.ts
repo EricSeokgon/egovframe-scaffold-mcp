@@ -212,3 +212,5 @@ export { RULE_PACKS_ENV, RULE_PACK_FILE, RULE_PACK_SECTIONS, RulePackError, reso
 export type { RulePack, RulePackInfo, RulePackSection, RuleListResult, RuleListEntry, PackBannedDependency, PackMinimumDependency } from "./rule-packs.js";
 export { loadAccessRules, checkAccess, renderAccessMarkdown, renderAccessCsv, parseControllerHandlers, detectGlobalAccess, antToRegExp, maskJava, ACCESS_IGNORE_FILE } from "./access.js";
 export type { AccessResult, AccessHandler, AccessFinding, AccessGlobal, AccessLevel, AccessAction, AccessRules } from "./access.js";
+export { checkConsistency, renderConsistencyMarkdown, parseMapperForConsistency, listPartnerOf, dynamicConditions, fieldColumnPairs } from "./consistency.js";
+export type { ConsistencyResult, ConsistencyIssue, ConsistencyKind } from "./consistency.js";

@@ -13,7 +13,7 @@
 | `add_egovframe_components` | 공통컴포넌트 완전 조립 — 소스·매퍼·JSP와 message·IDGN·scheduling·정적 자산·Spring/web fragment 복사, Maven 좌표 탐지, **컴포넌트별 선별 DDL·DML 생성**(`database`), archive 검증·충돌 전체 거부·쓰기 실패 롤백·`dryRun` |
 | `search_egovframe_components` | 키워드로 컴포넌트 검색 (id·이름·설명, 점수순 상위 10건) |
 | `remove_egovframe_components` | 설치 매니페스트 기반 트랜잭션 제거 — 의존 컴포넌트·사용자 수정 hash 보호, `dryRun` 분류, `force` 시 `remove-backup/` 백업 후 제거 |
-| `validate_egovframe_project` | 조립 프로젝트 무결성 진단 — 파일 존재·DbType↔DB 스크립트 일치·**매퍼·DAO 정합성**(v1.19: 없는 문장·DB 별 차이·include/resultMap·id 중복, 비슷한 이름 후보) |
+| `validate_egovframe_project` | 조립 프로젝트 무결성 진단 — 파일 존재·DbType↔DB 스크립트 일치·**매퍼·DAO 정합성**(v1.19: 없는 문장·DB 별 차이·include/resultMap·id 중복, 비슷한 이름 후보) **v1.25**: 화면–쿼리–DB 정합성(`consistency`) — 목록·건수 쿼리의 조건 차이, `maxlength`·`@Size`·DDL 길이 불일치 |
 | `get_egovframe_guide` | 컴포넌트의 공식 가이드 문서 조회 (egovframe-docs, 연계 199건·고유 문서 156종) |
 | `add_ai_components` | **v1.20: Boot parent 5.1.0 이상이면 5.1.0 실행환경 AI 모듈 기준 조립**(`base=auto`) — `egovframe-rte-ai-core` + Spring AI/LangChain4j 어댑터로 문서 추출(HWP·HWPX·DOCX·PDF·Markdown)·한국어 문장 청킹·개인정보 마스킹·PGVector 재색인·프롬프트 인젝션 가드·OpenAI 호환 모델 응답을 프로젝트 패키지에 생성(환경 변수 `EGOV_AI_*`, [아래](#ai-조립--510-ai-모듈-기준-add_ai_components-v120)). 그 밖에는 공식 [egovframe-ai-rag](https://github.com/eGovFramework/egovframe-ai-rag) 샘플 기반 AI RAG 챗봇 조립 — Spring AI(Redis Stack)·LangChain4j(PGVector) 스택 선택(상호 배타), 소스·설정(`application-ai.yml` 프로필)·UI·인프라 복사, **pom 누락 의존성만 마커 구간 삽입**(백업 생성, 제거 시 원복), 충돌 시 전체 거부, `dryRun` 미리보기 (설계: [docs/design-ai-components.md](design-ai-components.md)) **v1.22**: `search="hybrid"`(벡터 + pg_trgm 어휘 순위 RRF 융합), `/ai/**` 접근 통제 조각, 추출 실패 400, 배포 산출물이 조립물을 감지해 PGVector·`EGOV_AI_*` |
 | `list_egovframe_recipes` | 큐레이션된 레시피(템플릿+컴포넌트 번들) 목록 |
@@ -259,6 +259,25 @@ remove_egovframe_components(projectDir, components=["ai-rte-spring-ai"])   # 파
 - **배포**(v1.22): `generate_egovframe_deploy` 가 이 조립물을 감지하면 compose 에 PGVector 서비스 `ai-db`(헬스체크·볼륨, `AI_PGVECTOR_IMAGE` 로 이미지 변경)와 `EGOV_AI_*` 를, Kubernetes 는 ConfigMap 에 자리표시자(`CHANGE_ME_MODEL_SERVER_URL`·`CHANGE_ME_PGVECTOR_HOST`)와 Secret 에 `EGOV_AI_PGVECTOR_PASSWORD`·`EGOV_AI_API_KEY` 를 넣습니다. 조립물이 없으면 산출물은 그대로입니다.
 - 실측(2026-11-16, 공식 boot-web 5.1.0 + PGVector(pg16) + OpenAI 호환 스텁, 두 스택): 임베딩이 같은 문서 6건 사이에서 문서 번호(`KX-7731`)·한글 조문 번호(`제27조의2`) 질의의 문서가 밀집 상위 4에는 없고 어휘 채널로 결과에 들어옴, 테스트가 hwplib·hwpxlib·PDFBox 로 만든 HWP·HWPX·PDF 표본의 추출·색인, 2,001쪽 PDF·압축 폭탄(300MiB) 거부, 생성한 compose 로 앱 + `ai-db` 기동 뒤 색인·질의.
 - 하지 않는 것: 모델 서빙, 채팅 UI, 재순위화(reranker) 모델, 대화 메모리, Redis Stack 저장소, 접근 통제 설정의 자동 적용, Kubernetes 의 PGVector 배포(기관 PostgreSQL 을 가리키는 자리만), PGVector 이미지의 오프라인 번들 포함(이미지는 `docker save` 로 반입). 설계: [design-ai-components.md 9절](design-ai-components.md#9-510-ai-모듈-기준-조립-v120).
+
+## 화면–쿼리–DB 정합성 (`validate_egovframe_project`, v1.25)
+
+컴파일·기동·기능 시험이 모두 통과하는데 운영에서 드러나는 불일치 두 가지를 찾습니다. 공통컴포넌트는 v5.0.6 → v5.0.7 사이에 이것을 컴포넌트마다 손으로 고쳤습니다(목록·건수 4쌍, 화면 maxlength 42곳). 읽기 전용, 고치지 않습니다.
+
+```text
+validate_egovframe_project(projectDir)                          # 매퍼 정합성 + 화면–쿼리–DB 정합성(기본)
+validate_egovframe_project(projectDir, consistency=false)       # 정합성 검사 빼기
+npx -y egovframe-scaffold-mcp validate --project . --fail-on consistencyErrors>0
+```
+
+- **목록·건수 쌍**(`count-condition-mismatch`): `selectXList` ↔ `selectXListCnt`·`TotCnt`·`Count` 를 이름으로 짝짓고 동적 조건(`<if test>`·`<when test>`)의 test 식과 거르는 컬럼을 비교합니다. 한쪽에만 있는 조건이 있으면 페이지 수가 목록과 어긋납니다(오류). test 식은 같고 컬럼만 다르면 경고. 정렬·페이징·순번(RN) 조건은 빼고, `<include refid>` 조각은 펼치고, DB 별 매퍼 사본은 한 건(`variants`)으로 묶습니다.
+- **입력 길이 3자 대조**: 화면 `maxlength`(`form:form` 의 `modelAttribute` 로 VO 를 찾음) · VO `@Size(max)`/`@Length(max)` · DDL 컬럼 길이. 필드와 컬럼은 매퍼의 INSERT(같은 자리)·UPDATE(`COL = #{field}`)에서 짝짓습니다 — 이름으로 추측하지 않습니다.
+  - `length-exceeds-column`(오류): `@Size` 가 컬럼보다 김, 또는 VO 제약 없이 화면 `maxlength` 가 컬럼보다 김 → 저장 때 잘리거나 오류
+  - `maxlength-exceeds-size`(경고): 화면 `maxlength` 가 `@Size` 보다 김 → 입력은 되는데 서버 검증에서 거부
+  - 날짜 10자(`2026-11-23`)를 `CHAR(8)` 로 저장하는 관용은 제외. 바이트 단위 컬럼(Oracle `VARCHAR2(n)`)은 한글이 넘칠 수 있다고 안내
+- `ok`(조립 무결성) 판정에는 넣지 않습니다(`mapper` 와 같음). 평가서에는 문제가 있을 때만 「화면–쿼리–DB 정합성」절(구조화 출력 `consistency`).
+- 실측(2026-11-23): 공통컴포넌트 목록·건수 쌍 1,408개(DB 사본 포함) — v5.0.6 에서 21쌍 보고, 그중 upstream 이 고친 4쌍(당직체크·RSS태그·DB모니터링·송수신모니터링)은 v5.0.7 에서 사라지고 새 보고 없음. `maxlength > @Size` 54 → 12건(고쳐진 42건을 수정 전에 보고). v5.0.7 에 남은 `@Size`·화면 > 컬럼 7건(예: `ServerEqpmn.hdDisk` @Size 1000 > 컬럼 18). 0.7초. 공식 템플릿: web·boot-web·simple-backend·simple-homepage 0 / portal-site 오류 3·경고 10 / enterprise-business 오류 3. 생성 CRUD(`generate_egovframe_crud`)의 산출물은 통과합니다.
+- 한계: 목록·건수는 동적 조건만 봅니다(고정 WHERE·조인 차이는 보지 않음 — upstream 수정 중 행사접수·주소록 건은 이 유형이라 못 찾습니다). 길이는 매퍼가 `parameterType` 으로 VO 를 받을 때만 컬럼과 잇습니다. 하지 않는 것: 자동 수정, 실제 DB 스키마 조회, JavaScript 검증, `NOT NULL`–`@NotNull` 대조. 설계: [design-project-map.md 6절](design-project-map.md#6-화면쿼리db-정합성-v125).
 
 ## 매퍼·DAO 정합성 (`validate_egovframe_project`, v1.19)
 

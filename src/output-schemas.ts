@@ -34,6 +34,14 @@ export const ValidateOutput = loose({
   aiChecks: z.array(loose({ componentId: z.string(), file: z.string(), exists: z.boolean(), note: z.string() })),
   warnings: z.array(z.string()),
   // v1.19: 매퍼·DAO 정합성
+  // v1.25: 화면–쿼리–DB 정합성
+  consistency: loose({
+    durationMs: z.number().int(),
+    summary: loose({ mapperFiles: z.number().int(), countPairs: z.number().int(), pairsCompared: z.number().int(), sizedFields: z.number().int(), maxlengthInputs: z.number().int(), columnsWithLength: z.number().int(), fieldsLinked: z.number().int(), errors: z.number().int(), warnings: z.number().int(), byKind: z.record(z.string(), z.number().int()) }),
+    issues: z.array(loose({ kind: z.enum(["count-condition-mismatch", "length-exceeds-column", "maxlength-exceeds-size"]), severity: z.enum(["error", "warning"]), file: z.string(), line: z.number().int(), subject: z.string(), message: z.string(), fix: z.string(), variants: z.number().int().optional() })),
+    truncated: z.boolean(),
+    notes: z.array(z.string()),
+  }).optional(),
   mapper: loose({
     dbType: z.string().nullable(),
     counts: loose({ mapperFiles: z.number().int(), namespaces: z.number().int(), statements: z.number().int(), stringCalls: z.number().int(), interfaceMethods: z.number().int(), dynamicCalls: z.number().int() }),
@@ -223,6 +231,8 @@ export const AssessmentOutput = loose({
   // v1.24: 접근 통제 건수
   access: loose({ handlers: z.number().int(), writes: z.number().int(), writesWithoutCheck: z.number().int(), global: z.string(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), error: z.string().optional() }).optional(),
   privacy: loose({ tables: z.number().int(), columns: z.number().int(), uniqueIdTables: z.number().int(), high: z.number().int(), medium: z.number().int(), error: z.string().optional() }).optional(),
+  // v1.25: 화면–쿼리–DB 정합성 건수
+  consistency: loose({ errors: z.number().int(), warnings: z.number().int(), countPairs: z.number().int(), byKind: z.record(z.string(), z.number().int()), error: z.string().optional() }).optional(),
   mapper: loose({ errors: z.number().int(), warnings: z.number().int(), missing: z.number().int(), variantGaps: z.number().int(), namespaces: z.number().int(), statements: z.number().int(), byKind: z.record(z.string(), z.number().int()), error: z.string().optional() }).optional(),
   rehearsal: loose({ at: z.string(), afterAutomation: z.number().int().nullable(), afterPomAlignment: z.number().int().nullable(), projectUnchanged: z.boolean(), origin: z.string().nullable(), reapply: loose({ reapplied: z.number().int(), absorbed: z.number().int(), conflicts: z.number().int() }).optional() }).optional(),
   notes: z.array(z.string()),

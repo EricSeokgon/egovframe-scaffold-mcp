@@ -15,6 +15,7 @@ import { checkMinimumElements, DEFAULT_VEX_PATH, type VexDocument } from "./sbom
 import { readRehearsalRecord } from "./rehearse.js";
 import { checkOperations } from "./operations.js";
 import { checkMappers } from "./mapper-check.js";
+import { checkConsistency } from "./consistency.js";
 import { checkPrivacy } from "./privacy.js";
 import { checkAccess } from "./access.js";
 import type { ResolveScope } from "./dependency-tree.js";
@@ -160,6 +161,8 @@ export interface AssessmentResult {
   access: { handlers: number; writes: number; writesWithoutCheck: number; global: string; high: number; medium: number; low: number; error?: string };
   /** v1.19: 매퍼·DAO 정합성 건수(항목은 validate_egovframe_project) */
   mapper: { errors: number; warnings: number; missing: number; variantGaps: number; namespaces: number; statements: number; byKind: Record<string, number>; error?: string };
+  /** v1.25: 화면–쿼리–DB 정합성 건수(근거는 validate_egovframe_project) */
+  consistency: { errors: number; warnings: number; countPairs: number; byKind: Record<string, number>; error?: string };
   sbom: {
     present: boolean; path: string; components?: number; specVersion?: string; timestamp?: string; vulnerabilities?: number;
     /** v0.40: 최소 요소 7종 */
@@ -294,6 +297,13 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
     operations = { grade: "?", total: 0, high: 0, medium: 0, low: 0, fail: 0, pass: 0, na: 0, failed: [], error: e instanceof Error ? e.message : String(e) };
   }
   // v1.19: 매퍼·DAO 정합성
+  let consistency: AssessmentResult["consistency"];
+  try {
+    const cs = checkConsistency({ projectDir, maxFiles: opts.maxFiles });
+    consistency = { errors: cs.summary.errors, warnings: cs.summary.warnings, countPairs: cs.summary.countPairs, byKind: cs.summary.byKind };
+  } catch (e) {
+    consistency = { errors: 0, warnings: 0, countPairs: 0, byKind: {}, error: e instanceof Error ? e.message : String(e) };
+  }
   let mapper: AssessmentResult["mapper"];
   try {
     const mc = checkMappers({ projectDir, maxFiles: opts.maxFiles, maxIssues: 0 });
@@ -350,7 +360,7 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
       notes: dep.notes,
       ...(fixHistory.length ? { fixHistory } : {}),
     },
-    security, secureCoding, operations, mapper, privacy, access, sbom,
+    security, secureCoding, operations, mapper, consistency, privacy, access, sbom,
     grades: { migration, supplyChain },
     ...(dep.workspace ? { modules: dep.workspace.modules.map((m) => {
       const u = update?.modules?.find((x) => x.name === m.name);
@@ -491,6 +501,13 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     if (mp.error) out.push(L(`- 점검 실패: ${mp.error}`, `- Check failed: ${mp.error}`));
     else if (!mp.namespaces) out.push(L(`- MyBatis 매퍼 XML 없음 — 해당 없음`, `- No MyBatis mapper XML — not applicable`));
     else out.push(L(`- namespace ${mp.namespaces} · 문장 ${mp.statements} — 오류 ${mp.errors}(없는 문장 ${mp.missing}) · 경고 ${mp.warnings}(DB 별 차이 ${mp.variantGaps}). 컴파일·기동으로 잡히지 않고 화면을 누를 때 실패하는 결함 — 위치·후보는 validate_egovframe_project 로.`, `- ${mp.namespaces} namespaces · ${mp.statements} statements — ${mp.errors} errors (${mp.missing} missing statements) · ${mp.warnings} warnings (${mp.variantGaps} DB-variant gaps). Defects that pass compile and startup and fail when the screen is used — locations and candidates via validate_egovframe_project.`));
+  }
+
+  const csx = r.consistency;
+  if (csx && (csx.error || csx.errors || csx.warnings)) {
+    out.push(``, L(`### 화면–쿼리–DB 정합성 (\`validate_egovframe_project\`)`, `### Screen–query–DB consistency (\`validate_egovframe_project\`)`), ``);
+    if (csx.error) out.push(L(`- 점검 실패: ${csx.error}`, `- Check failed: ${csx.error}`));
+    else out.push(L(`- 오류 ${csx.errors} · 경고 ${csx.warnings} (${Object.entries(csx.byKind).map(([k, v]) => `${k} ${v}`).join(" · ")}) — 목록·건수 쿼리의 조건 차이는 페이지 수를, 길이 불일치는 저장을 깨뜨립니다. 위치와 근거는 \`validate_egovframe_project\`.`, `- ${csx.errors} errors · ${csx.warnings} warnings (${Object.entries(csx.byKind).map(([k, v]) => `${k} ${v}`).join(" · ")}) — list/count condition differences break page counts and length mismatches break saves. See \`validate_egovframe_project\` for locations and evidence.`));
   }
 
   const acx = r.access;

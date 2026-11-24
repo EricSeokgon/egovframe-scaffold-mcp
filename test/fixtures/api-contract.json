@@ -1,6 +1,6 @@
 {
-  "version": "1.24.0",
-  "base": "1.23.0",
+  "version": "1.25.0",
+  "base": "1.24.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -5566,6 +5566,32 @@
                     }
                   }
                 },
+                "consistency": {
+                  "type": "object",
+                  "required": [
+                    "byKind",
+                    "countPairs",
+                    "errors",
+                    "warnings"
+                  ],
+                  "properties": {
+                    "byKind": {
+                      "type": "object"
+                    },
+                    "countPairs": {
+                      "type": "integer"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "integer"
+                    },
+                    "warnings": {
+                      "type": "integer"
+                    }
+                  }
+                },
                 "dependencies": {
                   "type": "object",
                   "required": [
@@ -10931,6 +10957,10 @@
             "projectDir"
           ],
           "properties": {
+            "consistency": {
+              "type": "boolean",
+              "default": true
+            },
             "mapper": {
               "type": "boolean",
               "default": true
@@ -11011,6 +11041,127 @@
                       "type": "string"
                     }
                   }
+                }
+              }
+            },
+            "consistency": {
+              "type": "object",
+              "required": [
+                "durationMs",
+                "issues",
+                "notes",
+                "summary",
+                "truncated"
+              ],
+              "properties": {
+                "durationMs": {
+                  "type": "integer"
+                },
+                "issues": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "file",
+                      "fix",
+                      "kind",
+                      "line",
+                      "message",
+                      "severity",
+                      "subject"
+                    ],
+                    "properties": {
+                      "file": {
+                        "type": "string"
+                      },
+                      "fix": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "count-condition-mismatch",
+                          "length-exceeds-column",
+                          "maxlength-exceeds-size"
+                        ]
+                      },
+                      "line": {
+                        "type": "integer"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": [
+                          "error",
+                          "warning"
+                        ]
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "variants": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "summary": {
+                  "type": "object",
+                  "required": [
+                    "byKind",
+                    "columnsWithLength",
+                    "countPairs",
+                    "errors",
+                    "fieldsLinked",
+                    "mapperFiles",
+                    "maxlengthInputs",
+                    "pairsCompared",
+                    "sizedFields",
+                    "warnings"
+                  ],
+                  "properties": {
+                    "byKind": {
+                      "type": "object"
+                    },
+                    "columnsWithLength": {
+                      "type": "integer"
+                    },
+                    "countPairs": {
+                      "type": "integer"
+                    },
+                    "errors": {
+                      "type": "integer"
+                    },
+                    "fieldsLinked": {
+                      "type": "integer"
+                    },
+                    "mapperFiles": {
+                      "type": "integer"
+                    },
+                    "maxlengthInputs": {
+                      "type": "integer"
+                    },
+                    "pairsCompared": {
+                      "type": "integer"
+                    },
+                    "sizedFields": {
+                      "type": "integer"
+                    },
+                    "warnings": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "truncated": {
+                  "type": "boolean"
                 }
               }
             },
