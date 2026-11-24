@@ -10,7 +10,20 @@ import { spawnSync } from "node:child_process";
 
 let n = 0;
 function assert(cond, msg) { n++; if (!cond) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
-async function fetchText(url) { const r = await fetch(url, { headers: { "User-Agent": "egovframe-scaffold-mcp" } }); if (!r.ok) throw new Error(`${r.status} ${url}`); return r.text(); }
+// 일시 장애(5xx·429·연결 오류)는 10초·20초·30초 뒤 다시 — 4xx(없는 파일)는 바로 실패
+async function fetchText(url) {
+  let last;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) { console.log(`info: 다시 시도(${attempt}/3) — ${last}`); await new Promise((r) => setTimeout(r, attempt * 10_000)); }
+    try {
+      const r = await fetch(url, { headers: { "User-Agent": "egovframe-scaffold-mcp" } });
+      if (r.ok) return r.text();
+      last = `${r.status} ${url}`;
+      if (r.status < 500 && r.status !== 429) break;
+    } catch (e) { last = `${e.cause?.code ?? e.message} ${url}`; }
+  }
+  throw new Error(last);
+}
 const hasGradle = (() => { const r = spawnSync(process.platform === "win32" ? "gradle.bat" : "gradle", ["--version"], { encoding: "utf8", shell: process.platform === "win32" }); return r.status === 0; })();
 
 const root = mkdtempSync(path.join(tmpdir(), "egovsbomlive-"));
