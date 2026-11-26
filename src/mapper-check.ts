@@ -6,6 +6,7 @@
 //   3) XML 안 참조: <include refid>·resultMap 대상 없음, 같은 namespace·같은 DB 로 함께 올라가는 파일 사이 ID 중복
 //      parameterType·resultType·resultMap type 의 프로젝트 패키지 클래스가 소스에 없음(경고)
 //   iBATIS(sqlMap)·애노테이션 SQL(@Select 등) 본문은 보지 않는다. 고치지 않는다 — 후보만.
+import { assignFingerprints, readCheckBaseline, applyBaseline, baselineLine, type BaselineInfo } from "./baseline.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { L } from "./lang.js";
@@ -24,17 +25,25 @@ export interface MapperIssue {
   /** db-variant: 문장이 있는 DB·없는 DB */
   presentIn?: string[];
   missingIn?: string[];
+  /** v1.26: 줄 번호에 묶이지 않는 지문(종류·파일·대상·순번) */
+  fingerprint?: string;
+  /** v1.26: baselinePath 를 줬을 때 — 이전 결과에 없던 항목 */
+  isNew?: boolean;
 }
 export interface MapperCheckResult {
   projectDir: string;
   durationMs: number;
   dbType: string | null;
   counts: { mapperFiles: number; namespaces: number; statements: number; stringCalls: number; interfaceMethods: number; dynamicCalls: number; ibatisFiles: number };
-  summary: { errors: number; warnings: number; missing: number; dynamicMatched: number; variantGaps: number; byKind: Record<string, number> };
+  summary: { errors: number; warnings: number; missing: number; dynamicMatched: number; variantGaps: number; byKind: Record<string, number>; /** v1.26: 새 항목 수(baselinePath 없으면 null) */ new: number | null };
+  /** v1.26: 비교한 기준선(있을 때만) */
+  baseline?: BaselineInfo;
+  /** v1.26: maxIssues 로 잘렸는가 */
+  truncated: boolean;
   issues: MapperIssue[];
   notes: string[];
 }
-export interface MapperCheckOptions { projectDir: string; maxFiles?: number; /** 기본: Globals.DbType 값 */ dbType?: string | null; maxIssues?: number }
+export interface MapperCheckOptions { projectDir: string; maxFiles?: number; /** 기본: Globals.DbType 값 */ dbType?: string | null; maxIssues?: number; /** v1.26: validate_egovframe_project 의 이전 결과(format=json) */ baselinePath?: string }
 
 const SKIP_DIRS = new Set(["target", "build", "node_modules", ".git", "migration-backup", "upgrade-backup", "remove-backup", "deploy", "sbom", "bin", "out", ".idea", ".settings", ".gradle"]);
 const DBS = ["altibase", "cubrid", "goldilocks", "maria", "mariadb", "mysql", "oracle", "postgres", "postgresql", "tibero", "hsql", "hsqldb", "h2", "mssql", "sqlserver", "db2", "dm", "kingbase"];
@@ -252,7 +261,10 @@ export function checkMappers(opts: MapperCheckOptions): MapperCheckResult {
   }
   if (!xmls.length) notes.push(L("MyBatis 매퍼 XML 이 없습니다 — 문자열 ID 호출은 의존성 jar 의 매퍼일 수 있어 보고하지 않습니다", "No MyBatis mapper XML found — string-ID calls may target mappers inside dependency jars, so they are not reported"));
 
+  assignFingerprints("mapper", issues, (i) => [i.kind, i.file, i.ref]);
   issues.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "error" ? -1 : 1) || a.kind.localeCompare(b.kind) || a.file.localeCompare(b.file) || a.line - b.line);
+  const base = opts.baselinePath ? applyBaseline(issues, readCheckBaseline(projectDir, opts.baselinePath, "mapper")) : null;
+  if (base?.note) notes.push(base.note);
   const byKind: Record<string, number> = {};
   for (const i of issues) byKind[i.kind] = (byKind[i.kind] ?? 0) + 1;
   const errors = issues.filter((i) => i.severity === "error").length;
@@ -261,7 +273,9 @@ export function checkMappers(opts: MapperCheckOptions): MapperCheckResult {
   return {
     projectDir, durationMs: Date.now() - t0, dbType,
     counts: { mapperFiles: xmls.length, namespaces: byNs.size, statements: [...nsIds.values()].reduce((s, x) => s + x.size, 0), stringCalls, interfaceMethods, dynamicCalls, ibatisFiles },
-    summary: { errors, warnings: issues.length - errors, missing: (byKind["missing-statement"] ?? 0) + (byKind["missing-namespace"] ?? 0), dynamicMatched, variantGaps, byKind },
+    summary: { errors, warnings: issues.length - errors, missing: (byKind["missing-statement"] ?? 0) + (byKind["missing-namespace"] ?? 0), dynamicMatched, variantGaps, byKind, new: base ? base.newCount : null },
+    ...(base ? { baseline: base.info } : {}),
+    truncated: issues.length > max,
     issues: issues.slice(0, max),
     notes,
   };
@@ -272,9 +286,10 @@ export function renderMapperCheckMarkdown(r: MapperCheckResult, topN = 20): stri
   out.push(L("### 매퍼·DAO 정합성", "### Mapper/DAO consistency"), "");
   out.push(L(`- 매퍼 XML ${r.counts.mapperFiles}개(namespace ${r.counts.namespaces}·문장 ${r.counts.statements}) · 문자열 ID 호출 ${r.counts.stringCalls} · 인터페이스 메서드 ${r.counts.interfaceMethods} · 이어 만든 ID ${r.counts.dynamicCalls}(맞는 문장 있음 ${r.summary.dynamicMatched})${r.dbType ? ` · Globals.DbType=${r.dbType}` : ""}`, `- ${r.counts.mapperFiles} mapper XML (${r.counts.namespaces} namespaces, ${r.counts.statements} statements) · ${r.counts.stringCalls} string-ID calls · ${r.counts.interfaceMethods} interface methods · ${r.counts.dynamicCalls} concatenated IDs (${r.summary.dynamicMatched} matched)${r.dbType ? ` · Globals.DbType=${r.dbType}` : ""}`));
   out.push(L(`- 오류 ${r.summary.errors} · 경고 ${r.summary.warnings} — 없는 문장 ${r.summary.missing} · DB 별 차이 ${r.summary.variantGaps}`, `- ${r.summary.errors} errors · ${r.summary.warnings} warnings — ${r.summary.missing} missing statements · ${r.summary.variantGaps} DB-variant gaps`), "");
+  if (r.baseline) out.push(baselineLine(r.baseline, r.summary.new ?? 0));
   if (r.issues.length) {
     out.push(L("| 심각도 | 종류 | 위치 | 대상 | 후보 |", "| Severity | Kind | Location | Target | Candidates |"), "|---|---|---|---|---|");
-    for (const i of r.issues.slice(0, topN)) out.push(`| ${i.severity} | ${i.kind} | \`${i.file}:${i.line}\` | \`${i.ref}\`${i.missingIn ? ` (${L("없음", "missing")}: ${i.missingIn.join(", ")})` : ""} | ${(i.candidates ?? []).map((c) => `\`${c}\``).join(", ") || "—"} |`);
+    for (const i of r.issues.slice(0, topN)) out.push(`| ${i.isNew ? "🆕 " : ""}${i.severity} | ${i.kind} | \`${i.file}:${i.line}\` | \`${i.ref}\`${i.missingIn ? ` (${L("없음", "missing")}: ${i.missingIn.join(", ")})` : ""} | ${(i.candidates ?? []).map((c) => `\`${c}\``).join(", ") || "—"} |`);
     if (r.issues.length > topN) out.push("", L(`… ${r.issues.length - topN}건 더(format=json)`, `… ${r.issues.length - topN} more (format=json)`));
     out.push("");
   }

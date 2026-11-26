@@ -32,6 +32,11 @@ export const CI_NPM_REGISTRY_RE = /^https?:\/\/[A-Za-z0-9.\-]+(?::\d{1,5})?(?:\/
 /** v0.43: 러너·에이전트에서 본 오프라인 번들 경로(절대 경로, 영문·숫자·._-/\\: 와 공백만) */
 /** v1.23: 규칙 팩 경로 — 저장소 상대 경로 또는 러너의 절대 경로(.. 금지, 따옴표·공백·셸 문자 금지) */
 export const CI_RULE_PACKS_RE = /^(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))(?:\/|[A-Za-z]:[\\/]|\.\/)?[A-Za-z0-9_.\-][A-Za-z0-9_.\/\\-]{0,250}$/;
+/** v1.26: 기준선 디렉터리 — 저장소 상대 경로만(.. 금지, 영문·숫자·._-/ 만) */
+export const CI_BASELINE_DIR_RE = /^(?!.*(?:^|\/)\.\.(?:\/|$))(?:\.\/)?[A-Za-z0-9_.\-][A-Za-z0-9_.\/\-]{0,200}$/;
+/** v1.26: 기준선 디렉터리 기본값과 점검별 파일 이름 */
+export const DEFAULT_BASELINE_DIR = ".egovframe/baseline";
+export const BASELINE_CHECKS = ["secure", "ops", "privacy", "access", "validate"] as const;
 export const CI_BUNDLE_PATH_RE = /^(?:\/|[A-Za-z]:[\\/])[A-Za-z0-9_.\/\\: -]{0,250}$/;
 /** v0.43: SBOM 공급자 이름(명령줄에 큰따옴표로 들어감) */
 export const CI_SUPPLIER_RE = /^[\p{L}\p{N}][\p{L}\p{N} .,&()_-]{0,99}$/u;
@@ -50,6 +55,8 @@ export interface CiSupplyChainOptions {
   secureCoding?: boolean;
   /** v1.1: 납품 패키지 단계(deliver --write → egovframe-delivery/, 아티팩트로 보관) */
   delivery?: boolean;
+  /** v1.26: 기준선 디렉터리(저장소 상대) — 있으면 점검 단계가 이전 결과와 비교해 새 항목만 실패(--fail-on "new>0") */
+  baselineDir?: string;
 }
 /** v0.43: 실행 환경 변수(세 플랫폼 공통) */
 export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string; /** v1.6: 사내 Maven 미러(Nexus·Artifactory 프록시) — 빌드는 -gs settings, 게이트의 CLI 는 EGOVFRAME_MAVEN_MIRROR */ mavenMirror?: string; /** v1.23: 기관 규칙 팩 디렉터리 → 게이트 단계의 EGOVFRAME_RULE_PACKS */ rulePacks?: string }
@@ -57,6 +64,7 @@ export interface CiEnvOptions { npmRegistry?: string; offlineBundle?: string; /*
 function checkSupplyChain(opts: CiSupplyChainOptions): void {
   const failOn = opts.failOn ?? "supplyChain:D";
   if (!CI_FAIL_ON_RE.test(failOn)) throw new Error(`failOn 형식 오류: ${JSON.stringify(failOn)} (예: supplyChain:D, migration:C,vulnerabilities)`);
+  if (opts.baselineDir !== undefined && !CI_BASELINE_DIR_RE.test(opts.baselineDir)) throw new Error(`baselineDir 는 저장소 상대 경로여야 합니다(영문·숫자·._-/ 만, .. 불가): ${JSON.stringify(opts.baselineDir)}`);
   if (opts.supplier !== undefined && !CI_SUPPLIER_RE.test(opts.supplier)) throw new Error(`supplier 는 문자·숫자·공백·.,&()_- 로 된 100자 이하여야 합니다: ${JSON.stringify(opts.supplier)}`);
 }
 /** 환경 변수 값을 검증해 [이름, 값] 목록으로. */
@@ -131,7 +139,7 @@ export function jenkinsMavenRetryFunction(): string[] {
 }
 
 /** 공급망 게이트의 CLI 명령(플랫폼 공통). stepSummary 는 GitHub 에서만. */
-export type GateStepId = "sbom" | "sbom-check" | "secure" | "assess" | "deliver";
+export type GateStepId = "sbom" | "sbom-check" | "secure" | "ops" | "privacy" | "access" | "validate" | "assess" | "deliver";
 export const DELIVERY_DIR = "egovframe-delivery";
 export const SECURE_SARIF = "egovframe-secure.sarif";
 export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary = false): { id: GateStepId; name: string; command: string }[] {
@@ -144,13 +152,19 @@ export function supplyChainCommands(opts: CiSupplyChainOptions = {}, stepSummary
     out.push({ id: "sbom", name: "SBOM (CycloneDX 1.6)", command: `${npx} sbom --project . --write --overwrite${offline}${opts.supplier ? ` --supplier "${opts.supplier}"` : ""}` });
     out.push({ id: "sbom-check", name: "SBOM minimum elements (7)", command: `${npx} sbom-check --project . --out egovframe-sbom-check.md${stepSummary ? " --step-summary" : ""} --fail-on minimum` });
   }
-  if (opts.secureCoding) out.push({ id: "secure", name: "Secure coding weaknesses (SARIF)", command: `${npx} secure --project . --sarif-path ${SECURE_SARIF} --overwrite --out egovframe-secure.md${stepSummary ? " --step-summary" : ""} --fail-on high` });
+  const bdir = opts.baselineDir?.replace(/^\.\//, "").replace(/\/+$/, "");
+  if (opts.secureCoding) out.push({ id: "secure", name: "Secure coding weaknesses (SARIF)", command: `${npx} secure --project . --sarif-path ${SECURE_SARIF} --overwrite --out egovframe-secure.md${stepSummary ? " --step-summary" : ""}${bdir ? ` --baseline-path ${bdir}/secure.json --fail-on "new>0"` : " --fail-on high"}` });
+  // v1.26: 기준선이 있으면 나머지 점검도 게이트에 — 지금 있는 항목은 목록으로 두고 새로 생긴 것만 실패
+  if (bdir) {
+    const names: Record<string, string> = { ops: "Operations readiness (new findings)", privacy: "Personal data safeguards (new findings)", access: "Access control (new findings)", validate: "Mapper and screen-query-DB consistency (new findings)" };
+    for (const id of ["ops", "privacy", "access", "validate"] as const) out.push({ id, name: names[id], command: `${npx} ${id} --project .${id === "validate" ? " --max-issues 5000" : ""} --baseline-path ${bdir}/${id}.json --out egovframe-${id}.md${stepSummary ? " --step-summary" : ""} --fail-on "new>0"` });
+  }
   out.push({ id: "assess", name: "Migration readiness and supply-chain grades", command: `${npx} assess --project .${offline} --out egovframe-assessment.md --json-out egovframe-assessment.json${stepSummary ? " --step-summary" : ""} --fail-on ${failOn}` });
   // v1.1: 납품 패키지 — 게이트가 통과한 뒤 같은 입력으로 묶는다(실패 항목은 패키지 목차에 남고 --fail-on failed 로 단계도 실패)
   if (opts.delivery) out.push({ id: "deliver", name: "Delivery package (manifest, SBOM, VEX, SARIF, assessment)", command: `${npx} deliver --project . --output-dir ${DELIVERY_DIR} --write${offline}${opts.supplier ? ` --supplier "${opts.supplier}"` : ""} --fail-on failed` });
   return out;
 }
-const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", "egovframe-assessment.json", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : []), ...(opts.delivery ? [`${DELIVERY_DIR}/**`] : [])];
+const reportFiles = (opts: CiSupplyChainOptions) => ["egovframe-assessment.md", "egovframe-assessment.json", ...(opts.sbom !== false ? ["egovframe-sbom-check.md", "sbom/bom.cdx.json"] : []), ...(opts.secureCoding ? ["egovframe-secure.md", SECURE_SARIF] : []), ...(opts.baselineDir ? ["egovframe-ops.md", "egovframe-privacy.md", "egovframe-access.md", "egovframe-validate.md"] : []), ...(opts.delivery ? [`${DELIVERY_DIR}/**`] : [])];
 
 /**
  * GitLab supply-chain job 준비: Node 22 이상 보장(v1.0, engines >=22)
@@ -325,7 +339,7 @@ export function generateJenkinsfile(buildTool: "maven" | "gradle", jdkInput: str
     ...stage("Build", build),
   ];
   if (supplyChain) {
-    const names: Record<string, string> = { "sbom": "SBOM", "sbom-check": "SBOM check", "secure": "Secure coding", "assess": "Assessment", "deliver": "Delivery package" };
+    const names: Record<string, string> = { "sbom": "SBOM", "sbom-check": "SBOM check", "secure": "Secure coding", "ops": "Operations (new)", "privacy": "Personal data (new)", "access": "Access control (new)", "validate": "Consistency (new)", "assess": "Assessment", "deliver": "Delivery package" };
     for (const c of supplyChainCommands(supplyChain, false)) L.push(...stage(names[c.id], [`run(${gq(c.command)})`]));
   }
   L.push("  }", "  post {", "    always {");
@@ -352,6 +366,14 @@ export interface GenerateCiOptions extends CiEnvOptions {
   failOn?: string;
   osv?: boolean;
   supplier?: string;
+  /** v1.26: 기준선 디렉터리(저장소 상대, 예: .egovframe/baseline) — 점검 단계가 새 항목만 실패 */
+  baselineDir?: string;
+}
+
+/** v1.26: 기준선을 만드는(다시 만드는) 명령 — 저장소 루트에서 실행하고 결과를 커밋한다 */
+export function baselineCommands(dir = DEFAULT_BASELINE_DIR, secureCoding = true, version = SERVER_VERSION): string[] {
+  const d = dir.replace(/^\.\//, "").replace(/\/+$/, "");
+  return BASELINE_CHECKS.filter((c) => c !== "secure" || secureCoding).map((c) => `npx -y egovframe-scaffold-mcp@${version} ${c} --project .${c === "validate" ? " --max-issues 5000" : ""} --json-out ${d}/${c}.json`);
 }
 
 export function generateCiConfig(opts: GenerateCiOptions): CiResult {
@@ -361,8 +383,9 @@ export function generateCiConfig(opts: GenerateCiOptions): CiResult {
   const platform = opts.platform ?? "github";
   if (!(platform in CI_PATHS)) throw new Error(`지원하지 않는 platform: ${platform} (github·gitlab·jenkins)`);
   const buildTool = detectBuildTool(projectDir);
-  const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}), ...(opts.secureCoding ? { secureCoding: true } : {}), ...(opts.delivery ? { delivery: true } : {}) } : false;
+  const sc: CiSupplyChainOptions | false = opts.supplyChain ? { failOn: opts.failOn, osv: opts.osv, ...(opts.supplier ? { supplier: opts.supplier } : {}), ...(opts.secureCoding ? { secureCoding: true } : {}), ...(opts.delivery ? { delivery: true } : {}), ...(opts.baselineDir ? { baselineDir: opts.baselineDir } : {}) } : false;
   if (opts.secureCoding && !opts.supplyChain) throw new Error("secureCoding 은 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
+  if (opts.baselineDir && !opts.supplyChain) throw new Error("baselineDir 은 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
   if (opts.delivery && !opts.supplyChain) throw new Error("delivery 는 supplyChain=true 게이트의 단계입니다 — supplyChain=true 와 함께 쓰세요.");
   const env: CiEnvOptions = { ...(opts.npmRegistry ? { npmRegistry: opts.npmRegistry } : {}), ...(opts.offlineBundle ? { offlineBundle: opts.offlineBundle } : {}), ...(opts.mavenMirror ? { mavenMirror: opts.mavenMirror } : {}), ...(opts.rulePacks ? { rulePacks: opts.rulePacks } : {}) };
   const jdk = opts.jdk ?? "17";
@@ -372,6 +395,12 @@ export function generateCiConfig(opts: GenerateCiOptions): CiResult {
   const notes: string[] = [];
   if (sc && !opts.supplier && !(buildTool === "maven" && pomIdentity(projectDir).organization))
     notes.push("supplier 미지정이고 pom <organization><name> 도 없어 SBOM 의 공급자(주 component)·작성자가 비므로 sbom-check --fail-on minimum 단계가 실패합니다 — supplier 를 지정하거나 pom 에 <organization> 을 넣으세요.");
+  if (sc && opts.baselineDir) {
+    const d = opts.baselineDir.replace(/^\.\//, "").replace(/\/+$/, "");
+    const missing = BASELINE_CHECKS.filter((c) => (c !== "secure" || opts.secureCoding) && !fs.existsSync(path.join(projectDir, d, `${c}.json`)));
+    notes.push(`기준선(${d}/)과 비교해 새 항목만 실패합니다(--fail-on "new>0"). 기준선을 만들거나 다시 만들 때는 저장소 루트에서 아래를 실행하고 결과를 커밋하세요 — 항목을 고친 뒤 다시 만들면 목록이 줄어듭니다.\n${baselineCommands(d, !!opts.secureCoding).map((c) => `    ${c}`).join("\n")}`);
+    if (missing.length) notes.push(`기준선 파일이 아직 없습니다: ${missing.map((c) => `${d}/${c}.json`).join(", ")} — 없으면 그 단계는 실행 실패(종료 코드 3)입니다.`);
+  }
   if (opts.mavenMirror && buildTool === "gradle")
     notes.push("mavenMirror 는 Maven 빌드에만 적용됩니다 — Gradle 은 settings.gradle 의 repositories(또는 init 스크립트)에 미러를 지정하세요. 게이트 단계의 CLI 는 EGOVFRAME_MAVEN_MIRROR 를 받지만 Gradle 실행에는 쓰지 않습니다.");
   if (!dryRun) {

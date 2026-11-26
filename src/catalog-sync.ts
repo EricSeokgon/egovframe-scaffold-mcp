@@ -60,6 +60,8 @@ export interface CatalogSyncResult {
   upToDate: boolean;
   archive: ArchiveInspection;
   expectedArchive?: CatalogArchiveMetadata;
+  /** v1.26: upstream 이 고정 태그를 다른 커밋으로 옮겼을 때(카탈로그는 고정 커밋 그대로 유효 — 무결성은 고정 커밋으로 검증) */
+  tagMoved?: { tag: string; pinnedCommit: string; currentCommit: string };
   warnings: string[];
 }
 
@@ -182,9 +184,11 @@ export async function syncCatalog(options: CatalogSyncOptions = {}): Promise<Cat
   const repository = repositoryOf(source);
   const requestedRef = (options.ref ?? source.tag ?? source.commit ?? source.branch ?? "main").trim();
   if (!REF_RE.test(requestedRef)) throw new Error(`ref에 허용되지 않는 문자가 있습니다: ${requestedRef}`);
-  const resolvedCommit = await resolveCommit(repository, requestedRef);
-  if (requestedRef === source.tag && source.commit && resolvedCommit !== source.commit)
-    throw new Error(`공식 태그와 고정 commit이 일치하지 않습니다: ${source.tag}=${resolvedCommit}, catalog=${source.commit}`);
+  const tagCommit = await resolveCommit(repository, requestedRef);
+  // v1.26: upstream 이 태그를 옮기는 일이 반복된다(v5.0.7: 2026-10-07, 2026-11-25). 도구는 고정 커밋의 아카이브로 조립하므로
+  // 태그 이동은 실패가 아니라 "카탈로그 갱신이 필요하다"는 알림이다 — 무결성은 고정 커밋으로 검증한다.
+  const tagMoved = requestedRef === source.tag && source.commit && tagCommit !== source.commit ? { tag: source.tag, pinnedCommit: source.commit, currentCommit: tagCommit } : undefined;
+  const resolvedCommit = tagMoved ? tagMoved.pinnedCommit : tagCommit;
 
   const buffer = await downloadArchive(repository, resolvedCommit);
   const archive = inspectCatalogArchive(buffer, catalog);
@@ -200,6 +204,7 @@ export async function syncCatalog(options: CatalogSyncOptions = {}): Promise<Cat
   }
 
   const warnings: string[] = [];
+  if (tagMoved) warnings.push(`upstream 이 ${tagMoved.tag} 태그를 옮겼습니다: 카탈로그 고정 ${tagMoved.pinnedCommit.slice(0, 7)} → 지금 태그 ${tagMoved.currentCommit.slice(0, 7)}. 조립·재조립은 고정 커밋 기준으로 계속 동작합니다 — 옮겨진 내용은 카탈로그를 다시 생성한 릴리스에서 반영됩니다(scripts/generate-catalog.mjs)`);
   if (!isPinnedCommit) warnings.push(`새 upstream commit 감지: ${source.commit ?? "(미고정)"} → ${resolvedCommit}`);
   if (archive.securityPaths.length === 0) warnings.push("sec.security 보안 패키지가 아카이브에서 확인되지 않았습니다");
   if (archive.unmappedComponentPaths.length > 0)
@@ -216,6 +221,7 @@ export async function syncCatalog(options: CatalogSyncOptions = {}): Promise<Cat
     upToDate: isPinnedCommit && archive.unmappedComponentPaths.length === 0,
     archive,
     expectedArchive: source.archive,
+    ...(tagMoved ? { tagMoved } : {}),
     warnings,
   };
 }

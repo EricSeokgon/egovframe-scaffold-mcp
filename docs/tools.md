@@ -352,6 +352,26 @@ npx -y egovframe-scaffold-mcp access --project . [--fail-on high>0]
 - 평가서에 「접근 통제」절(구조화 출력 `access`), 납품 패키지는 `include` 에 `access` 를 넣으면 `access/access.md`·`access.json`·`url-permissions.csv`(기본 포함 아님).
 - 한계: 핸들러 안의 호출 이름만 봅니다 — 서비스·AOP·필터의 검증은 보이지 않고, 조회는 형제 근거가 있을 때만 보고합니다. 형제 불일치는 근거이지 결론이 아닙니다(본인 탈퇴처럼 달라도 되는 경우). 하지 않는 것: 자동 수정, 침투 시험, 역할 체계 설계. 설계: [design-access.md](design-access.md).
 
+## 점검 기준선 — 새 항목만 게이트 (`baselinePath`, v1.26)
+
+손대지 않은 공식 공통컴포넌트만으로 접근 통제 283건(높음 52)이 나오기 때문에 `--fail-on high>0` 은 첫날부터 실패합니다. 기준선은 지금 있는 항목을 목록으로 두고 **새로 생긴 것만** 막습니다. 보안약점 점검(v0.44)에 있던 방식을 운영·개인정보·접근 통제·정합성 점검으로 넓혔습니다.
+
+```text
+npx -y egovframe-scaffold-mcp access --project . --json-out .egovframe/baseline/access.json          # 기준선 만들기(커밋)
+npx -y egovframe-scaffold-mcp access --project . --baseline-path .egovframe/baseline/access.json --fail-on "new>0"
+check_egovframe_access(projectDir, baselinePath=".egovframe/baseline/access.json")                    # 항목마다 isNew, 요약 new·해결
+validate_egovframe_project(projectDir, baselinePath=".egovframe/baseline/validate.json", maxIssues=5000)
+generate_egovframe_ci(projectDir, supplyChain=true, baselineDir=".egovframe/baseline")                # 게이트에 점검 단계 4개
+generate_egovframe_report(projectDir, sections=["assessment"], baselineDir=".egovframe/baseline")    # 절마다 새 항목·해결·그대로
+```
+
+- **기준선 파일** = 그 도구의 이전 JSON 결과 그대로입니다(별도 형식 없음). 대상 도구: `check_egovframe_secure_coding`·`check_egovframe_operations`·`check_egovframe_privacy`·`check_egovframe_access`·`validate_egovframe_project`(`mapper`·`consistency`).
+- **지문**은 줄 번호가 아니라 대상(컨트롤러·메서드·URL, 테이블.컬럼, 문장 ID, VO 필드, 설정 키)으로 만듭니다. 위에 줄을 끼워 넣어도 같은 항목이고, 응답 언어와도 무관합니다. 이름·경로·종류가 바뀌면 해결 1 + 새 항목 1 입니다.
+- **결과**: 항목 `fingerprint`·`isNew`, 요약 `new`(기준선이 없으면 `null`), `baseline { path, findings, resolved }`. CLI 지표 `new`(`validate` 는 `mapperNew`·`consistencyNew` 도).
+- 다른 도구의 결과나 v1.25 이하의 결과(지문 없음)를 기준선으로 주면 오류입니다 — 조용히 전부 새 항목이 되지 않습니다.
+- 기준선은 "아직 판단하지 않은 것", 예외 파일(`.egovframe-*-ignore.json`)은 "판단한 것(사유·검토자)"입니다. 의존성 점검에는 기준선이 없습니다(새로 공개되는 취약점을 가리면 안 됨 — SBOM 비교·VEX 사용).
+- 실측(2026-11-26): 공통컴포넌트 v5.0.6 결과를 기준선으로 v5.0.7 → 접근 통제 새 항목 42·해결 102, 정합성 해결 46, 매퍼 해결 1. 4,798개 파일 위에 줄을 끼워 넣은 사본은 새 항목 0. 설계: [design-baseline.md](design-baseline.md).
+
 ## 기관 규칙 팩 (`EGOVFRAME_RULE_PACKS`·`list_egovframe_rules`, v1.23)
 
 기관·사업자의 자체 기준(금지 라이브러리, 최소 버전, 추가 보안 규칙, 세션 시간 같은 임계값, 컬럼 이름 규칙과 암호화 솔루션)을 동봉 규칙 위에 얹습니다. 팩은 `rule-pack.json` 이 있는 디렉터리이고 데이터만 담습니다 — 형식과 예시는 [design-rule-packs.md](design-rule-packs.md).
@@ -620,6 +640,8 @@ generate_egovframe_report(projectDir="/work/legacy-app", sections=["assessment"]
 - `format` — `markdown`(기본) | `json`(`outputSchema`)
 
 파일마다 판정은 목표와 같음(유지)·원본 그대로(교체)·사용자 수정(소스는 교체 + 원본 대비 패치 보존, 메시지·설정 조각·웹 자산은 사용자본 유지 + 목표본 참고 저장)·5.x 신규(추가)·5.x 에서 제거(백업 후 삭제, 사용자 수정이면 패치도)·원본 미확인(백업 후 교체)·사용자 추가(유지)입니다. 백업·패치·`reassemble-plan.json` 은 `migration-backup/<시각>-reassemble-*/` 에, 매니페스트는 `.egovframe-components.json` 에 남습니다. 원본 태그 비교에는 git 이 필요하고, blob 없는 bare 미러를 `EGOVFRAME_CACHE_DIR`(기본 `~/.cache/egovframe-scaffold-mcp`)에 태그당 수백 KB 로 캐시합니다. `reapply` 를 켜지 않으면 사용자 패치를 자동으로 다시 적용하지 않습니다(fuzz 적용 대신 v1.12 의 3-way 병합만 — 충돌이면 손대지 않음).
+
+> **옮겨진 태그(v1.26)**: upstream 은 `v5.0.7` 태그를 두 번 옮겼습니다(2026-10-07, 2026-11-25 — 뒤의 것은 보안 패치 1 커밋·370 파일). 이 도구는 카탈로그가 고정한 커밋(`7912e13`)의 아카이브로 조립하므로, 재조립의 비교도 그 커밋의 트리로 합니다. 태그가 고정 커밋과 다르면 실패하지 않고 안내만 남깁니다(v1.25 까지는 "태그 이동" 오류로 멈췄습니다). 옮겨진 태그의 내용은 카탈로그를 다시 생성한 릴리스에서 반영됩니다. `sync_egovframe_catalog` 도 같은 경우 경고로 알리고 고정 커밋의 아카이브 무결성을 검증합니다.
 
 ## rehearse_egovframe_migration 파라미터 (전환 리허설)
 

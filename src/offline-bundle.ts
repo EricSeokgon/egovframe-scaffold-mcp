@@ -337,6 +337,20 @@ export async function prepareOfflineBundle(opts: PrepareBundleOptions & { catalo
       await git(["remote", "add", "origin", opts.originUrl ?? `https://github.com/${opts.catalog.repository}.git`], dir, signal);
       // 태그마다 depth 1(내용 포함) — 재조립의 원본 식별·패치 생성에 필요한 blob 이 모두 들어 있다(실측 22태그 ≈38MB)
       await git(["fetch", "--quiet", "--depth", "1", "origin", "+refs/tags/*:refs/tags/*"], dir, signal);
+      // v1.26: 카탈로그가 고정한 커밋이 그 태그와 다르면(upstream 이 태그를 옮김) 고정 커밋도 담는다 — 폐쇄망에서도 조립 원본과 같은 트리로 비교
+      if (opts.catalog.tag && opts.catalog.commit) {
+        const at = await git(["rev-parse", "--verify", "--quiet", `refs/tags/${opts.catalog.tag}^{commit}`], dir, signal).then((x) => x.trim(), () => "");
+        if (at && at !== opts.catalog.commit) {
+          try {
+            await git(["fetch", "--quiet", "--depth", "1", "origin", opts.catalog.commit], dir, signal);
+            await git(["update-ref", `refs/pins/${opts.catalog.tag}`, opts.catalog.commit], dir, signal);
+            notes.push(`upstream 이 ${opts.catalog.tag} 태그를 ${at.slice(0, 7)} 로 옮긴 상태라 카탈로그 고정 커밋(${opts.catalog.commit.slice(0, 7)})도 미러에 담았습니다 — 재조립은 고정 커밋 기준으로 비교합니다.`);
+          } catch (e) {
+            if (signal?.aborted) throw e;
+            notes.push(`원본 미러의 ${opts.catalog.tag} 태그(${at.slice(0, 7)})가 카탈로그 고정 커밋(${opts.catalog.commit.slice(0, 7)})과 다른데 고정 커밋을 받지 못했습니다(${e instanceof Error ? e.message.slice(0, 120) : String(e)}) — 이 번들로는 재조립의 원본 비교를 할 수 없습니다.`);
+          }
+        }
+      }
       await git(["remote", "remove", "origin"], dir, signal);
       const tags = (await git(["for-each-ref", "--format=%(refname:short)", "refs/tags"], dir, signal)).split("\n").filter(Boolean);
       origin = { path: originRel, repository: opts.catalog.repository, tags, fetchedAt: new Date(now()).toISOString(), bytes: dirBytes(dir) };

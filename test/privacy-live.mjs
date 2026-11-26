@@ -7,7 +7,7 @@
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { clonePinned } from "./pinned-upstream.mjs";
 
 let n = 0;
 function assert(c, msg) { n++; if (!c) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
@@ -16,7 +16,7 @@ const m = await import("../dist/index.js");
 const root = mkdtempSync(path.join(tmpdir(), "egov-privacy-live-"));
 try {
   const cc = path.join(root, "cc-507");
-  execFileSync("git", ["clone", "-q", "--depth", "1", "--branch", "v5.0.7", "https://github.com/eGovFramework/egovframe-common-components.git", cc], { stdio: ["ignore", "ignore", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+  clonePinned(cc, "v5.0.7"); // 고정 커밋 — upstream 이 v5.0.7 태그를 옮겼다(test/pinned-upstream.mjs)
   const r = m.checkPrivacy({ projectDir: cc });
   info(`v5.0.7: ${r.durationMs}ms · ${JSON.stringify(r.summary)}`);
   const codes = r.findings.map((f) => f.code.replace(/^(\w+) \S+ → /, "$1 ")).sort();

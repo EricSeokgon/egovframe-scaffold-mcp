@@ -179,6 +179,8 @@ jobs:
         run: npm run test:access-live
       - name: Screen-query-DB consistency (common components v5.0.6 vs v5.0.7 - list/count pairs and maxlength inputs upstream fixed are reported before and not after, six official templates)
         run: npm run test:consistency-live
+      - name: Check baselines (common components v5.0.6 results as baseline for v5.0.7 - new and resolved counts match an independent set difference, line shifts keep fingerprints, generated gate commands fail only on a new handler)
+        run: npm run test:baseline-live
       - name: Prepare and load the common-component DB (MySQL 8.4 and PostgreSQL 16 in Docker, Korean round trip, upstream #1386/#1387)
         run: npm run test:database-live
       - name: Fix vulnerable dependencies (official templates 0 fixes, msa-common-components advisories halved, compile)

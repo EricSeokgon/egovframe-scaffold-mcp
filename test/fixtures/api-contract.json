@@ -1,6 +1,6 @@
 {
-  "version": "1.25.0",
-  "base": "1.24.0",
+  "version": "1.26.0",
+  "base": "1.25.0",
   "change": "minor",
   "contract": {
     "tools": {
@@ -216,6 +216,9 @@
             "projectDir"
           ],
           "properties": {
+            "baselinePath": {
+              "type": "string"
+            },
             "format": {
               "type": "string",
               "enum": [
@@ -258,6 +261,25 @@
             "summary"
           ],
           "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "findings",
+                "path",
+                "resolved"
+              ],
+              "properties": {
+                "findings": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "resolved": {
+                  "type": "integer"
+                }
+              }
+            },
             "durationMs": {
               "type": "integer"
             },
@@ -295,8 +317,14 @@
                   "file": {
                     "type": "string"
                   },
+                  "fingerprint": {
+                    "type": "string"
+                  },
                   "fix": {
                     "type": "string"
+                  },
+                  "isNew": {
+                    "type": "boolean"
                   },
                   "kind": {
                     "type": "string",
@@ -588,6 +616,16 @@
                 },
                 "medium": {
                   "type": "integer"
+                },
+                "new": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "suppressed": {
                   "type": "integer"
@@ -1150,6 +1188,9 @@
             "projectDir"
           ],
           "properties": {
+            "baselinePath": {
+              "type": "string"
+            },
             "format": {
               "type": "string",
               "enum": [
@@ -1224,6 +1265,25 @@
             "summary"
           ],
           "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "findings",
+                "path",
+                "resolved"
+              ],
+              "properties": {
+                "findings": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "resolved": {
+                  "type": "integer"
+                }
+              }
+            },
             "configSet": {
               "type": "object",
               "required": [
@@ -1284,8 +1344,14 @@
                   "file": {
                     "type": "string"
                   },
+                  "fingerprint": {
+                    "type": "string"
+                  },
                   "fix": {
                     "type": "string"
+                  },
+                  "isNew": {
+                    "type": "boolean"
                   },
                   "line": {
                     "type": "integer"
@@ -1486,6 +1552,16 @@
                 "na": {
                   "type": "integer"
                 },
+                "new": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "pass": {
                   "type": "integer"
                 },
@@ -1508,6 +1584,9 @@
             "projectDir"
           ],
           "properties": {
+            "baselinePath": {
+              "type": "string"
+            },
             "format": {
               "type": "string",
               "enum": [
@@ -1550,6 +1629,25 @@
             "summary"
           ],
           "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "findings",
+                "path",
+                "resolved"
+              ],
+              "properties": {
+                "findings": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "resolved": {
+                  "type": "integer"
+                }
+              }
+            },
             "columns": {
               "type": "array",
               "items": {
@@ -1634,6 +1732,9 @@
                   "file": {
                     "type": "string"
                   },
+                  "fingerprint": {
+                    "type": "string"
+                  },
                   "grade": {
                     "type": "string",
                     "enum": [
@@ -1642,6 +1743,9 @@
                       "general",
                       "unique-id"
                     ]
+                  },
+                  "isNew": {
+                    "type": "boolean"
                   },
                   "item": {
                     "type": "string"
@@ -1863,6 +1967,16 @@
                 },
                 "medium": {
                   "type": "integer"
+                },
+                "new": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "suppressed": {
                   "type": "integer"
@@ -4625,6 +4739,10 @@
             "projectDir"
           ],
           "properties": {
+            "baselineDir": {
+              "type": "string",
+              "pattern": "^(?!.*(?:^|\\/)\\.\\.(?:\\/|$))(?:\\.\\/)?[A-Za-z0-9_.\\-][A-Za-z0-9_.\\/\\-]{0,200}$"
+            },
             "delivery": {
               "type": "boolean",
               "default": false
@@ -5427,6 +5545,10 @@
             "projectDir"
           ],
           "properties": {
+            "baselineDir": {
+              "type": "string",
+              "pattern": "^(?!.*(?:^|\\/)\\.\\.(?:\\/|$))(?:\\.\\/)?[A-Za-z0-9_.\\-][A-Za-z0-9_.\\/\\-]{0,200}$"
+            },
             "dryRun": {
               "type": "boolean",
               "default": false
@@ -10957,6 +11079,9 @@
             "projectDir"
           ],
           "properties": {
+            "baselinePath": {
+              "type": "string"
+            },
             "consistency": {
               "type": "boolean",
               "default": true
@@ -10964,6 +11089,11 @@
             "mapper": {
               "type": "boolean",
               "default": true
+            },
+            "maxIssues": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000
             },
             "projectDir": {
               "type": "string"
@@ -11054,6 +11184,25 @@
                 "truncated"
               ],
               "properties": {
+                "baseline": {
+                  "type": "object",
+                  "required": [
+                    "findings",
+                    "path",
+                    "resolved"
+                  ],
+                  "properties": {
+                    "findings": {
+                      "type": "integer"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "resolved": {
+                      "type": "integer"
+                    }
+                  }
+                },
                 "durationMs": {
                   "type": "integer"
                 },
@@ -11074,8 +11223,14 @@
                       "file": {
                         "type": "string"
                       },
+                      "fingerprint": {
+                        "type": "string"
+                      },
                       "fix": {
                         "type": "string"
+                      },
+                      "isNew": {
+                        "type": "boolean"
                       },
                       "kind": {
                         "type": "string",
@@ -11149,6 +11304,16 @@
                     "maxlengthInputs": {
                       "type": "integer"
                     },
+                    "new": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "pairsCompared": {
                       "type": "integer"
                     },
@@ -11190,6 +11355,25 @@
                 "summary"
               ],
               "properties": {
+                "baseline": {
+                  "type": "object",
+                  "required": [
+                    "findings",
+                    "path",
+                    "resolved"
+                  ],
+                  "properties": {
+                    "findings": {
+                      "type": "integer"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "resolved": {
+                      "type": "integer"
+                    }
+                  }
+                },
                 "counts": {
                   "type": "object",
                   "required": [
@@ -11249,6 +11433,12 @@
                       "file": {
                         "type": "string"
                       },
+                      "fingerprint": {
+                        "type": "string"
+                      },
+                      "isNew": {
+                        "type": "boolean"
+                      },
                       "kind": {
                         "type": "string"
                       },
@@ -11300,6 +11490,16 @@
                     "missing": {
                       "type": "integer"
                     },
+                    "new": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "variantGaps": {
                       "type": "integer"
                     },
@@ -11307,6 +11507,9 @@
                       "type": "integer"
                     }
                   }
+                },
+                "truncated": {
+                  "type": "boolean"
                 }
               }
             },

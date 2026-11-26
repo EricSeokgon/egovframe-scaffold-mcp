@@ -2,6 +2,7 @@
 //   1) 목록·건수 쌍: selectXList ↔ selectXListCnt(TotCnt·Count)의 동적 조건(<if test>·<when test>)이 다르면 페이지 수가 어긋난다
 //   2) 입력 길이 3자 대조: JSP maxlength · VO @Size(max)/@Length(max) · DDL 컬럼 길이 — 화면·VO 가 DB 보다 길면 저장 때 잘리거나 오류
 //   필드 → 컬럼은 매퍼의 INSERT·UPDATE 문장(#{field} 와 짝이 되는 컬럼)에서 읽는다. 이름 추측을 하지 않는다.
+import { assignFingerprints, readCheckBaseline, applyBaseline, baselineLine, type BaselineInfo } from "./baseline.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { L } from "./lang.js";
@@ -17,6 +18,10 @@ export interface ConsistencyIssue {
   detail?: Record<string, string | number | string[]>;
   /** DB 별 매퍼 사본 수(같은 불일치가 여러 사본에 있을 때) */
   variants?: number;
+  /** v1.26: 줄 번호에 묶이지 않는 지문(종류·파일·대상·순번) */
+  fingerprint?: string;
+  /** v1.26: baselinePath 를 줬을 때 — 이전 결과에 없던 항목 */
+  isNew?: boolean;
 }
 export interface ConsistencyResult {
   projectDir: string;
@@ -26,12 +31,16 @@ export interface ConsistencyResult {
     sizedFields: number; maxlengthInputs: number; columnsWithLength: number; fieldsLinked: number;
     errors: number; warnings: number;
     byKind: Record<string, number>;
+    /** v1.26: 새 항목 수(baselinePath 없으면 null) */
+    new: number | null;
   };
+  /** v1.26: 비교한 기준선(있을 때만) */
+  baseline?: BaselineInfo;
   issues: ConsistencyIssue[];
   truncated: boolean;
   notes: string[];
 }
-export interface ConsistencyOptions { projectDir: string; maxFiles?: number; maxIssues?: number }
+export interface ConsistencyOptions { projectDir: string; maxFiles?: number; maxIssues?: number; /** v1.26: validate_egovframe_project 의 이전 결과(format=json) */ baselinePath?: string }
 
 const SKIP_DIRS = new Set(["target", "build", "node_modules", ".git", "migration-backup", "deploy", "sbom", "bin", "out", ".idea", ".settings", "test"]);
 const rel = (root: string, p: string) => path.relative(root, p).split(path.sep).join("/");
@@ -293,6 +302,9 @@ export function checkConsistency(opts: ConsistencyOptions): ConsistencyResult {
   }
 
   const SEV = { error: 0, warning: 1 } as const;
+  assignFingerprints("consistency", issues, (i) => [i.kind, i.file, i.subject]);
+  const base = opts.baselinePath ? applyBaseline(issues, readCheckBaseline(projectDir, opts.baselinePath, "consistency")) : null;
+  if (base?.note) notes.push(base.note);
   issues.sort((a, b) => SEV[a.severity] - SEV[b.severity] || a.kind.localeCompare(b.kind) || a.file.localeCompare(b.file) || a.line - b.line);
   const byKind: Record<string, number> = {};
   for (const i of issues) byKind[i.kind] = (byKind[i.kind] ?? 0) + 1;
@@ -302,7 +314,8 @@ export function checkConsistency(opts: ConsistencyOptions): ConsistencyResult {
   const maxIssues = opts.maxIssues ?? 500;
   return {
     projectDir, durationMs: Date.now() - t0,
-    summary: { mapperFiles: mappers.length, countPairs, pairsCompared, sizedFields: sized.length, maxlengthInputs: inputs.length, columnsWithLength: colLen.size, fieldsLinked, errors: issues.filter((i) => i.severity === "error").length, warnings: issues.filter((i) => i.severity === "warning").length, byKind },
+    summary: { mapperFiles: mappers.length, countPairs, pairsCompared, sizedFields: sized.length, maxlengthInputs: inputs.length, columnsWithLength: colLen.size, fieldsLinked, errors: issues.filter((i) => i.severity === "error").length, warnings: issues.filter((i) => i.severity === "warning").length, byKind, new: base ? base.newCount : null },
+    ...(base ? { baseline: base.info } : {}),
     issues: issues.slice(0, maxIssues), truncated: issues.length > maxIssues, notes,
   };
 }
@@ -312,9 +325,10 @@ export function renderConsistencyMarkdown(r: ConsistencyResult, topN = 20): stri
   const out: string[] = [L("### 화면–쿼리–DB 정합성", "### Screen–query–DB consistency"), ""];
   out.push(L(`- 목록·건수 쌍 ${s.countPairs}개(동적 조건 비교 ${s.pairsCompared}) · @Size 필드 ${s.sizedFields} · maxlength 입력 ${s.maxlengthInputs} · 길이 있는 컬럼 ${s.columnsWithLength} · 필드–컬럼 연결 ${s.fieldsLinked}`, `- ${s.countPairs} list/count pairs (${s.pairsCompared} compared on dynamic conditions) · ${s.sizedFields} @Size fields · ${s.maxlengthInputs} maxlength inputs · ${s.columnsWithLength} columns with a length · ${s.fieldsLinked} field–column links`));
   out.push(L(`- **오류 ${s.errors} · 경고 ${s.warnings}**${Object.keys(s.byKind).length ? ` (${Object.entries(s.byKind).map(([k, v]) => `${k} ${v}`).join(" · ")})` : ""}`, `- **${s.errors} errors · ${s.warnings} warnings**${Object.keys(s.byKind).length ? ` (${Object.entries(s.byKind).map(([k, v]) => `${k} ${v}`).join(" · ")})` : ""}`));
+  if (r.baseline) out.push(baselineLine(r.baseline, s.new ?? 0));
   if (r.issues.length) {
     out.push("", L("| 등급 | 종류 | 대상 | 위치 | 내용 |", "| Severity | Kind | Subject | Location | Detail |"), "|---|---|---|---|---|");
-    for (const i of r.issues.slice(0, topN)) out.push(`| ${i.severity} | ${i.kind} | ${i.subject} | \`${i.file}:${i.line}\`${i.variants && i.variants > 1 ? L(` 외 DB 사본 ${i.variants - 1}`, ` +${i.variants - 1} DB copies`) : ""} | ${i.message.replace(/\|/g, "\\|")} |`);
+    for (const i of r.issues.slice(0, topN)) out.push(`| ${i.isNew ? "🆕 " : ""}${i.severity} | ${i.kind} | ${i.subject} | \`${i.file}:${i.line}\`${i.variants && i.variants > 1 ? L(` 외 DB 사본 ${i.variants - 1}`, ` +${i.variants - 1} DB copies`) : ""} | ${i.message.replace(/\|/g, "\\|")} |`);
     if (r.issues.length > topN) out.push("", L(`… ${r.issues.length - topN}건 더(format=json 또는 topN)`, `… ${r.issues.length - topN} more (format=json or topN)`));
   }
   for (const n of r.notes) out.push(`- ${n}`);

@@ -2,6 +2,7 @@
 //   "기동은 되는데 운영에서 터지는" 설정(SQL 로깅 드라이버·DEBUG 로그·콘솔 전용 로그·devtools·내장 DB·풀 타임아웃·세션·업로드·오류 노출·actuator·개발 플래그·비밀값)을
 //   운영 설정 세트(Boot: application + application-prod.* / Classic: globals.properties + context-*.xml + web.xml + log4j2.xml)에서 찾는다.
 //   규칙은 catalog/operations-rules.json 데이터(출처 명시). 값을 고치지 않고 바뀔 줄을 제안만 한다.
+import { assignFingerprints, readCheckBaseline, applyBaseline, baselineLine, type BaselineInfo } from "./baseline.js";
 import { loadRulePacks, applyOpsPacks, rulePackInfo, type RulePackInfo } from "./rule-packs.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -29,9 +30,13 @@ export interface OpsFinding {
   suggestion?: string;
   /** v1.23: 이 규칙을 정한 규칙 팩 이름(동봉 규칙이면 없음) */
   source?: string;
+  /** v1.26: 줄 번호에 묶이지 않는 지문(규칙·파일·설정 키·순번) */
+  fingerprint?: string;
+  /** v1.26: baselinePath 를 줬을 때 — 이전 결과에 없던 항목 */
+  isNew?: boolean;
 }
 export interface OpsRuleResult { rule: string; category: string; severity: OpsSeverity; title: string; status: "pass" | "fail" | "n/a"; findings: number; /** v1.23: 규칙 팩 이름 */ source?: string }
-export interface OperationsOptions { projectDir: string; /** 운영 프로파일 이름(기본: prod·production·release·ops 중 있는 것) */ profile?: string; rules?: string[]; maxFiles?: number; /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */ rulePacks?: string[] }
+export interface OperationsOptions { projectDir: string; /** 운영 프로파일 이름(기본: prod·production·release·ops 중 있는 것) */ profile?: string; rules?: string[]; maxFiles?: number; /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */ rulePacks?: string[]; /** v1.26: 이전 결과(format=json) — 새로 생긴 항목만 isNew */ baselinePath?: string }
 export interface OperationsResult {
   projectDir: string;
   rulesVersion: { surveyedAt: string; rules: number };
@@ -41,7 +46,9 @@ export interface OperationsResult {
   filesScanned: number;
   findings: OpsFinding[];
   rules: OpsRuleResult[];
-  summary: { total: number; high: number; medium: number; low: number; suppressed: number; pass: number; fail: number; na: number };
+  summary: { total: number; high: number; medium: number; low: number; suppressed: number; pass: number; fail: number; na: number; /** v1.26: 새 항목 수(baselinePath 없으면 null) */ new: number | null };
+  /** v1.26: 비교한 기준선(있을 때만) */
+  baseline?: BaselineInfo;
   grade: { grade: "A" | "B" | "C" | "D"; formula: string };
   ignoreFile: string | null;
   invalidIgnores: string[];
@@ -277,6 +284,7 @@ export async function checkOperations(opts: OperationsOptions): Promise<Operatio
     evaluated.set(rule.id, !applicable ? "n/a" : findings.length > before ? "fail" : "pass");
   }
 
+  assignFingerprints("operations", findings, (f) => [f.rule, f.file, opsSubject(f.code)]);
   // 예외 파일
   const ig = readIgnoreFile(projectDir, OPS_IGNORE_FILE);
   const suppressedList: OpsFinding[] = [];
@@ -296,13 +304,24 @@ export async function checkOperations(opts: OperationsOptions): Promise<Operatio
   if (runtime === "boot" && !prodProfile && excludedProfiles.length) notes.push(L(`운영 프로파일을 찾지 못해(있는 것: ${excludedProfiles.join(", ")}) application.properties/yml 만 운영 세트로 봤습니다 — profile 로 지정할 수 있습니다`, `No production profile found (present: ${excludedProfiles.join(", ")}); only application.properties/yml was treated as the production set — pass profile to choose one`));
   if (prodProfile) notes.push(L(`운영 세트: application + application-${prodProfile}.* (제외: ${excludedProfiles.join(", ") || "없음"})`, `Production set: application + application-${prodProfile}.* (excluded: ${excludedProfiles.join(", ") || "none"})`));
   if (ig.invalid.length) notes.push(...ig.invalid.map((x) => `${OPS_IGNORE_FILE}: ${x}`));
+  const base = opts.baselinePath ? applyBaseline(kept, readCheckBaseline(projectDir, opts.baselinePath, "operations")) : null;
+  if (base?.note) notes.push(base.note);
   return {
     projectDir, rulesVersion: { surveyedAt: all.surveyedAt, rules: rules.length }, runtime,
     configSet: { properties: propsFiles.map((f) => f.rel), profile: prodProfile, excludedProfiles },
     filesScanned: scanFiles.length, findings: kept, rules: results,
-    summary: { total: kept.length, high: count("high"), medium: count("medium"), low: count("low"), suppressed: suppressedList.length, pass: results.filter((r) => r.status === "pass").length, fail: results.filter((r) => r.status === "fail").length, na: results.filter((r) => r.status === "n/a").length },
+    summary: { total: kept.length, high: count("high"), medium: count("medium"), low: count("low"), suppressed: suppressedList.length, pass: results.filter((r) => r.status === "pass").length, fail: results.filter((r) => r.status === "fail").length, na: results.filter((r) => r.status === "n/a").length, new: base ? base.newCount : null },
+    ...(base ? { baseline: base.info } : {}),
     grade: { grade, formula }, ignoreFile: ig.file, invalidIgnores: ig.invalid, ...(packs.length ? { rulePacks: rulePackInfo(packs) } : {}), notes,
   };
+}
+
+/** 지문에 쓰는 대상 — 설정 키(값 제외) 또는 XML 태그 이름. 번역되는 문구·값이 바뀌어도 같은 항목으로 남게 한다. */
+export function opsSubject(code: string): string {
+  const kv = code.match(/^\s*([A-Za-z_][\w.\-\[\]]*)\s*[=:]/);
+  if (kv) return kv[1];
+  const tag = code.match(/<\/?([A-Za-z][\w:.\-]*)/);
+  return tag ? `<${tag[1]}>` : "";
 }
 
 export function renderOperationsMarkdown(r: OperationsResult, topN = 50): string {
@@ -310,6 +329,7 @@ export function renderOperationsMarkdown(r: OperationsResult, topN = 50): string
   const s = r.summary;
   out.push(L(`# 운영 준비 점검 — ${r.projectDir}`, `# Operations readiness check — ${r.projectDir}`), ``);
   out.push(L(`등급 **${r.grade.grade}** · 미달 규칙 ${s.fail} / 통과 ${s.pass} / 해당 없음 ${s.na} · 항목 ${s.total}(높음 ${s.high} · 중간 ${s.medium} · 낮음 ${s.low})${s.suppressed ? ` · 예외 ${s.suppressed}` : ""} · 실행 ${r.runtime} · 파일 ${r.filesScanned} · 규칙 ${r.rulesVersion.rules}(${r.rulesVersion.surveyedAt})`, `Grade **${r.grade.grade}** · failed rules ${s.fail} / passed ${s.pass} / n/a ${s.na} · findings ${s.total} (high ${s.high} · medium ${s.medium} · low ${s.low})${s.suppressed ? ` · suppressed ${s.suppressed}` : ""} · runtime ${r.runtime} · files ${r.filesScanned} · rules ${r.rulesVersion.rules} (${r.rulesVersion.surveyedAt})`), ``);
+  if (r.baseline) out.push(baselineLine(r.baseline, s.new ?? 0), ``);
   out.push(L("## 점검표", "## Checklist"), ``, L("| 규칙 | 심각도 | 결과 | 건수 |", "| Rule | Severity | Result | Findings |"), "|---|---|---|---|");
   for (const x of r.rules) out.push(`| ${x.title} \`${x.rule}\` | ${x.severity} | ${x.status === "pass" ? "✅" : x.status === "fail" ? "⚠️" : "➖"} ${x.status} | ${x.findings || ""} |`);
   out.push(``);
@@ -318,7 +338,7 @@ export function renderOperationsMarkdown(r: OperationsResult, topN = 50): string
     let last = "";
     for (const f of r.findings.slice(0, topN)) {
       if (f.rule !== last) { if (last) out.push(``); last = f.rule; out.push(`### ${f.title} \`${f.rule}\` — ${f.severity}`, ``, `${f.message}`, ``, L(`- **조치**: ${f.fix}`, `- **Fix**: ${f.fix}`), L(`- **근거**: ${f.basis}`, `- **Basis**: ${f.basis}`), ``); }
-      out.push(`- \`${f.file}:${f.line}\` \`${f.code}\`${f.suggestion ? L(` → 제안 \`${f.suggestion}\``, ` → suggest \`${f.suggestion}\``) : ""}`);
+      out.push(`- ${f.isNew ? "🆕 " : ""}\`${f.file}:${f.line}\` \`${f.code}\`${f.suggestion ? L(` → 제안 \`${f.suggestion}\``, ` → suggest \`${f.suggestion}\``) : ""}`);
     }
     if (r.findings.length > topN) out.push(L(`- … ${r.findings.length - topN}건 더(format=json)`, `- … ${r.findings.length - topN} more (format=json)`));
     out.push(``);

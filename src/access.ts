@@ -4,6 +4,7 @@
 //   3) 누락 의심: 검증 없는 변경 / 형제 핸들러보다 낮은 검증 / 소유권 비교 없는 수정·삭제 / 형제보다 낮은 상세 조회
 //   판정은 규칙 데이터(catalog/access-rules.json)의 호출 사전 기반 휴리스틱이다 — 역할–URL 을 DB(보호자원)로 관리하는 프로젝트는
 //   그 내용을 알 수 없어 관리 화면이 "검증 없음"으로 보일 수 있다(전역 보호 안내·예외 파일).
+import { assignFingerprints, readCheckBaseline, applyBaseline, baselineLine, type BaselineInfo } from "./baseline.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { L, getLang } from "./lang.js";
@@ -49,6 +50,10 @@ export interface AccessFinding {
   message: string; fix: string;
   /** 근거가 된 형제 핸들러(메서드 이름·수준) */
   sibling?: { method: string; level: AccessLevel; line: number };
+  /** v1.26: 줄 번호에 묶이지 않는 지문(종류·파일·컨트롤러·메서드·URL·순번) */
+  fingerprint?: string;
+  /** v1.26: baselinePath 를 줬을 때 — 이전 결과에 없던 항목 */
+  isNew?: boolean;
 }
 export interface AccessGlobal {
   kind: "spring-security" | "egov-security" | "interceptor" | "none";
@@ -57,7 +62,7 @@ export interface AccessGlobal {
   protect: string[]; exclude: string[];
   note: string;
 }
-export interface AccessOptions { projectDir: string; maxFiles?: number; rulePacks?: string[] }
+export interface AccessOptions { projectDir: string; maxFiles?: number; rulePacks?: string[]; /** v1.26: 이전 결과(format=json) — 새로 생긴 항목만 isNew */ baselinePath?: string }
 export interface AccessResult {
   projectDir: string;
   rulesVersion: { surveyedAt: string };
@@ -70,7 +75,11 @@ export interface AccessResult {
     byLevel: Record<AccessLevel, number>; byAction: Record<AccessAction, number>;
     writes: number; writesWithoutCheck: number;
     high: number; medium: number; low: number; suppressed: number;
+    /** v1.26: 새 항목 수(baselinePath 없으면 null) */
+    new: number | null;
   };
+  /** v1.26: 비교한 기준선(있을 때만) */
+  baseline?: BaselineInfo;
   ignoreFile: string | null;
   invalidIgnores: string[];
   rulePacks?: RulePackInfo[];
@@ -342,6 +351,7 @@ export function checkAccess(opts: AccessOptions): AccessResult {
     }
   }
 
+  assignFingerprints("access", findings, (f) => [f.kind, f.file, f.controller, f.method, f.url]);
   const ig = readIgnoreFile(projectDir, ACCESS_IGNORE_FILE);
   let suppressed = 0;
   const kept = findings.filter((f) => { const hit = ig.list.some((x: SecureIgnore) => (x.rule === f.kind || x.rule === "*") && (x.path === f.file || f.file.startsWith(x.path.endsWith("/") ? x.path : `${x.path}/`)) && (x.line === undefined || x.line === f.line)); if (hit) suppressed++; return !hit; });
@@ -356,9 +366,12 @@ export function checkAccess(opts: AccessOptions): AccessResult {
   if (ig.invalid.length) notes.push(...ig.invalid.map((x) => `${ACCESS_IGNORE_FILE}: ${x}`));
   if (accessPacks.length) notes.push(L(`규칙 팩 적용: ${accessPacks.map((p) => `${p.name} ${p.version}`).join(", ")}`, `Rule packs applied: ${accessPacks.map((p) => `${p.name} ${p.version}`).join(", ")}`));
   const writes = handlers.filter((h) => isWrite(h.action));
+  const bl = opts.baselinePath ? applyBaseline(kept, readCheckBaseline(projectDir, opts.baselinePath, "access")) : null;
+  if (bl?.note) notes.push(bl.note);
   return {
     projectDir, rulesVersion: { surveyedAt: rules.surveyedAt }, durationMs: Date.now() - t0, global, handlers, findings: kept,
-    summary: { controllers: controllers.size, handlers: handlers.length, byLevel, byAction, writes: writes.length, writesWithoutCheck: writes.filter((h) => h.level === "none").length, high: kept.filter((f) => f.severity === "high").length, medium: kept.filter((f) => f.severity === "medium").length, low: kept.filter((f) => f.severity === "low").length, suppressed },
+    summary: { controllers: controllers.size, handlers: handlers.length, byLevel, byAction, writes: writes.length, writesWithoutCheck: writes.filter((h) => h.level === "none").length, high: kept.filter((f) => f.severity === "high").length, medium: kept.filter((f) => f.severity === "medium").length, low: kept.filter((f) => f.severity === "low").length, suppressed, new: bl ? bl.newCount : null },
+    ...(bl ? { baseline: bl.info } : {}),
     ignoreFile: ig.file, invalidIgnores: ig.invalid, ...(accessPacks.length ? { rulePacks: rulePackInfo(accessPacks) } : {}), notes,
   };
 }
@@ -371,10 +384,11 @@ export function renderAccessMarkdown(r: AccessResult, topN = 40): string {
   out.push(L(`- 컨트롤러 ${s.controllers}개 · 핸들러 ${s.handlers}개 — 검증 수준: 없음 ${s.byLevel.none} · 로그인 ${s.byLevel.login} · 역할 ${s.byLevel.role} · 소유권 ${s.byLevel.owner}`, `- ${s.controllers} controllers · ${s.handlers} handlers — check level: none ${s.byLevel.none} · login ${s.byLevel.login} · role ${s.byLevel.role} · ownership ${s.byLevel.owner}`));
   out.push(L(`- 변경(등록·수정·삭제) 핸들러 ${s.writes}개 중 검증 없음 ${s.writesWithoutCheck}개`, `- ${s.writesWithoutCheck} of ${s.writes} write handlers (create/update/delete) have no check`));
   out.push(L(`- **누락 의심: 높음 ${s.high} · 중간 ${s.medium} · 낮음 ${s.low}**${s.suppressed ? ` · 예외 ${s.suppressed}` : ""}`, `- **Suspected gaps: high ${s.high} · medium ${s.medium} · low ${s.low}**${s.suppressed ? ` · suppressed ${s.suppressed}` : ""}`));
+  if (r.baseline) out.push(baselineLine(r.baseline, s.new ?? 0));
   for (const n of r.notes) out.push(`- ${n}`);
   if (r.findings.length) {
     out.push("", L("## 누락 의심 (심각도순)", "## Suspected gaps (by severity)"), "", L("| 등급 | 종류 | URL | 메서드 | 일 | 검증 | 위치 | 근거 |", "| Severity | Kind | URL | Method | Act | Check | Location | Evidence |"), "|---|---|---|---|---|---|---|---|");
-    for (const f of r.findings.slice(0, topN)) out.push(`| ${f.severity} | ${f.kind} | \`${f.url}\` | ${f.controller}.${f.method} | ${AC(f.action)} | ${LV(f.level)} | \`${f.file}:${f.line}\` | ${f.message.replace(/\|/g, "\\|")}${f.sibling ? L(` (형제 ${f.sibling.method}:${f.sibling.line})`, ` (sibling ${f.sibling.method}:${f.sibling.line})`) : ""} |`);
+    for (const f of r.findings.slice(0, topN)) out.push(`| ${f.isNew ? "🆕 " : ""}${f.severity} | ${f.kind} | \`${f.url}\` | ${f.controller}.${f.method} | ${AC(f.action)} | ${LV(f.level)} | \`${f.file}:${f.line}\` | ${f.message.replace(/\|/g, "\\|")}${f.sibling ? L(` (형제 ${f.sibling.method}:${f.sibling.line})`, ` (sibling ${f.sibling.method}:${f.sibling.line})`) : ""} |`);
     if (r.findings.length > topN) out.push("", L(`… ${r.findings.length - topN}건 더(format=json 또는 topN)`, `… ${r.findings.length - topN} more (format=json or topN)`));
     out.push("", L(`> 확인해서 의도된 공개·다른 계층의 검증이면 \`${ACCESS_IGNORE_FILE}\` 에 사유·검토자와 함께 예외로 등록할 수 있습니다(rule = 종류).`, `> If a finding is intentional or checked in another layer, register it in \`${ACCESS_IGNORE_FILE}\` with a reason and reviewer (rule = kind).`));
   }

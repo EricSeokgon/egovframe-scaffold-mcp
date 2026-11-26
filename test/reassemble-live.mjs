@@ -35,8 +35,13 @@ try {
   const r = await api.reassembleComponents({ projectDir: proj, components: ["cmm", "bbs"], dryRun: false });
   assert(r.manifestUpdated && r.worklist.filter((w) => w.kind === "reapply-patch" && w.patch).length === 2, `적용: 매니페스트·패치 2개 (${r.backupDir})`);
   const origin = new api.GitOriginSource();
+  // upstream 이 v5.0.7 태그를 옮겨도(2026-11-25) 조립 원본은 카탈로그 고정 커밋이다 — 대조도 그 커밋의 트리로
+  origin.pin("v5.0.7", api.loadCatalog().source.commit);
   const target = await origin.listBlobs("v5.0.7", comps.flatMap((c) => c.pathPrefixes));
   const written = r.files.filter((f) => f.action === "replace" || f.action === "add");
+  const movedTo = origin.movedTag("v5.0.7");
+  if (movedTo) assert(r.notes.some((x) => x.includes("태그를") && x.includes(movedTo.slice(0, 7)) && x.includes("고정 커밋")) && r.target.commit === api.loadCatalog().source.commit, `upstream 이 v5.0.7 태그를 ${movedTo.slice(0, 7)} 로 옮긴 상태 — 실패하지 않고 고정 커밋(${r.target.commit.slice(0, 7)}) 기준으로 재조립, 안내를 남김`);
+  else console.log("info: v5.0.7 태그가 카탈로그 고정 커밋과 같음");
   const mismatch = written.filter((f) => target.has(f.path) && api.gitBlobId(readFileSync(path.join(proj, f.path))) !== target.get(f.path));
   assert(written.length > 150 && mismatch.length === 0, `교체·추가 ${written.length}개 파일이 v5.0.7 tree blob 과 일치 (불일치 ${mismatch.length})`);
   const patch = readFileSync(path.join(proj, r.worklist.find((w) => w.path.endsWith("service/Blog.java")).patch), "utf8");

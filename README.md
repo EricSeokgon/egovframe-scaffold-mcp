@@ -112,6 +112,13 @@ npx -y egovframe-scaffold-mcp secure     --project . --sarif-path egovframe-secu
 npx -y egovframe-scaffold-mcp assess     --project . --offline=false --step-summary --fail-on supplyChain:C
 ```
 
+**이미 있는 항목은 두고 새로 생긴 것만 막기(v1.26)** — 점검 결과를 기준선으로 저장해 두면 `new`(새 항목 수)로 게이트를 걸 수 있습니다. `secure`·`ops`·`privacy`·`access`·`validate` 가 지원합니다. 자세한 내용은 [docs/tools.md](docs/tools.md#점검-기준선--새-항목만-게이트-baselinepath-v126).
+
+```bash
+npx -y egovframe-scaffold-mcp access --project . --json-out .egovframe/baseline/access.json      # 기준선(커밋)
+npx -y egovframe-scaffold-mcp access --project . --baseline-path .egovframe/baseline/access.json --fail-on "new>0"
+```
+
 | 명령 | 하는 일 | `--fail-on` 지표 |
 |---|---|---|
 | `assess` | 전환 준비도 평가서 | `migration:C`·`supplyChain:C`(등급 이상이면 실패), `manual>20`, `vulnerabilities` |

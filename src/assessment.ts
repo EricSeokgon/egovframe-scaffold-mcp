@@ -96,6 +96,8 @@ export function computeGrade(rubric: Rubric, values: Record<string, number>, not
 }
 
 // ── 평가서 ─────────────────────────────────────────────
+/** v1.26: 기준선과 비교한 결과(그 점검의 기준선 파일이 있을 때만) */
+export interface AssessmentBaseline { path: string; previous: number; new: number; resolved: number }
 export interface AssessmentOptions {
   projectDir: string;
   /** 의존성: 빌드 도구로 전이까지 해석(기본 false) */
@@ -112,6 +114,8 @@ export interface AssessmentOptions {
   maxFiles?: number;
   /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) — 의존성·보안약점·운영·개인정보 점검에 함께 적용 */
   rulePacks?: string[];
+  /** v1.26: 기준선 디렉터리(프로젝트 상대, <dir>/<secure|ops|privacy|access|validate>.json 중 있는 것만) — 점검 절마다 새 항목·해결 */
+  baselineDir?: string;
   runner?: Runner;
   platform?: NodeJS.Platform | string;
   now?: () => number;
@@ -152,17 +156,17 @@ export interface AssessmentResult {
   };
   security: { ok: number; missing: number; na: number; checks: SecurityCheck[] };
   /** v0.44: 보안약점 점검(check_egovframe_secure_coding) 요약 — 등급 산식에는 넣지 않는다 */
-  secureCoding: { total: number; high: number; medium: number; low: number; byOrigin: Record<string, number>; byRule: { rule: string; guideItem: string; severity: string; count: number }[]; suppressed: number; error?: string };
+  secureCoding: { baseline?: AssessmentBaseline; total: number; high: number; medium: number; low: number; byOrigin: Record<string, number>; byRule: { rule: string; guideItem: string; severity: string; count: number }[]; suppressed: number; error?: string };
   /** v1.15: 운영 준비 점검(등급 산식에는 넣지 않음) */
-  operations: { grade: string; total: number; high: number; medium: number; low: number; fail: number; pass: number; na: number; failed: { rule: string; title: string; severity: string; findings: number }[]; error?: string };
+  operations: { baseline?: AssessmentBaseline; grade: string; total: number; high: number; medium: number; low: number; fail: number; pass: number; na: number; failed: { rule: string; title: string; severity: string; findings: number }[]; error?: string };
   /** v1.21: 개인정보 건수(흐름표·근거는 check_egovframe_privacy) */
-  privacy: { tables: number; columns: number; uniqueIdTables: number; high: number; medium: number; error?: string };
+  privacy: { baseline?: AssessmentBaseline; tables: number; columns: number; uniqueIdTables: number; high: number; medium: number; error?: string };
   /** v1.24: 접근 통제 건수(URL 권한 표·근거는 check_egovframe_access) */
-  access: { handlers: number; writes: number; writesWithoutCheck: number; global: string; high: number; medium: number; low: number; error?: string };
+  access: { baseline?: AssessmentBaseline; handlers: number; writes: number; writesWithoutCheck: number; global: string; high: number; medium: number; low: number; error?: string };
   /** v1.19: 매퍼·DAO 정합성 건수(항목은 validate_egovframe_project) */
-  mapper: { errors: number; warnings: number; missing: number; variantGaps: number; namespaces: number; statements: number; byKind: Record<string, number>; error?: string };
+  mapper: { baseline?: AssessmentBaseline; errors: number; warnings: number; missing: number; variantGaps: number; namespaces: number; statements: number; byKind: Record<string, number>; error?: string };
   /** v1.25: 화면–쿼리–DB 정합성 건수(근거는 validate_egovframe_project) */
-  consistency: { errors: number; warnings: number; countPairs: number; byKind: Record<string, number>; error?: string };
+  consistency: { baseline?: AssessmentBaseline; errors: number; warnings: number; countPairs: number; byKind: Record<string, number>; error?: string };
   sbom: {
     present: boolean; path: string; components?: number; specVersion?: string; timestamp?: string; vulnerabilities?: number;
     /** v0.40: 최소 요소 7종 */
@@ -248,6 +252,10 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   const mig: MigrateResult = migrateProject({ projectDir, maxFiles: opts.maxFiles });
   const fixHistory = readFixHistory(projectDir);
   const packInfo = rulePackInfo(loadRulePacks(opts.rulePacks));
+  // v1.26: 기준선 — 디렉터리에 그 점검의 파일이 있을 때만 비교
+  const bdir = opts.baselineDir?.replace(/\\/g, "/").replace(/\/+$/, "");
+  const basePath = (name: string): string | undefined => { if (!bdir) return undefined; const rel = `${bdir}/${name}.json`; return fs.existsSync(path.resolve(projectDir, rel)) ? rel : undefined; };
+  const blOf = (r: { baseline?: { path: string; findings: number; resolved: number }; summary: { new?: number | null } }): { baseline?: AssessmentBaseline } => (r.baseline ? { baseline: { path: r.baseline.path, previous: r.baseline.findings, new: r.summary.new ?? 0, resolved: r.baseline.resolved } } : {});
   const dep = await checkDependencies({ rulePacks: opts.rulePacks, projectDir, offline: opts.offline ?? true, osvQuery: opts.osvQuery, maxFiles: opts.maxFiles, resolve: opts.resolve, resolveScope: opts.resolveScope, resolveTimeoutMs: opts.resolveTimeoutMs, runner: opts.runner, platform: opts.platform });
   const topN = opts.topN ?? 20;
   const notes: string[] = [];
@@ -282,47 +290,47 @@ export async function assessProject(opts: AssessmentOptions): Promise<Assessment
   let secureCoding: AssessmentResult["secureCoding"];
   let secureByModule: { module: string; total: number }[] | undefined;
   try {
-    const sc = await checkSecureCoding({ projectDir, maxFindings: 1, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
+    const sc = await checkSecureCoding({ projectDir, maxFindings: 1, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks, baselinePath: basePath("secure") });
     secureByModule = sc.byModule;
-    secureCoding = { total: sc.summary.total, high: sc.summary.high, medium: sc.summary.medium, low: sc.summary.low, byOrigin: Object.fromEntries(Object.entries(sc.byOrigin).filter(([, n]) => n)), byRule: sc.byRule, suppressed: sc.summary.suppressed };
+    secureCoding = { total: sc.summary.total, high: sc.summary.high, medium: sc.summary.medium, low: sc.summary.low, byOrigin: Object.fromEntries(Object.entries(sc.byOrigin).filter(([, n]) => n)), byRule: sc.byRule, suppressed: sc.summary.suppressed, ...blOf(sc) };
   } catch (e) {
     secureCoding = { total: 0, high: 0, medium: 0, low: 0, byOrigin: {}, byRule: [], suppressed: 0, error: e instanceof Error ? e.message : String(e) };
   }
   // v1.15: 운영 준비 점검
   let operations: AssessmentResult["operations"];
   try {
-    const op = await checkOperations({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
-    operations = { grade: op.grade.grade, total: op.summary.total, high: op.summary.high, medium: op.summary.medium, low: op.summary.low, fail: op.summary.fail, pass: op.summary.pass, na: op.summary.na, failed: op.rules.filter((r) => r.status === "fail").map((r) => ({ rule: r.rule, title: r.title, severity: r.severity, findings: r.findings })) };
+    const op = await checkOperations({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks, baselinePath: basePath("ops") });
+    operations = { grade: op.grade.grade, total: op.summary.total, high: op.summary.high, medium: op.summary.medium, low: op.summary.low, fail: op.summary.fail, pass: op.summary.pass, na: op.summary.na, failed: op.rules.filter((r) => r.status === "fail").map((r) => ({ rule: r.rule, title: r.title, severity: r.severity, findings: r.findings })), ...blOf(op) };
   } catch (e) {
     operations = { grade: "?", total: 0, high: 0, medium: 0, low: 0, fail: 0, pass: 0, na: 0, failed: [], error: e instanceof Error ? e.message : String(e) };
   }
   // v1.19: 매퍼·DAO 정합성
   let consistency: AssessmentResult["consistency"];
   try {
-    const cs = checkConsistency({ projectDir, maxFiles: opts.maxFiles });
-    consistency = { errors: cs.summary.errors, warnings: cs.summary.warnings, countPairs: cs.summary.countPairs, byKind: cs.summary.byKind };
+    const cs = checkConsistency({ projectDir, maxFiles: opts.maxFiles, baselinePath: basePath("validate") });
+    consistency = { errors: cs.summary.errors, warnings: cs.summary.warnings, countPairs: cs.summary.countPairs, byKind: cs.summary.byKind, ...blOf(cs) };
   } catch (e) {
     consistency = { errors: 0, warnings: 0, countPairs: 0, byKind: {}, error: e instanceof Error ? e.message : String(e) };
   }
   let mapper: AssessmentResult["mapper"];
   try {
-    const mc = checkMappers({ projectDir, maxFiles: opts.maxFiles, maxIssues: 0 });
-    mapper = { errors: mc.summary.errors, warnings: mc.summary.warnings, missing: mc.summary.missing, variantGaps: mc.summary.variantGaps, namespaces: mc.counts.namespaces, statements: mc.counts.statements, byKind: mc.summary.byKind };
+    const mc = checkMappers({ projectDir, maxFiles: opts.maxFiles, maxIssues: 0, baselinePath: basePath("validate") });
+    mapper = { errors: mc.summary.errors, warnings: mc.summary.warnings, missing: mc.summary.missing, variantGaps: mc.summary.variantGaps, namespaces: mc.counts.namespaces, statements: mc.counts.statements, byKind: mc.summary.byKind, ...blOf(mc) };
   } catch (e) {
     mapper = { errors: 0, warnings: 0, missing: 0, variantGaps: 0, namespaces: 0, statements: 0, byKind: {}, error: e instanceof Error ? e.message : String(e) };
   }
   // v1.21: 개인정보
   let access: AssessmentResult["access"];
   try {
-    const ac = checkAccess({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
-    access = { handlers: ac.summary.handlers, writes: ac.summary.writes, writesWithoutCheck: ac.summary.writesWithoutCheck, global: ac.global.kind, high: ac.summary.high, medium: ac.summary.medium, low: ac.summary.low };
+    const ac = checkAccess({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks, baselinePath: basePath("access") });
+    access = { handlers: ac.summary.handlers, writes: ac.summary.writes, writesWithoutCheck: ac.summary.writesWithoutCheck, global: ac.global.kind, high: ac.summary.high, medium: ac.summary.medium, low: ac.summary.low, ...blOf(ac) };
   } catch (e) {
     access = { handlers: 0, writes: 0, writesWithoutCheck: 0, global: "none", high: 0, medium: 0, low: 0, error: e instanceof Error ? e.message : String(e) };
   }
   let privacy: AssessmentResult["privacy"];
   try {
-    const pv = checkPrivacy({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks });
-    privacy = { tables: pv.summary.tables, columns: pv.summary.columns, uniqueIdTables: pv.summary.uniqueIdTables, high: pv.summary.high, medium: pv.summary.medium };
+    const pv = checkPrivacy({ projectDir, maxFiles: opts.maxFiles, rulePacks: opts.rulePacks, baselinePath: basePath("privacy") });
+    privacy = { tables: pv.summary.tables, columns: pv.summary.columns, uniqueIdTables: pv.summary.uniqueIdTables, high: pv.summary.high, medium: pv.summary.medium, ...blOf(pv) };
   } catch (e) {
     privacy = { tables: 0, columns: 0, uniqueIdTables: 0, high: 0, medium: 0, error: e instanceof Error ? e.message : String(e) };
   }
@@ -393,6 +401,9 @@ function renderFormula(out: string[], rubric: Rubric): void {
 }
 
 /** 평가서 Markdown. */
+/** v1.26: 기준선 대비 한 줄 */
+const blLine = (b?: AssessmentBaseline): string[] => (b ? [L(`- 기준선(${b.path}, 이전 ${b.previous}건) 대비: **새 항목 ${b.new}** · 해결 ${b.resolved} · 그대로 ${b.previous - b.resolved}`, `- Against the baseline (${b.path}, ${b.previous} previous): **${b.new} new** · ${b.resolved} resolved · ${b.previous - b.resolved} unchanged`)] : []);
+
 export function renderAssessmentMarkdown(r: AssessmentResult): string {
   const out: string[] = [];
   const o = r.overview;
@@ -484,6 +495,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     out.push(L(`- 높음 ${sc.high} · 중간 ${sc.medium} · 낮음 ${sc.low} (합계 ${sc.total}${sc.suppressed ? ` · 예외 처리 ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — 출처 ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`, `- High ${sc.high} · medium ${sc.medium} · low ${sc.low} (total ${sc.total}${sc.suppressed ? ` · suppressed ${sc.suppressed}` : ""})${Object.keys(sc.byOrigin).length ? ` — origin ${Object.entries(sc.byOrigin).map(([k, n]) => `${SECURE_ORIGIN_KO[k] ?? k} ${n}`).join(" · ")}` : ""}`));
     for (const b of sc.byRule.slice(0, 6)) out.push(L(`  - ${b.guideItem} \`${b.rule}\` ${b.count}건`, `  - ${b.guideItem} \`${b.rule}\` ${b.count}`));
     out.push(L(`- 등급 산식에는 넣지 않습니다(패턴 기반 진단 보조). 파일·라인·조치는 check_egovframe_secure_coding, CI 는 SARIF 로.`, `- Not part of the grade formula (pattern-based diagnostic aid). File/line/remediation via check_egovframe_secure_coding; SARIF for CI.`));
+    out.push(...blLine(sc.baseline));
   }
 
   const op = r.operations;
@@ -493,6 +505,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     out.push(L(`- 등급 **${op.grade}** — 미달 규칙 ${op.fail} · 통과 ${op.pass} · 해당 없음 ${op.na} (항목 높음 ${op.high} · 중간 ${op.medium} · 낮음 ${op.low})`, `- Grade **${op.grade}** — failed rules ${op.fail} · passed ${op.pass} · n/a ${op.na} (findings high ${op.high} · medium ${op.medium} · low ${op.low})`));
     for (const f of op.failed.slice(0, 8)) out.push(`  - ${f.severity === "high" ? "⚠️" : "•"} ${f.title} \`${f.rule}\` ${f.findings}`);
     out.push(L(`- 등급 산식에는 넣지 않습니다(운영 투입 전 체크리스트). 파일·줄·제안은 check_egovframe_operations 로.`, `- Not part of the grade formula (a pre-production checklist). Files, lines and suggestions: check_egovframe_operations.`));
+    out.push(...blLine(op.baseline));
   }
 
   const mp = r.mapper;
@@ -501,6 +514,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     if (mp.error) out.push(L(`- 점검 실패: ${mp.error}`, `- Check failed: ${mp.error}`));
     else if (!mp.namespaces) out.push(L(`- MyBatis 매퍼 XML 없음 — 해당 없음`, `- No MyBatis mapper XML — not applicable`));
     else out.push(L(`- namespace ${mp.namespaces} · 문장 ${mp.statements} — 오류 ${mp.errors}(없는 문장 ${mp.missing}) · 경고 ${mp.warnings}(DB 별 차이 ${mp.variantGaps}). 컴파일·기동으로 잡히지 않고 화면을 누를 때 실패하는 결함 — 위치·후보는 validate_egovframe_project 로.`, `- ${mp.namespaces} namespaces · ${mp.statements} statements — ${mp.errors} errors (${mp.missing} missing statements) · ${mp.warnings} warnings (${mp.variantGaps} DB-variant gaps). Defects that pass compile and startup and fail when the screen is used — locations and candidates via validate_egovframe_project.`));
+    out.push(...blLine(mp.baseline));
   }
 
   const csx = r.consistency;
@@ -508,6 +522,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     out.push(``, L(`### 화면–쿼리–DB 정합성 (\`validate_egovframe_project\`)`, `### Screen–query–DB consistency (\`validate_egovframe_project\`)`), ``);
     if (csx.error) out.push(L(`- 점검 실패: ${csx.error}`, `- Check failed: ${csx.error}`));
     else out.push(L(`- 오류 ${csx.errors} · 경고 ${csx.warnings} (${Object.entries(csx.byKind).map(([k, v]) => `${k} ${v}`).join(" · ")}) — 목록·건수 쿼리의 조건 차이는 페이지 수를, 길이 불일치는 저장을 깨뜨립니다. 위치와 근거는 \`validate_egovframe_project\`.`, `- ${csx.errors} errors · ${csx.warnings} warnings (${Object.entries(csx.byKind).map(([k, v]) => `${k} ${v}`).join(" · ")}) — list/count condition differences break page counts and length mismatches break saves. See \`validate_egovframe_project\` for locations and evidence.`));
+    out.push(...blLine(csx.baseline));
   }
 
   const acx = r.access;
@@ -516,6 +531,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     if (acx.error) out.push(L(`- 점검 실패: ${acx.error}`, `- Check failed: ${acx.error}`));
     else if (!acx.handlers) out.push(L(`- 컨트롤러 핸들러를 찾지 못함`, `- No controller handlers found`));
     else out.push(L(`- 핸들러 ${acx.handlers}개 · 변경(등록·수정·삭제) ${acx.writes}개 중 검증 없음 ${acx.writesWithoutCheck}개 · 전역 보호 ${acx.global} — 누락 의심 높음 ${acx.high} · 중간 ${acx.medium} · 낮음 ${acx.low}. URL 권한 표와 근거는 \`check_egovframe_access\`.`, `- ${acx.handlers} handlers · ${acx.writesWithoutCheck} of ${acx.writes} write handlers without a check · global protection ${acx.global} — suspected gaps: high ${acx.high} · medium ${acx.medium} · low ${acx.low}. See \`check_egovframe_access\` for the URL permission table and evidence.`));
+    out.push(...blLine(acx.baseline));
   }
 
   const pvx = r.privacy;
@@ -524,6 +540,7 @@ export function renderAssessmentMarkdown(r: AssessmentResult): string {
     if (pvx.error) out.push(L(`- 점검 실패: ${pvx.error}`, `- Check failed: ${pvx.error}`));
     else if (!pvx.columns) out.push(L(`- 개인정보 컬럼을 찾지 못함(DDL·매퍼 SQL 기준)`, `- No personal data columns found (from DDL and mapper SQL)`));
     else out.push(L(`- 개인정보 테이블 ${pvx.tables} · 컬럼 ${pvx.columns}(고유식별정보 테이블 ${pvx.uniqueIdTables}) — 보호조치 누락 의심 높음 ${pvx.high} · 중간 ${pvx.medium}. 개인정보 파일·처리 흐름표와 근거는 check_egovframe_privacy 로.`, `- ${pvx.tables} personal data tables · ${pvx.columns} columns (${pvx.uniqueIdTables} tables with unique identifiers) — suspected missing safeguards: ${pvx.high} high · ${pvx.medium} medium. Data files, flow table and evidence via check_egovframe_privacy.`));
+    out.push(...blLine(pvx.baseline));
   }
 
   out.push(``, `## 5. SBOM`, ``, `- ${r.sbom.present ? `✅ ${r.sbom.path}: ${r.sbom.note}${r.sbom.vulnerabilities ? L(` · vulnerabilities ${r.sbom.vulnerabilities}건`, ` · vulnerabilities ${r.sbom.vulnerabilities}`) : ""}` : `➖ ${r.sbom.note}`}`);

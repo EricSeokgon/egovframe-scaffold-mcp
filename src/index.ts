@@ -214,3 +214,10 @@ export { loadAccessRules, checkAccess, renderAccessMarkdown, renderAccessCsv, pa
 export type { AccessResult, AccessHandler, AccessFinding, AccessGlobal, AccessLevel, AccessAction, AccessRules } from "./access.js";
 export { checkConsistency, renderConsistencyMarkdown, parseMapperForConsistency, listPartnerOf, dynamicConditions, fieldColumnPairs } from "./consistency.js";
 export type { ConsistencyResult, ConsistencyIssue, ConsistencyKind } from "./consistency.js";
+// v1.26: 점검 기준선(새 항목만 게이트)
+export { fingerprintOf, assignFingerprints, readCheckBaseline, applyBaseline, baselineKindOf, baselineLine } from "./baseline.js";
+export type { BaselineCheck, BaselineInfo, LoadedBaseline } from "./baseline.js";
+export { opsSubject } from "./operations.js";
+export { baselineCommands, CI_BASELINE_DIR_RE, DEFAULT_BASELINE_DIR, BASELINE_CHECKS } from "./ci-config.js";
+export { newFindingsOf } from "./portfolio.js";
+export type { AssessmentBaseline } from "./assessment.js";

@@ -9,6 +9,7 @@ import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { COMMON_COMPONENTS_COMMITS } from "./pinned-upstream.mjs";
 
 let n = 0;
 function assert(c, msg) { n++; if (!c) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
@@ -77,7 +78,8 @@ try {
   const cc = path.join(root, "cc");
   execFileSync("git", ["clone", "-q", "--filter=blob:none", "--no-checkout", "https://github.com/eGovFramework/egovframe-common-components.git", cc], { stdio: "inherit", env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
   const at = (ref) => execFileSync("git", ["show", `${ref}:${REL}`], { cwd: cc, encoding: "utf8" });
-  const i507 = m.planRequestMatcherItems(REL, at("v5.0.7"));
+  // 태그가 아니라 카탈로그 고정 커밋 — upstream 이 2026-11-25 에 옮긴 v5.0.7 태그는 이미 PathPatternRequestMatcher 로 바뀌어 있다
+  const i507 = m.planRequestMatcherItems(REL, at(COMMON_COMPONENTS_COMMITS["v5.0.7"]));
   const iMain = m.planRequestMatcherItems(REL, at("origin/main"));
   info(`AuthenticInterceptor: v5.0.7 ${i507.map((i) => `${i.action}:${i.line}`).join(",")} / main ${iMain.length}`);
   assert(i507.length >= 1 && i507.every((i) => i.action === "manual") && iMain.length === 0, `공통컴포넌트 v5.0.7 AuthenticInterceptor → manual(변수 패턴), main(#1396 반영) → 0`);
