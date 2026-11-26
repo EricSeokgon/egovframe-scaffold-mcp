@@ -28,6 +28,8 @@ export interface PortfolioRow {
   outdated: number | null;
   secureHigh: number | null;
   secureMedium: number | null;
+  /** v1.26: 기준선과 비교한 평가서면 점검 전체의 새 항목 합계(비교하지 않았으면 없음) */
+  newFindings?: number;
   components: number | null;
   /** v1.23: 평가에 적용한 규칙 팩(이름 버전, 있을 때만) */
   rulePacks?: string[];
@@ -116,6 +118,11 @@ function readOwnerMap(file: string): Map<string, string> {
   }
   return m;
 }
+/** v1.26: 평가서의 점검 절 가운데 기준선과 비교한 것들의 새 항목 합계(하나도 없으면 null) */
+export function newFindingsOf(a: AssessmentResult): number | null {
+  const bs = [a.secureCoding, a.operations, a.privacy, a.access, a.mapper, a.consistency].map((x) => x?.baseline).filter((b): b is NonNullable<typeof b> => !!b);
+  return bs.length ? bs.reduce((s, b) => s + b.new, 0) : null;
+}
 export function rowFromAssessment(name: string, input: string, source: PortfolioSource, a: AssessmentResult): PortfolioRow {
   return {
     name, input, source, assessedAt: a.generatedAt ?? null,
@@ -124,6 +131,7 @@ export function rowFromAssessment(name: string, input: string, source: Portfolio
     manual: a.migration.manual, vulnerableDependencies: a.dependencies.vulnerabilities.queried ? a.dependencies.vulnerabilities.dependencies : null, vulnerabilityIds: a.dependencies.vulnerabilities.queried ? a.dependencies.vulnerabilities.ids : null,
     outdated: a.dependencies.summary.outdated ?? 0, secureHigh: a.secureCoding.error ? null : a.secureCoding.high, secureMedium: a.secureCoding.error ? null : a.secureCoding.medium,
     components: a.overview.components.count,
+    ...(newFindingsOf(a) !== null ? { newFindings: newFindingsOf(a)! } : {}),
     ...(a.rulePacks?.length ? { rulePacks: a.rulePacks.map((p) => `${p.name} ${p.version}`) } : {}),
   };
 }
@@ -259,6 +267,8 @@ export function renderPortfolioMarkdown(r: PortfolioResult, topN = 10): string {
   out.push(L(`- 세대: ${Object.entries(s.era).sort().map(([k, n]) => `${k} ${n}`).join(" · ") || "—"}`, `- Generation: ${Object.entries(s.era).sort().map(([k, n]) => `${k} ${n}`).join(" · ") || "—"}`));
   out.push(L(`- 전환 난이도: ${d(s.migration)}`, `- Migration difficulty: ${d(s.migration)}`), L(`- 공급망 상태: ${d(s.supplyChain)}`, `- Supply chain status: ${d(s.supplyChain)}`), L(`- 운영 준비: ${d(s.operations)}`, `- Operations readiness: ${d(s.operations)}`));
   out.push(L(`- 취약 의존성이 있는 프로젝트 ${s.vulnerableProjects} · 권고 ID 합계 ${s.vulnerabilityIds} · 보안약점 높음 합계 ${s.secureHigh}`, `- Projects with vulnerable dependencies ${s.vulnerableProjects} · advisory IDs in total ${s.vulnerabilityIds} · high-severity weaknesses in total ${s.secureHigh}`), ``);
+  const withNew = r.rows.filter((x) => x.newFindings !== undefined);
+  if (withNew.length) out.push(L(`- 기준선 대비 새 항목: 합계 ${withNew.reduce((n, x) => n + (x.newFindings ?? 0), 0)} (기준선과 비교한 프로젝트 ${withNew.length}개 중 새 항목이 있는 곳 ${withNew.filter((x) => (x.newFindings ?? 0) > 0).map((x) => x.name).join(", ") || "없음"})`, `- New findings against baselines: ${withNew.reduce((n, x) => n + (x.newFindings ?? 0), 0)} in total (of ${withNew.length} projects compared, with new findings: ${withNew.filter((x) => (x.newFindings ?? 0) > 0).map((x) => x.name).join(", ") || "none"})`));
   const changeCol = !!r.previous;
   out.push(L("## 프로젝트", "## Projects"), ``);
   out.push(L(`| 프로젝트 | 담당 | RTE | 전환 | 공급망 | 운영 | 수동 | 취약 의존성(ID) | 노후 | 보안약점 높음/중간 | 컴포넌트 | 평가일${changeCol ? " | 변화" : ""} |`, `| Project | Owner | RTE | Migration | Supply chain | Ops | Manual | Vulnerable deps (IDs) | Outdated | Weaknesses high/medium | Components | Assessed${changeCol ? " | Change" : ""} |`));
@@ -279,8 +289,8 @@ export function renderPortfolioMarkdown(r: PortfolioResult, topN = 10): string {
   return out.join("\n");
 }
 export function renderPortfolioCsv(r: PortfolioResult): string {
-  const head = ["name", "owner", "source", "input", "rteVersion", "era", "migration", "supplyChain", "operations", "manual", "vulnerableDependencies", "vulnerabilityIds", "outdated", "secureHigh", "secureMedium", "components", "assessedAt", "change", "error"];
+  const head = ["name", "owner", "source", "input", "rteVersion", "era", "migration", "supplyChain", "operations", "manual", "vulnerableDependencies", "vulnerabilityIds", "outdated", "secureHigh", "secureMedium", "components", "assessedAt", "change", "error", "newFindings"];
   const q = (v: unknown) => { const s = v === null || v === undefined ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const rows = r.rows.map((x) => [x.name, x.owner, x.source, x.input, x.rteVersion, x.era, x.migration, x.supplyChain, x.operations, x.manual, x.vulnerableDependencies, x.vulnerabilityIds, x.outdated, x.secureHigh, x.secureMedium, x.components, x.assessedAt, x.change ? JSON.stringify(x.change) : "", x.error].map(q).join(","));
+  const rows = r.rows.map((x) => [x.name, x.owner, x.source, x.input, x.rteVersion, x.era, x.migration, x.supplyChain, x.operations, x.manual, x.vulnerableDependencies, x.vulnerabilityIds, x.outdated, x.secureHigh, x.secureMedium, x.components, x.assessedAt, x.change ? JSON.stringify(x.change) : "", x.error, x.newFindings].map(q).join(","));
   return `﻿${[head.join(","), ...rows].join("\r\n")}\r\n`;
 }

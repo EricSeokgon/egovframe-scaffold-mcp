@@ -35,6 +35,8 @@ interface CommandDef {
 const GRADES = ["A", "B", "C", "D"];
 const num = (v: unknown) => (typeof v === "number" ? v : 0);
 const rec = (v: unknown) => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
+/** v1.26: 기준선과 비교했으면 " · 새 항목 N · 해결 M" */
+const newPart = (s: Record<string, unknown>) => { const b = rec(s.baseline), sm = rec(s.summary); return s.baseline ? L(` · 새 항목 ${num(sm.new)} · 해결 ${num(b.resolved)}`, ` · new ${num(sm.new)} · resolved ${num(b.resolved)}`) : ""; };
 
 export const COMMANDS: Record<string, CommandDef> = {
   assess: {
@@ -45,6 +47,8 @@ export const COMMANDS: Record<string, CommandDef> = {
         migration: GRADES.indexOf(String(rec(g.migration).grade)), supplyChain: GRADES.indexOf(String(rec(g.supplyChain).grade)),
         manual: num(m.manual), reassemble: Array.isArray(m.reassemble) ? m.reassemble.length : 0, vulnerabilities: num(v.dependencies),
         outdated: num(rec(d.summary).outdated), legacy: num(rec(d.summary).legacy), replace: num(rec(d.summary).replace), securityMissing: num(rec(a.security).missing),
+        // v1.26: 기준선(--baseline-dir)과 비교한 점검들의 새 항목 합계
+        new: ["secureCoding", "operations", "privacy", "access", "mapper", "consistency"].reduce((n, k) => n + num(rec(rec(a[k]).baseline).new), 0),
       };
     },
     line: (s) => { const g = rec(rec(s.assessment).grades); return L(`전환 난이도 ${rec(g.migration).grade ?? "?"} · 공급망 상태 ${rec(g.supplyChain).grade ?? "?"}`, `Migration difficulty ${rec(g.migration).grade ?? "?"} · supply chain status ${rec(g.supplyChain).grade ?? "?"}`); },
@@ -113,18 +117,18 @@ export const COMMANDS: Record<string, CommandDef> = {
   },
   ops: {
     tool: "check_egovframe_operations", summary: "운영 준비 점검(설정 점검표·등급, --fail-on ops:C)", summaryEn: "Operations readiness check (configuration checklist and grade; --fail-on ops:C)", gradeMetrics: ["ops"],
-    metrics: (s) => { const sm = rec(s.summary), g = rec(s.grade); return { ops: GRADES.indexOf(String(g.grade)), high: num(sm.high), medium: num(sm.medium), low: num(sm.low), fail: num(sm.fail), total: num(sm.total) }; },
-    line: (s) => { const sm = rec(s.summary), g = rec(s.grade); return L(`운영 준비 ${g.grade} — 미달 규칙 ${num(sm.fail)} · 항목 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}`, `Operations readiness ${g.grade} — failed rules ${num(sm.fail)} · findings high ${num(sm.high)} · medium ${num(sm.medium)} · low ${num(sm.low)}`); },
+    metrics: (s) => { const sm = rec(s.summary), g = rec(s.grade); return { ops: GRADES.indexOf(String(g.grade)), high: num(sm.high), medium: num(sm.medium), low: num(sm.low), fail: num(sm.fail), total: num(sm.total), new: num(sm.new) }; },
+    line: (s) => { const sm = rec(s.summary), g = rec(s.grade); return L(`운영 준비 ${g.grade} — 미달 규칙 ${num(sm.fail)} · 항목 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}`, `Operations readiness ${g.grade} — failed rules ${num(sm.fail)} · findings high ${num(sm.high)} · medium ${num(sm.medium)} · low ${num(sm.low)}`) + newPart(s); },
   },
   privacy: {
     tool: "check_egovframe_privacy", summary: "개인정보 흐름·보호조치 점검(개인정보 파일·흐름표, --fail-on high>0)", summaryEn: "Personal data flow and safeguards (data files, flow table; --fail-on high>0)",
-    metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), columns: num(sm.columns), uniqueIdTables: num(sm.uniqueIdTables), high: num(sm.high), medium: num(sm.medium) }; },
-    line: (s) => { const sm = rec(s.summary); return L(`개인정보 테이블 ${num(sm.tables)}·컬럼 ${num(sm.columns)}(고유식별정보 테이블 ${num(sm.uniqueIdTables)}) — 보호조치 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)}`, `${num(sm.tables)} personal data tables, ${num(sm.columns)} columns (${num(sm.uniqueIdTables)} with unique identifiers) — suspected missing safeguards: ${num(sm.high)} high, ${num(sm.medium)} medium`); },
+    metrics: (s) => { const sm = rec(s.summary); return { tables: num(sm.tables), columns: num(sm.columns), uniqueIdTables: num(sm.uniqueIdTables), high: num(sm.high), medium: num(sm.medium), new: num(sm.new) }; },
+    line: (s) => { const sm = rec(s.summary); return L(`개인정보 테이블 ${num(sm.tables)}·컬럼 ${num(sm.columns)}(고유식별정보 테이블 ${num(sm.uniqueIdTables)}) — 보호조치 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)}`, `${num(sm.tables)} personal data tables, ${num(sm.columns)} columns (${num(sm.uniqueIdTables)} with unique identifiers) — suspected missing safeguards: ${num(sm.high)} high, ${num(sm.medium)} medium`) + newPart(s); },
   },
   access: {
     tool: "check_egovframe_access", summary: "접근 통제 점검(URL 권한 표·검증 누락 의심, --fail-on high>0)", summaryEn: "Access control check (URL permission table, suspected missing checks; --fail-on high>0)",
-    metrics: (s) => { const sm = rec(s.summary); return { handlers: num(sm.handlers), writes: num(sm.writes), writesWithoutCheck: num(sm.writesWithoutCheck), high: num(sm.high), medium: num(sm.medium), low: num(sm.low) }; },
-    line: (s) => { const sm = rec(s.summary); return L(`핸들러 ${num(sm.handlers)}개 · 변경 ${num(sm.writes)}개 중 검증 없음 ${num(sm.writesWithoutCheck)} — 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}`, `${num(sm.handlers)} handlers · ${num(sm.writesWithoutCheck)} of ${num(sm.writes)} writes without a check — suspected gaps: high ${num(sm.high)} · medium ${num(sm.medium)} · low ${num(sm.low)}`); },
+    metrics: (s) => { const sm = rec(s.summary); return { handlers: num(sm.handlers), writes: num(sm.writes), writesWithoutCheck: num(sm.writesWithoutCheck), high: num(sm.high), medium: num(sm.medium), low: num(sm.low), new: num(sm.new) }; },
+    line: (s) => { const sm = rec(s.summary); return L(`핸들러 ${num(sm.handlers)}개 · 변경 ${num(sm.writes)}개 중 검증 없음 ${num(sm.writesWithoutCheck)} — 누락 의심 높음 ${num(sm.high)} · 중간 ${num(sm.medium)} · 낮음 ${num(sm.low)}`, `${num(sm.handlers)} handlers · ${num(sm.writesWithoutCheck)} of ${num(sm.writes)} writes without a check — suspected gaps: high ${num(sm.high)} · medium ${num(sm.medium)} · low ${num(sm.low)}`) + newPart(s); },
   },
   rules: {
     tool: "list_egovframe_rules", summary: "적용 중인 규칙·출처(동봉/규칙 팩)와 규칙 팩 검증(--rule-packs 디렉터리, 없으면 EGOVFRAME_RULE_PACKS)", summaryEn: "Rules in effect, their source (bundled or rule pack) and rule pack validation (--rule-packs dir, else EGOVFRAME_RULE_PACKS)",
@@ -166,8 +170,8 @@ export const COMMANDS: Record<string, CommandDef> = {
   },
   validate: {
     tool: "validate_egovframe_project", summary: "조립 프로젝트 무결성 검증", summaryEn: "Assembled project integrity validation",
-    metrics: (s) => { const mp = rec(rec(s.mapper).summary); return { invalid: s.ok === false ? 1 : 0, missing: Array.isArray(s.components) ? s.components.reduce((n: number, c) => n + num(rec(c).missing), 0) : 0, warnings: Array.isArray(s.warnings) ? s.warnings.length : 0, mapperErrors: num(mp.errors), mapperMissing: num(mp.missing), mapperWarnings: num(mp.warnings), consistencyErrors: num(rec(rec(s.consistency).summary).errors), consistencyWarnings: num(rec(rec(s.consistency).summary).warnings) }; },
-    line: (s) => { const mp = rec(rec(s.mapper).summary); return L(`검증 ${s.ok ? "통과" : "실패"}${s.mapper ? ` · 매퍼 오류 ${num(mp.errors)}(없는 문장 ${num(mp.missing)})·경고 ${num(mp.warnings)}` : ""}${s.consistency ? ` · 정합성 오류 ${num(rec(rec(s.consistency).summary).errors)}·경고 ${num(rec(rec(s.consistency).summary).warnings)}` : ""}`, `Validation ${s.ok ? "passed" : "failed"}${s.mapper ? ` · mapper errors ${num(mp.errors)} (missing statements ${num(mp.missing)}), warnings ${num(mp.warnings)}` : ""}${s.consistency ? ` · consistency errors ${num(rec(rec(s.consistency).summary).errors)}, warnings ${num(rec(rec(s.consistency).summary).warnings)}` : ""}`); },
+    metrics: (s) => { const mp = rec(rec(s.mapper).summary); return { invalid: s.ok === false ? 1 : 0, missing: Array.isArray(s.components) ? s.components.reduce((n: number, c) => n + num(rec(c).missing), 0) : 0, warnings: Array.isArray(s.warnings) ? s.warnings.length : 0, mapperErrors: num(mp.errors), mapperMissing: num(mp.missing), mapperWarnings: num(mp.warnings), consistencyErrors: num(rec(rec(s.consistency).summary).errors), consistencyWarnings: num(rec(rec(s.consistency).summary).warnings), mapperNew: num(mp.new), consistencyNew: num(rec(rec(s.consistency).summary).new), new: num(mp.new) + num(rec(rec(s.consistency).summary).new) }; },
+    line: (s) => { const mp = rec(rec(s.mapper).summary); return L(`검증 ${s.ok ? "통과" : "실패"}${s.mapper ? ` · 매퍼 오류 ${num(mp.errors)}(없는 문장 ${num(mp.missing)})·경고 ${num(mp.warnings)}` : ""}${s.consistency ? ` · 정합성 오류 ${num(rec(rec(s.consistency).summary).errors)}·경고 ${num(rec(rec(s.consistency).summary).warnings)}` : ""}`, `Validation ${s.ok ? "passed" : "failed"}${s.mapper ? ` · mapper errors ${num(mp.errors)} (missing statements ${num(mp.missing)}), warnings ${num(mp.warnings)}` : ""}${s.consistency ? ` · consistency errors ${num(rec(rec(s.consistency).summary).errors)}, warnings ${num(rec(rec(s.consistency).summary).warnings)}` : ""}`) + (rec(s.mapper).baseline || rec(s.consistency).baseline ? L(` · 새 항목 ${num(mp.new) + num(rec(rec(s.consistency).summary).new)} · 해결 ${num(rec(rec(s.mapper).baseline).resolved) + num(rec(rec(s.consistency).baseline).resolved)}`, ` · new ${num(mp.new) + num(rec(rec(s.consistency).summary).new)} · resolved ${num(rec(rec(s.mapper).baseline).resolved) + num(rec(rec(s.consistency).baseline).resolved)}`) : ""); },
   },
   diagnose: {
     tool: "diagnose_egovframe_project", summary: "프로젝트 진단(빌드·RTE·컴포넌트)", summaryEn: "Project diagnosis (build, RTE, components)",
@@ -273,6 +277,7 @@ export function usage(): string {
     L(`  --fail-on <식>        기준을 넘으면 종료 코드 2 — 예: supplyChain:C · migration:D · vulnerabilities · manual>20`, `  --fail-on <expr>      Exit code 2 when a threshold is exceeded — e.g. supplyChain:C · migration:D · vulnerabilities · manual>20`),
     L(`  --lang ko|en          응답 언어(기본 EGOVFRAME_LANG, 없으면 ko) — Markdown 본문과 문장 필드가 영문으로`, `  --lang ko|en          Response language (default EGOVFRAME_LANG, else ko) — Markdown body and sentence fields in English`),
     L(`  --write               sbom: 실제로 파일을 씀(기본은 계획만) · sbom-check: VEX 초안 작성·갱신(판단 보존) · bundle: 번들 내려받기 · deliver: 패키지 만들기 · fix·fix-deps: 고친 내용을 씀(원본은 migration-backup/) · db: 적재용 스크립트·compose 를 씀`, `  --write               sbom: actually write the file (default: plan only) · sbom-check: create/update VEX draft (keeps decisions) · bundle: download the bundle · deliver: build the package · fix/fix-deps: write the fixes (originals in migration-backup/) · db: write the load-ready scripts and compose`),
+    L(`  --baseline-path <f>   secure·ops·privacy·access·validate: 이전 결과(--json-out 으로 저장한 JSON, 프로젝트 상대 경로)와 비교 — 새 항목만 막으려면 --fail-on "new>0"(v1.26)`, `  --baseline-path <f>   secure, ops, privacy, access, validate: compare with a previous result (JSON saved via --json-out, project-relative) — gate on new findings only with --fail-on "new>0" (v1.26)`),
     L(`  --verify              deliver: 받은 패키지(--output-dir)의 manifest 지문 재검증`, `  --verify              deliver: re-verify manifest fingerprints of a received package (--output-dir)`),
     L(`  그 밖의 옵션은 도구 파라미터와 같은 이름(kebab-case 가능): --resolve --offline=false --resolve-scope all --top-n 10 …`, `  Other options use the tool parameter names (kebab-case allowed): --resolve --offline=false --resolve-scope all --top-n 10 …`),
     ``,

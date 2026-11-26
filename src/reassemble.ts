@@ -165,6 +165,8 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   const byId = new Map(catalog.components.map((c) => [c.id, c]));
   const notes: string[] = [];
   const origin = opts.origin ?? new GitOriginSource();
+  // v1.26: 목표 태그는 카탈로그가 고정한 커밋으로 읽는다 — upstream 이 태그를 옮겨도 조립 원본(고정 커밋의 아카이브)과 같은 트리로 비교
+  if (catalog.source.tag && catalog.source.commit) origin.pin?.(catalog.source.tag, catalog.source.commit);
 
   // ── 대상 컴포넌트 ──
   const diag = diagnoseProject({ projectDir });
@@ -239,6 +241,8 @@ export async function reassembleComponents(opts: ReassembleOptions): Promise<Rea
   const targetBlobs = await origin.listBlobs(targetTag, queryPaths);
   try { target.commit = await origin.resolveCommit(targetTag); } catch (e) { if (isAbortError(e)) throw e; /* 고정 커밋 유지 */ }
   prog.step(stepNo++);
+  const movedTo = origin.movedTag?.(targetTag);
+  if (movedTo) notes.push(`upstream 이 ${targetTag} 태그를 ${movedTo.slice(0, 7)} 로 옮겼습니다 — 조립 원본과 같은 카탈로그 고정 커밋(${(catalog.source.commit ?? "").slice(0, 7)}) 기준으로 비교·재조립합니다. 옮겨진 태그의 변경은 카탈로그를 갱신한 릴리스에서 반영됩니다.`);
   if (catalog.source.commit && target.commit && target.commit !== catalog.source.commit) throw new Error(`목표 태그 ${targetTag} 의 커밋(${target.commit.slice(0, 7)})이 카탈로그 고정 커밋(${catalog.source.commit.slice(0, 7)})과 다릅니다(태그 이동)`);
 
   // ── 3-way 분류 ──

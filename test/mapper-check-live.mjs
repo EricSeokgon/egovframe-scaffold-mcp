@@ -8,6 +8,7 @@ import { mkdtempSync, rmSync, readFileSync, readdirSync, statSync } from "node:f
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { clonePinned } from "./pinned-upstream.mjs";
 
 let n = 0;
 function assert(c, msg) { n++; if (!c) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
@@ -37,7 +38,7 @@ function reallyMissing(dir, ref) {
 try {
   // (1)(4) v5.0.7
   const v507 = path.join(root, "cc-507");
-  git(["clone", "-q", "--depth", "1", "--branch", "v5.0.7", REPO, v507]);
+  clonePinned(v507, "v5.0.7"); // 고정 커밋 — upstream 이 v5.0.7 태그를 옮겼다(test/pinned-upstream.mjs)
   const r = m.checkMappers({ projectDir: v507 });
   info(`v5.0.7: ${r.durationMs}ms · ${JSON.stringify(r.counts)} · ${JSON.stringify(r.summary)}`);
   assert(JSON.stringify(missingRefs(r)) === JSON.stringify([...UPSTREAM_FIXED, ...NOT_FIXED].sort()), `v5.0.7 없는 문장 10 = upstream 수정 6 + 미수정 4 (${missingRefs(r).join(", ")})`);

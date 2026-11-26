@@ -24,6 +24,10 @@ export const DiagnoseOutput = loose({
   projectMap: loose({ tables: z.number().int(), urls: z.number().int(), views: z.number().int(), orphanMappers: z.number().int(), unresolvedRate: z.number(), durationMs: z.number().int() }).optional(),
 });
 
+// v1.26: 점검 기준선(baselinePath 를 줬을 때만)
+const BaselineField = loose({ path: z.string(), findings: z.number().int(), resolved: z.number().int() }).optional();
+const NewCount = z.number().int().nullable().optional();
+
 export const ValidateOutput = loose({
   projectDir: z.string(),
   ok: z.boolean(),
@@ -37,16 +41,19 @@ export const ValidateOutput = loose({
   // v1.25: 화면–쿼리–DB 정합성
   consistency: loose({
     durationMs: z.number().int(),
-    summary: loose({ mapperFiles: z.number().int(), countPairs: z.number().int(), pairsCompared: z.number().int(), sizedFields: z.number().int(), maxlengthInputs: z.number().int(), columnsWithLength: z.number().int(), fieldsLinked: z.number().int(), errors: z.number().int(), warnings: z.number().int(), byKind: z.record(z.string(), z.number().int()) }),
-    issues: z.array(loose({ kind: z.enum(["count-condition-mismatch", "length-exceeds-column", "maxlength-exceeds-size"]), severity: z.enum(["error", "warning"]), file: z.string(), line: z.number().int(), subject: z.string(), message: z.string(), fix: z.string(), variants: z.number().int().optional() })),
+    summary: loose({ mapperFiles: z.number().int(), countPairs: z.number().int(), pairsCompared: z.number().int(), sizedFields: z.number().int(), maxlengthInputs: z.number().int(), columnsWithLength: z.number().int(), fieldsLinked: z.number().int(), errors: z.number().int(), warnings: z.number().int(), byKind: z.record(z.string(), z.number().int()), new: NewCount }),
+    baseline: BaselineField,
+    issues: z.array(loose({ kind: z.enum(["count-condition-mismatch", "length-exceeds-column", "maxlength-exceeds-size"]), severity: z.enum(["error", "warning"]), file: z.string(), line: z.number().int(), subject: z.string(), message: z.string(), fix: z.string(), variants: z.number().int().optional(), fingerprint: z.string().optional(), isNew: z.boolean().optional() })),
     truncated: z.boolean(),
     notes: z.array(z.string()),
   }).optional(),
   mapper: loose({
     dbType: z.string().nullable(),
     counts: loose({ mapperFiles: z.number().int(), namespaces: z.number().int(), statements: z.number().int(), stringCalls: z.number().int(), interfaceMethods: z.number().int(), dynamicCalls: z.number().int() }),
-    summary: loose({ errors: z.number().int(), warnings: z.number().int(), missing: z.number().int(), dynamicMatched: z.number().int(), variantGaps: z.number().int(), byKind: z.record(z.string(), z.number().int()) }),
-    issues: z.array(loose({ kind: z.string(), severity: z.enum(["error", "warning"]), file: z.string(), line: z.number().int(), ref: z.string(), message: z.string(), candidates: z.array(z.string()).optional() })),
+    summary: loose({ errors: z.number().int(), warnings: z.number().int(), missing: z.number().int(), dynamicMatched: z.number().int(), variantGaps: z.number().int(), byKind: z.record(z.string(), z.number().int()), new: NewCount }),
+    baseline: BaselineField,
+    truncated: z.boolean().optional(),
+    issues: z.array(loose({ kind: z.string(), severity: z.enum(["error", "warning"]), file: z.string(), line: z.number().int(), ref: z.string(), message: z.string(), candidates: z.array(z.string()).optional(), fingerprint: z.string().optional(), isNew: z.boolean().optional() })),
     notes: z.array(z.string()),
   }).optional(),
 });
@@ -507,8 +514,9 @@ export const PrivacyOutput = loose({
   durationMs: z.number(),
   columns: z.array(loose({ table: z.string(), column: z.string(), item: z.string(), label: z.string(), grade: PGradeP, source: z.enum(["ddl", "mapper"]), file: z.string(), line: z.number().int() })),
   flows: z.array(loose({ table: z.string(), items: z.array(z.string()), grades: z.array(PGradeP), read: z.number().int(), write: z.number().int(), daos: z.array(z.string()), services: z.array(z.string()), controllers: z.array(z.string()), urls: z.array(z.string()), views: z.array(z.string()) })),
-  findings: z.array(loose({ kind: z.enum(["plaintext-storage", "screen-exposure", "log-exposure"]), severity: z.enum(["high", "medium"]), item: z.string(), label: z.string(), grade: PGradeP, file: z.string(), line: z.number().int(), code: z.string(), message: z.string(), evidence: z.string(), table: z.string().optional(), column: z.string().optional(), variants: z.number().int().optional() })),
-  summary: loose({ tables: z.number().int(), columns: z.number().int(), items: z.number().int(), byGrade: z.record(z.string(), z.number().int()), uniqueIdTables: z.number().int(), high: z.number().int(), medium: z.number().int(), suppressed: z.number().int(), ddlFiles: z.number().int(), mapperStatements: z.number().int() }),
+  findings: z.array(loose({ kind: z.enum(["plaintext-storage", "screen-exposure", "log-exposure"]), severity: z.enum(["high", "medium"]), item: z.string(), label: z.string(), grade: PGradeP, file: z.string(), line: z.number().int(), code: z.string(), message: z.string(), evidence: z.string(), table: z.string().optional(), column: z.string().optional(), variants: z.number().int().optional(), fingerprint: z.string().optional(), isNew: z.boolean().optional() })),
+  summary: loose({ tables: z.number().int(), columns: z.number().int(), items: z.number().int(), byGrade: z.record(z.string(), z.number().int()), uniqueIdTables: z.number().int(), high: z.number().int(), medium: z.number().int(), suppressed: z.number().int(), ddlFiles: z.number().int(), mapperStatements: z.number().int(), new: NewCount }),
+  baseline: BaselineField,
   ignoreFile: z.string().nullable(),
   invalidIgnores: z.array(z.string()),
   notes: z.array(z.string()),
@@ -523,9 +531,10 @@ export const OperationsOutput = loose({
   runtime: z.enum(["boot", "classic", "unknown"]),
   configSet: loose({ properties: z.array(z.string()), profile: z.string().nullable(), excludedProfiles: z.array(z.string()) }),
   filesScanned: z.number().int(),
-  findings: z.array(loose({ rule: z.string(), category: z.string(), severity: OpsSev, title: z.string(), file: z.string(), line: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), basis: z.string(), suggestion: z.string().optional() })),
+  findings: z.array(loose({ rule: z.string(), category: z.string(), severity: OpsSev, title: z.string(), file: z.string(), line: z.number().int(), code: z.string(), message: z.string(), fix: z.string(), basis: z.string(), suggestion: z.string().optional(), fingerprint: z.string().optional(), isNew: z.boolean().optional() })),
   rules: z.array(loose({ rule: z.string(), category: z.string(), severity: OpsSev, title: z.string(), status: z.enum(["pass", "fail", "n/a"]), findings: z.number().int() })),
-  summary: loose({ total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), suppressed: z.number().int(), pass: z.number().int(), fail: z.number().int(), na: z.number().int() }),
+  summary: loose({ total: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), suppressed: z.number().int(), pass: z.number().int(), fail: z.number().int(), na: z.number().int(), new: NewCount }),
+  baseline: BaselineField,
   grade: loose({ grade: z.enum(["A", "B", "C", "D"]), formula: z.string() }),
   ignoreFile: z.string().nullable(),
   invalidIgnores: z.array(z.string()),
@@ -543,8 +552,9 @@ export const AccessOutput = loose({
   durationMs: z.number().int(),
   global: loose({ kind: z.enum(["spring-security", "egov-security", "interceptor", "none"]), file: z.string().nullable(), protect: z.array(z.string()), exclude: z.array(z.string()), note: z.string() }),
   handlers: z.array(loose({ file: z.string(), line: z.number().int(), controller: z.string(), method: z.string(), urls: z.array(z.string()), http: z.array(z.string()), action: AccessActionSchema, level: AccessLevelSchema, evidence: z.array(z.string()), globalLogin: z.boolean().nullable(), ownerData: z.boolean() })),
-  findings: z.array(loose({ kind: z.enum(["unprotected-write", "sibling-mismatch", "missing-ownership", "unprotected-detail"]), severity: z.enum(["high", "medium", "low"]), file: z.string(), line: z.number().int(), controller: z.string(), method: z.string(), url: z.string(), action: AccessActionSchema, level: AccessLevelSchema, message: z.string(), fix: z.string(), sibling: loose({ method: z.string(), level: AccessLevelSchema, line: z.number().int() }).optional() })),
-  summary: loose({ controllers: z.number().int(), handlers: z.number().int(), byLevel: z.record(z.string(), z.number().int()), byAction: z.record(z.string(), z.number().int()), writes: z.number().int(), writesWithoutCheck: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), suppressed: z.number().int() }),
+  findings: z.array(loose({ kind: z.enum(["unprotected-write", "sibling-mismatch", "missing-ownership", "unprotected-detail"]), severity: z.enum(["high", "medium", "low"]), file: z.string(), line: z.number().int(), controller: z.string(), method: z.string(), url: z.string(), action: AccessActionSchema, level: AccessLevelSchema, message: z.string(), fix: z.string(), sibling: loose({ method: z.string(), level: AccessLevelSchema, line: z.number().int() }).optional(), fingerprint: z.string().optional(), isNew: z.boolean().optional() })),
+  summary: loose({ controllers: z.number().int(), handlers: z.number().int(), byLevel: z.record(z.string(), z.number().int()), byAction: z.record(z.string(), z.number().int()), writes: z.number().int(), writesWithoutCheck: z.number().int(), high: z.number().int(), medium: z.number().int(), low: z.number().int(), suppressed: z.number().int(), new: NewCount }),
+  baseline: BaselineField,
   ignoreFile: z.string().nullable(),
   invalidIgnores: z.array(z.string()),
   rulePacks: rulePacksField,

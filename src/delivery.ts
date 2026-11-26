@@ -57,6 +57,8 @@ export interface DeliveryDiff {
   vulnerabilities: { added: string[]; resolved: string[] } | null;
   secureCoding: { added: number; resolved: number; from: number | null; to: number | null } | null;
   dependencies: { from: Record<string, number> | null; to: Record<string, number> | null } | null;
+  /** v1.26: 개인정보·접근 통제 점검의 새 항목·해결(두 패키지 모두에 그 항목이 있을 때) */
+  checks?: Partial<Record<"privacy" | "access", { added: number; resolved: number; from: number; to: number }>>;
   /** 비교할 수 없었던 항목과 이유 */
   skipped: string[];
   changed: boolean;
@@ -189,7 +191,8 @@ export function verifyDelivery(dir: string): VerifyDeliveryResult {
 }
 
 // ── 이전 차수 비교 ──────────────────────────────────────
-interface PreviousData { manifest: DeliveryManifest | null; sbom: SbomDocument | null; assessment: AssessmentResult | null; secure: SecureCodingResult | null; dependencies: CheckDependenciesResult | null }
+interface PreviousData { manifest: DeliveryManifest | null; sbom: SbomDocument | null; assessment: AssessmentResult | null; secure: SecureCodingResult | null; dependencies: CheckDependenciesResult | null; /** v1.26 */ privacy?: FpDoc | null; access?: FpDoc | null }
+interface FpDoc { findings?: { fingerprint?: string }[] }
 function readJson<T>(p: string): T | null { try { return fs.existsSync(p) ? (JSON.parse(fs.readFileSync(p, "utf8")) as T) : null; } catch { return null; } }
 export function readDeliveryData(dir: string): PreviousData {
   return {
@@ -198,6 +201,8 @@ export function readDeliveryData(dir: string): PreviousData {
     assessment: readJson<AssessmentResult>(path.join(dir, "assessment", "assessment.json")),
     secure: readJson<SecureCodingResult>(path.join(dir, "secure-coding", "secure-coding.json")),
     dependencies: readJson<CheckDependenciesResult>(path.join(dir, "dependencies", "dependencies.json")),
+    privacy: readJson<FpDoc>(path.join(dir, "privacy", "privacy.json")),
+    access: readJson<FpDoc>(path.join(dir, "access", "access.json")),
   };
 }
 const vulnIds = (d: CheckDependenciesResult | null): Set<string> => new Set((d?.vulnerabilities ?? []).flatMap((v) => v.ids));
@@ -218,14 +223,24 @@ export function diffDeliveries(previousDir: string, prev: PreviousData, cur: Pre
   if (prev.secure && cur.secure) { const a = new Set(prev.secure.findings.map((f) => f.fingerprint)), b = new Set(cur.secure.findings.map((f) => f.fingerprint)); secureCoding = { added: [...b].filter((x) => !a.has(x)).length, resolved: [...a].filter((x) => !b.has(x)).length, from: prev.secure.summary.total, to: cur.secure.summary.total }; }
   else skipped.push(L(`보안약점: ${!prev.secure ? "이전" : "현재"} 패키지에 secure-coding/secure-coding.json 없음`, `Secure coding: secure-coding/secure-coding.json missing in the ${!prev.secure ? "previous" : "current"} package`));
   const dependencies = prev.dependencies && cur.dependencies ? { from: prev.dependencies.summary as unknown as Record<string, number>, to: cur.dependencies.summary as unknown as Record<string, number> } : null;
+  // v1.26: 선택 항목(개인정보·접근 통제) — 두 패키지 모두에 있을 때만 지문으로 비교
+  const checks: NonNullable<DeliveryDiff["checks"]> = {};
+  for (const id of ["privacy", "access"] as const) {
+    const a = prev[id]?.findings, b = cur[id]?.findings;
+    if (!a || !b) continue;
+    if (a.length && !a.some((f) => f.fingerprint)) { skipped.push(L(`${id}: 이전 패키지의 ${id}/${id}.json 에 지문이 없음(v1.26.0 이전에 만든 패키지)`, `${id}: ${id}/${id}.json in the previous package carries no fingerprints (packaged before v1.26.0)`)); continue; }
+    const pa = new Set(a.map((f) => f.fingerprint ?? "")), pb = new Set(b.map((f) => f.fingerprint ?? ""));
+    checks[id] = { added: [...pb].filter((x) => !pa.has(x)).length, resolved: [...pa].filter((x) => !pb.has(x)).length, from: a.length, to: b.length };
+  }
   const changed = !!(
     (grades && (grades.migration.from !== grades.migration.to || grades.supplyChain.from !== grades.supplyChain.to)) ||
     (sbom && (sbom.added.length || sbom.removed.length || sbom.versionChanged.length || sbom.newVulnerabilities.length || sbom.resolvedVulnerabilities.length)) ||
     (vulnerabilities && (vulnerabilities.added.length || vulnerabilities.resolved.length)) ||
     (secureCoding && (secureCoding.added || secureCoding.resolved)) ||
+    Object.values(checks).some((c) => c.added || c.resolved) ||
     (dependencies && JSON.stringify(dependencies.from) !== JSON.stringify(dependencies.to))
   );
-  return { previousDir, previousCreatedAt: prev.manifest?.createdAt ?? null, grades, sbom, vulnerabilities, secureCoding, dependencies, skipped, changed };
+  return { previousDir, previousCreatedAt: prev.manifest?.createdAt ?? null, grades, sbom, vulnerabilities, secureCoding, dependencies, ...(Object.keys(checks).length ? { checks } : {}), skipped, changed };
 }
 
 export function renderDeliveryDiffMarkdown(d: DeliveryDiff): string {
@@ -241,6 +256,7 @@ export function renderDeliveryDiffMarkdown(d: DeliveryDiff): string {
   }
   if (d.vulnerabilities) out.push(L(`## 의존성 취약점(OSV)`, `## Dependency vulnerabilities (OSV)`), ``, L(`- 새로 생김 ${d.vulnerabilities.added.length}${d.vulnerabilities.added.length ? `: ${d.vulnerabilities.added.slice(0, 10).join(", ")}` : ""}`, `- newly found ${d.vulnerabilities.added.length}${d.vulnerabilities.added.length ? `: ${d.vulnerabilities.added.slice(0, 10).join(", ")}` : ""}`), L(`- 해소 ${d.vulnerabilities.resolved.length}${d.vulnerabilities.resolved.length ? `: ${d.vulnerabilities.resolved.slice(0, 10).join(", ")}` : ""}`, `- resolved ${d.vulnerabilities.resolved.length}${d.vulnerabilities.resolved.length ? `: ${d.vulnerabilities.resolved.slice(0, 10).join(", ")}` : ""}`), ``);
   if (d.secureCoding) out.push(L(`## 보안약점`, `## Secure coding findings`), ``, L(`- 총 ${d.secureCoding.from} → ${d.secureCoding.to} · 새 항목 ${d.secureCoding.added} · 해소 ${d.secureCoding.resolved}`, `- total ${d.secureCoding.from} → ${d.secureCoding.to} · new ${d.secureCoding.added} · resolved ${d.secureCoding.resolved}`), ``);
+  for (const [id, c] of Object.entries(d.checks ?? {})) out.push(id === "privacy" ? L(`## 개인정보 보호조치`, `## Personal data safeguards`) : L(`## 접근 통제`, `## Access control`), ``, L(`- 총 ${c.from} → ${c.to} · 새 항목 ${c.added} · 해소 ${c.resolved}`, `- total ${c.from} → ${c.to} · new ${c.added} · resolved ${c.resolved}`), ``);
   if (d.dependencies?.from && d.dependencies.to) {
     out.push(L(`## 의존성 판정`, `## Dependency verdicts`), ``, L(`| 판정 | 이전 | 현재 |`, `| Verdict | Previous | Current |`), `|---|---|---|`);
     for (const k of Object.keys(d.dependencies.to)) out.push(`| ${k} | ${d.dependencies.from[k] ?? 0} | ${d.dependencies.to[k]} |`);
@@ -286,7 +302,7 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   const staged: Staged = [];
   const put = (relPath: string, content: string | Buffer) => { staged.push({ rel: relPath, content }); return relPath; };
   const json = (v: unknown) => `${JSON.stringify(v, null, 2)}\n`;
-  const ctx: { sbom?: GenerateSbomResult; assessment?: AssessmentResult; secure?: SecureCodingResult; dependencies?: CheckDependenciesResult; deploy?: GenerateDeployResult; build?: BuildRunResult; checkOsv?: Parameters<typeof diffSboms>[3] } = {};
+  const ctx: { sbom?: GenerateSbomResult; assessment?: AssessmentResult; secure?: SecureCodingResult; dependencies?: CheckDependenciesResult; deploy?: GenerateDeployResult; build?: BuildRunResult; privacy?: FpDoc; access?: FpDoc; checkOsv?: Parameters<typeof diffSboms>[3] } = {};
   const prevData = previousDir ? readDeliveryData(previousDir) : null;
 
   // v1.2: 진행 단계 — 실행 순서대로의 항목 + 패키지 기록. 취소는 항목 경계에서 확인하고 AbortError 를 그대로 전달한다(아무것도 쓰지 않음)
@@ -394,11 +410,13 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   // v1.21: 개인정보 파일·처리 흐름표·보호조치 점검(선택 항목)
   if (include.includes("privacy")) await run("privacy", async (item) => {
     const r = checkPrivacy({ projectDir });
+    ctx.privacy = r;
     item.files.push(put("privacy/privacy.md", `${renderPrivacyMarkdown(r, 1000)}\n`), put("privacy/privacy.json", json(r)), put("privacy/personal-data-files.csv", renderPrivacyCsv(r)));
     item.summary = { tables: r.summary.tables, columns: r.summary.columns, uniqueIdTables: r.summary.uniqueIdTables, high: r.summary.high, medium: r.summary.medium };
   });
   if (include.includes("access")) await run("access", async (item) => {
     const r = checkAccess({ projectDir });
+    ctx.access = r;
     item.files.push(put("access/access.md", `${renderAccessMarkdown(r, 1000)}\n`), put("access/access.json", json(r)), put("access/url-permissions.csv", renderAccessCsv(r)));
     item.summary = { handlers: r.summary.handlers, writes: r.summary.writes, writesWithoutCheck: r.summary.writesWithoutCheck, high: r.summary.high, medium: r.summary.medium, low: r.summary.low };
   });
@@ -415,7 +433,7 @@ export async function prepareDelivery(opts: PrepareDeliveryOptions): Promise<Pre
   // 이전 차수 비교
   let diff: DeliveryDiff | undefined;
   if (previousDir && prevData) {
-    diff = diffDeliveries(previousDir, prevData, { manifest: null, sbom: ctx.sbom?.bom ?? null, assessment: ctx.assessment ?? null, secure: ctx.secure ?? null, dependencies: ctx.dependencies ?? null }, ctx.checkOsv);
+    diff = diffDeliveries(previousDir, prevData, { manifest: null, sbom: ctx.sbom?.bom ?? null, assessment: ctx.assessment ?? null, secure: ctx.secure ?? null, dependencies: ctx.dependencies ?? null, privacy: ctx.privacy ?? null, access: ctx.access ?? null }, ctx.checkOsv);
     put("diff.md", `${renderDeliveryDiffMarkdown(diff)}\n`);
     put("diff.json", json(diff));
   }

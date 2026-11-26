@@ -61,7 +61,7 @@ export function collectAiChecks(projectDir: string, componentId: string): Valida
 }
 
 /** 조립된 프로젝트의 무결성을 진단한다 (파일 존재·DbType↔DDL 일치). */
-export async function validateProject(opts: { projectDir: string; /** v1.19: 매퍼·DAO 정합성 검사(기본 true) */ mapper?: boolean; /** v1.25: 화면–쿼리–DB 정합성 검사(기본 true) */ consistency?: boolean; maxIssues?: number }): Promise<ValidateResult> {
+export async function validateProject(opts: { projectDir: string; /** v1.19: 매퍼·DAO 정합성 검사(기본 true) */ mapper?: boolean; /** v1.25: 화면–쿼리–DB 정합성 검사(기본 true) */ consistency?: boolean; maxIssues?: number; /** v1.26: 이 도구의 이전 결과(format=json) — mapper·consistency 의 새 항목만 isNew */ baselinePath?: string }): Promise<ValidateResult> {
   const projectDir = path.resolve(opts.projectDir);
   if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory())
     throw new Error(`프로젝트 디렉터리가 없습니다: ${projectDir}`);
@@ -104,7 +104,7 @@ export async function validateProject(opts: { projectDir: string; /** v1.19: 매
       warnings.push(`Globals.DbType='${dbType}'인데 복사된 DB 스크립트(${dbScriptDirs.join(", ")})와 일치하지 않습니다`);
   }
 
-  const mapper = opts.mapper === false ? undefined : checkMappers({ projectDir, maxIssues: opts.maxIssues ?? 200 });
-  const consistency = opts.consistency === false ? undefined : checkConsistency({ projectDir, maxIssues: opts.maxIssues ?? 200 });
+  const mapper = opts.mapper === false ? undefined : checkMappers({ projectDir, maxIssues: opts.maxIssues ?? 200, baselinePath: opts.baselinePath });
+  const consistency = opts.consistency === false ? undefined : checkConsistency({ projectDir, maxIssues: opts.maxIssues ?? 200, baselinePath: opts.baselinePath });
   return { projectDir, ok: warnings.length === 0, manifestFound: manifest !== null, components, dbType: dbType ?? mapper?.dbType ?? null, dbScriptDirs, aiChecks, warnings, ...(mapper ? { mapper } : {}), ...(consistency ? { consistency } : {}) };
 }

@@ -21,6 +21,13 @@ export interface OriginSource {
   resolveCommit(tag: string): Promise<string>;
   /** blob 내용 */
   readBlob(blobId: string): Promise<Buffer>;
+  /**
+   * v1.26: 이 태그를 카탈로그가 고정한 커밋으로 읽는다 — upstream 이 태그를 옮겨도(v5.0.7: 2026-10-07, 2026-11-25)
+   * 조립 원본(고정 커밋의 아카이브)과 같은 트리로 비교하기 위해서다.
+   */
+  pin?(tag: string, commit: string): void;
+  /** v1.26: 고정 커밋과 다른 곳을 가리키는 태그면 지금 태그의 커밋(아니면 null) */
+  movedTag?(tag: string): string | null;
 }
 
 /** git 이 쓰는 blob id(sha1("blob <len>\0" + 내용)). */
@@ -67,14 +74,39 @@ export class GitOriginSource implements OriginSource {
   private readonly url: string;
   private tagsCache: string[] | null = null;
   private readonly fetched = new Set<string>();
+  private readonly pins = new Map<string, string>();
+  private readonly moved = new Map<string, string>();
+  /** 태그를 읽을 때 쓸 ref(고정 커밋이면 그 sha) */
+  private readonly refs = new Map<string, string>();
   /** v0.42: 오프라인 번들의 원본 미러를 쓰는 중(원격 조회 없음) */
   readonly offline: boolean;
-  constructor(opts: { cacheDir?: string; repository?: string } = {}) {
+  constructor(opts: { cacheDir?: string; repository?: string; /** v1.26: 저장소 URL 직접 지정(사내 미러·테스트) */ url?: string } = {}) {
     const repository = opts.repository ?? COMPONENTS_REPOSITORY;
-    this.url = `https://github.com/${repository}.git`;
+    this.url = opts.url ?? `https://github.com/${repository}.git`;
     const bundled = bundleOriginDir(repository);
     this.offline = !!bundled;
     this.dir = bundled ?? path.join(opts.cacheDir ?? defaultCacheDir(), `${repository.replace(/[^A-Za-z0-9._-]/g, "_")}.git`);
+  }
+  pin(tag: string, commit: string): void {
+    if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error(`고정 커밋 형식 오류: ${commit}`);
+    this.pins.set(tag, commit); this.fetched.delete(tag); this.refs.delete(tag);
+  }
+  movedTag(tag: string): string | null { return this.moved.get(tag) ?? null; }
+  private refOf(tag: string): string { return this.refs.get(tag) ?? `refs/tags/${tag}`; }
+  /** 태그가 고정 커밋과 다르면 고정 커밋을 받아 그것으로 읽는다. */
+  private async applyPin(tag: string): Promise<void> {
+    const pin = this.pins.get(tag);
+    if (!pin) return;
+    const tagCommit = (await git(["rev-parse", `refs/tags/${tag}^{commit}`], this.dir)).toString("utf8").trim();
+    if (tagCommit === pin) return;
+    this.moved.set(tag, tagCommit);
+    const has = async () => { try { await git(["rev-parse", "--verify", "--quiet", `${pin}^{commit}`], this.dir); return true; } catch { return false; } };
+    if (!(await has())) {
+      if (this.offline) throw new Error(`오프라인 번들의 원본 미러에서 태그 ${tag} 는 ${tagCommit.slice(0, 7)} 인데 이 버전의 카탈로그는 ${pin.slice(0, 7)} 을 고정합니다(upstream 이 태그를 옮김) — 인터넷 PC 에서 이 버전으로 번들을 새로 만드세요`);
+      await git(["fetch", "--quiet", "--depth", "1", "--filter=blob:none", "origin", pin], this.dir);
+      await git(["update-ref", `refs/pins/${tag}`, pin], this.dir);
+    }
+    this.refs.set(tag, pin);
   }
   async listTags(): Promise<string[]> {
     if (this.tagsCache) return this.tagsCache;
@@ -90,6 +122,7 @@ export class GitOriginSource implements OriginSource {
     if (this.offline) {
       try { await git(["rev-parse", "--verify", "--quiet", `refs/tags/${tag}^{commit}`], this.dir); }
       catch { throw new Error(`오프라인 번들의 원본 미러에 태그 ${tag} 가 없습니다 — 인터넷 PC 에서 번들을 새로 만드세요`); }
+      await this.applyPin(tag);
       this.fetched.add(tag);
       return;
     }
@@ -100,11 +133,12 @@ export class GitOriginSource implements OriginSource {
       // 프로세스마다 한 번은 원격 태그를 다시 받는다(+ 강제) — upstream 이 태그를 옮기면(v5.0.7, 2026-10-07) 캐시의 옛 커밋을 쓰지 않도록
       await git(["fetch", "--quiet", "--force", "--depth", "1", "--filter=blob:none", "origin", `+refs/tags/${tag}:refs/tags/${tag}`], this.dir);
     }
+    await this.applyPin(tag);
     this.fetched.add(tag);
   }
   async resolveCommit(tag: string): Promise<string> {
     await this.ensureTag(tag);
-    return (await git(["rev-parse", `refs/tags/${tag}^{commit}`], this.dir)).toString("utf8").trim();
+    return (await git(["rev-parse", `${this.refOf(tag)}^{commit}`], this.dir)).toString("utf8").trim();
   }
   async listBlobs(tag: string, paths: string[]): Promise<Map<string, string>> {
     await this.ensureTag(tag);
@@ -112,7 +146,7 @@ export class GitOriginSource implements OriginSource {
     const unique = [...new Set(paths.map((p) => p.replace(/\/$/, "")))];
     for (let i = 0; i < unique.length; i += 200) {
       const chunk = unique.slice(i, i + 200);
-      const text = (await git(["ls-tree", "-r", "-z", `refs/tags/${tag}^{tree}`, "--", ...chunk], this.dir)).toString("utf8");
+      const text = (await git(["ls-tree", "-r", "-z", `${this.refOf(tag)}^{tree}`, "--", ...chunk], this.dir)).toString("utf8");
       for (const rec of text.split("\0")) {
         const m = rec.match(/^\d+ blob ([0-9a-f]{40})\t(.+)$/);
         if (m) out.set(m[2], m[1]);

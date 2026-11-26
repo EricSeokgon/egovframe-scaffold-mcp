@@ -7,7 +7,7 @@
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { clonePinned } from "./pinned-upstream.mjs";
 
 let n = 0;
 function assert(c, msg) { n++; if (!c) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
@@ -17,7 +17,8 @@ const root = mkdtempSync(path.join(tmpdir(), "egov-access-live-"));
 const LO = { none: 0, login: 1, role: 2, owner: 3 };
 const WRITE = new Set(["create", "update", "delete"]);
 try {
-  const clone = (tag) => { const d = path.join(root, tag); execFileSync("git", ["clone", "-q", "--depth", "1", "--branch", tag, "https://github.com/eGovFramework/egovframe-common-components.git", d], { stdio: ["ignore", "ignore", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } }); return d; };
+  // 태그가 아니라 고정 커밋으로 받는다 — upstream 이 2026-11-25 에 v5.0.7 태그를 옮겼다(test/pinned-upstream.mjs)
+  const clone = (tag) => clonePinned(path.join(root, tag), tag);
   const d506 = clone("v5.0.6"), d507 = clone("v5.0.7");
   const before = m.checkAccess({ projectDir: d506 }), after = m.checkAccess({ projectDir: d507 });
   info(`v5.0.6: ${before.durationMs}ms · ${JSON.stringify(before.summary)}`);

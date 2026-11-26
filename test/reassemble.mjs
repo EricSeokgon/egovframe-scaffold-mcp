@@ -138,6 +138,48 @@ write(p4, "pom.xml", "<project></project>\n");
 const none = await reassembleComponents({ projectDir: p4, origin });
 assert(none.components.length === 0 && none.files.length === 0 && none.notes.some((x) => x.includes("찾지 못했습니다")), "감지된 컴포넌트 없음 → 안내만");
 
+
+// ── v1.26: 옮겨진 태그 — 카탈로그 고정 커밋으로 읽는다 (upstream 이 v5.0.7 태그를 두 번 옮겼다: 2026-10-07, 2026-11-25) ──
+{
+  const { execFileSync } = await import("node:child_process");
+  const { GitOriginSource } = await import("../dist/index.js");
+  const gdir = mkdtempSync(path.join(tmpdir(), "egov-retag-"));
+  const up = path.join(gdir, "upstream");
+  mkdirSync(up, { recursive: true });
+  const g = (args, cwd = up) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@example.invalid", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@example.invalid" } }).trim();
+  g(["init", "-q", "-b", "main"]);
+  g(["config", "uploadpack.allowFilter", "true"]); g(["config", "uploadpack.allowAnySHA1InWant", "true"]); g(["config", "core.autocrlf", "false"]);
+  mkdirSync(path.join(up, "src"), { recursive: true });
+  writeFileSync(path.join(up, "src/A.java"), "class A { /* 처음 태그한 내용 */ }\n"); writeFileSync(path.join(up, "src/B.java"), "class B {}\n");
+  g(["add", "."]); g(["commit", "-q", "-m", "release"]); g(["tag", "v9.9.9"]);
+  const pinned = g(["rev-parse", "HEAD"]);
+  const url = `file://${up.replace(/\\/g, "/").replace(/^([A-Za-z]):/, "/$1:")}`;
+  // 태그가 그대로일 때: 고정해도 달라지는 것 없음
+  const same = new GitOriginSource({ cacheDir: path.join(gdir, "c0"), repository: "t/t", url });
+  same.pin("v9.9.9", pinned);
+  const b0 = await same.listBlobs("v9.9.9", ["src"]);
+  assert(b0.size === 2 && same.movedTag("v9.9.9") === null && (await same.resolveCommit("v9.9.9")) === pinned, "고정 커밋 = 태그 커밋이면 그대로 읽고 '옮겨짐' 아님");
+  // upstream 이 태그를 옮김
+  writeFileSync(path.join(up, "src/A.java"), "class A { /* 보안 패치 */ }\n"); writeFileSync(path.join(up, "src/C.java"), "class C {}\n");
+  g(["add", "."]); g(["commit", "-q", "-m", "security patch"]); g(["tag", "-f", "v9.9.9"]);
+  const movedTo = g(["rev-parse", "HEAD"]);
+  const plain = new GitOriginSource({ cacheDir: path.join(gdir, "c1"), repository: "t/t", url });
+  const bNew = await plain.listBlobs("v9.9.9", ["src"]);
+  assert(bNew.size === 3 && bNew.get("src/A.java") !== b0.get("src/A.java") && (await plain.resolveCommit("v9.9.9")) === movedTo, "(전제) 고정하지 않으면 옮겨진 태그의 트리를 읽음 — 조립 원본과 다른 내용");
+  const pinnedSrc = new GitOriginSource({ cacheDir: path.join(gdir, "c2"), repository: "t/t", url });
+  pinnedSrc.pin("v9.9.9", pinned);
+  const b1 = await pinnedSrc.listBlobs("v9.9.9", ["src"]);
+  assert(b1.size === 2 && b1.get("src/A.java") === b0.get("src/A.java") && !b1.has("src/C.java") && (await pinnedSrc.resolveCommit("v9.9.9")) === pinned && pinnedSrc.movedTag("v9.9.9") === movedTo, "고정하면 옮겨진 태그 대신 고정 커밋의 트리를 읽고, 옮겨진 곳을 알려 줌");
+  assert((await pinnedSrc.readBlob(b1.get("src/A.java"))).toString("utf8").includes("처음 태그한 내용"), "고정 커밋의 blob 내용을 읽음");
+  // 이미 옛 태그를 받아 둔 캐시(프로세스가 바뀜)에서도 같다
+  const warm = new GitOriginSource({ cacheDir: path.join(gdir, "c0"), repository: "t/t", url });
+  warm.pin("v9.9.9", pinned);
+  assert((await warm.listBlobs("v9.9.9", ["src"])).size === 2 && warm.movedTag("v9.9.9") === movedTo, "캐시가 있던 경우에도 고정 커밋으로");
+  let bad = ""; try { pinnedSrc.pin("v9.9.9", "not-a-sha"); } catch (e) { bad = e.message; }
+  assert(/고정 커밋 형식 오류/.test(bad), "고정 커밋 형식 검증");
+  rmSync(gdir, { recursive: true, force: true, maxRetries: 5 });
+}
+
 for (const d of [p1, p2, p3, p4]) rmSync(d, { recursive: true, force: true });
 void readdirSync;
 if (process.exitCode) console.error(`reassemble FAIL (${n} assertions)`); else console.log(`reassemble OK (${n} assertions)`);

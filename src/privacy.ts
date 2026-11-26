@@ -7,6 +7,7 @@
 //        (파일 단위 판정 — 같은 파일의 다른 메서드에서 그 필드를 암호화하면 통과로 본다: 놓칠 수 있으나 오탐을 줄이는 쪽)
 //      screen-exposure(중간): 화면이 고유식별정보 필드를 마스킹 없이 출력 / log-exposure(중간): 고유식별·비밀번호·금융 필드를 로그로 출력
 //   법 해석·실제 데이터 스캔·자동 암호화는 하지 않는다. 값을 고치지 않는다.
+import { assignFingerprints, readCheckBaseline, applyBaseline, baselineLine, type BaselineInfo } from "./baseline.js";
 import { loadRulePacks, applyPrivacyPacks, rulePackInfo, type RulePackInfo } from "./rule-packs.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -44,8 +45,12 @@ export interface PrivacyFinding {
   table?: string; column?: string;
   /** plaintext-storage: 같은 문장을 가진 DB 별 매퍼 사본 수(2 이상일 때) */
   variants?: number;
+  /** v1.26: 줄 번호에 묶이지 않는 지문(종류·항목·파일·테이블.컬럼 또는 코드·순번) */
+  fingerprint?: string;
+  /** v1.26: baselinePath 를 줬을 때 — 이전 결과에 없던 항목 */
+  isNew?: boolean;
 }
-export interface PrivacyOptions { projectDir: string; maxFiles?: number; rules?: PrivacyRules; /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */ rulePacks?: string[] }
+export interface PrivacyOptions { projectDir: string; maxFiles?: number; rules?: PrivacyRules; /** v1.23: 규칙 팩 디렉터리(없으면 환경 변수 EGOVFRAME_RULE_PACKS) */ rulePacks?: string[]; /** v1.26: 이전 결과(format=json) — 새로 생긴 항목만 isNew */ baselinePath?: string }
 export interface PrivacyResult {
   projectDir: string;
   rulesVersion: { surveyedAt: string; items: number };
@@ -53,7 +58,9 @@ export interface PrivacyResult {
   columns: PrivacyColumn[];
   flows: PrivacyFlow[];
   findings: PrivacyFinding[];
-  summary: { tables: number; columns: number; items: number; byGrade: Record<string, number>; uniqueIdTables: number; high: number; medium: number; suppressed: number; ddlFiles: number; mapperStatements: number };
+  summary: { tables: number; columns: number; items: number; byGrade: Record<string, number>; uniqueIdTables: number; high: number; medium: number; suppressed: number; ddlFiles: number; mapperStatements: number; /** v1.26: 새 항목 수(baselinePath 없으면 null) */ new: number | null };
+  /** v1.26: 비교한 기준선(있을 때만) */
+  baseline?: BaselineInfo;
   ignoreFile: string | null;
   invalidIgnores: string[];
   /** v1.23: 적용한 규칙 팩(있을 때만) */
@@ -338,6 +345,7 @@ export function checkPrivacy(opts: PrivacyOptions): PrivacyResult {
     }
   }
 
+  assignFingerprints("privacy", findings, (f) => [f.kind, f.item, f.file, f.table && f.column ? `${f.table}.${f.column}`.toUpperCase() : f.code]);
   // ── 예외 파일 ──
   const ig = readIgnoreFile(projectDir, PRIVACY_IGNORE_FILE);
   let suppressed = 0;
@@ -350,10 +358,13 @@ export function checkPrivacy(opts: PrivacyOptions): PrivacyResult {
     notes.push(L(`규칙 팩 적용: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}`, `Rule packs applied: ${packs.map((p) => `${p.name} ${p.version}`).join(", ")}`));
   }
   if (cols.length && !cols.some((c) => c.source === "ddl")) notes.push(L("DDL 을 찾지 못해 매퍼 SQL 에 나온 컬럼만으로 만들었습니다 — 조회·저장하지 않는 컬럼은 빠질 수 있습니다", "No DDL found; built from columns seen in mapper SQL only — columns never read or written may be missing"));
+  const base = opts.baselinePath ? applyBaseline(kept, readCheckBaseline(projectDir, opts.baselinePath, "privacy")) : null;
+  if (base?.note) notes.push(base.note);
   return {
     projectDir, rulesVersion: { surveyedAt: rules.surveyedAt, items: rules.items.length }, durationMs: Date.now() - t0,
     columns: cols, flows, findings: kept,
-    summary: { tables: tables.length, columns: cols.length, items: new Set(cols.map((c) => c.item)).size, byGrade, uniqueIdTables: new Set(cols.filter((c) => c.grade === "unique-id").map((c) => c.table)).size, high: kept.filter((f) => f.severity === "high").length, medium: kept.filter((f) => f.severity === "medium").length, suppressed, ddlFiles, mapperStatements: new Set([...stmtCols.keys()].map((x) => `${x.ns}|${x.id}`)).size },
+    summary: { tables: tables.length, columns: cols.length, items: new Set(cols.map((c) => c.item)).size, byGrade, uniqueIdTables: new Set(cols.filter((c) => c.grade === "unique-id").map((c) => c.table)).size, high: kept.filter((f) => f.severity === "high").length, medium: kept.filter((f) => f.severity === "medium").length, suppressed, ddlFiles, mapperStatements: new Set([...stmtCols.keys()].map((x) => `${x.ns}|${x.id}`)).size, new: base ? base.newCount : null },
+    ...(base ? { baseline: base.info } : {}),
     ignoreFile: ig.file, invalidIgnores: ig.invalid, ...(packs.length ? { rulePacks: rulePackInfo(packs) } : {}), notes,
   };
 }
@@ -365,9 +376,10 @@ export function renderPrivacyMarkdown(r: PrivacyResult, topN = 30): string {
   out.push(L(`# 개인정보 흐름·보호조치 점검 (${r.projectDir})`, `# Personal data flow and safeguards (${r.projectDir})`), "");
   out.push(L(`- 개인정보 테이블 ${r.summary.tables}개 · 컬럼 ${r.summary.columns}개 · 항목 ${r.summary.items}종 (${Object.entries(r.summary.byGrade).map(([g, n]) => `${gradeLabel(g as PrivacyGrade)} ${n}`).join(" · ") || "없음"})`, `- ${r.summary.tables} tables · ${r.summary.columns} columns · ${r.summary.items} item types (${Object.entries(r.summary.byGrade).map(([g, n]) => `${gradeLabel(g as PrivacyGrade)} ${n}`).join(" · ") || "none"})`));
   out.push(L(`- 보호조치 누락 의심: 높음 ${r.summary.high} · 중간 ${r.summary.medium}${r.summary.suppressed ? ` · 예외 ${r.summary.suppressed}` : ""} — 이름·호출 패턴 기반의 정적 판정입니다. 근거를 확인하고 판단하세요.`, `- Suspected missing safeguards: ${r.summary.high} high · ${r.summary.medium} medium${r.summary.suppressed ? ` · ${r.summary.suppressed} suppressed` : ""} — static, name- and call-pattern based. Check the evidence before deciding.`), "");
+  if (r.baseline) out.push(baselineLine(r.baseline, r.summary.new ?? 0));
   if (r.findings.length) {
     out.push(L("## 보호조치 누락 의심", "## Suspected missing safeguards"), "", L("| 심각도 | 종류 | 항목 | 위치 | 대상 | 근거 |", "| Severity | Kind | Item | Location | Target | Evidence |"), "|---|---|---|---|---|---|");
-    for (const f of r.findings.slice(0, topN)) out.push(`| ${f.severity} | ${f.kind} | ${f.label} | \`${f.file}:${f.line}\` | \`${f.code.replace(/\|/g, "\\|")}\` | ${f.evidence.replace(/\|/g, "\\|")} |`);
+    for (const f of r.findings.slice(0, topN)) out.push(`| ${f.isNew ? "🆕 " : ""}${f.severity} | ${f.kind} | ${f.label} | \`${f.file}:${f.line}\` | \`${f.code.replace(/\|/g, "\\|")}\` | ${f.evidence.replace(/\|/g, "\\|")} |`);
     if (r.findings.length > topN) out.push("", L(`… ${r.findings.length - topN}건 더(format=json)`, `… ${r.findings.length - topN} more (format=json)`));
     out.push("");
   }
