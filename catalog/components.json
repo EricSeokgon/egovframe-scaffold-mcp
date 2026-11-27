@@ -9,8 +9,8 @@
     "surveyedAt": "2026-11-27",
     "securityPatchLevel": "v5.0.7",
     "archive": {
-      "sha256": "14ab9d10dd8e6a4bad06807c7514b637f502473e420c8090316941c6c2e8d3ed",
-      "bytes": 47049926,
+      "sha256": "ebd5483cdf15dd3719cb74413d9780d365304d8623a0155a979f3f58c07616f2",
+      "bytes": 46937489,
       "files": 6606
     }
   },
