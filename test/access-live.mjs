@@ -33,7 +33,7 @@ try {
   const pct = (a, c) => `${a}/${c} = ${(a / c * 100).toFixed(1)}%`;
   info(`upstream 이 검증을 올린 핸들러 ${raised.length}(변경 ${raisedWrites.length}) — 수정 전 보고: 전체 ${pct(hit.length, raised.length)}, 변경 ${pct(hitWrites.length, raisedWrites.length)} · 수정 뒤에도 보고 ${still.length}`);
   assert(before.summary.handlers === 1206 && after.summary.handlers === 1206 && before.summary.controllers === 164 && after.summary.byLevel.owner > before.summary.byLevel.owner * 4 && after.summary.byLevel.none < before.summary.byLevel.none, `핸들러 1,206개(컨트롤러 164) — 소유권 검증 ${before.summary.byLevel.owner} → ${after.summary.byLevel.owner}, 검증 없음 ${before.summary.byLevel.none} → ${after.summary.byLevel.none}`);
-  assert(raised.length === 145 && raisedWrites.length === 93, `정답: 검증 수준이 올라간 핸들러 ${raised.length}(변경 ${raisedWrites.length})`);
+  assert(raised.length === 152 && raisedWrites.length === 96, `정답: 검증 수준이 올라간 핸들러 ${raised.length}(변경 ${raisedWrites.length})`);
   assert(hitWrites.length >= 70 && hit.length >= 74, `재현율 — 변경 핸들러 ${pct(hitWrites.length, raisedWrites.length)}(실측 73), 전체 ${pct(hit.length, raised.length)}(실측 77 — 조회 핸들러는 형제 근거가 있을 때만 보고)`);
   assert(still.length <= 2, `수정 뒤(v5.0.7)에는 정답 핸들러를 다시 보고하지 않음(${still.length}건${still.length ? `: ${still.map(key).join(", ")}` : ""})`);
   // (3) 독립 확인 — 점검 도구의 판정을 쓰지 않고 소스 본문에서

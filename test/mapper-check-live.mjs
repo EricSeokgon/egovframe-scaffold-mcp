@@ -1,7 +1,7 @@
 // node test/mapper-check-live.mjs — 매퍼·DAO 정합성(v1.19) 실자산 검증 (CI 통합: 네트워크)
-//   (1) 공통컴포넌트 v5.0.7: 없는 문장 10곳 = upstream 이 10-26 에 고친 6곳(AdministCodeRecptnDAO·InsttCodeRecptnDAO 4, CnsltManageDAO 1, BndtManage 건수 1)
+//   (1) 공통컴포넌트 v5.0.7(2026-10 태그 커밋, 보안 패치 전): 없는 문장 10곳 = upstream 이 10-26 에 고친 6곳(AdministCodeRecptnDAO·InsttCodeRecptnDAO 4, CnsltManageDAO 1, BndtManage 건수 1)
 //       + 아직 고쳐지지 않은 4곳(KnoManagementDAO·KnoAppraisalDAO 의 insert·delete), 이어 만든 ID 1곳은 맞는 문장 있음, DB 별 차이 0, 후보 1순위가 upstream 의 정답
-//   (2) 같은 저장소 main: upstream 수정 6곳이 빠지고 4곳만 남음
+//   (2) 지금의 v5.0.7(2026-11-25 에 옮겨진 태그 커밋): upstream 수정 6곳이 빠지고 4곳만 남음
 //   (3) 공식 템플릿 6종: web·boot-web 0, 나머지는 보고한 항목마다 독립 확인(모든 매퍼 XML 의 주석 밖에 그 id 가 없음) — 오탐 0
 //   (4) 공통컴포넌트 전체 3초 이내
 import { mkdtempSync, rmSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -38,7 +38,7 @@ function reallyMissing(dir, ref) {
 try {
   // (1)(4) v5.0.7
   const v507 = path.join(root, "cc-507");
-  clonePinned(v507, "v5.0.7"); // 고정 커밋 — upstream 이 v5.0.7 태그를 옮겼다(test/pinned-upstream.mjs)
+  clonePinned(v507, "v5.0.7@2026-10"); // 보안 패치 전의 v5.0.7 태그 커밋(test/pinned-upstream.mjs) — upstream 이 고치기 전의 표본
   const r = m.checkMappers({ projectDir: v507 });
   info(`v5.0.7: ${r.durationMs}ms · ${JSON.stringify(r.counts)} · ${JSON.stringify(r.summary)}`);
   assert(JSON.stringify(missingRefs(r)) === JSON.stringify([...UPSTREAM_FIXED, ...NOT_FIXED].sort()), `v5.0.7 없는 문장 10 = upstream 수정 6 + 미수정 4 (${missingRefs(r).join(", ")})`);
@@ -46,12 +46,12 @@ try {
   const top1 = Object.entries(UPSTREAM_ANSWER).filter(([ref, ans]) => r.issues.find((i) => i.ref === ref)?.candidates?.[0] === ans).length;
   assert(top1 === 5, `후보 1순위가 upstream 이 고른 정답 ${top1}/5(문장 자체가 없던 BndtManage 제외)`);
   assert(r.durationMs < 3000, `공통컴포넌트 전체 ${r.durationMs}ms(3초 이내)`);
-  // (2) main
-  const main = path.join(root, "cc-main");
-  git(["clone", "-q", "--depth", "1", REPO, main]);
+  // (2) 고친 뒤 — 지금의 v5.0.7 태그(2026-11-25 에 옮겨진 커밋, 카탈로그가 고정). 움직이는 main 대신 고정 커밋으로 본다
+  const main = path.join(root, "cc-507-now");
+  clonePinned(main, "v5.0.7");
   const rm = m.checkMappers({ projectDir: main });
-  info(`main: ${JSON.stringify(rm.summary)} · ${missingRefs(rm).join(", ")}`);
-  assert(JSON.stringify(missingRefs(rm)) === JSON.stringify([...NOT_FIXED].sort()), "main: upstream 수정 6곳이 빠지고 미수정 4곳만");
+  info(`v5.0.7(지금): ${JSON.stringify(rm.summary)} · ${missingRefs(rm).join(", ")}`);
+  assert(JSON.stringify(missingRefs(rm)) === JSON.stringify([...NOT_FIXED].sort()), "v5.0.7(지금): upstream 수정 6곳이 빠지고 미수정 4곳만");
   // (3) 공식 템플릿
   for (const t of ["web", "boot-web", "simple-backend", "simple-homepage", "portal-site", "enterprise-business"]) {
     const c = await m.createProject({ template: t, projectName: `mc-${t}`, groupId: "egovframework.example", outputDir: root, database: "hsql" });

@@ -25,4 +25,4 @@
 ## 검증
 
 - `test:database`(게이트, 52단언, 가짜 docker): 문장 나누기·분류·참조 순서, 문자셋 교정 3경우, PostgreSQL·Oracle 머리말, INSERT 해석·한글 확인 대상, 빠진 참조 연쇄 보완, 원본 선택(매니페스트 순서·이름 규칙·지정)·DbType 결정·별칭, 접속 정보, compose·명령, dryRun 무기록·같은 내용 재실행·다른 내용 거부, 거부 경계 6, run(데몬 없음·통과·초기화 오류·keep·Oracle), diagnose 의 DB 준비 줄, MCP·CLI.
-- `test:database-live`(CI 통합, Docker): 공통컴포넌트 고정 커밋 전체를 MySQL 8.4·PostgreSQL 16 에 적재(오류 0·테이블 182·필수 행·한글), #1386 재현(원본은 이중 인코딩, 준비본은 그대로), #1387 조건(latin1 클라이언트: 원본은 깨짐, 준비본은 그대로·`utf8mb4_unicode_ci`), 조립 4종 PostgreSQL(빠진 참조 보완 후 통과), `docker compose config`. `DB_LIVE_REGISTRY` 로 이미지 레지스트리를 바꿉니다.
+- `test:database-live`(CI 통합, Docker): 공통컴포넌트 고정 커밋 전체를 MySQL 8.4·PostgreSQL 16 에 적재(오류 0·테이블 182·필수 행·한글), #1386 재현(원본은 이중 인코딩, 준비본은 그대로), #1387 조건(latin1 클라이언트: 원본은 깨짐, 준비본은 그대로·`utf8mb4_unicode_ci`), 조립 4종 PostgreSQL(빠진 참조 보완 후 통과), `docker compose config`. `DB_LIVE_REGISTRY` 로 이미지 레지스트리를 바꿉니다. v1.26.1: 카탈로그가 고정하는 v5.0.7(2026-11-25 에 옮겨진 태그)의 MySQL 스크립트에는 `SET NAMES utf8mb4` 가 들어가 원본도 두 조건에서 깨지지 않습니다 — 테스트는 "원본도 그대로(upstream 수정)"를 확인합니다.

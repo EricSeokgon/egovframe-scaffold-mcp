@@ -21,13 +21,13 @@ assert.match(inspected.unmappedComponentPaths[0], /cop\/newpkg/);
 
 const catalog = loadCatalog();
 assert.equal(catalog.source.tag, "v5.0.7");
-assert.equal(catalog.source.commit, "7912e13ca5a064a4dc81d5772582f928e985e653");
+assert.equal(catalog.source.commit, "36abd0d5bcb22e58b366f8d5f1e8ccdccfe7d6da");
 assert.match(catalog.source.archive.sha256, /^[0-9a-f]{64}$/);
 assert.ok(catalog.source.archive.bytes > 40_000_000);
 
 // v1.26: upstream 이 고정 태그를 옮긴 경우 — 실패하지 않고 고정 커밋의 아카이브로 무결성을 검증한다
 {
-  const MOVED = "36abd0d5bcb22e58b366f8d5f1e8ccdccfe7d6da";
+  const MOVED = "0123456789abcdef0123456789abcdef01234567";
   const realFetch = globalThis.fetch;
   const seen = [];
   const tiny = new AdmZip(); tiny.addFile("fixture/README.md", Buffer.from("x"));

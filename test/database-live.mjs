@@ -1,7 +1,8 @@
 // node test/database-live.mjs — DB 준비·검증(v1.10) 실자산 검증 (CI 통합: 네트워크·Docker)
 //   (1) 공식 공통컴포넌트 전체(카탈로그 고정 커밋)의 MySQL 8.4·PostgreSQL 16 적재 — 초기화 오류 0, 테이블 수 = 준비한 수, 필수 행, 한글 왕복
-//   (2) upstream #1386 재현: 원본 스크립트를 그대로 MySQL Docker 초기화에 넣으면 한글이 이중 인코딩되고, 준비본은 같은 조건에서 그대로
-//   (3) upstream #1387 조건(latin1 클라이언트): 원본은 깨지고 준비본은 같은 값·정렬 규칙 utf8mb4_unicode_ci
+//   (2) upstream #1386: 원본 스크립트를 그대로 MySQL Docker 초기화에 넣었을 때 — 2026-10 의 v5.0.7 은 한글이 이중 인코딩됐고,
+//       2026-11-25 에 옮겨진 v5.0.7(카탈로그 고정)은 스크립트에 SET NAMES utf8mb4 가 들어가 원본도 그대로다. 준비본은 두 경우 모두 그대로
+//   (3) upstream #1387 조건(latin1 클라이언트): 원본도 이제 깨지지 않음, 준비본은 같은 값·정렬 규칙 utf8mb4_unicode_ci
 //   (4) 조립 선별본(bbs·uss.umt·sec.ram·sym.mnu.mpm) PostgreSQL: 선별본이 빠뜨린 공통코드 테이블을 보완해 적재 통과
 //   (5) 생성한 docker-compose.db.yml 이 docker compose config 를 통과
 //   DB_LIVE_REGISTRY 로 이미지 레지스트리를 바꿀 수 있다(Docker Hub 요청 한도 회피, 예: mirror.gcr.io/library).
@@ -63,9 +64,8 @@ try {
   let ready = false;
   for (let i = 0; i < 60 && !ready; i++) { ready = q("com", "SELECT 1") === "1"; if (!ready) await new Promise((r) => setTimeout(r, 2000)); }
   assert(ready, "원본 스크립트 MySQL: 초기화 뒤 재시작해 접속 가능");
-  const isHex = (v) => /^[0-9A-F]+$/.test(v);
   const origHex = q("com", PROBE);
-  assert(isHex(origHex) && origHex !== HEX && origHex.length > HEX.length, `#1386 재현: 원본을 Docker 초기화로 넣으면 한글 이중 인코딩 (${origHex.slice(0, 24)}… ≠ ${HEX.slice(0, 24)}…)`);
+  assert(orig.every((t) => /^\s*SET NAMES utf8mb4;/m.test(t)) && origHex === HEX, `#1386: 옮겨진 v5.0.7 의 원본 스크립트는 SET NAMES utf8mb4 로 시작해 Docker 초기화로 넣어도 한글이 그대로(${origHex.slice(0, 24)}…) — upstream 이 고침`);
   q("com", "CREATE DATABASE c_ours; CREATE DATABASE c_orig;");
   const loadOurs = sh(["exec", "-i", "-e", "MYSQL_PWD=pw", name, "mysql", "-uroot", "--default-character-set=latin1", "c_ours"], ours.join("\n"));
   const loadOrig = sh(["exec", "-i", "-e", "MYSQL_PWD=pw", name, "mysql", "-uroot", "--default-character-set=latin1", "c_orig"], orig.join("\n"));
@@ -73,7 +73,7 @@ try {
   const collation = q("c_ours", "SELECT DISTINCT TABLE_COLLATION FROM information_schema.tables WHERE table_schema='c_ours' AND table_type='BASE TABLE'");
   assert(q("c_ours", PROBE) === HEX && collation === "utf8mb4_unicode_ci", `#1387 조건(latin1 클라이언트): 준비본은 한글 그대로·정렬 규칙 ${collation}`);
   const origLatin1 = q("c_orig", PROBE);
-  assert(isHex(origLatin1) && origLatin1 !== HEX, `#1387 조건: 원본은 latin1 클라이언트에서 한글이 깨짐 (${origLatin1.slice(0, 24)}…)`);
+  assert(origLatin1 === HEX, `#1387 조건: 옮겨진 v5.0.7 의 원본도 latin1 클라이언트에서 한글이 그대로(${origLatin1.slice(0, 24)}…) — upstream 이 고침`);
   info(`준비본 MySQL: 문자셋 교정 ${prep.charsetFixed}개 테이블`);
 
   // (5) compose
