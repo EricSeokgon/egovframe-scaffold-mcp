@@ -293,7 +293,7 @@ npx -y egovframe-scaffold-mcp validate --project . --fail-on mapperMissing>0
 - **경고**: 다른 DB 매퍼에만 빠진 문장 · 문자열을 이어 만든 ID(`"NS.prefix" + x`)의 앞부분으로 시작하는 문장이 없음 · `parameterType`·`resultType` 의 프로젝트 패키지 클래스가 소스에 없음.
 - `id="namespace.id"` 처럼 namespace 를 붙여 쓴 id 는 MyBatis 와 같이 짧은 id 로 맞춥니다. 같은 namespace 를 여러 파일이 나눠 쓰는 것(공통컴포넌트 `menuManageDAO`)은 허용됩니다. 주석·CDATA 안의 태그, 테스트 소스, iBATIS `sqlMap` 은 보지 않습니다.
 - 결과는 `mapper` 에 따로 담고 `ok`(조립 무결성 — 매니페스트·DbType)에는 넣지 않습니다. 공식 템플릿 4종이 이미 결함을 갖고 있어 조립 검증이 늘 실패하게 되므로, 게이트는 CLI `--fail-on mapperErrors>0` 으로. CLI `--fail-on` 지표 `mapperErrors`·`mapperMissing`·`mapperWarnings`. 평가서 4절 「매퍼·DAO 정합성」에 건수.
-- 실측(2026-11-10): 공통컴포넌트 v5.0.7 없는 문장 10곳(upstream 이 10-26 에 고친 6곳 + 아직 남은 `KnoManagementDAO`·`KnoAppraisalDAO` insert·delete 4곳, 후보 1순위가 upstream 의 정답 5/5) · main 4곳 · 0.6초. 공식 템플릿: web·boot-web 0, simple-backend 9, simple-homepage 21, portal-site·enterprise-business 41 — 모두 매퍼 XML 이 아예 없는 DAO(`BBSAddedOptionsDAO`·`RestdeManageDAO` 등)·빠진 문장·HSQL 매퍼에서 주석 처리된 문장으로, 하나씩 독립 확인한 실제 결함입니다. 설계: [design-project-map.md 5절](design-project-map.md#5-매퍼dao-정합성-v119).
+- 실측(2026-11-10): 공통컴포넌트 v5.0.7 없는 문장 10곳(upstream 이 10-26 에 고친 6곳 + 아직 남은 `KnoManagementDAO`·`KnoAppraisalDAO` insert·delete 4곳, 후보 1순위가 upstream 의 정답 5/5) · main 4곳 · 0.6초. 공식 템플릿: web·boot-web 0, simple-backend 9, simple-homepage 21, portal-site·enterprise-business 41 — 모두 매퍼 XML 이 아예 없는 DAO(`BBSAddedOptionsDAO`·`RestdeManageDAO` 등)·빠진 문장·HSQL 매퍼에서 주석 처리된 문장으로, 하나씩 독립 확인한 실제 결함입니다. 설계: [design-project-map.md 5절](design-project-map.md#5-매퍼dao-정합성-v119). v1.26.1 부터 카탈로그가 고정하는 v5.0.7(2026-11-25 에 옮겨진 태그 `36abd0d`)에는 upstream 이 고친 6곳이 들어 있어 4곳만 남습니다.
 
 ## 기동 검증 (`verify_egovframe_startup`, v1.11)
 
@@ -345,16 +345,16 @@ npx -y egovframe-scaffold-mcp access --project . [--fail-on high>0]
 ```
 
 - **URL 권한 표**: 핸들러마다 하는 일(본문의 서비스 호출 동사, 없으면 메서드 이름)과 검증 수준 — 없음 < 로그인(`isAuthenticated`·`assertLoginUser`) < 역할(`getAuthorities`·`assertAdmin`·`@PreAuthorize`/`@Secured`) < 소유권(`assertOwner`·등록자 ID 비교). 주석·문자열 안의 호출은 세지 않습니다.
-- **전역 보호**: Spring Security URL 규칙·인증 인터셉터의 경로 패턴을 읽어 로그인으로 막힌 URL 을 표시합니다. 표준프레임워크 보안(`Globals.Auth=security`·보안 스타터)은 역할–URL 을 DB 보호자원에서 읽으므로, 검증 없는 변경을 "확인 필요"(중간)로 낮춰 보고합니다 — URL 권한 표를 보호자원 데이터와 대조하세요.
+- **전역 보호**: Spring Security URL 규칙·인증 인터셉터의 경로 패턴을 읽어 로그인으로 막힌 URL 을 표시합니다. 표준프레임워크 보안(`Globals.Auth=security`·보안 스타터)은 역할–URL 을 DB 보호자원에서 읽으므로, 검증 없는 변경을 "확인 필요"(중간)로 낮춰 보고합니다 — URL 권한 표를 보호자원 데이터와 대조하세요. v1.26.1: 5.1.0 의 실행환경 보안 Java Configuration(`EgovSecurityConfiguration` 빈·`@Import`, `egov-security-config.properties` 의 `sqlRolesAndUrl`)도 같은 방식으로 판정합니다 — 공식 템플릿이 2026-11-27 부터 이 구성입니다.
 - **누락 의심**: `unprotected-write`(검증 없는 등록·수정·삭제 — 전역 보호 밖이면 높음) · `sibling-mismatch`(같은 컨트롤러의 다른 변경 핸들러는 역할·소유권을 확인 — 높음, 근거로 그 메서드) · `missing-ownership`(수정·삭제가 로그인만 확인 — 중간) · `unprotected-detail`(형제 상세는 소유권 확인 — 낮음). 예외는 `.egovframe-access-ignore.json`(운영 점검 예외 파일과 같은 형식, `rule` = 종류).
 - **기관 사전**: 규칙 팩의 `access` 절(`loginCalls`·`roleCalls`·`ownerCalls`·`ownerFields`·`publicUrlPatterns`)로 자체 권한 유틸과 공개 경로를 더합니다.
-- 실측(2026-11-19): 공통컴포넌트 핸들러 1,206개 — upstream 이 v5.0.6 → v5.0.7 에서 검증을 올린 변경 핸들러 93개 중 v5.0.6 에서 73개(78.5%)를 보고, v5.0.7 에서 다시 보고하는 것은 1개. v5.0.7 에 남은 높음 52건(모두 형제 근거), 0.4초. 공식 템플릿 높음: web·boot-web 3 / simple-backend 2 / simple-homepage 3 / portal-site 57 / enterprise-business 33.
+- 실측(2026-11-19): 공통컴포넌트 핸들러 1,206개 — upstream 이 v5.0.6 → v5.0.7 에서 검증을 올린 변경 핸들러 93개 중 v5.0.6 에서 73개(78.5%)를 보고, v5.0.7 에서 다시 보고하는 것은 1개. v5.0.7 에 남은 높음 52건(모두 형제 근거), 0.4초. 공식 템플릿 높음: web·boot-web 3 / simple-backend 2 / simple-homepage 3 / portal-site 57 / enterprise-business 33. v1.26.1(옮겨진 v5.0.7 태그 기준, 2026-11-27): 검증을 올린 핸들러 152개(변경 96) 중 변경 76개(79.2%)를 수정 전에 보고, 남은 누락 의심 277건(높음 49).
 - 평가서에 「접근 통제」절(구조화 출력 `access`), 납품 패키지는 `include` 에 `access` 를 넣으면 `access/access.md`·`access.json`·`url-permissions.csv`(기본 포함 아님).
 - 한계: 핸들러 안의 호출 이름만 봅니다 — 서비스·AOP·필터의 검증은 보이지 않고, 조회는 형제 근거가 있을 때만 보고합니다. 형제 불일치는 근거이지 결론이 아닙니다(본인 탈퇴처럼 달라도 되는 경우). 하지 않는 것: 자동 수정, 침투 시험, 역할 체계 설계. 설계: [design-access.md](design-access.md).
 
 ## 점검 기준선 — 새 항목만 게이트 (`baselinePath`, v1.26)
 
-손대지 않은 공식 공통컴포넌트만으로 접근 통제 283건(높음 52)이 나오기 때문에 `--fail-on high>0` 은 첫날부터 실패합니다. 기준선은 지금 있는 항목을 목록으로 두고 **새로 생긴 것만** 막습니다. 보안약점 점검(v0.44)에 있던 방식을 운영·개인정보·접근 통제·정합성 점검으로 넓혔습니다.
+손대지 않은 공식 공통컴포넌트만으로 접근 통제 277건(높음 49)이 나오기 때문에 `--fail-on high>0` 은 첫날부터 실패합니다. 기준선은 지금 있는 항목을 목록으로 두고 **새로 생긴 것만** 막습니다. 보안약점 점검(v0.44)에 있던 방식을 운영·개인정보·접근 통제·정합성 점검으로 넓혔습니다.
 
 ```text
 npx -y egovframe-scaffold-mcp access --project . --json-out .egovframe/baseline/access.json          # 기준선 만들기(커밋)
@@ -370,7 +370,7 @@ generate_egovframe_report(projectDir, sections=["assessment"], baselineDir=".ego
 - **결과**: 항목 `fingerprint`·`isNew`, 요약 `new`(기준선이 없으면 `null`), `baseline { path, findings, resolved }`. CLI 지표 `new`(`validate` 는 `mapperNew`·`consistencyNew` 도).
 - 다른 도구의 결과나 v1.25 이하의 결과(지문 없음)를 기준선으로 주면 오류입니다 — 조용히 전부 새 항목이 되지 않습니다.
 - 기준선은 "아직 판단하지 않은 것", 예외 파일(`.egovframe-*-ignore.json`)은 "판단한 것(사유·검토자)"입니다. 의존성 점검에는 기준선이 없습니다(새로 공개되는 취약점을 가리면 안 됨 — SBOM 비교·VEX 사용).
-- 실측(2026-11-26): 공통컴포넌트 v5.0.6 결과를 기준선으로 v5.0.7 → 접근 통제 새 항목 42·해결 102, 정합성 해결 46, 매퍼 해결 1. 4,798개 파일 위에 줄을 끼워 넣은 사본은 새 항목 0. 설계: [design-baseline.md](design-baseline.md).
+- 실측(2026-11-27, 옮겨진 v5.0.7 태그 기준): 공통컴포넌트 v5.0.6 결과를 기준선으로 v5.0.7 → 접근 통제 새 항목 39·해결 105, 정합성 해결 46, 매퍼 해결 7. 4,800개 파일 위에 줄을 끼워 넣은 사본은 새 항목 0. 설계: [design-baseline.md](design-baseline.md).
 
 ## 기관 규칙 팩 (`EGOVFRAME_RULE_PACKS`·`list_egovframe_rules`, v1.23)
 
@@ -485,7 +485,7 @@ npx -y egovframe-scaffold-mcp db --project . [--write] [--run] [--fail-on failed
 - **문자셋**: MySQL·MariaDB 는 테이블마다 `DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`(없으면 붙이고 utf8·latin1 이면 바꿈)와 스크립트 첫 줄 `SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci` — Docker 초기화든 `--default-character-set=latin1` 클라이언트든 같은 결과가 됩니다. PostgreSQL 은 `SET client_encoding = 'UTF8'` 과 `--encoding=UTF8` DB, Oracle·Tibero 는 `NLS_LANG=KOREAN_KOREA.AL32UTF8` 안내, 데이터 끝 `COMMIT`.
 - **산출물**: `scripts/egovframe-db/<db>/01-schema.sql`·`02-data.sql`(`includeComments=true` 면 `03-comment.sql`), MySQL 8.4·MariaDB 11.4·PostgreSQL 16 은 `scripts/egovframe-db/docker-compose.db.yml`(배포 산출물과 같은 이미지·문자셋 설정, DB 이름·계정·포트는 설정 파일 값, 비밀번호는 `DB_PASSWORD` 환경 변수 — 파일에 쓰지 않음, `127.0.0.1` 에만 공개). 적재 명령은 bash·cmd 로. 기존 파일은 덮어쓰지 않습니다(같은 내용이면 그대로, 다르면 거부).
 - **확인(`run=true`)**: 임시 디렉터리의 준비본을 초기화 스크립트로 마운트해 공식 이미지를 띄우고(`imageRegistry` 로 사내 미러), 초기화 오류 줄, 테이블 수(= 준비한 수), 필수 행(관리자 계정·메뉴·공통코드·ID 생성·권한 — 데이터에 있는 것만), 한글 왕복(데이터의 첫 한글 값을 HEX 로 비교)을 봅니다. 컨테이너는 지우고(`keep=true` 면 남기고 포트를 알려줌) 프로젝트 파일은 `dryRun` 에 따릅니다.
-- 실측(공통컴포넌트 v5.0.7 전체): 테이블 182·뷰 1·문장 407+976, MySQL 8.4 16초·PostgreSQL 16 5초에 오류 0·필수 행·한글 통과. 원본을 그대로 MySQL Docker 초기화에 넣으면 `상담답변관리` 가 이중 인코딩되고(#1386), latin1 클라이언트로 넣어도 깨집니다 — 준비본은 두 조건 모두 그대로입니다. 조립 4종(bbs·uss.umt·sec.ram·sym.mnu.mpm)의 PostgreSQL 은 빠진 공통코드 테이블 3개를 보완해 34개 테이블로 통과합니다.
+- 실측(공통컴포넌트 v5.0.7 전체): 테이블 182·뷰 1·문장 407+976, MySQL 8.4 16초·PostgreSQL 16 5초에 오류 0·필수 행·한글 통과. 원본을 그대로 MySQL Docker 초기화에 넣으면 `상담답변관리` 가 이중 인코딩되고(#1386), latin1 클라이언트로 넣어도 깨집니다 — 준비본은 두 조건 모두 그대로입니다. 조립 4종(bbs·uss.umt·sec.ram·sym.mnu.mpm)의 PostgreSQL 은 빠진 공통코드 테이블 3개를 보완해 34개 테이블로 통과합니다. v1.26.1: 옮겨진 v5.0.7 은 MySQL 스크립트가 `SET NAMES utf8mb4` 로 시작해(upstream 수정) 원본도 두 조건에서 깨지지 않습니다 — 준비본은 그 위에서도 같은 결과이고, 테이블 정렬 규칙 고정·참조 보완·순서 정리는 그대로 필요합니다.
 - 하지 않는 것: 운영 DB 적재, 스키마 비교·마이그레이션(Flyway 류), 데이터 이관.
 
 ## 컨테이너·배포 산출물 (`generate_egovframe_deploy`)
@@ -641,7 +641,7 @@ generate_egovframe_report(projectDir="/work/legacy-app", sections=["assessment"]
 
 파일마다 판정은 목표와 같음(유지)·원본 그대로(교체)·사용자 수정(소스는 교체 + 원본 대비 패치 보존, 메시지·설정 조각·웹 자산은 사용자본 유지 + 목표본 참고 저장)·5.x 신규(추가)·5.x 에서 제거(백업 후 삭제, 사용자 수정이면 패치도)·원본 미확인(백업 후 교체)·사용자 추가(유지)입니다. 백업·패치·`reassemble-plan.json` 은 `migration-backup/<시각>-reassemble-*/` 에, 매니페스트는 `.egovframe-components.json` 에 남습니다. 원본 태그 비교에는 git 이 필요하고, blob 없는 bare 미러를 `EGOVFRAME_CACHE_DIR`(기본 `~/.cache/egovframe-scaffold-mcp`)에 태그당 수백 KB 로 캐시합니다. `reapply` 를 켜지 않으면 사용자 패치를 자동으로 다시 적용하지 않습니다(fuzz 적용 대신 v1.12 의 3-way 병합만 — 충돌이면 손대지 않음).
 
-> **옮겨진 태그(v1.26)**: upstream 은 `v5.0.7` 태그를 두 번 옮겼습니다(2026-10-07, 2026-11-25 — 뒤의 것은 보안 패치 1 커밋·370 파일). 이 도구는 카탈로그가 고정한 커밋(`7912e13`)의 아카이브로 조립하므로, 재조립의 비교도 그 커밋의 트리로 합니다. 태그가 고정 커밋과 다르면 실패하지 않고 안내만 남깁니다(v1.25 까지는 "태그 이동" 오류로 멈췄습니다). 옮겨진 태그의 내용은 카탈로그를 다시 생성한 릴리스에서 반영됩니다. `sync_egovframe_catalog` 도 같은 경우 경고로 알리고 고정 커밋의 아카이브 무결성을 검증합니다.
+> **옮겨진 태그(v1.26)**: upstream 은 `v5.0.7` 태그를 두 번 옮겼습니다(2026-10-07, 2026-11-25 — 뒤의 것은 보안 패치 1 커밋·370 파일). 이 도구는 카탈로그가 고정한 커밋의 아카이브로 조립하므로, 재조립의 비교도 그 커밋의 트리로 합니다. 태그가 고정 커밋과 다르면 실패하지 않고 안내만 남깁니다(v1.25 까지는 "태그 이동" 오류로 멈췄습니다). `sync_egovframe_catalog` 도 같은 경우 경고로 알리고 고정 커밋의 아카이브 무결성을 검증합니다. v1.26.1 에서 카탈로그를 옮겨진 태그(`36abd0d`)로 다시 고정해 보안 패치(관리 화면 접근 통제, 매퍼 문장 6곳, 로그인 요청 매처, MySQL 스크립트 문자셋)가 조립·재조립 결과에 들어갑니다. v1.26.0 이하로 조립한 프로젝트는 `upgrade_egovframe_project`(dryRun 으로 미리보기)로 받습니다.
 
 ## rehearse_egovframe_migration 파라미터 (전환 리허설)
 
@@ -679,7 +679,7 @@ Maven 저장소(`maven.egovframe.go.kr`·`repo1.maven.org`)가 5xx·연결 끊�
 
 ## sync_egovframe_catalog / 컴포넌트 조립
 
-- 카탈로그는 common-components 공식 `v5.0.7` 태그와 commit `7912e13c…`에 고정됩니다(v0.38 에서 v5.0.6 → v5.0.7, v0.39 에서 upstream 이 태그를 옮겨 `3756ab2c…` → `7912e13c…` 로 재고정).
+- 카탈로그는 common-components 공식 `v5.0.7` 태그와 commit `36abd0d5…`에 고정됩니다(v0.38 에서 v5.0.6 → v5.0.7, v0.39 에서 upstream 이 태그를 옮겨 `3756ab2c…` → `7912e13c…`, v1.26.1 에서 다시 옮겨진 태그의 보안 패치를 받아 `36abd0d5…` 로 재고정).
 - `sync_egovframe_catalog()`는 태그 이동, archive SHA-256·크기·파일 수 불일치, `sec.security` 누락, 미매핑 Java·Mapper·JSP를 검사합니다.
 - `add_egovframe_components`는 기존 파일이 upstream과 동일하면 재사용하고 내용이 다르면 전체 조립을 거부합니다.
 - 감지된 `mavenDependencies`는 결과에 반환합니다. 프로젝트별 dependency management·버전 정책을 보호하기 위해 기존 `pom.xml`과 `web.xml`은 자동 덮어쓰지 않습니다.

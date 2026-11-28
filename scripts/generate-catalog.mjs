@@ -28,8 +28,8 @@ const SOURCE = {
   repo: "eGovFramework/egovframe-common-components",
   branch: "main",
   tag: "v5.0.7",
-  commit: "7912e13ca5a064a4dc81d5772582f928e985e653",
-  surveyedAt: "2026-10-07",
+  commit: "36abd0d5bcb22e58b366f8d5f1e8ccdccfe7d6da",
+  surveyedAt: "2026-11-27",
   securityPatchLevel: "v5.0.7",
 };
 const JAVA = "src/main/java/egovframework/com/";

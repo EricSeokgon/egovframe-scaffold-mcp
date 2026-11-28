@@ -253,7 +253,11 @@ export function detectGlobalAccess(files: { rel: string; abs: string }[], rules:
   // URL 패턴이 하나도 없는 SecurityFilterChain(CSRF 전용 등)은 전역 보호가 아니다
   if (best && best.kind === "spring-security" && !best.protect.length && !best.exclude.length) best = null;
   // 표준프레임워크 보안(시큐리티 간소화·보안 스타터): 역할–URL 을 DB(보호자원)에서 읽는다 — 어떤 URL 이 보호되는지는 소스에 없다
-  const egov = files.find((f) => (f.rel.endsWith("globals.properties") && /^\s*Globals\.Auth\s*[=:]\s*security\b/m.test(read(f.abs))) || (f.rel.endsWith(".xml") && !f.rel.endsWith("pom.xml") && /<egov-security:config\b/.test(read(f.abs))) || (/(^|\/)pom\.xml$/.test(f.rel) && /<artifactId>\s*egovframe-boot-starter-security\s*</.test(read(f.abs).replace(/<!--[\s\S]*?-->/g, ""))));
+  const egov = files.find((f) => (f.rel.endsWith("globals.properties") && /^\s*Globals\.Auth\s*[=:]\s*security\b/m.test(read(f.abs))) || (f.rel.endsWith(".xml") && !f.rel.endsWith("pom.xml") && /<egov-security:config\b/.test(read(f.abs))) || (/(^|\/)pom\.xml$/.test(f.rel) && /<artifactId>\s*egovframe-boot-starter-security\s*</.test(read(f.abs).replace(/<!--[\s\S]*?-->/g, "")))
+    // v1.26.1: 5.1.0 실행환경 보안(fdl-security Java Configuration) — XML 네임스페이스 대신 EgovSecurityConfiguration 빈 + egov-security-config.properties(sqlRolesAndUrl)
+    || (f.rel.endsWith(".properties") && /^\s*sqlRolesAndUrl\s*[=:]/m.test(read(f.abs)))
+    || (f.rel.endsWith(".xml") && !f.rel.endsWith("pom.xml") && /class\s*=\s*"org\.egovframe\.rte\.fdl\.security\.config\.EgovSecurityConfiguration"/.test(read(f.abs).replace(/<!--[\s\S]*?-->/g, "")))
+    || (f.rel.endsWith(".java") && /^\s*import\s+org\.egovframe\.rte\.fdl\.security\.config\.EgovSecurityConfiguration\s*;/m.test(read(f.abs))));
   if (egov && (!best || best.kind === "interceptor")) return { kind: "egov-security", file: egov.rel, protect: [], exclude: [], note: L("표준프레임워크 보안(역할–URL 을 DB 보호자원으로 관리)을 쓰는 프로젝트입니다 — 어떤 URL 이 어느 역할로 막히는지는 소스에 없어, 검증 없는 변경 핸들러는 '확인 필요'(중간)로 낮춰 보고합니다. 보호자원 데이터에 그 URL 이 있는지 대조하세요.", "This project uses eGovFrame security (role-to-URL mappings kept as secured resources in a database) — which URL is restricted to which role is not in the source, so write handlers without a check are reported as 'to verify' (medium). Compare them with the secured-resource data.") };
   return best ?? { kind: "none", file: null, protect: [], exclude: [], note: L("Spring Security 설정·인증 인터셉터를 찾지 못했습니다 — 핸들러 안의 검증만으로 판정합니다", "No Spring Security configuration or authentication interceptor found — only checks inside handlers are considered") };
 }

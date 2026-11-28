@@ -5,13 +5,13 @@
     "repo": "eGovFramework/egovframe-common-components",
     "branch": "main",
     "tag": "v5.0.7",
-    "commit": "7912e13ca5a064a4dc81d5772582f928e985e653",
-    "surveyedAt": "2026-10-07",
+    "commit": "36abd0d5bcb22e58b366f8d5f1e8ccdccfe7d6da",
+    "surveyedAt": "2026-11-27",
     "securityPatchLevel": "v5.0.7",
     "archive": {
-      "sha256": "a1a4b9a7cfcd997215a6560f16d72dce7c1a399c193e8250b8eccb98121e6a9a",
-      "bytes": 46904430,
-      "files": 6604
+      "sha256": "ebd5483cdf15dd3719cb74413d9780d365304d8623a0155a979f3f58c07616f2",
+      "bytes": 46937489,
+      "files": 6606
     }
   },
   "sqlNote": "DB 스크립트는 선택 컴포넌트의 참조 테이블을 기준으로 DDL·DML을 선별 추출하며 자동 실행하지 않습니다.",

@@ -109,7 +109,7 @@ assert.deepEqual(Object.keys(mf.components).sort(), ["bbs", "cmm", "login", "sec
 assert.ok(
   mf.schemaVersion === 3 &&
     mf.source.tag === "v5.0.7" &&
-    mf.source.commit === "7912e13ca5a064a4dc81d5772582f928e985e653",
+    mf.source.commit === "36abd0d5bcb22e58b366f8d5f1e8ccdccfe7d6da",
   "매니페스트에 공식 소스 provenance를 기록해야 한다",
 );
 assert.ok(mf.components.bbs.files.length >= 88, "bbs 설치 파일 목록을 기록해야 한다");

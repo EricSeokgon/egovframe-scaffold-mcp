@@ -4,7 +4,7 @@
 //   (2) boot-web 사본에 egovframe-boot-starter-security 만 추가 → 기동은 되지만 HTTP 401(Spring Boot 기본 보안) + 운영 점검 default-chain 높음 + 갱신 항목(boot-starter-autoconfig)
 //       Globals.Auth=security + 보호자원 '/**'(PathPattern) + request-matcher-type 기본(regex) → 기동 실패(PatternSyntaxException) + matcher-type 높음
 //       request-matcher-type=url → 기동·HTTP 200, 운영 점검 통과
-//   (3) 공통컴포넌트 v5.0.7 의 AuthenticInterceptor 는 AntPathRequestMatcher(변수 패턴) → manual 1, upstream main(10-27 #1396 반영)은 0
+//   (3) 공통컴포넌트 v5.0.7(2026-10 태그 커밋)의 AuthenticInterceptor 는 AntPathRequestMatcher(변수 패턴) → manual, 지금의 v5.0.7(11-25 에 옮겨진 태그, #1396 반영)은 0
 import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -73,16 +73,16 @@ try {
   info(`request-matcher-type=url: ${show(s3)} · ${SEC(o3)}`);
   assert(s3.success && s3.http?.status === 200 && o3.rules.filter((x) => x.rule.startsWith("egov-security")).every((x) => x.status === "pass"), `url 로 바꾸면 기동·HTTP 200, 운영 점검 통과 (HTTP ${s3.http?.status})`);
 
-  // (3) 공통컴포넌트 AuthenticInterceptor: v5.0.7 → manual 1, main → 0
+  // (3) 공통컴포넌트 AuthenticInterceptor: 옛 v5.0.7 → manual, 지금의 v5.0.7 → 0
   const REL = "src/main/java/egovframework/com/cmm/interceptor/AuthenticInterceptor.java";
   const cc = path.join(root, "cc");
   execFileSync("git", ["clone", "-q", "--filter=blob:none", "--no-checkout", "https://github.com/eGovFramework/egovframe-common-components.git", cc], { stdio: "inherit", env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
   const at = (ref) => execFileSync("git", ["show", `${ref}:${REL}`], { cwd: cc, encoding: "utf8" });
-  // 태그가 아니라 카탈로그 고정 커밋 — upstream 이 2026-11-25 에 옮긴 v5.0.7 태그는 이미 PathPatternRequestMatcher 로 바뀌어 있다
-  const i507 = m.planRequestMatcherItems(REL, at(COMMON_COMPONENTS_COMMITS["v5.0.7"]));
-  const iMain = m.planRequestMatcherItems(REL, at("origin/main"));
-  info(`AuthenticInterceptor: v5.0.7 ${i507.map((i) => `${i.action}:${i.line}`).join(",")} / main ${iMain.length}`);
-  assert(i507.length >= 1 && i507.every((i) => i.action === "manual") && iMain.length === 0, `공통컴포넌트 v5.0.7 AuthenticInterceptor → manual(변수 패턴), main(#1396 반영) → 0`);
+  // 태그 이름이 아니라 고정 커밋으로 읽는다(test/pinned-upstream.mjs)
+  const i507 = m.planRequestMatcherItems(REL, at(COMMON_COMPONENTS_COMMITS["v5.0.7@2026-10"]));
+  const iMain = m.planRequestMatcherItems(REL, at(COMMON_COMPONENTS_COMMITS["v5.0.7"]));
+  info(`AuthenticInterceptor: v5.0.7@2026-10 ${i507.map((i) => `${i.action}:${i.line}`).join(",")} / v5.0.7(지금) ${iMain.length}`);
+  assert(i507.length >= 1 && i507.every((i) => i.action === "manual") && iMain.length === 0, `공통컴포넌트 AuthenticInterceptor: 옛 v5.0.7 → manual(변수 패턴), 지금의 v5.0.7(#1396 반영) → 0`);
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

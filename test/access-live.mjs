@@ -4,7 +4,7 @@
 //   (2) 수정 뒤(v5.0.7)에는 그 핸들러를 다시 보고하지 않음
 //   (3) 독립 확인: 정답 핸들러의 v5.0.7 소스에 실제로 EgovAuthorizationHelper·EgovUserDetailsHelper 호출이 있고 v5.0.6 의 같은 메서드에는 그 호출이 없음
 //   (4) 전역 보호 판정(표준프레임워크 보호자원), 전체 5초 이내, 공식 템플릿 6종 수치
-import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { clonePinned } from "./pinned-upstream.mjs";
@@ -33,7 +33,7 @@ try {
   const pct = (a, c) => `${a}/${c} = ${(a / c * 100).toFixed(1)}%`;
   info(`upstream 이 검증을 올린 핸들러 ${raised.length}(변경 ${raisedWrites.length}) — 수정 전 보고: 전체 ${pct(hit.length, raised.length)}, 변경 ${pct(hitWrites.length, raisedWrites.length)} · 수정 뒤에도 보고 ${still.length}`);
   assert(before.summary.handlers === 1206 && after.summary.handlers === 1206 && before.summary.controllers === 164 && after.summary.byLevel.owner > before.summary.byLevel.owner * 4 && after.summary.byLevel.none < before.summary.byLevel.none, `핸들러 1,206개(컨트롤러 164) — 소유권 검증 ${before.summary.byLevel.owner} → ${after.summary.byLevel.owner}, 검증 없음 ${before.summary.byLevel.none} → ${after.summary.byLevel.none}`);
-  assert(raised.length === 145 && raisedWrites.length === 93, `정답: 검증 수준이 올라간 핸들러 ${raised.length}(변경 ${raisedWrites.length})`);
+  assert(raised.length === 152 && raisedWrites.length === 96, `정답: 검증 수준이 올라간 핸들러 ${raised.length}(변경 ${raisedWrites.length})`);
   assert(hitWrites.length >= 70 && hit.length >= 74, `재현율 — 변경 핸들러 ${pct(hitWrites.length, raisedWrites.length)}(실측 73), 전체 ${pct(hit.length, raised.length)}(실측 77 — 조회 핸들러는 형제 근거가 있을 때만 보고)`);
   assert(still.length <= 2, `수정 뒤(v5.0.7)에는 정답 핸들러를 다시 보고하지 않음(${still.length}건${still.length ? `: ${still.map(key).join(", ")}` : ""})`);
   // (3) 독립 확인 — 점검 도구의 판정을 쓰지 않고 소스 본문에서
@@ -50,13 +50,30 @@ try {
   const csv = m.renderAccessCsv(after);
   assert(csv.split("\r\n").length === after.handlers.length + 2 && m.OUTPUT_SCHEMAS.check_egovframe_access.safeParse(after).success, `URL 권한 표 CSV ${after.handlers.length}행 · 구조화 출력 스키마 통과`);
 
-  // (4) 공식 템플릿
-  const expected = { web: [6, "none", 3], "boot-web": [7, "none", 3], "simple-backend": [51, "spring-security", 2], "simple-homepage": [55, "interceptor", 3], "portal-site": [275, "none", 57], "enterprise-business": [219, "none", 33] };
-  for (const [t, [handlers, global, high]] of Object.entries(expected)) {
+  // (4) 공식 템플릿 — web·boot-web 은 지문이 고정된 Initializr zip 이라 수치를 고정하고, 저장소 템플릿은 기본 브랜치로 받아
+  //     upstream 이 고칠 때마다 달라지므로(2026-11-27 5.1.0 갱신: 인증 인터셉터 → 실행환경 보안, 검증 추가) 소스에서 직접 읽은 값과 대조한다
+  const fixed = { web: [6, "none", 3], "boot-web": [7, "none", 3] };
+  const walkFiles = (dir, out = []) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) { if (!["target", "build", "node_modules"].includes(e.name) && !e.name.startsWith(".")) walkFiles(p, out); } else out.push(p); } return out; };
+  const noComment = (t, p) => (p.endsWith(".xml") ? t.replace(/<!--[\s\S]*?-->/g, "") : p.endsWith(".java") ? t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "") : t.replace(/^\s*[#!].*$/gm, ""));
+  // 독립 판정: 전역 보호 방식을 설정 파일의 흔적으로(점검 도구의 해석을 쓰지 않음)
+  const globalOf = (dir) => {
+    const files = walkFiles(dir).filter((p) => !p.split(path.sep).join("/").includes("/src/test/") && /\.(java|xml|properties)$/.test(p) && !p.endsWith("pom.xml"));
+    const has = (re) => files.some((p) => re.test(noComment(readFileSync(p, "utf8"), p)));
+    if (has(/\bSecurityFilterChain\b[\s\S]*\.(requestMatchers|antMatchers)\s*\(/)) return "spring-security";
+    if (has(/EgovSecurityConfiguration|^\s*sqlRolesAndUrl\s*=|^\s*Globals\.Auth\s*=\s*security\b|<egov-security:config\b/m)) return "egov-security";
+    if (has(/<mvc:interceptor>[\s\S]*?Authentic\w*Interceptor[\s\S]*?<\/mvc:interceptor>|addInterceptor\s*\(\s*\w*[aA]uthentic/)) return "interceptor";
+    return "none";
+  };
+  const mappingCount = (dir) => walkFiles(dir).filter((p) => p.endsWith(".java") && !p.split(path.sep).join("/").includes("/src/test/")).reduce((n, p) => { const t = noComment(readFileSync(p, "utf8"), p); return /@(Rest)?Controller\b/.test(t) ? n + (t.match(/@(Request|Get|Post|Put|Delete|Patch)Mapping\b/g) ?? []).length - (/@RequestMapping\b[^\n]*\n(?:\s*@[^\n]*\n)*\s*public\s+(?:abstract\s+)?class\b/.test(t) ? 1 : 0) : n; }, 0);
+  for (const t of ["web", "boot-web", "simple-backend", "simple-homepage", "portal-site", "enterprise-business"]) {
     const c = await m.createProject({ template: t, projectName: `ac-${t}`, groupId: "egovframework.example", outputDir: root, database: "hsql" });
     const r = m.checkAccess({ projectDir: c.projectPath });
     info(`${t}: ${JSON.stringify({ ...r.summary, global: r.global.kind, file: r.global.file })}`);
-    assert(r.summary.handlers === handlers && r.global.kind === global && r.summary.high === high, `${t}: 핸들러 ${r.summary.handlers}(기대 ${handlers}) · 전역 보호 ${r.global.kind}(기대 ${global}) · 높음 ${r.summary.high}(기대 ${high})`);
+    if (fixed[t]) { const [handlers, global, high] = fixed[t]; assert(r.summary.handlers === handlers && r.global.kind === global && r.summary.high === high, `${t}: 핸들러 ${r.summary.handlers}(기대 ${handlers}) · 전역 보호 ${r.global.kind}(기대 ${global}) · 높음 ${r.summary.high}(기대 ${high})`); continue; }
+    const g = globalOf(c.projectPath), mc = mappingCount(c.projectPath);
+    const highs = r.findings.filter((f) => f.severity === "high");
+    const consistent = highs.every((f) => f.kind === "sibling-mismatch" || (f.kind === "unprotected-write" && r.global.kind !== "egov-security" && r.handlers.find((h) => h.file === f.file && h.method === f.method && h.line === f.line)?.globalLogin !== true));
+    assert(r.global.kind === g && r.summary.handlers > 20 && Math.abs(r.summary.handlers - mc) <= Math.max(3, mc * 0.05) && consistent && r.summary.high === highs.length, `${t}: 전역 보호 ${r.global.kind}(설정에서 직접 읽은 값 ${g}) · 핸들러 ${r.summary.handlers}(매핑 어노테이션 ${mc}개와 5% 안) · 높음 ${highs.length}건은 모두 형제 불일치이거나 전역 보호 밖의 검증 없는 변경`);
   }
 } finally {
   rmSync(root, { recursive: true, force: true });
