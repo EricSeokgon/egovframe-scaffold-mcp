@@ -15,6 +15,16 @@ export const COMMON_COMPONENTS_COMMITS = {
   "v5.0.7@2026-10": "7912e13ca5a064a4dc81d5772582f928e985e653",
 };
 
+/**
+ * 공식 템플릿 저장소의 고정 커밋 — "고칠 것이 있는 실제 프로젝트"가 필요한 시나리오 테스트용(createProject 의 ref 로 준다).
+ * 템플릿은 기본 브랜치로 받기 때문에 upstream 이 스스로 고치면 시나리오가 사라진다
+ * (2026-11-27 공식 템플릿의 5.1.0 갱신: msa-common-components 의 취약 의존성 권고가 대부분 해소됨).
+ */
+export const TEMPLATE_COMMITS = {
+  /** 5.1.0 갱신 직전(2026-10-29, 5.0.4 기준) — 취약 버전을 직접 고정한 모듈 pom 이 남아 있는 상태 */
+  "msa-common-components@5.0.4": "d4c57063d26668a5b1fb4f19a8b9fbdc980b3021",
+};
+
 /** 고정 커밋 하나만 얕게 받아 dest 에 풀어 놓는다(.git 은 남는다). */
 export function clonePinned(dest, ref, repo = COMMON_COMPONENTS_REPO) {
   const sha = COMMON_COMPONENTS_COMMITS[ref] ?? ref;

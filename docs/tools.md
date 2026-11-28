@@ -345,7 +345,7 @@ npx -y egovframe-scaffold-mcp access --project . [--fail-on high>0]
 ```
 
 - **URL 권한 표**: 핸들러마다 하는 일(본문의 서비스 호출 동사, 없으면 메서드 이름)과 검증 수준 — 없음 < 로그인(`isAuthenticated`·`assertLoginUser`) < 역할(`getAuthorities`·`assertAdmin`·`@PreAuthorize`/`@Secured`) < 소유권(`assertOwner`·등록자 ID 비교). 주석·문자열 안의 호출은 세지 않습니다.
-- **전역 보호**: Spring Security URL 규칙·인증 인터셉터의 경로 패턴을 읽어 로그인으로 막힌 URL 을 표시합니다. 표준프레임워크 보안(`Globals.Auth=security`·보안 스타터)은 역할–URL 을 DB 보호자원에서 읽으므로, 검증 없는 변경을 "확인 필요"(중간)로 낮춰 보고합니다 — URL 권한 표를 보호자원 데이터와 대조하세요.
+- **전역 보호**: Spring Security URL 규칙·인증 인터셉터의 경로 패턴을 읽어 로그인으로 막힌 URL 을 표시합니다. 표준프레임워크 보안(`Globals.Auth=security`·보안 스타터)은 역할–URL 을 DB 보호자원에서 읽으므로, 검증 없는 변경을 "확인 필요"(중간)로 낮춰 보고합니다 — URL 권한 표를 보호자원 데이터와 대조하세요. v1.26.1: 5.1.0 의 실행환경 보안 Java Configuration(`EgovSecurityConfiguration` 빈·`@Import`, `egov-security-config.properties` 의 `sqlRolesAndUrl`)도 같은 방식으로 판정합니다 — 공식 템플릿이 2026-11-27 부터 이 구성입니다.
 - **누락 의심**: `unprotected-write`(검증 없는 등록·수정·삭제 — 전역 보호 밖이면 높음) · `sibling-mismatch`(같은 컨트롤러의 다른 변경 핸들러는 역할·소유권을 확인 — 높음, 근거로 그 메서드) · `missing-ownership`(수정·삭제가 로그인만 확인 — 중간) · `unprotected-detail`(형제 상세는 소유권 확인 — 낮음). 예외는 `.egovframe-access-ignore.json`(운영 점검 예외 파일과 같은 형식, `rule` = 종류).
 - **기관 사전**: 규칙 팩의 `access` 절(`loginCalls`·`roleCalls`·`ownerCalls`·`ownerFields`·`publicUrlPatterns`)로 자체 권한 유틸과 공개 경로를 더합니다.
 - 실측(2026-11-19): 공통컴포넌트 핸들러 1,206개 — upstream 이 v5.0.6 → v5.0.7 에서 검증을 올린 변경 핸들러 93개 중 v5.0.6 에서 73개(78.5%)를 보고, v5.0.7 에서 다시 보고하는 것은 1개. v5.0.7 에 남은 높음 52건(모두 형제 근거), 0.4초. 공식 템플릿 높음: web·boot-web 3 / simple-backend 2 / simple-homepage 3 / portal-site 57 / enterprise-business 33. v1.26.1(옮겨진 v5.0.7 태그 기준, 2026-11-27): 검증을 올린 핸들러 152개(변경 96) 중 변경 76개(79.2%)를 수정 전에 보고, 남은 누락 의심 277건(높음 49).

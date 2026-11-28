@@ -6,6 +6,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { TEMPLATE_COMMITS } from "./pinned-upstream.mjs";
 
 let n = 0;
 function assert(c, msg) { n++; if (!c) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); }
@@ -21,7 +22,8 @@ try {
     assert(!r.osvError && k.unpin === 0 && k.coordinate === 0 && k["cve-bump"] === 0 && k.parent <= 1, `${template}: parent 상향 ${k.parent} 말고 조치 0건 (수동 ${r.summary.manual}, 권고 ${r.vulnerabilities?.before.ids} → ${r.vulnerabilities?.after.ids})`);
   }
 
-  const c = await m.createProject({ template: "msa-common-components", projectName: "df-msa", groupId: "egovframework.example", outputDir: root, database: "mysql" });
+  // 5.1.0 갱신 전의 고정 커밋으로 받는다 — 기본 브랜치는 2026-11-27 에 upstream 이 스스로 고쳐 조치할 것이 거의 없다(test/pinned-upstream.mjs)
+  const c = await m.createProject({ template: "msa-common-components", ref: TEMPLATE_COMMITS["msa-common-components@5.0.4"], projectName: "df-msa", groupId: "egovframework.example", outputDir: root, database: "mysql" });
   const dir = c.projectPath;
   const plan = await m.fixDependencies({ projectDir: dir });
   const v = plan.vulnerabilities;

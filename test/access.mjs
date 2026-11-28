@@ -147,6 +147,15 @@ try {
   w(egov, `${J}/CodeController.java`, ADMIN.replace('@PreAuthorize("hasRole(\'ADMIN\')")\n', "").replace(/java\.util\.List<String> auth[\s\S]*?권한 없음"\); }\n/, ""));
   const re = checkAccess({ projectDir: egov });
   assert(re.global.kind === "egov-security" && re.global.file.endsWith("globals.properties") && H(re, "saveCode").globalLogin === null && F(re, "saveCode").severity === "medium" && F(re, "saveCode").message.includes("보호자원") && F(re, "removeAll").severity === "high" && re.notes.some((x) => x.includes("보호자원")), "표준프레임워크 보안(Globals.Auth=security): 역할–URL 은 DB — 검증 없는 변경은 '확인 필요'(중간), 형제 불일치는 그대로 높음");
+  // v1.26.1: 5.1.0 실행환경 보안(fdl-security Java Configuration) — 공식 템플릿이 2026-11-27 부터 쓰는 방식
+  const e51 = project({ "src/main/resources/egovframework/egovProps/conf/egov-security-config.properties": "loginUrl = /login.do\npermitAllList = /, /css/**\nsqlRolesAndUrl = SELECT A.ROLE_PTTRN AS url, B.AUTHOR_CODE AS authority FROM ROLEINFO A, AUTHORROLE B\n" });
+  w(e51, `${J}/CodeController.java`, ADMIN.replace('@PreAuthorize("hasRole(\'ADMIN\')")\n', "").replace(/java\.util\.List<String> auth[\s\S]*?권한 없음"\); }\n/, ""));
+  const r51 = checkAccess({ projectDir: e51 });
+  assert(r51.global.kind === "egov-security" && r51.global.file.endsWith("egov-security-config.properties") && F(r51, "saveCode").severity === "medium", "5.1.0 실행환경 보안(egov-security-config.properties 의 sqlRolesAndUrl): 보호자원 방식으로 인식 — 검증 없는 변경은 중간");
+  const bean = project({ "src/main/resources/egovframework/spring/com/context-security.xml": '<beans>\n\t<bean class="org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration"/>\n</beans>\n' });
+  const off = project({ "src/main/resources/egovframework/spring/com/context-security.xml": '<beans>\n\t<!-- <bean class="org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration"/> -->\n</beans>\n', "src/main/resources/egovframework/egovProps/conf/egov-security-config.properties": "# sqlRolesAndUrl = SELECT 1\nloginUrl = /login.do\n" });
+  const imp = project({ [`${J}/SecConfig.java`]: "package kr.go.sample;\nimport org.egovframe.rte.fdl.security.config.EgovSecurityConfiguration;\n@Configuration\n@Import(EgovSecurityConfiguration.class)\npublic class SecConfig {}\n" });
+  assert(checkAccess({ projectDir: bean }).global.kind === "egov-security" && checkAccess({ projectDir: imp }).global.kind === "egov-security" && checkAccess({ projectDir: off }).global.kind === "none", "EgovSecurityConfiguration 빈(XML)·@Import(Java)도 인식, 주석 처리된 빈·설정 키는 아님");
   const csrf = detectGlobalAccess([{ rel: "A.java", abs: (() => { const f = path.join(root, "A.java"); writeFileSync(f, "@Configuration class A { @Bean SecurityFilterChain c(HttpSecurity h) { h.csrf(x -> x.disable()); return h.build(); } }"); return f; })() }], rules);
   assert(csrf.kind === "none", "URL 규칙이 없는 SecurityFilterChain(CSRF 전용)은 전역 보호로 보지 않음");
 
